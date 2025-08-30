@@ -14,6 +14,7 @@ import { AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
 import { writeTextToClipboard } from '@/utils/clipboard';
 import { getPlatformValue } from '@/utils';
 import { releaseOcrSession } from '@/functions/ocr';
+import { useStateRef } from '@/hooks/useStateRef';
 
 // 定义角度阈值常量（以度为单位）
 const ROTATION_THRESHOLD = 3; // 小于3度的旋转被视为误差，不进行旋转
@@ -80,26 +81,32 @@ export const OcrResult: React.FC<{
 
     const currentOcrResultRef = useRef<AppOcrResult | undefined>(undefined);
 
-    const enableRef = useRef<boolean>(false);
-    const setEnable = useCallback((enable: boolean | ((enable: boolean) => boolean)) => {
-        if (!containerElementRef.current) {
-            return;
-        }
+    const [enable, _setEnable, enableRef] = useStateRef<boolean>(false);
+    const setEnable = useCallback(
+        (enable: boolean | ((enable: boolean) => boolean)) => {
+            if (!containerElementRef.current) {
+                return;
+            }
 
-        if (typeof enable === 'function') {
-            enableRef.current = enable(enableRef.current);
-        } else {
-            enableRef.current = enable;
-        }
+            let newValue = false;
+            if (typeof enable === 'function') {
+                newValue = enable(enableRef.current);
+            } else {
+                newValue = enable;
+            }
 
-        if (enableRef.current) {
-            containerElementRef.current.style.opacity = '1';
-            containerElementRef.current.style.pointerEvents = 'auto';
-        } else {
-            containerElementRef.current.style.opacity = '0';
-            containerElementRef.current.style.pointerEvents = 'none';
-        }
-    }, []);
+            if (newValue) {
+                containerElementRef.current.style.opacity = '1';
+                containerElementRef.current.style.pointerEvents = 'auto';
+            } else {
+                containerElementRef.current.style.opacity = '0';
+                containerElementRef.current.style.pointerEvents = 'none';
+            }
+
+            _setEnable(newValue);
+        },
+        [_setEnable, enableRef],
+    );
 
     const selectRectRef = useRef<ElementRect>(undefined);
     const monitorScaleFactorRef = useRef<number>(undefined);

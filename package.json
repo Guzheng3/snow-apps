@@ -32,7 +32,7 @@
         "@tauri-apps/plugin-process": "^2.3.0",
         "@tauri-apps/plugin-store": "^2.3.0",
         "@tweenjs/tween.js": "^25.0.0",
-        "antd": "^5.27.0",
+        "antd": "^5.27.1",
         "antd-style": "^3.7.1",
         "color": "^5.0.0",
         "compare-versions": "^6.1.1",

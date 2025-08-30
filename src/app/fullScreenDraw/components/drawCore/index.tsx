@@ -361,6 +361,20 @@ const DrawCoreComponent: React.FC<{
             getCanvas,
             getDrawCacheLayerElement: () => drawCacheLayerElementRef.current,
             getExcalidrawAPI: () => excalidrawAPIRef.current,
+            finishDraw: () => {
+                updateScene({
+                    appState: {
+                        // 清除在编辑中的元素
+                        newElement: null,
+                        editingTextElement: null,
+                        selectedLinearElement: null,
+                        selectionElement: null,
+                        selectedElementIds: {},
+                        selectedGroupIds: {},
+                    },
+                    captureUpdate: 'NEVER',
+                });
+            },
         }),
         [getCanvas, getCanvasContext, getImageData, setEnable, updateScene],
     );
@@ -532,7 +546,7 @@ const DrawCoreComponent: React.FC<{
     const excalidrawCustomOptions = useMemo<NonNullable<ExcalidrawPropsCustomOptions>>(() => {
         return {
             disableKeyEvents: true,
-            hideFooter: true,
+            hideFooter: false,
             onWheel: handleWheel,
             hideMainToolbar: true,
             hideContextMenu: true,
@@ -659,6 +673,10 @@ const DrawCoreComponent: React.FC<{
                     }
 
                     .draw-core-layer :global(.excalidraw .ant-radio-button-wrapper) {
+                        padding-inline: ${0}px;
+                    }
+
+                    .draw-core-layer :global(.excalidraw .ant-radio-button-wrapper .radio-button-icon) {
                         padding-inline: ${token.paddingXS}px;
                     }
 

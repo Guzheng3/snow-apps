@@ -18,13 +18,13 @@ import {
     ExcalidrawEventParams,
 } from '@/app/fullScreenDraw/components/drawCore/extra';
 import {
-    use,
     useCallback,
     useContext,
     useEffect,
     useImperativeHandle,
     useMemo,
     useRef,
+    useState,
 } from 'react';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { LockOutlined } from '@ant-design/icons';
@@ -34,7 +34,8 @@ import { zIndexs } from '@/utils/zIndex';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { DrawToolbarActionType } from '@/app/fullScreenDraw/components/toolbar';
 import { useDrawContext } from '@/app/fullScreenDraw/extra';
-import { FixedContentWindowSize } from '..';
+import { FixedContentWindowSize } from '../..';
+import { HistoryControls } from '@/app/draw/components/drawToolbar/components/historyControls';
 
 export type FixedContentCoreDrawToolbarActionType = {
     getSize: () => { width: number; height: number };
@@ -214,29 +215,38 @@ export const FixedContentCoreDrawToolbar: React.FC<{
         ),
     );
 
+    const getSize = useCallback(() => {
+        return {
+            width: (toolbarElementRef.current?.clientWidth ?? 0) + BOX_SHADOW_WIDTH * 2,
+            height:
+                (toolbarElementRef.current?.clientHeight ?? 0) +
+                BOX_SHADOW_WIDTH * 2 +
+                token.marginXXS,
+        };
+    }, [token.marginXXS]);
+
     useImperativeHandle(
         actionRef,
         useCallback(() => {
             return {
                 setTool: onToolClick,
-                getSize: () => {
-                    return {
-                        width: (toolbarElementRef.current?.clientWidth ?? 0) + BOX_SHADOW_WIDTH * 2,
-                        height:
-                            (toolbarElementRef.current?.clientHeight ?? 0) +
-                            BOX_SHADOW_WIDTH * 2 +
-                            token.marginXXS,
-                    };
-                },
+                getSize,
             };
-        }, [onToolClick, token.marginXXS]),
+        }, [getSize, onToolClick]),
     );
+
+    const [currentSize, setCurrentSize] = useState({
+        width: 0,
+        height: 0,
+    });
 
     useEffect(() => {
         if (disabled) {
-            onToolClick(DrawState.Idle);
+            onToolClick(DrawState.Select);
+        } else {
+            setCurrentSize(getSize());
         }
-    }, [disabled, onToolClick]);
+    }, [disabled, getSize, onToolClick]);
 
     const toolButtonProps = useMemo<ButtonProps>(() => {
         return {};
@@ -374,18 +384,27 @@ export const FixedContentCoreDrawToolbar: React.FC<{
                             onToolClick(DrawState.Eraser);
                         }}
                     />
+
+                    <div className="draw-toolbar-splitter" />
+
+                    <HistoryControls disable={disabled ?? false} />
                 </Flex>
             </div>
 
             <style jsx>{`
                 .fixed-content-draw-toolbar-container {
                     position: fixed;
-                    left: ${documentSize.width}px;
+                    left: ${BOX_SHADOW_WIDTH}px;
+                    width: ${documentSize.width - BOX_SHADOW_WIDTH * 2}px;
                     top: ${documentSize.height + token.marginXXS}px;
                     pointer-events: none;
                     z-index: ${zIndexs.FullScreenDraw_Toolbar};
-                    display: ${disabled ? 'none' : 'flex'};
-                    transform: translateX(-100%);
+                    opacity: ${disabled ? 0 : 1};
+                    display: flex;
+                    transition: opacity ${token.motionDurationFast} ${token.motionEaseInOut};
+                    justify-content: ${currentSize.width >= documentSize.width
+                        ? 'flex-start'
+                        : 'flex-end'};
                 }
 
                 .fixed-content-draw-toolbar-container:hover {
@@ -399,8 +418,7 @@ export const FixedContentCoreDrawToolbar: React.FC<{
                 }
 
                 .fixed-content-draw-toolbar {
-                    pointer-events: auto;
-                    z-index: ${zIndexs.FullScreenDraw_Toolbar};
+                    pointer-events: ${disabled ? 'none' : 'auto'};
                 }
 
                 .fixed-content-draw-toolbar {

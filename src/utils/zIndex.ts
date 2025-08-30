@@ -65,4 +65,13 @@ export const zIndexs = {
     /** 视频录制工具栏拖动区域 */
     VideoRecord_ToolbarDragRegion: 999,
     // VideoRecord 视频录制窗口 END
+
+    // 固定到屏幕窗口 BEGIN
+    /** 缩放提示 */
+    FixedToScreen_ScaleInfo: 205,
+    /** 边框 */
+    FixedToScreen_Border: 206,
+    /** 关闭按钮 */
+    FixedToScreen_CloseButton: 207,
+    // 固定到屏幕窗口 END
 };

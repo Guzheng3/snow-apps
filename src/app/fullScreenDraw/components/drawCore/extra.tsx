@@ -22,6 +22,7 @@ export type DrawCoreActionType = {
     getAppState: () => AppState | undefined;
     getDrawCacheLayerElement: () => HTMLDivElement | null;
     getExcalidrawAPI: () => ExcalidrawImperativeAPI | undefined;
+    finishDraw: () => void;
 };
 
 export type ExcalidrawKeyEvent = {

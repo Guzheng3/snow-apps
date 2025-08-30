@@ -15,7 +15,7 @@ import {
     ExcalidrawEventPublisher,
 } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { zIndexs } from '@/utils/zIndex';
-import { FixedContentWindowSize } from '..';
+import { FixedContentWindowSize } from '../..';
 import { theme } from 'antd';
 import { ElementRect } from '@/commands';
 import { MousePosition } from '@/utils/mousePosition';
@@ -23,9 +23,12 @@ import { FixedContentCoreDrawToolbar, FixedContentCoreDrawToolbarActionType } fr
 import { withStatePublisher } from '@/hooks/useStatePublisher';
 import { EnableKeyEventPublisher } from '@/app/draw/components/drawToolbar/components/keyEventWrap/extra';
 import { DrawContext, DrawContextType } from '@/app/fullScreenDraw/extra';
+import { withCanvasHistory } from '@/app/fullScreenDraw/components/drawCore/components/historyContext';
+import { useStateSubscriber } from '@/hooks/useStateSubscriber';
+import { NormalizedZoomValue } from '@mg-chao/excalidraw/types';
 
 const DrawCore = dynamic(
-    async () => (await import('../../../../fullScreenDraw/components/drawCore')).DrawCore,
+    async () => (await import('../../../../../fullScreenDraw/components/drawCore')).DrawCore,
     {
         ssr: false,
     },
@@ -34,20 +37,30 @@ const DrawCore = dynamic(
 export type FixedContentCoreDrawActionType = {
     getToolbarSize: () => { width: number; height: number };
     getDrawMenuSize: () => { width: number; height: number };
+    getCanvas: () => HTMLCanvasElement | null;
 };
+
+const DRAW_MENU_WIDTH = 200;
+const DRAW_MENU_HEIGHT = 300;
 
 const DrawLayerCore: React.FC<{
     actionRef: React.RefObject<FixedContentCoreDrawActionType | undefined>;
     documentSize: FixedContentWindowSize;
     contentScaleFactor: number;
+    scaleInfo: {
+        x: number;
+        y: number;
+    };
     disabled?: boolean;
-}> = ({ actionRef, documentSize, contentScaleFactor, disabled }) => {
+    hidden?: boolean;
+}> = ({ actionRef, documentSize, contentScaleFactor, scaleInfo, disabled, hidden }) => {
     const { token } = theme.useToken();
 
     const drawToolbarActionRef = useRef<FixedContentCoreDrawToolbarActionType | undefined>(
         undefined,
     );
     const drawCoreActionRef = useRef<DrawCoreActionType | undefined>(undefined);
+    const [, setEnableKeyEvent] = useStateSubscriber(EnableKeyEventPublisher, undefined);
 
     const [excalidrawReady, setExcalidrawReady] = useState(false);
     useEffect(() => {
@@ -71,8 +84,8 @@ const DrawLayerCore: React.FC<{
 
     const getDrawMenuSize = useCallback(() => {
         return {
-            width: 200 + 3 * 2,
-            height: 300 + 3 * 2,
+            width: DRAW_MENU_WIDTH + 3 * 2,
+            height: DRAW_MENU_HEIGHT + 3 * 2 + 36,
         };
     }, []);
 
@@ -115,6 +128,15 @@ const DrawLayerCore: React.FC<{
                 );
             },
             getDrawMenuSize,
+            getCanvas: () => {
+                if (
+                    drawCoreActionRef.current?.getExcalidrawAPI()?.getSceneElements().length === 0
+                ) {
+                    return null;
+                }
+
+                return drawCoreActionRef.current?.getCanvas() ?? null;
+            },
         };
     }, [getDrawMenuSize]);
 
@@ -129,6 +151,38 @@ const DrawLayerCore: React.FC<{
         event.stopPropagation();
     }, []);
 
+    useEffect(() => {
+        setEnableKeyEvent(!(disabled ?? false));
+    }, [disabled, setEnableKeyEvent]);
+
+    useEffect(() => {
+        if (!drawCoreActionRef.current) {
+            return;
+        }
+
+        const appState = drawCoreActionRef.current?.getAppState();
+        if (!appState) {
+            return;
+        }
+
+        drawCoreActionRef.current?.updateScene({
+            appState: {
+                scrollX: appState.scrollX,
+                scrollY: appState.scrollY,
+                zoom: {
+                    value: (scaleInfo.x / 100) as NormalizedZoomValue,
+                },
+            },
+            captureUpdate: 'NEVER',
+        });
+    }, [scaleInfo.x, drawCoreActionRef]);
+
+    useEffect(() => {
+        if (disabled) {
+            drawCoreActionRef.current?.finishDraw();
+        }
+    }, [drawCoreActionRef, disabled]);
+
     return (
         <DrawContext.Provider value={drawContextValue}>
             <div
@@ -140,7 +194,7 @@ const DrawLayerCore: React.FC<{
                 <DrawCoreContext.Provider value={drawCoreContextValue}>
                     <DrawCore
                         actionRef={drawCoreActionRef}
-                        zIndex={zIndexs.Draw_DrawLayer}
+                        zIndex={zIndexs.Draw_DrawCacheLayer}
                         layoutMenuZIndex={zIndexs.Draw_ExcalidrawToolbar}
                     />
 
@@ -153,18 +207,20 @@ const DrawLayerCore: React.FC<{
 
                 <style jsx>{`
                     .fixed-content-draw-layer {
-                        position: fixed;
+                        position: absolute;
                         top: 0;
                         left: 0;
                         width: ${documentSize.width}px;
                         height: ${documentSize.height}px;
-                        opacity: ${excalidrawReady ? 1 : 0};
+                        opacity: ${!excalidrawReady || hidden ? 0 : 1};
                         pointer-events: ${disabled ? 'none' : 'auto'};
-                        z-index: ${zIndexs.Draw_DrawLayer};
                     }
 
                     .fixed-content-draw-layer :global(.Island.App-menu__left) {
-                        max-height: ${Math.max(documentSize.height, 300 + 15)}px !important;
+                        max-height: ${Math.max(
+                            documentSize.height + 19,
+                            DRAW_MENU_HEIGHT + 15,
+                        )}px !important;
                     }
                 `}</style>
             </div>
@@ -172,9 +228,11 @@ const DrawLayerCore: React.FC<{
     );
 };
 
-export const DrawLayer = withStatePublisher(
-    DrawLayerCore,
-    DrawStatePublisher,
-    ExcalidrawEventPublisher,
-    EnableKeyEventPublisher,
+export const DrawLayer = withCanvasHistory(
+    withStatePublisher(
+        DrawLayerCore,
+        DrawStatePublisher,
+        ExcalidrawEventPublisher,
+        EnableKeyEventPublisher,
+    ),
 );

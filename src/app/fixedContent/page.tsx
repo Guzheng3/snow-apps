@@ -32,24 +32,6 @@ export default function FixedContentPage() {
     const init = useCallback(async () => {
         const urlParams = new URLSearchParams(window.location.search);
 
-        if (process.env.NODE_ENV === 'development') {
-            fixedContentActionRef.current?.init({
-                textContent: `       textContent: '<h1>Hello, world!</h1>',
-            });
-            return;
-        }
-
-        if (urlParams.get('scroll_screenshot') === 'true') {
-            const imageBlob = await scrollScreenshotGetImageData();
-            scrollScreenshotClear();
-            if (imageBlob) {
-                fixedContentActionRef.current?.init({ imageContent: imageBlob });
-                return;
-            }`,
-            });
-            return;
-        }
-
         if (urlParams.get('scroll_screenshot') === 'true') {
             const imageBlob = await scrollScreenshotGetImageData();
             scrollScreenshotClear();

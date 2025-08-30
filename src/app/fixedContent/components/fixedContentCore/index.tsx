@@ -54,7 +54,7 @@ import { AntdContext } from '@/components/globalLayoutExtra';
 import { appError } from '@/utils/log';
 import { formatKey } from '@/utils/format';
 import { useTempInfo } from '@/hooks/useTempInfo';
-import { DrawLayer, FixedContentCoreDrawActionType } from './components';
+import { DrawLayer, FixedContentCoreDrawActionType } from './components/drawLayer';
 
 export type FixedContentInitDrawParams = {
     captureBoundingBoxInfo: CaptureBoundingBoxInfo;
@@ -181,8 +181,8 @@ export const FixedContentCore: React.FC<{
     const [fixedContentType, setFixedContentType, fixedContentTypeRef] = useStateRef<
         FixedContentType | undefined
     >(undefined);
-    const [enableDraw, setEnableDraw] = useStateRef(false);
-    const [enableSelectText, setEnableSelectText] = useStateRef(false);
+    const [enableDraw, setEnableDraw, enableDrawRef] = useStateRef(false);
+    const [enableSelectText, setEnableSelectText, enableSelectTextRef] = useStateRef(false);
     const [contentOpacity, setContentOpacity, contentOpacityRef] = useStateRef(1);
     const [isAlwaysOnTop, setIsAlwaysOnTop] = useStateRef(true);
     const dragRegionMouseDownMousePositionRef = useRef<MousePosition>(undefined);
@@ -527,6 +527,10 @@ export const FixedContentCore: React.FC<{
     >(undefined); // 切换缩略图的动画
 
     const switchThumbnailCore = useCallback(async () => {
+        if (enableDrawRef.current) {
+            return;
+        }
+
         if (!switchThumbnailAnimationRef.current) {
             switchThumbnailAnimationRef.current = new TweenAnimation<{
                 width: number;
@@ -630,7 +634,7 @@ export const FixedContentCore: React.FC<{
 
             setIsThumbnail(true);
         }
-    }, [scaleRef, setIsThumbnail, setScale]);
+    }, [enableDrawRef, scaleRef, setIsThumbnail, setScale]);
     const switchThumbnailLockRef = useRef<boolean>(false);
     const switchThumbnail = useCallback(async () => {
         if (switchThumbnailLockRef.current) {
@@ -650,7 +654,82 @@ export const FixedContentCore: React.FC<{
         [setContentOpacity, showOpacityInfoTemporary],
     );
 
-    const copyToClipboard = useCallback(async () => {
+    const getWindowPhysicalSize = useCallback(
+        (targetScale: number) => {
+            const newWidth = Math.round(
+                ((canvasPropsRef.current.width * targetScale) / 100) *
+                    (window.devicePixelRatio /
+                        (canvasPropsRef.current.scaleFactor *
+                            (canvasPropsRef.current.ignoreTextScaleFactor ? 1 : textScaleFactor))),
+            );
+            const newHeight = Math.round(
+                ((canvasPropsRef.current.height * targetScale) / 100) *
+                    (window.devicePixelRatio /
+                        (canvasPropsRef.current.scaleFactor *
+                            (canvasPropsRef.current.ignoreTextScaleFactor ? 1 : textScaleFactor))),
+            );
+
+            return {
+                width: newWidth,
+                height: newHeight,
+            };
+        },
+        [canvasPropsRef, textScaleFactor],
+    );
+
+    const renderToCanvas = useCallback(async () => {
+        let canvas: HTMLCanvasElement | undefined = undefined;
+
+        if (
+            fixedContentTypeRef.current === FixedContentType.DrawCanvas ||
+            fixedContentTypeRef.current === FixedContentType.Image
+        ) {
+            if (!imageRef.current) {
+                appError('[renderToCanvas] imageRef.current is undefined');
+                return;
+            }
+
+            canvas = document.createElement('canvas');
+            canvas.width = imageRef.current.naturalWidth;
+            canvas.height = imageRef.current.naturalHeight;
+
+            const context = canvas.getContext('2d');
+            if (!context) {
+                return;
+            }
+
+            context.drawImage(imageRef.current, 0, 0);
+        } else {
+            let htmlElement: HTMLElement | undefined | null;
+            if (fixedContentTypeRef.current === FixedContentType.Html) {
+                htmlElement = htmlContentContainerRef.current?.contentWindow?.document.body;
+            } else if (fixedContentTypeRef.current === FixedContentType.Text) {
+                htmlElement = textContentContainerRef.current;
+            }
+
+            if (!htmlElement) {
+                appError('[renderToCanvas] htmlElement is undefined');
+                return;
+            }
+
+            canvas = await htmlToImage.toCanvas(htmlElement);
+        }
+
+        const context = canvas.getContext('2d');
+        if (!context) {
+            appError('[renderToCanvas] context is undefined');
+            return;
+        }
+
+        const drawCanvas = drawActionRef.current?.getCanvas();
+        if (drawCanvas) {
+            context.drawImage(drawCanvas, 0, 0, canvas.width, canvas.height);
+        }
+
+        return canvas;
+    }, [fixedContentTypeRef]);
+
+    const copyRawToClipboard = useCallback(async () => {
         if (fixedContentTypeRef.current === FixedContentType.DrawCanvas) {
             if (!blobRef.current) {
                 return;
@@ -692,41 +771,32 @@ export const FixedContentCore: React.FC<{
             return;
         }
 
-        if (fixedContentTypeRef.current === FixedContentType.DrawCanvas && blobRef.current) {
-            await saveFile(filePath, await blobRef.current.arrayBuffer(), ImageFormat.PNG);
-        } else if (fixedContentTypeRef.current === FixedContentType.Image && imageBlobRef.current) {
-            await saveFile(filePath, await imageBlobRef.current.arrayBuffer(), ImageFormat.PNG);
-        } else {
-            let htmlElement: HTMLElement | undefined | null;
-            if (fixedContentTypeRef.current === FixedContentType.Html) {
-                htmlElement = htmlContentContainerRef.current?.contentWindow?.document.body;
-            } else if (fixedContentTypeRef.current === FixedContentType.Text) {
-                htmlElement = textContentContainerRef.current;
-            } else if (fixedContentTypeRef.current === FixedContentType.Image) {
-                // 这种情况说明是从本地路径读取的图片
-                htmlElement = imageRef.current;
-            }
-
-            if (!htmlElement) {
-                return;
-            }
-
-            htmlToImage.toBlob(htmlElement).then(async (blob) => {
-                if (!blob) {
-                    return;
-                }
-
-                await saveFile(filePath, await blob.arrayBuffer(), ImageFormat.PNG);
-            });
+        const canvas = await renderToCanvas();
+        if (!canvas) {
+            appError('[saveToFile] canvas is undefined');
+            return;
         }
-    }, [fixedContentTypeRef, getAppSettings]);
 
-    const switchSelectText = useCallback(async () => {
+        const canvasBlob = await new Promise<Blob | null>((resolve) => {
+            canvas.toBlob(resolve, 'image/png', 1);
+        });
+        if (!canvasBlob) {
+            return;
+        }
+
+        await saveFile(filePath, await canvasBlob.arrayBuffer(), ImageFormat.PNG);
+    }, [getAppSettings, renderToCanvas]);
+
+    const switchSelectTextCore = useCallback(async () => {
         if (getSelectTextMode(fixedContentTypeRef.current) === 'ocr') {
             if (initOcrParams.current) {
                 ocrResultActionRef.current?.init(initOcrParams.current);
                 initOcrParams.current = undefined;
-            } else if (imageRef.current && !imageOcrSignRef.current) {
+            } else if (
+                fixedContentTypeRef.current === FixedContentType.Image &&
+                imageRef.current &&
+                !imageOcrSignRef.current
+            ) {
                 ocrResultActionRef.current?.init({
                     imageElement: imageRef.current,
                     monitorScaleFactor: window.devicePixelRatio,
@@ -739,6 +809,26 @@ export const FixedContentCore: React.FC<{
 
         setEnableSelectText((enable) => !enable);
     }, [fixedContentTypeRef, setEnableSelectText]);
+    const switchDrawCore = useCallback(async () => {
+        setEnableDraw((enable) => !enable);
+    }, [setEnableDraw]);
+
+    const switchSelectText = useCallback(async () => {
+        // 启用绘制时则切换绘制
+        if (enableDrawRef.current) {
+            switchDrawCore();
+        }
+
+        switchSelectTextCore();
+    }, [enableDrawRef, switchSelectTextCore, switchDrawCore]);
+    const switchDraw = useCallback(async () => {
+        // 启用选择文本时则切换选择文本
+        if (enableSelectTextRef.current) {
+            switchSelectTextCore();
+        }
+
+        switchDrawCore();
+    }, [enableSelectTextRef, switchSelectTextCore, switchDrawCore]);
 
     const switchAlwaysOnTop = useCallback(async () => {
         setIsAlwaysOnTop((isAlwaysOnTop) => !isAlwaysOnTop);
@@ -746,31 +836,12 @@ export const FixedContentCore: React.FC<{
 
     const [showScaleInfo, showScaleInfoTemporary] = useTempInfo();
 
-    const getWindowPhysicalSize = useCallback(
-        (targetScale: number) => {
-            const newWidth = Math.round(
-                ((canvasPropsRef.current.width * targetScale) / 100) *
-                    (window.devicePixelRatio /
-                        (canvasPropsRef.current.scaleFactor *
-                            (canvasPropsRef.current.ignoreTextScaleFactor ? 1 : textScaleFactor))),
-            );
-            const newHeight = Math.round(
-                ((canvasPropsRef.current.height * targetScale) / 100) *
-                    (window.devicePixelRatio /
-                        (canvasPropsRef.current.scaleFactor *
-                            (canvasPropsRef.current.ignoreTextScaleFactor ? 1 : textScaleFactor))),
-            );
-
-            return {
-                width: newWidth,
-                height: newHeight,
-            };
-        },
-        [canvasPropsRef, textScaleFactor],
-    );
-
     const scaleWindow = useCallback(
         async (scaleDelta: number, ignoreMouse: boolean = false) => {
+            if (enableDrawRef.current) {
+                return;
+            }
+
             const appWindow = appWindowRef.current;
             if (!appWindow) {
                 return;
@@ -845,6 +916,7 @@ export const FixedContentCore: React.FC<{
             showScaleInfoTemporary();
         },
         [
+            enableDrawRef,
             getAppSettings,
             getWindowPhysicalSize,
             scaleRef,
@@ -878,7 +950,7 @@ export const FixedContentCore: React.FC<{
                     accelerator: formatKey(
                         hotkeys?.[KeyEventKey.FixedContentCopyToClipboard]?.hotKey,
                     ),
-                    action: copyToClipboard,
+                    action: copyRawToClipboard,
                 },
                 {
                     id: `${appWindow.label}-saveTool`,
@@ -886,6 +958,7 @@ export const FixedContentCore: React.FC<{
                     accelerator: formatKey(hotkeys?.[KeyEventKey.FixedContentSaveToFile]?.hotKey),
                     action: saveToFile,
                 },
+
                 {
                     id: `${appWindow.label}-ocrTool`,
                     text:
@@ -905,25 +978,26 @@ export const FixedContentCore: React.FC<{
                         id: 'settings.hotKeySettings.fixedContent.fixedContentEnableDraw',
                     }),
                     checked: enableDraw,
+                    disabled: enableSelectText,
                     accelerator: formatKey(hotkeys?.[KeyEventKey.FixedContentEnableDraw]?.hotKey),
-                    action: () => {
-                        setEnableDraw((enable) => !enable);
-                    },
+                    action: switchDraw,
                 },
                 {
                     item: 'Separator',
                 },
-                {
-                    id: `${appWindow.label}-switchThumbnailTool`,
-                    text: intl.formatMessage({ id: 'draw.switchThumbnail' }),
-                    checked: isThumbnail,
-                    accelerator: formatKey(
-                        hotkeys?.[KeyEventKey.FixedContentSwitchThumbnail]?.hotKey,
-                    ),
-                    action: async () => {
-                        switchThumbnail();
-                    },
-                },
+                enableDraw
+                    ? undefined
+                    : {
+                          id: `${appWindow.label}-switchThumbnailTool`,
+                          text: intl.formatMessage({ id: 'draw.switchThumbnail' }),
+                          checked: isThumbnail,
+                          accelerator: formatKey(
+                              hotkeys?.[KeyEventKey.FixedContentSwitchThumbnail]?.hotKey,
+                          ),
+                          action: async () => {
+                              switchThumbnail();
+                          },
+                      },
                 {
                     id: `${appWindow.label}-switchAlwaysOnTopTool`,
                     text: intl.formatMessage({
@@ -977,50 +1051,52 @@ export const FixedContentCore: React.FC<{
                         },
                     ],
                 }),
-                await Submenu.new({
-                    id: `${appWindow.label}-setScaleTool`,
-                    text: intl.formatMessage({
-                        id: 'settings.hotKeySettings.fixedContent.scale',
-                    }),
-                    items: [
-                        {
-                            id: `${appWindow.label}-setScaleTool25`,
-                            text: intl.formatMessage({
-                                id: 'settings.hotKeySettings.fixedContent.setScale.twentyFive',
-                            }),
-                            action: () => {
-                                scaleWindow(25 - scaleRef.current.x, true);
-                            },
-                        },
-                        {
-                            id: `${appWindow.label}-setScaleTool50`,
-                            text: intl.formatMessage({
-                                id: 'settings.hotKeySettings.fixedContent.setScale.fifty',
-                            }),
-                            action: () => {
-                                scaleWindow(50 - scaleRef.current.x, true);
-                            },
-                        },
-                        {
-                            id: `${appWindow.label}-setScaleTool75`,
-                            text: intl.formatMessage({
-                                id: 'settings.hotKeySettings.fixedContent.setScale.seventyFive',
-                            }),
-                            action: () => {
-                                scaleWindow(75 - scaleRef.current.x, true);
-                            },
-                        },
-                        {
-                            id: `${appWindow.label}-setScaleTool100`,
-                            text: intl.formatMessage({
-                                id: 'settings.hotKeySettings.fixedContent.setScale.hundred',
-                            }),
-                            action: () => {
-                                scaleWindow(100 - scaleRef.current.x, true);
-                            },
-                        },
-                    ],
-                }),
+                enableDraw
+                    ? undefined
+                    : await Submenu.new({
+                          id: `${appWindow.label}-setScaleTool`,
+                          text: intl.formatMessage({
+                              id: 'settings.hotKeySettings.fixedContent.scale',
+                          }),
+                          items: [
+                              {
+                                  id: `${appWindow.label}-setScaleTool25`,
+                                  text: intl.formatMessage({
+                                      id: 'settings.hotKeySettings.fixedContent.setScale.twentyFive',
+                                  }),
+                                  action: () => {
+                                      scaleWindow(25 - scaleRef.current.x, true);
+                                  },
+                              },
+                              {
+                                  id: `${appWindow.label}-setScaleTool50`,
+                                  text: intl.formatMessage({
+                                      id: 'settings.hotKeySettings.fixedContent.setScale.fifty',
+                                  }),
+                                  action: () => {
+                                      scaleWindow(50 - scaleRef.current.x, true);
+                                  },
+                              },
+                              {
+                                  id: `${appWindow.label}-setScaleTool75`,
+                                  text: intl.formatMessage({
+                                      id: 'settings.hotKeySettings.fixedContent.setScale.seventyFive',
+                                  }),
+                                  action: () => {
+                                      scaleWindow(75 - scaleRef.current.x, true);
+                                  },
+                              },
+                              {
+                                  id: `${appWindow.label}-setScaleTool100`,
+                                  text: intl.formatMessage({
+                                      id: 'settings.hotKeySettings.fixedContent.setScale.hundred',
+                                  }),
+                                  action: () => {
+                                      scaleWindow(100 - scaleRef.current.x, true);
+                                  },
+                              },
+                          ],
+                      }),
                 {
                     item: 'Separator',
                 },
@@ -1039,16 +1115,16 @@ export const FixedContentCore: React.FC<{
         disabled,
         intl,
         hotkeys,
-        copyToClipboard,
+        copyRawToClipboard,
         saveToFile,
+        enableDraw,
         fixedContentType,
         enableSelectText,
         switchSelectText,
-        enableDraw,
+        switchDraw,
         isThumbnail,
         isAlwaysOnTop,
         switchAlwaysOnTop,
-        setEnableDraw,
         switchThumbnail,
         changeContentOpacity,
         scaleWindow,
@@ -1186,7 +1262,7 @@ export const FixedContentCore: React.FC<{
     );
     useHotkeys(
         hotkeys?.[KeyEventKey.FixedContentCopyToClipboard]?.hotKey ?? '',
-        copyToClipboard,
+        copyRawToClipboard,
         useMemo(
             () => ({
                 keyup: false,
@@ -1195,6 +1271,19 @@ export const FixedContentCore: React.FC<{
                 preventDefault: true,
             }),
             [disableHotkey, enableSelectText],
+        ),
+    );
+    useHotkeys(
+        hotkeys?.[KeyEventKey.FixedContentEnableDraw]?.hotKey ?? '',
+        switchDraw,
+        useMemo(
+            () => ({
+                keyup: true,
+                keydown: false,
+                enabled: !disabled && !enableSelectText,
+                preventDefault: true,
+            }),
+            [disabled, enableSelectText],
         ),
     );
     useHotkeys(
@@ -1246,13 +1335,23 @@ export const FixedContentCore: React.FC<{
         [switchThumbnail],
     );
 
-    const onDragRegionMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-        dragRegionMouseDownMousePositionRef.current = undefined;
+    const onDragRegionMouseDown = useCallback(
+        (e: React.MouseEvent<HTMLDivElement>) => {
+            if (enableDrawRef.current) {
+                return;
+            }
 
-        if (e.button === 0) {
-            dragRegionMouseDownMousePositionRef.current = new MousePosition(e.clientX, e.clientY);
-        }
-    }, []);
+            dragRegionMouseDownMousePositionRef.current = undefined;
+
+            if (e.button === 0) {
+                dragRegionMouseDownMousePositionRef.current = new MousePosition(
+                    e.clientX,
+                    e.clientY,
+                );
+            }
+        },
+        [enableDrawRef],
+    );
     const onDragRegionMouseMove = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
             if (!dragRegionMouseDownMousePositionRef.current) {
@@ -1283,7 +1382,7 @@ export const FixedContentCore: React.FC<{
             return;
         }
 
-        const currentWindowSize = await getWindowPhysicalSize(scale.x);
+        const currentWindowSize = getWindowPhysicalSize(scale.x);
         const targetWindowSize = {
             ...currentWindowSize,
         };
@@ -1352,7 +1451,7 @@ export const FixedContentCore: React.FC<{
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                         src={canvasImageUrl || imageUrl || ''}
-                        ref={imageUrl ? imageRef : undefined}
+                        ref={imageRef}
                         style={{
                             objectFit: 'contain',
                             width: `${(windowSize.width * scale.x) / 100 / contentScaleFactor}px`,
@@ -1433,11 +1532,15 @@ export const FixedContentCore: React.FC<{
                     actionRef={drawActionRef}
                     documentSize={documentSize}
                     contentScaleFactor={contentScaleFactor}
+                    scaleInfo={scale}
                     disabled={!enableDraw}
+                    hidden={enableSelectText}
                 />
             )}
 
             <div className="fixed-image-container-inner" onWheel={onWheel}>
+                <div className="fixed-image-container-inner-border" />
+
                 <Button
                     className="fixed-image-close-button"
                     icon={<CloseOutlined />}
@@ -1451,7 +1554,7 @@ export const FixedContentCore: React.FC<{
                         opacity: 0,
                         transition: `all ${token.motionDurationFast} ${token.motionEaseInOut}`,
                         backgroundColor: token.colorBgMask,
-                        zIndex: 2,
+                        zIndex: zIndexs.FixedToScreen_CloseButton,
                         // iframe 无法点击 close 按钮
                         display: isThumbnail || enableDraw || enableSelectText ? 'none' : 'block',
                     }}
@@ -1500,7 +1603,7 @@ export const FixedContentCore: React.FC<{
                     pointer-events: ${enableSelectText ? 'none' : 'auto'};
                 }
 
-                .fixed-image-container-inner:after {
+                .fixed-image-container-inner-border {
                     content: '';
                     position: absolute;
                     top: 0;
@@ -1508,8 +1611,8 @@ export const FixedContentCore: React.FC<{
                     width: 100%;
                     height: 100%;
                     box-shadow: 0 0 2px 2px ${fixedBorderColor ?? token.colorBorder};
-                    z-index: 9;
                     pointer-events: none;
+                    z-index: ${zIndexs.FixedToScreen_Border};
                 }
 
                 .fixed-image-container-inner:active {
@@ -1552,9 +1655,9 @@ export const FixedContentCore: React.FC<{
                     padding: ${token.paddingXXS}px ${token.paddingSM}px;
                     border-top-right-radius: ${token.borderRadius}px;
                     font-size: ${token.fontSizeSM}px;
-                    z-index: 10;
+                    z-index: ${zIndexs.FixedToScreen_ScaleInfo};
                     transition: opacity ${token.motionDurationFast} ${token.motionEaseInOut};
-                    display: ${isThumbnail ? 'none' : 'block'};
+                    display: ${isThumbnail || enableDraw || enableSelectText ? 'none' : 'block'};
                 }
 
                 /* 
@@ -1568,6 +1671,18 @@ export const FixedContentCore: React.FC<{
 
                 @media screen and (max-height: 64px) {
                     .fixed-image-container :global(.fixed-image-close-button) {
+                        display: none !important;
+                    }
+                }
+
+                @media screen and (max-width: 200px) {
+                    .fixed-image-container .scale-info {
+                        display: none !important;
+                    }
+                }
+
+                @media screen and (max-height: 128px) {
+                    .fixed-image-container .scale-info {
                         display: none !important;
                     }
                 }

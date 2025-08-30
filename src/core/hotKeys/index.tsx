@@ -54,7 +54,7 @@ export const defaultKeyEventSettings: Record<KeyEventKey, KeyEventValue> = {
         group: KeyEventGroup.Chat,
     },
     [KeyEventKey.FixedContentEnableDraw]: {
-        hotKey: getPlatformValue('E', 'E'),
+        hotKey: getPlatformValue('Ctrl+E', 'Meta+E'),
         group: KeyEventGroup.FixedContent,
     },
     [KeyEventKey.FixedContentSwitchThumbnail]: {

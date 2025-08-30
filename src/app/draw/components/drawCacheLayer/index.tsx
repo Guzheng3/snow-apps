@@ -34,16 +34,7 @@ const DrawCacheLayerCore: React.FC<{
      * 结束绘制，终止画布正在进行的绘制操作
      */
     const finishDraw = useCallback(() => {
-        drawCoreActionRef.current?.updateScene({
-            appState: {
-                // 清除在编辑中的元素
-                newElement: null,
-                editingTextElement: null,
-                selectedLinearElement: null,
-                selectionElement: null,
-            },
-            captureUpdate: 'NEVER',
-        });
+        drawCoreActionRef.current?.finishDraw();
     }, []);
 
     const clearHistory = useCallback(() => {
