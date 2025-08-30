@@ -677,57 +677,73 @@ export const FixedContentCore: React.FC<{
         [canvasPropsRef, textScaleFactor],
     );
 
-    const renderToCanvas = useCallback(async () => {
-        let canvas: HTMLCanvasElement | undefined = undefined;
+    const renderToCanvas = useCallback(
+        async (ignoreDrawCanvas: boolean = false) => {
+            let canvas: HTMLCanvasElement | undefined = undefined;
 
-        if (
-            fixedContentTypeRef.current === FixedContentType.DrawCanvas ||
-            fixedContentTypeRef.current === FixedContentType.Image
-        ) {
-            if (!imageRef.current) {
-                appError('[renderToCanvas] imageRef.current is undefined');
-                return;
+            if (
+                fixedContentTypeRef.current === FixedContentType.DrawCanvas ||
+                fixedContentTypeRef.current === FixedContentType.Image
+            ) {
+                if (!imageRef.current) {
+                    appError('[renderToCanvas] imageRef.current is undefined');
+                    return;
+                }
+
+                canvas = document.createElement('canvas');
+                canvas.width = imageRef.current.naturalWidth;
+                canvas.height = imageRef.current.naturalHeight;
+
+                const context = canvas.getContext('2d');
+                if (!context) {
+                    return;
+                }
+
+                context.drawImage(imageRef.current, 0, 0);
+            } else {
+                let htmlElement: HTMLElement | undefined | null;
+                if (fixedContentTypeRef.current === FixedContentType.Html) {
+                    htmlElement = htmlContentContainerRef.current?.contentWindow?.document.body;
+                } else if (fixedContentTypeRef.current === FixedContentType.Text) {
+                    htmlElement = textContentContainerRef.current;
+                }
+
+                if (!htmlElement) {
+                    appError('[renderToCanvas] htmlElement is undefined');
+                    return;
+                }
+
+                canvas = await htmlToImage.toCanvas(htmlElement);
             }
-
-            canvas = document.createElement('canvas');
-            canvas.width = imageRef.current.naturalWidth;
-            canvas.height = imageRef.current.naturalHeight;
 
             const context = canvas.getContext('2d');
             if (!context) {
+                appError('[renderToCanvas] context is undefined');
                 return;
             }
 
-            context.drawImage(imageRef.current, 0, 0);
-        } else {
-            let htmlElement: HTMLElement | undefined | null;
-            if (fixedContentTypeRef.current === FixedContentType.Html) {
-                htmlElement = htmlContentContainerRef.current?.contentWindow?.document.body;
-            } else if (fixedContentTypeRef.current === FixedContentType.Text) {
-                htmlElement = textContentContainerRef.current;
+            const drawCanvas = drawActionRef.current?.getCanvas();
+            if (drawCanvas && !ignoreDrawCanvas) {
+                context.drawImage(drawCanvas, 0, 0, canvas.width, canvas.height);
             }
 
-            if (!htmlElement) {
-                appError('[renderToCanvas] htmlElement is undefined');
+            return canvas;
+        },
+        [fixedContentTypeRef],
+    );
+    const renderToBlob = useCallback(
+        async (ignoreDrawCanvas: boolean = false) => {
+            const canvas = await renderToCanvas(ignoreDrawCanvas);
+            if (!canvas) {
                 return;
             }
 
-            canvas = await htmlToImage.toCanvas(htmlElement);
-        }
-
-        const context = canvas.getContext('2d');
-        if (!context) {
-            appError('[renderToCanvas] context is undefined');
-            return;
-        }
-
-        const drawCanvas = drawActionRef.current?.getCanvas();
-        if (drawCanvas) {
-            context.drawImage(drawCanvas, 0, 0, canvas.width, canvas.height);
-        }
-
-        return canvas;
-    }, [fixedContentTypeRef]);
+            return new Promise<Blob | null>((resolve) => {
+                canvas.toBlob(resolve, 'image/png', 1);
+            });
+        },
+        [renderToCanvas],
+    );
 
     const copyRawToClipboard = useCallback(async () => {
         if (fixedContentTypeRef.current === FixedContentType.DrawCanvas) {
@@ -746,12 +762,24 @@ export const FixedContentCore: React.FC<{
             textContentRef.current
         ) {
             await writeTextToClipboard(textContentRef.current);
-        } else if (fixedContentTypeRef.current === FixedContentType.Image && imageBlobRef.current) {
-            // 这里的图片类型不确定，浏览器不一定支持，所以通过本地 API 写入
-            const arrayBuffer = await imageBlobRef.current.arrayBuffer();
-            await clipboard.writeImage(arrayBuffer);
+        } else if (fixedContentTypeRef.current === FixedContentType.Image) {
+            const canvasBlob = await renderToBlob(true);
+            if (!canvasBlob) {
+                return;
+            }
+
+            await clipboard.writeImage(await canvasBlob.arrayBuffer());
         }
-    }, [fixedContentTypeRef, textContentRef]);
+    }, [fixedContentTypeRef, textContentRef, renderToBlob]);
+
+    const copyToClipboard = useCallback(async () => {
+        const canvasBlob = await renderToBlob();
+        if (!canvasBlob) {
+            return;
+        }
+
+        await writeImageToClipboard(canvasBlob);
+    }, [renderToBlob]);
 
     const saveToFile = useCallback(async () => {
         const filePath = await dialog.save({
@@ -771,21 +799,13 @@ export const FixedContentCore: React.FC<{
             return;
         }
 
-        const canvas = await renderToCanvas();
-        if (!canvas) {
-            appError('[saveToFile] canvas is undefined');
-            return;
-        }
-
-        const canvasBlob = await new Promise<Blob | null>((resolve) => {
-            canvas.toBlob(resolve, 'image/png', 1);
-        });
+        const canvasBlob = await renderToBlob();
         if (!canvasBlob) {
             return;
         }
 
         await saveFile(filePath, await canvasBlob.arrayBuffer(), ImageFormat.PNG);
-    }, [getAppSettings, renderToCanvas]);
+    }, [getAppSettings, renderToBlob]);
 
     const switchSelectTextCore = useCallback(async () => {
         if (getSelectTextMode(fixedContentTypeRef.current) === 'ocr') {
@@ -950,6 +970,14 @@ export const FixedContentCore: React.FC<{
                     accelerator: formatKey(
                         hotkeys?.[KeyEventKey.FixedContentCopyToClipboard]?.hotKey,
                     ),
+                    action: copyToClipboard,
+                },
+                {
+                    id: `${appWindow.label}-copyRawContentTool`,
+                    text: intl.formatMessage({ id: 'draw.copyRawContent' }),
+                    accelerator: formatKey(
+                        hotkeys?.[KeyEventKey.FixedContentCopyRawToClipboard]?.hotKey,
+                    ),
                     action: copyRawToClipboard,
                 },
                 {
@@ -958,7 +986,6 @@ export const FixedContentCore: React.FC<{
                     accelerator: formatKey(hotkeys?.[KeyEventKey.FixedContentSaveToFile]?.hotKey),
                     action: saveToFile,
                 },
-
                 {
                     id: `${appWindow.label}-ocrTool`,
                     text:
@@ -1115,12 +1142,13 @@ export const FixedContentCore: React.FC<{
         disabled,
         intl,
         hotkeys,
+        copyToClipboard,
         copyRawToClipboard,
         saveToFile,
-        enableDraw,
         fixedContentType,
         enableSelectText,
         switchSelectText,
+        enableDraw,
         switchDraw,
         isThumbnail,
         isAlwaysOnTop,
@@ -1232,8 +1260,6 @@ export const FixedContentCore: React.FC<{
         };
     }, [onHtmlLoad, setWindowSize, handleContextMenu, onWheel]);
 
-    const disableHotkey = useMemo(() => disabled || enableDraw, [disabled, enableDraw]);
-
     useHotkeys(
         hotkeys?.[KeyEventKey.FixedContentSwitchThumbnail]?.hotKey ?? '',
         switchThumbnail,
@@ -1241,10 +1267,10 @@ export const FixedContentCore: React.FC<{
             () => ({
                 keyup: true,
                 keydown: false,
-                enabled: !disableHotkey,
+                enabled: !disabled,
                 preventDefault: true,
             }),
-            [disableHotkey],
+            [disabled],
         ),
     );
     useHotkeys(
@@ -1254,23 +1280,36 @@ export const FixedContentCore: React.FC<{
             () => ({
                 keyup: false,
                 keydown: true,
-                enabled: !disableHotkey,
+                enabled: !disabled,
                 preventDefault: true,
             }),
-            [disableHotkey],
+            [disabled],
         ),
     );
     useHotkeys(
         hotkeys?.[KeyEventKey.FixedContentCopyToClipboard]?.hotKey ?? '',
+        copyToClipboard,
+        useMemo(
+            () => ({
+                keyup: false,
+                keydown: true,
+                enabled: !disabled && !enableSelectText,
+                preventDefault: true,
+            }),
+            [disabled, enableSelectText],
+        ),
+    );
+    useHotkeys(
+        hotkeys?.[KeyEventKey.FixedContentCopyRawToClipboard]?.hotKey ?? '',
         copyRawToClipboard,
         useMemo(
             () => ({
                 keyup: false,
                 keydown: true,
-                enabled: !disableHotkey && !enableSelectText,
+                enabled: !disabled,
                 preventDefault: true,
             }),
-            [disableHotkey, enableSelectText],
+            [disabled],
         ),
     );
     useHotkeys(
@@ -1293,10 +1332,10 @@ export const FixedContentCore: React.FC<{
             () => ({
                 keyup: false,
                 keydown: true,
-                enabled: !disableHotkey,
+                enabled: !disabled,
                 preventDefault: true,
             }),
-            [disableHotkey],
+            [disabled],
         ),
     );
     useHotkeys(
@@ -1306,10 +1345,10 @@ export const FixedContentCore: React.FC<{
             () => ({
                 keyup: false,
                 keydown: true,
-                enabled: !disableHotkey,
+                enabled: !disabled,
                 preventDefault: true,
             }),
-            [disableHotkey],
+            [disabled],
         ),
     );
     useHotkeys(
@@ -1319,10 +1358,10 @@ export const FixedContentCore: React.FC<{
             () => ({
                 keyup: false,
                 keydown: true,
-                enabled: !disableHotkey,
+                enabled: !disabled,
                 preventDefault: true,
             }),
-            [disableHotkey],
+            [disabled],
         ),
     );
 
@@ -1457,6 +1496,7 @@ export const FixedContentCore: React.FC<{
                             width: `${(windowSize.width * scale.x) / 100 / contentScaleFactor}px`,
                             height: `${(windowSize.height * scale.y) / 100 / contentScaleFactor}px`,
                         }}
+                        crossOrigin="anonymous"
                         alt="fixed-canvas-image"
                         onLoad={async (event) => {
                             if (imageUrl) {

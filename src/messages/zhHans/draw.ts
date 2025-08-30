@@ -52,6 +52,7 @@ export const draw = {
     'draw.redoUndoTool': '撤销/重做',
     'draw.cancelTool': '取消',
     'draw.copyTool': '复制到剪贴板',
+    'draw.copyRawContent': '复制原始内容',
     'draw.scrollScreenshotTool': '滚动截图',
     'draw.saveTool': '保存为文件',
     'draw.fastSaveTool': '快速保存',

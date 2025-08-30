@@ -262,7 +262,7 @@ export const OcrResult: React.FC<{
             const { selectRect, canvas } = params;
 
             const imageBlob = await new Promise<Blob | null>((resolve) => {
-                canvas.toBlob(resolve, 'image/jpeg', 1);
+                canvas.toBlob(resolve, 'image/png', 1);
             });
 
             if (imageBlob) {
@@ -306,7 +306,7 @@ export const OcrResult: React.FC<{
             tempCtx.drawImage(imageElement, 0, 0);
 
             const imageBlob = await new Promise<Blob | null>((resolve) => {
-                tempCanvas.toBlob(resolve, 'image/jpeg', 1);
+                tempCanvas.toBlob(resolve, 'image/png', 1);
             });
 
             selectRectRef.current = {

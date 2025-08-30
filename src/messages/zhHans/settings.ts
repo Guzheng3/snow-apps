@@ -216,6 +216,7 @@ export const settings = {
     'settings.hotKeySettings.fixedContent.fixedContentAlwaysOnTop': '置顶窗口',
     'settings.hotKeySettings.fixedContent.fixedContentCloseWindow': '关闭窗口',
     'settings.hotKeySettings.fixedContent.fixedContentCopyToClipboard': '复制到剪贴板',
+    'settings.hotKeySettings.fixedContent.fixedContentCopyRawToClipboard': '复制原始内容',
     'settings.hotKeySettings.fixedContent.fixedContentSaveToFile': '保存为文件',
     'settings.hotKeySettings.fixedContent.fixedContentSelectText': '选取文本/拖拽窗口',
     'settings.functionSettings.fixedContentSettings': '固定到屏幕',

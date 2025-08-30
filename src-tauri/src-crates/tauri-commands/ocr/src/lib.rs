@@ -34,7 +34,7 @@ pub async fn ocr_detect(
         _ => return Err("[ocr_detect] Invalid request body".to_string()),
     };
 
-    let mut image = match image::load(Cursor::new(image_data), image::ImageFormat::Jpeg) {
+    let mut image = match image::load(Cursor::new(image_data), image::ImageFormat::Png) {
         Ok(image) => image,
         Err(_) => return Err("[ocr_detect] Invalid image".to_string()),
     };
