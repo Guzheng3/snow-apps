@@ -25,6 +25,10 @@ import { AppState } from '@mg-chao/excalidraw/types';
 import Color from 'color';
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
+export const isSerialNumberElement = (element: ExcalidrawElement) => {
+    return element.id.startsWith('snow-shot_serial-number_');
+};
+
 const generateSerialNumber = (
     position: { x: number; y: number },
     number: number,
@@ -283,7 +287,7 @@ export const SerialNumberTool: React.FC = () => {
 
         let currentNumber = 1;
         sceneElements.forEach((item) => {
-            if (item.type === 'text' && item.id.startsWith('snow-shot_serial-number_')) {
+            if (item.type === 'text' && isSerialNumberElement(item)) {
                 currentNumber = Math.max(currentNumber, parseInt(item.text) + 1);
             }
         });
@@ -392,6 +396,14 @@ export const SerialNumberTool: React.FC = () => {
                 }
 
                 if (params?.event === 'onPointerDown') {
+                    const { pointerDownState } = params.params;
+                    if (
+                        pointerDownState.hit.element?.id.startsWith('snow-shot_serial-number_') ||
+                        pointerDownState.resize.isResizing
+                    ) {
+                        return;
+                    }
+
                     onMouseDown();
                 } else if (params?.event === 'onPointerUp') {
                     onMouseUp();

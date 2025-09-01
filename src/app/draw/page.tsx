@@ -83,6 +83,7 @@ import { CaptureHistoryActionType, CaptureHistoryController } from './components
 import { AntdContext } from '@/components/globalLayoutExtra';
 import { appError } from '@/utils/log';
 import { NonDeletedExcalidrawElement } from '@mg-chao/excalidraw/element/types';
+import { isSerialNumberElement } from '../fullScreenDraw/components/drawCore/components/serialNumberTool';
 
 const DrawCacheLayer = dynamic(
     async () => (await import('./components/drawCacheLayer')).DrawCacheLayer,
@@ -858,11 +859,29 @@ const DrawPageCore: React.FC<{
     }, []);
     const onDoubleClickFirstClick = useCallback(() => {
         // 判断 excalidraw 是否在绘制中
-        const currentAppState = drawCacheLayerActionRef.current?.getExcalidrawAPI()?.getAppState();
+        const excalidrawAPI = drawCacheLayerActionRef.current?.getExcalidrawAPI();
+        const sceneElements = excalidrawAPI?.getSceneElements();
+        const currentAppState = excalidrawAPI?.getAppState();
         const newElement = currentAppState?.newElement;
         const editingTextElement = currentAppState?.editingTextElement;
+        const selectedElements = sceneElements?.filter(
+            (element) => currentAppState?.selectedElementIds[element.id],
+        );
+        const selectedGroupIds = Object.keys(currentAppState?.selectedGroupIds ?? {}).filter(
+            (id) => currentAppState?.selectedGroupIds[id],
+        );
 
-        if (editingTextElement) {
+        console.log(sceneElements);
+
+        if (selectedElements && selectedGroupIds && selectedGroupIds.length === 1) {
+            latestExcalidrawNewElementRef.current = {
+                editingTextElement: selectedElements[0],
+            };
+        } else if (selectedElements?.length === 1 && selectedElements[0].type === 'text') {
+            latestExcalidrawNewElementRef.current = {
+                editingTextElement: selectedElements[0],
+            };
+        } else if (editingTextElement) {
             latestExcalidrawNewElementRef.current = {
                 editingTextElement: editingTextElement,
             };

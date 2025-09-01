@@ -676,7 +676,8 @@ const DrawCoreComponent: React.FC<{
                         padding-inline: ${0}px;
                     }
 
-                    .draw-core-layer :global(.excalidraw .ant-radio-button-wrapper .radio-button-icon) {
+                    .draw-core-layer
+                        :global(.excalidraw .ant-radio-button-wrapper .radio-button-icon) {
                         padding-inline: ${token.paddingXS}px;
                     }
 
