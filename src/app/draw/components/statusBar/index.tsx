@@ -217,6 +217,29 @@ const StatusBar: React.FC = () => {
             });
         }
 
+        if (
+            drawState === DrawState.Rect ||
+            drawState === DrawState.Ellipse ||
+            drawState === DrawState.Diamond ||
+            drawState === DrawState.Arrow ||
+            drawState === DrawState.Line ||
+            drawState === DrawState.Pen ||
+            drawState === DrawState.Text ||
+            drawState === DrawState.SerialNumber ||
+            drawState === DrawState.Blur
+        ) {
+            items.push({
+                key: 'selectSameTypeElement',
+                label: <FormattedMessage id="draw.selectSameTypeElement" />,
+                children: <KeyLabel icon={<MouseIcon />} messageId="draw.mouseLeft" />,
+            });
+            items.push({
+                key: 'editElementStyle',
+                label: <FormattedMessage id="draw.editElementStyle" />,
+                children: <KeyLabel icon={<MouseIcon />} messageId="draw.mouseRight" />,
+            });
+        }
+
         setDescriptionsItems(items);
     }, [getAppSettings, getCaptureStep, getDrawState, getScreenshotType]);
     const updateDescriptionsItemsDebounce = useMemo(
