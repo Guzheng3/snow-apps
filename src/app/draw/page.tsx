@@ -871,8 +871,6 @@ const DrawPageCore: React.FC<{
             (id) => currentAppState?.selectedGroupIds[id],
         );
 
-        console.log(sceneElements);
-
         if (selectedElements && selectedGroupIds && selectedGroupIds.length === 1) {
             latestExcalidrawNewElementRef.current = {
                 editingTextElement: selectedElements[0],
