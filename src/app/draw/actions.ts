@@ -29,8 +29,8 @@ export const getCanvas = async (
     let selectRectShadowWidth = 0;
     let selectRectRadius = 0;
     if (!ignoreStyle) {
-        selectRectShadowWidth = selectRectShadowWidth;
-        selectRectRadius = selectRectRadius;
+        selectRectShadowWidth = selectRectParams.shadowWidth;
+        selectRectRadius = selectRectParams.radius;
     }
 
     drawCacheLayerAction.finishDraw();

@@ -354,7 +354,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         disableArrowPicker: true,
         selectRectRadius: 0,
         selectRectShadowWidth: 0,
-        selectRectShadowColor: '#8c8c8c',
+        selectRectShadowColor: '#595959',
     },
     [AppSettingsGroup.DrawToolbarKeyEvent]: defaultDrawToolbarKeyEventSettings,
     [AppSettingsGroup.KeyEvent]: defaultKeyEventSettings,

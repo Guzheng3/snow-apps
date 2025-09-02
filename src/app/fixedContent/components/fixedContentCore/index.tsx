@@ -460,6 +460,16 @@ export const FixedContentCore: React.FC<{
             );
             if (ocrResultActionRef.current) {
                 if (params.ocrResult) {
+                    // 原有的 OCR 结果不包含阴影，加个偏移
+                    if (selectRectParams.shadowWidth > 0) {
+                        params.ocrResult.result.text_blocks.forEach((textBlock) => {
+                            textBlock.box_points.forEach((point) => {
+                                point.x += selectRectParams.shadowWidth;
+                                point.y += selectRectParams.shadowWidth;
+                            });
+                        });
+                    }
+
                     ocrResultActionRef.current.init({
                         selectRect: {
                             min_x: 0,

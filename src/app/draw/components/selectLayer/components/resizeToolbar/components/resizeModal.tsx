@@ -151,13 +151,15 @@ export const ResizeModal: React.FC<{
                     />
                 </Col>
 
-                <ProForm.Item
-                    name="shadowColor"
-                    label={<FormattedMessage id="draw.shadowColor" />}
-                    required={false}
-                >
-                    <ColorPicker showText placement="bottom" disabledAlpha />
-                </ProForm.Item>
+                <Col span={12}>
+                    <ProForm.Item
+                        name="shadowColor"
+                        label={<FormattedMessage id="draw.shadowColor" />}
+                        required={false}
+                    >
+                        <ColorPicker showText placement="bottom" disabledAlpha />
+                    </ProForm.Item>
+                </Col>
             </Row>
         </ModalForm>
     );
