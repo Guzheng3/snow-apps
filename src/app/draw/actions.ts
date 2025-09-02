@@ -18,17 +18,20 @@ export const getCanvas = async (
     selectRectParams: SelectRectParams | undefined,
     drawLayerAction: DrawLayerActionType,
     drawCacheLayerAction: DrawCacheLayerActionType,
+    ignoreStyle?: boolean,
 ): Promise<HTMLCanvasElement | undefined> => {
     if (!selectRectParams) {
         return;
     }
 
-    const {
-        rect: selectRect,
-        radius: selectRectRadius,
-        shadowWidth: selectRectShadowWidth,
-        shadowColor: selectRectShadowColor,
-    } = selectRectParams;
+    const { rect: selectRect, shadowColor: selectRectShadowColor } = selectRectParams;
+
+    let selectRectShadowWidth = 0;
+    let selectRectRadius = 0;
+    if (!ignoreStyle) {
+        selectRectShadowWidth = selectRectShadowWidth;
+        selectRectRadius = selectRectRadius;
+    }
 
     drawCacheLayerAction.finishDraw();
 
@@ -266,6 +269,8 @@ export const handleOcrDetect = async (
     drawLayerAction: DrawLayerActionType,
     drawCacheLayerAction: DrawCacheLayerActionType,
     ocrBlocksAction: OcrBlocksActionType,
+    /** 忽略如圆角、阴影等样式 */
+    ignoreStyle?: boolean,
 ) => {
     const selectRectParams = selectLayerAction.getSelectRectParams();
     if (!selectRectParams) {
@@ -278,7 +283,12 @@ export const handleOcrDetect = async (
         return;
     }
 
-    const imageCanvas = await getCanvas(selectRectParams, drawLayerAction, drawCacheLayerAction);
+    const imageCanvas = await getCanvas(
+        selectRectParams,
+        drawLayerAction,
+        drawCacheLayerAction,
+        ignoreStyle,
+    );
     if (!imageCanvas) {
         return;
     }

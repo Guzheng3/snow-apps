@@ -660,6 +660,7 @@ const DrawPageCore: React.FC<{
             drawLayerActionRef.current,
             drawCacheLayerActionRef.current,
             ocrBlocksActionRef.current,
+            true,
         );
     }, []);
 
