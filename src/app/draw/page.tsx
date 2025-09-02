@@ -884,7 +884,6 @@ const DrawPageCore: React.FC<{
             };
         } else if (newElement && 'updated' in newElement) {
             let created = newElement.updated;
-            console.log(newElement.id);
             if (
                 latestExcalidrawNewElementRef.current &&
                 'id' in latestExcalidrawNewElementRef.current &&
@@ -897,7 +896,6 @@ const DrawPageCore: React.FC<{
                 id: newElement.id,
                 created: created,
             };
-            console.log(created);
         } else {
             unsetLatestExcalidrawNewElement();
         }
