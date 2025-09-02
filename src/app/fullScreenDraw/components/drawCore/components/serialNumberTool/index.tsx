@@ -37,6 +37,12 @@ export const isSerialNumberTextElement = (element: ExcalidrawElement | undefined
     return isSerialNumberElement(element) && element!.type === 'text';
 };
 
+export const convertSerialNumberTextElementIdToEllipseElementId = (
+    element: ExcalidrawElement | undefined,
+) => {
+    return element?.id.replace('-text', '-ellipse');
+};
+
 export const limitSerialNumber = (serialNumber: number) => {
     if (isNaN(serialNumber)) {
         return 1;
@@ -94,7 +100,7 @@ export const SerialNumberContextProvider: React.FC<{
     );
 };
 
-const generateSerialNumber = (
+export const generateSerialNumber = (
     position: { x: number; y: number },
     number: number,
     appState: AppState,

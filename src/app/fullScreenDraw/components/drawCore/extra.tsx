@@ -109,6 +109,7 @@ export enum ExcalidrawEventCallbackType {
 
 export type ExcalidrawEventCallbackFontSizeParams = {
     fontSize: number;
+    drawState?: DrawState;
 };
 
 export type ExcalidrawEventCallbackParams = {

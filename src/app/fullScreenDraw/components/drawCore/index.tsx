@@ -277,6 +277,7 @@ const DrawCoreComponent: React.FC<{
                     event: ExcalidrawEventCallbackType.ChangeFontSize,
                     params: {
                         fontSize: changeTargetProp.fontSize,
+                        drawState: getDrawState(),
                     },
                 });
                 setExcalidrawEventCallback(undefined);
