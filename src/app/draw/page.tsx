@@ -856,7 +856,7 @@ const DrawPageCore: React.FC<{
             latestExcalidrawNewElementRef.current = undefined;
         }, 512);
     }, []);
-    const onDoubleClickFirstClick = useCallback(() => {
+    const onDoubleClickFirstClickCore = useCallback(() => {
         // 判断 excalidraw 是否在绘制中
         const excalidrawAPI = drawCacheLayerActionRef.current?.getExcalidrawAPI();
         const sceneElements = excalidrawAPI?.getSceneElements();
@@ -884,6 +884,7 @@ const DrawPageCore: React.FC<{
             };
         } else if (newElement && 'updated' in newElement) {
             let created = newElement.updated;
+            console.log(newElement.id);
             if (
                 latestExcalidrawNewElementRef.current &&
                 'id' in latestExcalidrawNewElementRef.current &&
@@ -896,19 +897,25 @@ const DrawPageCore: React.FC<{
                 id: newElement.id,
                 created: created,
             };
+            console.log(created);
         } else {
             unsetLatestExcalidrawNewElement();
         }
     }, [unsetLatestExcalidrawNewElement]);
+    const onDoubleClickFirstClick = useMemo(() => {
+        return debounce(() => {
+            onDoubleClickFirstClickCore();
+        }, 17);
+    }, [onDoubleClickFirstClickCore]);
     const onDoubleClick = useCallback<React.MouseEventHandler<HTMLDivElement>>(
         (e) => {
             if (
                 e.button === 0 &&
-                // 如果存在创建时间大于512ms的在编辑中的元素，则认为是对箭头的双击
+                // 如果存在创建时间大于300ms的在编辑中的元素，则认为是对箭头的双击
                 !(
                     (latestExcalidrawNewElementRef.current &&
                         'created' in latestExcalidrawNewElementRef.current &&
-                        latestExcalidrawNewElementRef.current.created < Date.now() - 512) ||
+                        latestExcalidrawNewElementRef.current.created < Date.now() - 300) ||
                     (latestExcalidrawNewElementRef.current &&
                         'editingTextElement' in latestExcalidrawNewElementRef.current)
                 )

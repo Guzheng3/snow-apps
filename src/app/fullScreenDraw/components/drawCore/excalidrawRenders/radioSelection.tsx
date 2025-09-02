@@ -9,11 +9,13 @@ import { ExcalidrawPropsCustomOptions } from '@mg-chao/excalidraw/types';
 import { Radio, Space } from 'antd';
 import { useCallback, useContext, useEffect, useRef } from 'react';
 import {
-    convertSerialNumberTextElementIdToEllipseElementId,
+    convertSerialNumberElementIdToEllipseElementId,
+    convertSerialNumberElementIdToEllipseTextElementId,
     generateSerialNumber,
     isSerialNumberElement,
 } from '../components/serialNumberTool';
 import { last } from 'es-toolkit';
+import { ExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 
 export const RadioSelection = ((props) => {
     const { getAction } = useContext(DrawCoreContext);
@@ -39,6 +41,7 @@ export const RadioSelection = ((props) => {
             }
 
             const selectedElementsMap = new Map(selectedElements.map((item) => [item.id, item]));
+            const generateSerialNumberCache = new Map<string, ExcalidrawElement[]>();
             const changedElementsMap = new Map();
             selectedElements.forEach((item) => {
                 const changedElement = {
@@ -51,49 +54,29 @@ export const RadioSelection = ((props) => {
 
                 changedElementsMap.set(item.id, changedElement);
 
-                if (item.type === 'text' && 'fontSize' in item) {
-                    const ellipseElementId =
-                        convertSerialNumberTextElementIdToEllipseElementId(item);
-                    if (!ellipseElementId) {
-                        return;
-                    }
+                const ellipseElementId = convertSerialNumberElementIdToEllipseElementId(item);
+                const ellipseTextElementId =
+                    convertSerialNumberElementIdToEllipseTextElementId(item);
+                if (!ellipseElementId || !ellipseTextElementId) {
+                    return;
+                }
 
-                    const ellipseElement = selectedElementsMap.get(ellipseElementId);
-                    if (!ellipseElement) {
-                        return;
-                    }
+                const ellipseElement = selectedElementsMap.get(ellipseElementId);
+                const ellipseTextElement = selectedElementsMap.get(ellipseTextElementId);
+                if (
+                    !ellipseElement ||
+                    !ellipseTextElement ||
+                    !('fontFamily' in ellipseTextElement)
+                ) {
+                    return;
+                }
 
-                    const originPositionX = ellipseElement.x + ellipseElement.width / 2;
-                    const originPositionY = ellipseElement.y + ellipseElement.height / 2;
+                const originPositionX = ellipseElement.x + ellipseElement.width / 2;
+                const originPositionY = ellipseElement.y + ellipseElement.height / 2;
 
-                    const serialNumberTextElements = last(
-                        generateSerialNumber(
-                            {
-                                x: originPositionX,
-                                y: originPositionY,
-                            },
-                            1,
-                            {
-                                ...appState,
-                                currentHoveredFontFamily: item.fontFamily,
-                                currentItemFontSize: value,
-                            },
-                        ),
-                    )!;
-
-                    if (!('fontSize' in serialNumberTextElements)) {
-                        return;
-                    }
-                    changedElement.x = serialNumberTextElements.x;
-                    changedElement.y = serialNumberTextElements.y;
-                    changedElement.width = serialNumberTextElements.width;
-                    changedElement.height = serialNumberTextElements.height;
-                    changedElement.fontSize = serialNumberTextElements.fontSize;
-                } else if (item.type === 'ellipse') {
-                    const originPositionX = item.x + item.width / 2;
-                    const originPositionY = item.y + item.height / 2;
-
-                    const serialNumberEllipseElement = generateSerialNumber(
+                const serialNumberElementList =
+                    generateSerialNumberCache.get(ellipseElementId) ??
+                    generateSerialNumber(
                         {
                             x: originPositionX,
                             y: originPositionY,
@@ -101,9 +84,26 @@ export const RadioSelection = ((props) => {
                         1,
                         {
                             ...appState,
+                            currentItemFontFamily: ellipseTextElement.fontFamily,
                             currentItemFontSize: value,
                         },
-                    )[0];
+                    );
+                generateSerialNumberCache.set(ellipseElementId, serialNumberElementList);
+
+                if (item.type === 'text' && 'fontSize' in item) {
+                    const serialNumberTextElement = last(serialNumberElementList);
+
+                    if (!serialNumberTextElement || !('fontSize' in serialNumberTextElement)) {
+                        return;
+                    }
+
+                    changedElement.x = serialNumberTextElement.x;
+                    changedElement.y = serialNumberTextElement.y;
+                    changedElement.width = serialNumberTextElement.width;
+                    changedElement.height = serialNumberTextElement.height;
+                    changedElement.fontSize = serialNumberTextElement.fontSize;
+                } else if (item.type === 'ellipse') {
+                    const serialNumberEllipseElement = serialNumberElementList[0];
 
                     if (!serialNumberEllipseElement) {
                         return;

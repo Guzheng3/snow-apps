@@ -37,10 +37,16 @@ export const isSerialNumberTextElement = (element: ExcalidrawElement | undefined
     return isSerialNumberElement(element) && element!.type === 'text';
 };
 
-export const convertSerialNumberTextElementIdToEllipseElementId = (
+export const convertSerialNumberElementIdToEllipseElementId = (
     element: ExcalidrawElement | undefined,
 ) => {
-    return element?.id.replace('-text', '-ellipse');
+    return element?.id.replace('-text', '-ellipse').replace('-ellipse-background', '-ellipse');
+};
+
+export const convertSerialNumberElementIdToEllipseTextElementId = (
+    element: ExcalidrawElement | undefined,
+) => {
+    return element?.id.replace('-ellipse', '-text').replace('-ellipse-background', '-text');
 };
 
 export const limitSerialNumber = (serialNumber: number) => {
@@ -134,61 +140,6 @@ export const generateSerialNumber = (
     }
 
     const res: ExcalidrawElement[] = [];
-
-    let ellipseBackgroundColor = appState.currentItemBackgroundColor;
-    const ellipseBackgroundColorInstance = new Color(ellipseBackgroundColor);
-    // 如果不存在背景色，或者背景色不是实心的，则进行填充
-    if (ellipseBackgroundColorInstance.alpha() === 0 || appState.currentItemFillStyle !== 'solid') {
-        const alpha = 0.08;
-        let backgroundColor = new Color('#ffffff');
-        const strokeColorInstance = new Color(appState.currentItemStrokeColor);
-        // 如果文字颜色很亮的话，则背景色为灰色
-        if (
-            strokeColorInstance.red() + strokeColorInstance.green() + strokeColorInstance.blue() >
-            680
-        ) {
-            backgroundColor = new Color('rgb(169,169,169)');
-        }
-
-        const fg = new Color(appState.currentItemStrokeColor).rgb();
-        const bg = backgroundColor.rgb();
-
-        const blendedR = Math.ceil(fg.red() * alpha + bg.red() * (1 - alpha));
-        const blendedG = Math.ceil(fg.green() * alpha + bg.green() * (1 - alpha));
-        const blendedB = Math.ceil(fg.blue() * alpha + bg.blue() * (1 - alpha));
-
-        ellipseBackgroundColor = new Color({ r: blendedR, g: blendedG, b: blendedB }).hex();
-
-        res.push({
-            id: ellipseBackgroundId,
-            type: 'ellipse',
-            x: position.x - ellipseWidth / 2,
-            y: position.y - ellipseHeight / 2,
-            width: ellipseWidth,
-            height: ellipseHeight,
-            // @ts-expect-error 忽略 angle 的类型，因为所需的 Radians 无法导出
-            angle: 0,
-            strokeColor: appState.currentItemStrokeColor,
-            backgroundColor: ellipseBackgroundColor,
-            fillStyle: appState.currentItemFillStyle,
-            strokeWidth: appState.currentItemStrokeWidth,
-            strokeStyle: appState.currentItemStrokeStyle,
-            roughness: appState.currentItemRoughness,
-            opacity: appState.currentItemOpacity,
-            groupIds: [serialNumberGroupNumber],
-            frameId: null,
-            roundness: null,
-            version: 304,
-            versionNonce: 1149037384,
-            isDeleted: false,
-            boundElements: [],
-            link: null,
-            locked: false,
-            seed: 0,
-            index: null,
-            updated: 0,
-        });
-    }
 
     res.push(
         {
