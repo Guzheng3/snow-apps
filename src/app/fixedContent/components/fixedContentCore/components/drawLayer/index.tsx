@@ -198,6 +198,7 @@ const DrawLayerCore: React.FC<{
                         actionRef={drawCoreActionRef}
                         zIndex={zIndexs.Draw_DrawCacheLayer}
                         layoutMenuZIndex={zIndexs.Draw_ExcalidrawToolbar}
+                        appStateStorageKey={'fixed-content-draw-layer'}
                     />
 
                     <FixedContentCoreDrawToolbar

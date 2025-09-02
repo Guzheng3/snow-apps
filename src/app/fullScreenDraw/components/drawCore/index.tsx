@@ -67,12 +67,14 @@ const DrawCoreComponent: React.FC<{
     layoutMenuZIndex: number;
     excalidrawCustomOptions?: NonNullable<ExcalidrawPropsCustomOptions>;
     onLoad?: () => void;
+    appStateStorageKey?: string;
 }> = ({
     actionRef,
     zIndex,
     layoutMenuZIndex,
     excalidrawCustomOptions: excalidrawCustomOptionsProp,
     onLoad,
+    appStateStorageKey = storageKey,
 }) => {
     const { token } = theme.useToken();
     const intl = useIntl();
@@ -105,20 +107,6 @@ const DrawCoreComponent: React.FC<{
 
     const updateScene = useCallback<DrawCoreActionType['updateScene']>((...args) => {
         excalidrawAPIRef.current?.updateScene(...args);
-    }, []);
-
-    const enableRef = useRef<boolean>(false);
-    const setEnable = useCallback<DrawCoreActionType['setEnable']>((enable: boolean) => {
-        if (!drawCacheLayerElementRef.current) {
-            return;
-        }
-
-        enableRef.current = enable;
-        if (enable) {
-            drawCacheLayerElementRef.current.style.pointerEvents = 'auto';
-        } else {
-            drawCacheLayerElementRef.current.style.pointerEvents = 'none';
-        }
     }, []);
 
     const getCanvas = useCallback<DrawCoreActionType['getCanvas']>(() => {
@@ -168,7 +156,7 @@ const DrawCoreComponent: React.FC<{
 
         excalidrawAppStateStoreRef.current = new ExcalidrawAppStateStore();
         excalidrawAppStateStoreRef.current.init().then(() => {
-            excalidrawAppStateStoreRef.current!.get(storageKey).then((value) => {
+            excalidrawAppStateStoreRef.current!.get(appStateStorageKey).then((value) => {
                 if (value) {
                     if (excalidrawAPIRef.current) {
                         // 未初始化 setstate 报错，未发现具体原因，延迟处理下
@@ -191,17 +179,13 @@ const DrawCoreComponent: React.FC<{
                 }
             });
         });
-    }, []);
+    }, [appStateStorageKey]);
 
     const handleWheel = useCallback(
         (
             event: WheelEvent | React.WheelEvent<HTMLDivElement | HTMLCanvasElement>,
             zoomAction?: () => void,
         ) => {
-            if (!enableRef.current) {
-                return;
-            }
-
             if (!excalidrawAPIRef.current) {
                 return;
             }
@@ -352,7 +336,6 @@ const DrawCoreComponent: React.FC<{
                 excalidrawActionRef.current?.syncActionResult(...args);
             },
             updateScene,
-            setEnable,
             getAppState: () => {
                 return excalidrawAPIRef.current?.getAppState();
             },
@@ -376,7 +359,7 @@ const DrawCoreComponent: React.FC<{
                 });
             },
         }),
-        [getCanvas, getCanvasContext, getImageData, setEnable, updateScene],
+        [getCanvas, getCanvasContext, getImageData, updateScene],
     );
 
     const [currentPlatform, currentPlatformRef] = usePlatform();
@@ -446,6 +429,13 @@ const DrawCoreComponent: React.FC<{
     const saveAppState = useCallback(async () => {
         const appState = excalidrawAPIRef.current?.getAppState();
         if (!appState) {
+            return;
+        }
+
+        if (
+            appState.activeTool.type === 'selection' ||
+            !excalidrawAppStateStoreRef.current?.inited()
+        ) {
             return;
         }
 

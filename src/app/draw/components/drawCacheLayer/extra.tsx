@@ -6,7 +6,6 @@ export type DrawCacheLayerActionType = {
     setActiveTool: ExcalidrawImperativeAPI['setActiveTool'];
     syncActionResult: ExcalidrawActionType['syncActionResult'];
     updateScene: ExcalidrawImperativeAPI['updateScene'];
-    setEnable: (enable: boolean) => void;
     onCaptureReady: () => Promise<void>;
     onCaptureFinish: () => Promise<void>;
     getImageData: (selectRect: ElementRect) => Promise<ImageData | undefined>;

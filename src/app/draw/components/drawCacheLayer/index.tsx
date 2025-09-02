@@ -54,9 +54,6 @@ const DrawCacheLayerCore: React.FC<{
             updateScene: (...args) => {
                 drawCoreActionRef.current?.updateScene(...args);
             },
-            setEnable: (...args) => {
-                drawCoreActionRef.current?.setEnable(...args);
-            },
             onCaptureReady: async () => {
                 drawCoreActionRef.current?.updateScene({
                     elements: [],
@@ -69,7 +66,6 @@ const DrawCacheLayerCore: React.FC<{
             },
             finishDraw,
             onCaptureFinish: async () => {
-                drawCoreActionRef.current?.setEnable(false);
                 drawCoreActionRef.current?.setActiveTool({
                     type: 'hand',
                 });
@@ -179,6 +175,7 @@ const DrawCacheLayerCore: React.FC<{
                 zIndex={zIndexs.Draw_DrawCacheLayer}
                 layoutMenuZIndex={zIndexs.Draw_ExcalidrawToolbar}
                 excalidrawCustomOptions={excalidrawCustomOptions}
+                appStateStorageKey={'draw-cache-layer'}
             />
         </DrawCoreContext.Provider>
     );

@@ -61,7 +61,6 @@ const FullScreenDrawPage = () => {
 
             inited.current = true;
 
-            drawCoreActionRef.current?.setEnable(true);
             setExcalidrawEvent({
                 event: 'onDraw',
                 params: undefined,
@@ -161,6 +160,7 @@ const FullScreenDrawPage = () => {
                         zIndex={zIndexs.FullScreenDraw_DrawLayer}
                         layoutMenuZIndex={zIndexs.FullScreenDraw_LayoutMenu}
                         onLoad={init}
+                        appStateStorageKey={'full-screen-draw-page'}
                     />
 
                     <FullScreenDrawToolbar actionRef={toolbarActionRef} />

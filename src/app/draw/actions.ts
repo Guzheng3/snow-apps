@@ -65,12 +65,16 @@ export const getCanvas = async (
         -selectRect.min_y + offsetY,
     );
 
-    if (selectRectRadius > 0) {
+    if (selectRectRadius > 0 || selectRectShadowWidth > 0) {
         tempCtx.save();
 
         tempCtx.beginPath();
         tempCtx.rect(0, 0, tempCanvas.width, tempCanvas.height);
-        tempCtx.roundRect(offsetX, offsetY, contentWidth, contentHeight, selectRectRadius);
+        if (selectRectRadius > 0) {
+            tempCtx.roundRect(offsetX, offsetY, contentWidth, contentHeight, selectRectRadius);
+        } else {
+            tempCtx.rect(offsetX, offsetY, contentWidth, contentHeight);
+        }
         tempCtx.clip('evenodd');
         tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 

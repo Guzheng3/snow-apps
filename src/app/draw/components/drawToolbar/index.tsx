@@ -260,93 +260,79 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 
             switch (next) {
                 case DrawState.Idle:
-                    drawCacheLayerActionRef.current?.setEnable(false);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'hand',
                     });
                     break;
                 case DrawState.Select:
-                    drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'selection',
                     });
 
                     break;
                 case DrawState.Rect:
-                    drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'rectangle',
                         locked: toolLocked,
                     });
                     break;
                 case DrawState.Diamond:
-                    drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'diamond',
                         locked: toolLocked,
                     });
                     break;
                 case DrawState.Ellipse:
-                    drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'ellipse',
                         locked: toolLocked,
                     });
                     break;
                 case DrawState.Arrow:
-                    drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'arrow',
                         locked: toolLocked,
                     });
                     break;
                 case DrawState.Line:
-                    drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'line',
                         locked: toolLocked,
                     });
                     break;
                 case DrawState.Pen:
-                    drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'freedraw',
                         locked: toolLocked,
                     });
                     break;
                 case DrawState.Text:
-                    drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'text',
                         locked: toolLocked,
                     });
                     break;
                 case DrawState.SerialNumber:
-                    drawCacheLayerActionRef.current?.setEnable(true);
                     break;
                 case DrawState.Blur:
-                    drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'blur',
                         locked: toolLocked,
                     });
                     break;
                 case DrawState.Eraser:
-                    drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'eraser',
                         locked: toolLocked,
                     });
                     break;
                 case DrawState.OcrDetect:
-                    drawCacheLayerActionRef.current?.setEnable(false);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'hand',
                     });
                     onOcrDetect();
                     break;
                 case DrawState.OcrTranslate:
-                    drawCacheLayerActionRef.current?.setEnable(false);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'hand',
                     });
@@ -354,7 +340,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     break;
                 case DrawState.VideoRecord:
                 case DrawState.ExtraTools:
-                    drawCacheLayerActionRef.current?.setEnable(false);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'hand',
                     });

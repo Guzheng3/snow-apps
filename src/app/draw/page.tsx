@@ -83,7 +83,6 @@ import { CaptureHistoryActionType, CaptureHistoryController } from './components
 import { AntdContext } from '@/components/globalLayoutExtra';
 import { appError } from '@/utils/log';
 import { NonDeletedExcalidrawElement } from '@mg-chao/excalidraw/element/types';
-import { isSerialNumberElement } from '../fullScreenDraw/components/drawCore/components/serialNumberTool';
 
 const DrawCacheLayer = dynamic(
     async () => (await import('./components/drawCacheLayer')).DrawCacheLayer,
@@ -195,7 +194,6 @@ const DrawPageCore: React.FC<{
         } else if (captureStep === CaptureStep.Draw) {
             if (drawState === DrawState.Idle) {
                 handleLayerSwitch(CanvasLayer.Select);
-                drawCacheLayerActionRef.current?.setEnable(false);
                 return;
             }
 

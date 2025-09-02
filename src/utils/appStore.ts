@@ -21,6 +21,10 @@ class BaseStore<Value> {
         this.instance = await load(`${this.name}.json`, { autoSave: this.autoSave });
     }
 
+    public inited() {
+        return !!this.instance;
+    }
+
     public async set(key: string, value: Value) {
         if (!this.instance) {
             throw new Error('Store not initialized');
