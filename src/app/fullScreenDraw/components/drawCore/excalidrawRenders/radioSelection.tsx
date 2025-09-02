@@ -120,6 +120,9 @@ export const RadioSelection = ((props) => {
                 ?.getExcalidrawAPI()
                 ?.updateScene({
                     elements: elements?.map((item) => changedElementsMap.get(item.id) ?? item),
+                    appState: {
+                        currentItemFontSize: value,
+                    },
                     captureUpdate: 'IMMEDIATELY',
                 });
 
@@ -137,8 +140,9 @@ export const RadioSelection = ((props) => {
         propsRef.current = {
             ...props,
             onChange: (value) => {
-                props.onChange?.(value);
-                updateSerialNumber(value as unknown as number);
+                if (!updateSerialNumber(value as unknown as number)) {
+                    props.onChange?.(value);
+                }
             },
         };
     }, [getAction, props, updateSerialNumber]);
