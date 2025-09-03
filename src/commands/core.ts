@@ -118,3 +118,10 @@ export const getMonitorsBoundingBox = async (region?: ElementRect) => {
     });
     return result;
 };
+
+export const closeWindowAfterDelay = async (delay: number) => {
+    const result = await invoke<void>('close_window_after_delay', {
+        delay,
+    });
+    return result;
+};

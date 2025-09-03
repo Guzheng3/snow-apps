@@ -123,3 +123,8 @@ pub async fn set_current_window_always_on_top(
     )
     .await
 }
+
+#[command]
+pub async fn close_window_after_delay(window: tauri::Window, delay: u64) {
+    snow_shot_tauri_commands_core::close_window_after_delay(window, delay).await
+}

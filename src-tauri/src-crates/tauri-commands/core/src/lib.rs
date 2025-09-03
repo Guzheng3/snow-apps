@@ -492,3 +492,8 @@ pub async fn set_current_window_always_on_top(
 
     Ok(())
 }
+
+pub async fn close_window_after_delay(window: tauri::Window, delay: u64) {
+    tokio::time::sleep(Duration::from_millis(delay)).await;
+    window.close().unwrap();
+}

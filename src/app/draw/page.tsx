@@ -58,6 +58,7 @@ import { AppSettingsActionContext, AppSettingsGroup } from '../contextWrap';
 import { AppSettingsPublisher } from '../contextWrap';
 import { ExtraTool } from './components/drawToolbar/components/tools/extraTool';
 import {
+    closeWindowAfterDelay,
     createFixedContentWindow,
     getMonitorsBoundingBox,
     setCurrentWindowAlwaysOnTop,
@@ -333,13 +334,9 @@ const DrawPageCore: React.FC<{
             await Promise.all([
                 createDrawWindow(),
                 // 隔一段时间释放，防止释放中途用户唤起
-                new Promise((resolve) => {
-                    setTimeout(resolve, 1000 * 8);
-                }).then(() => {
-                    appWindowRef.current.close();
-                }),
+                closeWindowAfterDelay(1000 * 3),
             ]);
-        }, 1000 * 1);
+        }, 1000 * 16);
     }, []);
 
     const finishCapture = useCallback<DrawContextType['finishCapture']>(
