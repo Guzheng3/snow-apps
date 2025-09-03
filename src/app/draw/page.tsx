@@ -339,7 +339,7 @@ const DrawPageCore: React.FC<{
                     appWindowRef.current.close();
                 }),
             ]);
-        }, 1000 * 16);
+        }, 1000 * 1);
     }, []);
 
     const finishCapture = useCallback<DrawContextType['finishCapture']>(

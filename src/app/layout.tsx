@@ -7,7 +7,7 @@ import { ContextWrap } from './contextWrap';
 import { MenuLayout } from './menuLayout';
 import Script from 'next/dist/client/script';
 import { App as AntdApp } from 'antd';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AntdContextWrap, FetchErrorHandler } from '@/components/globalLayoutExtra';
 import { HotkeysProvider } from 'react-hotkeys-hook';
 
@@ -16,6 +16,24 @@ export default function RootLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    useEffect(() => {
+        const handleKeyDown = function (event: KeyboardEvent) {
+            if (
+                event.key === 'F5' ||
+                (event.ctrlKey && event.key === 'r') ||
+                (event.metaKey && event.key === 'r')
+            ) {
+                event.preventDefault();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, []);
+
     return (
         <html lang="zh-CN">
             <head>
