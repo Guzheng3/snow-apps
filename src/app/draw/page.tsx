@@ -749,11 +749,6 @@ const DrawPageCore: React.FC<{
                 return;
             }
 
-            appInfo(
-                `[DrawPageCore] execute-screenshot: ${drawPageStateRef.current} ${capturingRef.current}`,
-                args,
-            );
-
             if (capturingRef.current) {
                 return;
             }
