@@ -82,7 +82,7 @@ import Flatbush from 'flatbush';
 import { isOcrTool } from './components/drawToolbar/components/tools/ocrTool';
 import { CaptureHistoryActionType, CaptureHistoryController } from './components/captureHistory';
 import { AntdContext } from '@/components/globalLayoutExtra';
-import { appError } from '@/utils/log';
+import { appError, appInfo } from '@/utils/log';
 import { NonDeletedExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 import {
     DrawContext as CommonDrawContext,
@@ -336,7 +336,7 @@ const DrawPageCore: React.FC<{
                 // 隔一段时间释放，防止释放中途用户唤起
                 closeWindowAfterDelay(1000 * 3),
             ]);
-        }, 1000 * 16);
+        }, 1000 * 1);
     }, []);
 
     const finishCapture = useCallback<DrawContextType['finishCapture']>(
@@ -741,7 +741,18 @@ const DrawPageCore: React.FC<{
     useEffect(() => {
         // 监听截图命令
         const listenerId = addListener('execute-screenshot', (args) => {
-            const payload = (args as { payload: { type: ScreenshotType } }).payload;
+            const payload = (args as { payload: { type: ScreenshotType; windowLabel?: string } })
+                .payload;
+
+            // 防止循环调用
+            if (payload.windowLabel === appWindowRef.current?.label) {
+                return;
+            }
+
+            appInfo(
+                `[DrawPageCore] execute-screenshot: ${drawPageStateRef.current} ${capturingRef.current}`,
+                args,
+            );
 
             if (capturingRef.current) {
                 return;
@@ -756,7 +767,7 @@ const DrawPageCore: React.FC<{
                 }
                 releaseExecuteScreenshotTimerRef.current = {
                     timer: setInterval(() => {
-                        executeScreenshotFunc(payload.type);
+                        executeScreenshotFunc(payload.type, appWindowRef.current?.label);
                     }, 128),
                     type: payload.type,
                 };

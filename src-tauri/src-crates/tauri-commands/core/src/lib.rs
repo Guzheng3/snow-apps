@@ -494,6 +494,13 @@ pub async fn set_current_window_always_on_top(
 }
 
 pub async fn close_window_after_delay(window: tauri::Window, delay: u64) {
-    tokio::time::sleep(Duration::from_millis(delay)).await;
-    window.close().unwrap();
+    // 用另一个进程运行，tauri 执行完命令后会发送消息给原窗口，一定时间后窗口可能已经提前销毁了
+    // 发送消息给已经销毁的窗口会报错
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(delay)).await;
+        match window.close() {
+            Ok(_) => (),
+            Err(_) => log::info!("[close_window_after_delay] The window has been released"),
+        }
+    });
 }

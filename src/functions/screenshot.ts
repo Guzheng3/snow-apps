@@ -15,9 +15,13 @@ export enum ScreenshotType {
     VideoRecord = 'video-record',
 }
 
-export const executeScreenshot = async (type: ScreenshotType = ScreenshotType.Default) => {
+export const executeScreenshot = async (
+    type: ScreenshotType = ScreenshotType.Default,
+    windowLabel?: string,
+) => {
     await emit('execute-screenshot', {
         type,
+        windowLabel,
     });
 };
 
