@@ -1,12 +1,9 @@
-import { useCallback, useEffect, useImperativeHandle, useRef } from 'react';
+import { useCallback, useImperativeHandle, useRef } from 'react';
 import { ElementRect } from '@/commands';
 import { OcrDetectResult } from '@/commands/ocr';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { CaptureBoundingBoxInfo, DrawEvent, DrawEventPublisher } from '../../extra';
 import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
-import { useIntl } from 'react-intl';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { Menu } from '@tauri-apps/api/menu';
 import OcrTool, { isOcrTool } from '../drawToolbar/components/tools/ocrTool';
 import {
     AppOcrResult,

@@ -2,7 +2,7 @@ import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/c
 import { saveFile, getMousePosition } from '@/commands';
 import { useStateRef } from '@/hooks/useStateRef';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { LogicalPosition, PhysicalSize, PhysicalPosition } from '@tauri-apps/api/dpi';
+import { PhysicalSize, PhysicalPosition } from '@tauri-apps/api/dpi';
 import { Menu, MenuItemOptions, Submenu } from '@tauri-apps/api/menu';
 import { getCurrentWindow, Window as AppWindow } from '@tauri-apps/api/window';
 import { Button, theme } from 'antd';

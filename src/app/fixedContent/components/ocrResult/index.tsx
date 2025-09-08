@@ -4,7 +4,7 @@ import { ocrDetect, OcrDetectResult } from '@/commands/ocr';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { theme } from 'antd';
 import Color from 'color';
-import { getCurrentWindow, LogicalPosition } from '@tauri-apps/api/window';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Menu } from '@tauri-apps/api/menu';
 import { useHotkeysApp } from '@/hooks/useHotkeysApp';
 import { AntdContext } from '@/components/globalLayoutExtra';
