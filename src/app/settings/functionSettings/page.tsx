@@ -878,7 +878,7 @@ export default function SystemSettings() {
                                     />
                                 }
                                 layout="horizontal"
-                                name="autoCreateNewSession"
+                                name="autoCreateNewSessionOnCloseWindow"
                                 valuePropName="checked"
                             >
                                 <Switch />
