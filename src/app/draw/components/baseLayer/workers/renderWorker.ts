@@ -17,6 +17,8 @@ import {
     renderDeleteBlurSpriteAction,
     BlurSprite,
     renderRenderToCanvasAction,
+    renderUpdateWatermarkSpriteAction,
+    WatermarkProps,
 } from '../baseLayerRenderActions';
 import {
     BaseLayerRenderAddImageToContainerData,
@@ -33,10 +35,32 @@ import {
     BaseLayerRenderUpdateBlurSpriteData,
     BaseLayerRenderDeleteBlurSpriteData,
     BaseLayerRenderRenderToCanvasData,
+    BaseLayerRenderUpdateWatermarkSpriteData,
 } from './renderWorkerTypes';
 
 const canvasAppRef: RefWrap<Application | undefined> = { current: undefined };
 const canvasContainerMapRef: RefWrap<Map<string, Container>> = { current: new Map() };
+// 不要使用 defaultWatermarkProps，避免编译异常
+const lastWatermarkPropsRef: RefWrap<WatermarkProps> = {
+    current: {
+        fontSize: 0,
+        color: '#000000',
+        opacity: 0,
+        visible: false,
+        text: '',
+        selectRectParams: {
+            rect: {
+                min_x: 0,
+                min_y: 0,
+                max_x: 0,
+                max_y: 0,
+            },
+            radius: 0,
+            shadowWidth: 0,
+            shadowColor: '#000000',
+        },
+    },
+};
 const canvasContainerChildCountRef: RefWrap<number> = { current: 0 };
 const currentImageTextureRef: RefWrap<Texture | undefined> = { current: undefined };
 const blurSpriteMapRef: RefWrap<Map<string, BlurSprite>> = { current: new Map() };
@@ -113,6 +137,17 @@ const handleUpdateBlurSprite = (data: BaseLayerRenderUpdateBlurSpriteData) => {
 
 const handleDeleteBlurSprite = (data: BaseLayerRenderDeleteBlurSpriteData) => {
     renderDeleteBlurSpriteAction(blurSpriteMapRef, data.payload.blurElementId);
+};
+
+const handleUpdateWatermarkSprite = (data: BaseLayerRenderUpdateWatermarkSpriteData) => {
+    renderUpdateWatermarkSpriteAction(
+        canvasAppRef,
+        canvasContainerMapRef,
+        data.payload.watermarkContainerKey,
+        lastWatermarkPropsRef,
+        data.payload.watermarkProps,
+        data.payload.textResolution,
+    );
 };
 
 self.onmessage = async ({ data }: MessageEvent<BaseLayerRenderData>) => {
@@ -206,6 +241,13 @@ self.onmessage = async ({ data }: MessageEvent<BaseLayerRenderData>) => {
             handleDeleteBlurSprite(data);
             message = {
                 type: BaseLayerRenderMessageType.DeleteBlurSprite,
+                payload: undefined,
+            };
+            break;
+        case BaseLayerRenderMessageType.UpdateWatermarkSprite:
+            handleUpdateWatermarkSprite(data);
+            message = {
+                type: BaseLayerRenderMessageType.UpdateWatermarkSprite,
                 payload: undefined,
             };
             break;

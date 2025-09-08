@@ -29,10 +29,13 @@ import {
     updateBlurSpriteAction,
     deleteBlurSpriteAction,
     renderToCanvasAction,
+    updateWatermarkSpriteAction,
 } from './actions';
 import { supportOffscreenCanvas } from '@/utils';
-import { BlurSprite, BlurSpriteProps } from './baseLayerRenderActions';
+import { BlurSprite, BlurSpriteProps, WatermarkProps } from './baseLayerRenderActions';
 import { appError } from '@/utils/log';
+import { DRAW_LAYER_WATERMARK_CONTAINER_KEY } from '../drawLayer';
+import { defaultWatermarkProps } from '../drawToolbar/components/tools/drawExtraTool/components/watermarkTool';
 
 export type BaseLayerContextType = {
     /** 调整画布大小 */
@@ -79,6 +82,10 @@ export type BaseLayerContextType = {
      * 删除模糊效果
      */
     deleteBlurSprite: (blurElementId: string) => Promise<void>;
+    /**
+     * 更新水印效果
+     */
+    updateWatermarkSprite: (watermarkProps: WatermarkProps) => Promise<void>;
 };
 
 export const BaseLayerContext = React.createContext<BaseLayerContextType>({
@@ -99,6 +106,7 @@ export const BaseLayerContext = React.createContext<BaseLayerContextType>({
     createBlurSprite: () => Promise.resolve(),
     updateBlurSprite: () => Promise.resolve(),
     deleteBlurSprite: () => Promise.resolve(),
+    updateWatermarkSprite: () => Promise.resolve(),
 });
 
 export type BaseLayerEventActionType = {
@@ -181,6 +189,10 @@ export type BaseLayerEventActionType = {
         updateFilter: boolean,
     ) => Promise<void>;
     /**
+     * 更新水印效果
+     */
+    updateWatermarkSprite: (watermarkProps: WatermarkProps) => Promise<void>;
+    /**
      * 删除模糊效果
      */
     deleteBlurSprite: (blurElementId: string) => Promise<void>;
@@ -217,6 +229,7 @@ export const defaultBaseLayerActions: BaseLayerActionType = {
     createBlurSprite: () => Promise.resolve(),
     updateBlurSprite: () => Promise.resolve(),
     deleteBlurSprite: () => Promise.resolve(),
+    updateWatermarkSprite: () => Promise.resolve(),
 };
 
 type BaseLayerCoreActionType = {
@@ -258,6 +271,10 @@ type BaseLayerCoreActionType = {
         updateFilter: boolean,
     ) => Promise<void>;
     /**
+     * 更新水印效果
+     */
+    updateWatermarkSprite: (watermarkProps: WatermarkProps) => Promise<void>;
+    /**
      * 删除模糊效果
      */
     deleteBlurSprite: (blurElementId: string) => Promise<void>;
@@ -281,6 +298,7 @@ export const BaseLayerCore: React.FC<
     const canvasContainerChildCountRef = useRef<number>(0);
     const currentImageTextureRef = useRef<PIXI.Texture | undefined>(undefined);
     const blurSpriteMapRef = useRef<Map<string, BlurSprite>>(new Map());
+    const lastWatermarkPropsRef = useRef<WatermarkProps>(defaultWatermarkProps);
     const rendererWorker = useMemo(() => {
         if (supportOffscreenCanvas()) {
             return new Worker(new URL('./workers/renderWorker.ts', import.meta.url));
@@ -457,6 +475,21 @@ export const BaseLayerCore: React.FC<
         [rendererWorker],
     );
 
+    const updateWatermarkSprite = useCallback<BaseLayerActionType['updateWatermarkSprite']>(
+        async (watermarkProps: WatermarkProps) => {
+            await updateWatermarkSpriteAction(
+                rendererWorker,
+                canvasAppRef,
+                canvasContainerMapRef,
+                lastWatermarkPropsRef,
+                DRAW_LAYER_WATERMARK_CONTAINER_KEY,
+                watermarkProps,
+                window.devicePixelRatio,
+            );
+        },
+        [rendererWorker],
+    );
+
     useEffect(() => {
         return () => {
             disposeCanvas();
@@ -480,6 +513,7 @@ export const BaseLayerCore: React.FC<
             createBlurSprite,
             updateBlurSprite,
             deleteBlurSprite,
+            updateWatermarkSprite,
         }),
         [
             resizeCanvas,
@@ -496,6 +530,7 @@ export const BaseLayerCore: React.FC<
             createBlurSprite,
             updateBlurSprite,
             deleteBlurSprite,
+            updateWatermarkSprite,
         ],
     );
 
@@ -522,6 +557,7 @@ export const BaseLayerCore: React.FC<
             createBlurSprite,
             updateBlurSprite,
             deleteBlurSprite,
+            updateWatermarkSprite,
         };
     }, [
         resizeCanvas,
@@ -536,6 +572,7 @@ export const BaseLayerCore: React.FC<
         createBlurSprite,
         updateBlurSprite,
         deleteBlurSprite,
+        updateWatermarkSprite,
     ]);
 
     return (

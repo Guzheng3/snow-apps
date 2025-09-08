@@ -8,14 +8,15 @@ import { useIntl } from 'react-intl';
 import { useHotkeysApp } from '@/hooks/useHotkeysApp';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { getPlatformValue } from '@/utils';
+import { useStateSubscriber } from '@/hooks/useStateSubscriber';
+import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 
-export const ScanQrcodeTool: React.FC<{
-    finishCapture: () => void;
-}> = ({ finishCapture }) => {
+const ScanQrcodeToolCore: React.FC<{}> = ({}) => {
     const intl = useIntl();
+
     const { token } = theme.useToken();
     const { message } = useContext(AntdContext);
-    const { selectLayerActionRef, drawLayerActionRef } = useContext(DrawContext);
+    const { selectLayerActionRef, drawLayerActionRef, finishCapture } = useContext(DrawContext);
 
     const containerElementRef = useRef<HTMLDivElement>(null);
     const [containerStyle, setContainerStyle] = useState<React.CSSProperties>({});
@@ -156,4 +157,24 @@ export const ScanQrcodeTool: React.FC<{
             )}
         </div>
     );
+};
+
+export const ScanQrcodeTool = () => {
+    const [enable, setEnable] = useState(false);
+
+    useStateSubscriber(
+        DrawStatePublisher,
+        useCallback(
+            (drawState: DrawState) => {
+                setEnable(drawState === DrawState.ScanQrcode);
+            },
+            [setEnable],
+        ),
+    );
+
+    if (!enable) {
+        return null;
+    }
+
+    return <ScanQrcodeToolCore />;
 };

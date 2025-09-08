@@ -241,6 +241,20 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         return drawSelectRectAnimationRef.current?.getTargetObject();
     }, []);
 
+    const getSelectRectParams = useCallback(() => {
+        const selectRect = getSelectRect();
+        if (!selectRect) {
+            return undefined;
+        }
+
+        return {
+            rect: selectRect,
+            radius: selectRectRadiusRef.current,
+            shadowWidth: selectRectShadowConfigRef.current.shadowWidth,
+            shadowColor: selectRectShadowConfigRef.current.shadowColor,
+        };
+    }, [getSelectRect]);
+
     /**
      * 非选择状态时，是否可以激活选区
      */
@@ -667,6 +681,16 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
     );
     const updateDragModeRenderCallback = useCallbackRender(updateDragMode);
 
+    const publishSelectRectParams = useCallback(() => {
+        setDrawEvent({
+            event: DrawEvent.SelectRectParamsChange,
+            params: {
+                selectRectParams: getSelectRectParams()!,
+            },
+        });
+        setDrawEvent(undefined);
+    }, [getSelectRectParams, setDrawEvent]);
+
     const updateMonitorRect = useCallback(
         (rect: ElementRect) => {
             const captureBoundingBoxInfo = captureBoundingBoxInfoRef.current;
@@ -693,8 +717,17 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 },
             });
             setDrawEvent(undefined);
+
+            setDrawEvent({
+                event: DrawEvent.SelectRectParamsChange,
+                params: {
+                    selectRectParams: getSelectRectParams()!,
+                },
+            });
+            setDrawEvent(undefined);
+            publishSelectRectParams();
         },
-        [setDrawEvent],
+        [getSelectRectParams, publishSelectRectParams, setDrawEvent],
     );
     const updateMonitorRectRenderCallback = useCallbackRenderSlow(updateMonitorRect);
 
@@ -1174,19 +1207,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             getWindowId: () => selectedWindowIdRef.current,
             onCaptureFinish,
             getSelectRect,
-            getSelectRectParams: () => {
-                const selectRect = getSelectRect();
-                if (!selectRect) {
-                    return undefined;
-                }
-
-                return {
-                    rect: selectRect,
-                    radius: selectRectRadiusRef.current,
-                    shadowWidth: selectRectShadowConfigRef.current.shadowWidth,
-                    shadowColor: selectRectShadowConfigRef.current.shadowColor,
-                };
-            },
+            getSelectRectParams,
             setEnable: (enable: boolean) => {
                 setIsEnable(enable);
             },
@@ -1206,6 +1227,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         }),
         [
             getSelectRect,
+            getSelectRectParams,
             onCaptureBoundingBoxInfoReady,
             onCaptureFinish,
             onExecuteScreenshot,
@@ -1363,9 +1385,10 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                     true,
                     true,
                 );
+                publishSelectRectParams();
             }
         },
-        [drawCanvasSelectRect, getSelectRect, updateAppSettings],
+        [drawCanvasSelectRect, getSelectRect, publishSelectRectParams, updateAppSettings],
     );
     useEffect(() => {
         if (selectRectRadiusRef.current !== selectRectRadiusCache) {
@@ -1398,9 +1421,10 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                     true,
                     true,
                 );
+                publishSelectRectParams();
             }
         },
-        [drawCanvasSelectRect, getSelectRect, updateAppSettings],
+        [drawCanvasSelectRect, getSelectRect, publishSelectRectParams, updateAppSettings],
     );
     useEffect(() => {
         if (

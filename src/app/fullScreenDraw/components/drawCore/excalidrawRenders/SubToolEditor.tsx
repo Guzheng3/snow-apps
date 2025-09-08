@@ -1,11 +1,90 @@
 import { FormattedMessage } from 'react-intl';
 import { ExcalidrawPropsCustomOptions } from '@mg-chao/excalidraw/types';
-import { useCallback, useContext, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { DrawState, DrawStatePublisher } from '../extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { Radio } from 'antd';
+import { Input, Radio } from 'antd';
 import { ArrowIcon, DiamondIcon, LineIcon, RectIcon } from '@/components/icons';
 import { DrawContext } from '@/app/fullScreenDraw/extra';
+import { debounce } from 'es-toolkit';
+import { useStateRef } from '@/hooks/useStateRef';
+import { AppSettingsActionContext, AppSettingsGroup } from '@/app/contextWrap';
+
+const WatermarkTextInput = () => {
+    const { getDrawCoreAction } = useContext(DrawContext);
+    const { updateAppSettings } = useContext(AppSettingsActionContext);
+    const [watermarkText, setWatermarkText, watermarkTextRef] = useStateRef<string>('');
+
+    const updateWatermarkText = useMemo(() => {
+        return debounce(() => {
+            if (!watermarkTextRef.current) {
+                return;
+            }
+
+            const sceneElements = getDrawCoreAction()?.getExcalidrawAPI()?.getSceneElements();
+            if (!sceneElements) {
+                return;
+            }
+
+            const watermarkElement = sceneElements.find((element) => element.type === 'watermark');
+
+            if (watermarkElement?.watermarkText === watermarkTextRef.current) {
+                return;
+            }
+
+            getDrawCoreAction()
+                ?.getExcalidrawAPI()
+                ?.updateScene({
+                    elements: sceneElements.map((element) => {
+                        if (element.type === 'watermark') {
+                            return { ...element, watermarkText: watermarkTextRef.current };
+                        }
+                        return element;
+                    }),
+                    captureUpdate: 'IMMEDIATELY',
+                });
+
+            updateAppSettings(
+                AppSettingsGroup.Cache,
+                {
+                    lastWatermarkText: watermarkTextRef.current,
+                },
+                true,
+                true,
+                false,
+                true,
+                false,
+            );
+        }, 128);
+    }, [getDrawCoreAction, updateAppSettings, watermarkTextRef]);
+
+    const refreshWatermarkText = useMemo(() => {
+        return debounce(() => {
+            const sceneElements = getDrawCoreAction()?.getExcalidrawAPI()?.getSceneElements();
+            if (!sceneElements) {
+                return;
+            }
+
+            const watermarkElement = sceneElements.find((element) => element.type === 'watermark');
+
+            setWatermarkText(watermarkElement?.watermarkText ?? '');
+        }, 128);
+    }, [getDrawCoreAction, setWatermarkText]);
+
+    useEffect(() => {
+        refreshWatermarkText();
+    }, [refreshWatermarkText]);
+
+    const onChange = useCallback(
+        (e: React.ChangeEvent<HTMLInputElement>) => {
+            setWatermarkText(e.target.value);
+            updateWatermarkText();
+        },
+        [setWatermarkText, updateWatermarkText],
+    );
+
+    return <Input value={watermarkText} onChange={onChange} />;
+};
 
 const SubToolEditor: NonNullable<
     NonNullable<ExcalidrawPropsCustomOptions['pickerRenders']>['SubToolEditor']
@@ -77,6 +156,14 @@ const SubToolEditor: NonNullable<
         return undefined;
     }, [drawState, setTool]);
 
+    const watermarkSubTools = useMemo(() => {
+        if (drawState !== DrawState.Watermark) {
+            return undefined;
+        }
+
+        return <WatermarkTextInput />;
+    }, [drawState]);
+
     if (drawStyleSubTools) {
         return (
             <fieldset>
@@ -84,6 +171,17 @@ const SubToolEditor: NonNullable<
                     <FormattedMessage id="draw.drawStyleTool" />
                 </legend>
                 <div>{drawStyleSubTools}</div>
+            </fieldset>
+        );
+    }
+
+    if (watermarkSubTools) {
+        return (
+            <fieldset>
+                <legend>
+                    <FormattedMessage id="draw.watermarkTool.text" />
+                </legend>
+                <div>{watermarkSubTools}</div>
             </fieldset>
         );
     }

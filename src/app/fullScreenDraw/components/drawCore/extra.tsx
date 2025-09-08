@@ -147,6 +147,12 @@ export enum DrawState {
     Eraser = 11,
     // 锁定
     Lock = 12,
+    // 绘制额外工具
+    DrawExtraTools = 13,
+    // 水印
+    Watermark = 14,
+    // 聚光灯
+    Spotlight = 15,
     // 撤销
     Undo = 101,
     // 重做

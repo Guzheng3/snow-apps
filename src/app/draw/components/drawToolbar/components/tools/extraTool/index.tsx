@@ -1,38 +1,56 @@
-import { Button, message } from 'antd';
-import { SubTools } from '../../subTools';
-
+import { Button, Flex, message, Popover, theme } from 'antd';
 import { useIntl } from 'react-intl';
 import { ScanOutlined } from '@ant-design/icons';
 import { useState, useCallback, useContext } from 'react';
 import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { DrawState } from '@/app/fullScreenDraw/components/drawCore/extra';
-import { ScanQrcodeTool } from './components/scanQrcode';
 import { getButtonTypeByState } from '../../../extra';
 import { VideoRecordIcon } from '@/components/icons';
 import { createVideoRecordWindow } from '@/commands/core';
 import { DrawContext } from '@/app/draw/types';
 import { getPlatform } from '@/utils';
+import {
+    AppSettingsActionContext,
+    AppSettingsData,
+    AppSettingsGroup,
+    AppSettingsPublisher,
+} from '@/app/contextWrap';
 
 export enum ExtraToolList {
-    ScanQrcode = 0,
-    VideoRecord = 1,
+    None = 0,
+    ScanQrcode = 1,
+    VideoRecord = 2,
 }
 
 export const ExtraTool: React.FC<{
-    finishCapture: () => void;
-}> = ({ finishCapture }) => {
+    toolIcon: React.ReactNode;
+}> = ({ toolIcon }) => {
     const intl = useIntl();
+    const { token } = theme.useToken();
 
-    const { captureBoundingBoxInfoRef, selectLayerActionRef } = useContext(DrawContext);
+    const { updateAppSettings } = useContext(AppSettingsActionContext);
+    const { captureBoundingBoxInfoRef, selectLayerActionRef, finishCapture } =
+        useContext(DrawContext);
 
-    const [activeTool, setActiveTool] = useState<ExtraToolList | undefined>(undefined);
-    const [enabled, setEnabled] = useState(false);
+    const [lastActiveTool, setLastActiveTool] = useState<ExtraToolList>(ExtraToolList.None);
+    useStateSubscriber(
+        AppSettingsPublisher,
+        useCallback(
+            (settings: AppSettingsData) => {
+                setLastActiveTool(settings[AppSettingsGroup.Cache].lastExtraTool);
+            },
+            [setLastActiveTool],
+        ),
+    );
+
+    const [activeTool, setActiveTool] = useState<ExtraToolList>(ExtraToolList.None);
+    const [, setEnabled] = useState(false);
     const [, setDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
 
     const executeScanQrcode = useCallback(() => {
         setActiveTool(ExtraToolList.ScanQrcode);
-    }, []);
+    }, [setActiveTool]);
 
     const executeVideoRecord = useCallback(() => {
         const captureBoundingBoxInfo = captureBoundingBoxInfoRef.current;
@@ -68,6 +86,21 @@ export const ExtraTool: React.FC<{
         }, 0);
     }, [captureBoundingBoxInfoRef, finishCapture, intl, selectLayerActionRef]);
 
+    const updateLastActiveTool = useCallback(
+        (value: ExtraToolList) => {
+            updateAppSettings(
+                AppSettingsGroup.Cache,
+                { lastExtraTool: value },
+                true,
+                true,
+                false,
+                true,
+                false,
+            );
+        },
+        [updateAppSettings],
+    );
+
     useStateSubscriber(
         DrawStatePublisher,
         useCallback(
@@ -79,54 +112,66 @@ export const ExtraTool: React.FC<{
                 ) {
                     if (drawState === DrawState.ScanQrcode) {
                         executeScanQrcode();
+                        updateLastActiveTool(ExtraToolList.ScanQrcode);
                     } else if (drawState === DrawState.VideoRecord) {
                         executeVideoRecord();
+                        updateLastActiveTool(ExtraToolList.VideoRecord);
                     }
 
                     setEnabled(true);
                 } else {
-                    setActiveTool(undefined);
+                    setActiveTool(ExtraToolList.None);
                     setEnabled(false);
                 }
             },
-            [executeScanQrcode, executeVideoRecord],
+            [executeScanQrcode, executeVideoRecord, updateLastActiveTool],
         ),
     );
 
-    if (!enabled) {
-        return null;
+    const scanQrcodeButton = (
+        <Button
+            icon={<ScanOutlined />}
+            title={intl.formatMessage({ id: 'draw.extraTool.scanQrcode' })}
+            type={getButtonTypeByState(activeTool === ExtraToolList.ScanQrcode)}
+            key="scanQrcode"
+            onClick={() => {
+                setDrawState(DrawState.ScanQrcode);
+            }}
+        />
+    );
+
+    const videoRecordButton = (
+        <Button
+            icon={<VideoRecordIcon />}
+            title={intl.formatMessage({ id: 'draw.extraTool.videoRecord' })}
+            type={getButtonTypeByState(activeTool === ExtraToolList.VideoRecord)}
+            key="videoRecord"
+            onClick={() => {
+                setDrawState(DrawState.VideoRecord);
+            }}
+        />
+    );
+
+    let mainToolbarButton = toolIcon;
+
+    if (lastActiveTool === ExtraToolList.ScanQrcode) {
+        mainToolbarButton = scanQrcodeButton;
+    } else if (lastActiveTool === ExtraToolList.VideoRecord) {
+        mainToolbarButton = videoRecordButton;
     }
 
     return (
-        <>
-            <SubTools
-                buttons={[
-                    <Button
-                        icon={<ScanOutlined />}
-                        title={intl.formatMessage({ id: 'draw.extraTool.scanQrcode' })}
-                        type={getButtonTypeByState(activeTool === ExtraToolList.ScanQrcode)}
-                        key="scanQrcode"
-                        onClick={() => {
-                            setDrawState(DrawState.ScanQrcode);
-                        }}
-                    />,
-                    <Button
-                        icon={<VideoRecordIcon />}
-                        title={intl.formatMessage({ id: 'draw.extraTool.videoRecord' })}
-                        type={getButtonTypeByState(activeTool === ExtraToolList.VideoRecord)}
-                        key="videoRecord"
-                        onClick={() => {
-                            setDrawState(DrawState.VideoRecord);
-                        }}
-                    />,
-                ]}
-            />
+        <Popover
+            trigger="hover"
+            content={
+                <Flex align="center" gap={token.paddingXS} className="popover-toolbar">
+                    {scanQrcodeButton}
 
-            <>
-                {activeTool === ExtraToolList.ScanQrcode && (
-                    <ScanQrcodeTool finishCapture={finishCapture} />
-                )}
-            </>
-        </>
+                    {videoRecordButton}
+                </Flex>
+            }
+        >
+            <div>{mainToolbarButton}</div>
+        </Popover>
     );
 };

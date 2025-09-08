@@ -1,6 +1,6 @@
 import { ElementRect } from '@/commands';
 import { ApplicationOptions } from 'pixi.js';
-import { BlurSpriteProps } from '../baseLayerRenderActions';
+import { BlurSpriteProps, WatermarkProps } from '../baseLayerRenderActions';
 import * as PIXI from 'pixi.js';
 
 export type RefWrap<T> = {
@@ -20,6 +20,7 @@ export enum BaseLayerRenderMessageType {
     ClearContainer = 'clearContainer',
     CreateBlurSprite = 'createBlurSprite',
     UpdateBlurSprite = 'updateBlurSprite',
+    UpdateWatermarkSprite = 'updateWatermarkSprite',
     DeleteBlurSprite = 'deleteBlurSprite',
 }
 
@@ -103,6 +104,15 @@ export type BaseLayerRenderUpdateBlurSpriteData = {
     };
 };
 
+export type BaseLayerRenderUpdateWatermarkSpriteData = {
+    type: BaseLayerRenderMessageType.UpdateWatermarkSprite;
+    payload: {
+        watermarkContainerKey: string;
+        watermarkProps: WatermarkProps;
+        textResolution: number;
+    };
+};
+
 export type BaseLayerRenderDeleteBlurSpriteData = {
     type: BaseLayerRenderMessageType.DeleteBlurSprite;
     payload: {
@@ -123,6 +133,7 @@ export type BaseLayerRenderData =
     | BaseLayerRenderClearContainerData
     | BaseLayerRenderCreateBlurSpriteData
     | BaseLayerRenderUpdateBlurSpriteData
+    | BaseLayerRenderUpdateWatermarkSpriteData
     | BaseLayerRenderDeleteBlurSpriteData;
 
 export type RenderInitResult = {
@@ -191,6 +202,11 @@ export type RenderUpdateBlurSpriteResult = {
     payload: undefined;
 };
 
+export type RenderUpdateWatermarkSpriteResult = {
+    type: BaseLayerRenderMessageType.UpdateWatermarkSprite;
+    payload: undefined;
+};
+
 export type RenderDeleteBlurSpriteResult = {
     type: BaseLayerRenderMessageType.DeleteBlurSprite;
     payload: undefined;
@@ -199,6 +215,7 @@ export type RenderDeleteBlurSpriteResult = {
 export type RenderBlurSpriteResult =
     | RenderCreateBlurSpriteResult
     | RenderUpdateBlurSpriteResult
+    | RenderUpdateWatermarkSpriteResult
     | RenderDeleteBlurSpriteResult;
 
 export type RenderResult =
@@ -213,4 +230,5 @@ export type RenderResult =
     | RenderAddImageToContainerResult
     | RenderClearContainerResult
     | RenderBlurSpriteResult
-    | RenderClearContainerResult;
+    | RenderClearContainerResult
+    | RenderUpdateWatermarkSpriteResult;

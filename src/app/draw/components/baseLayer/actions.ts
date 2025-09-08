@@ -16,6 +16,8 @@ import {
     renderUpdateBlurSpriteAction,
     renderDeleteBlurSpriteAction,
     renderRenderToCanvasAction,
+    WatermarkProps,
+    renderUpdateWatermarkSpriteAction,
 } from './baseLayerRenderActions';
 import {
     BaseLayerRenderDisposeData,
@@ -33,6 +35,7 @@ import {
     BaseLayerRenderUpdateBlurSpriteData,
     BaseLayerRenderDeleteBlurSpriteData,
     BaseLayerRenderRenderToCanvasData,
+    BaseLayerRenderUpdateWatermarkSpriteData,
 } from './workers/renderWorkerTypes';
 import { ElementRect } from '@/commands';
 
@@ -459,6 +462,50 @@ export const deleteBlurSpriteAction = async (
             renderWorker.postMessage(DeleteBlurSpriteData);
         } else {
             renderDeleteBlurSpriteAction(blurSpriteMapRef, blurElementId);
+            resolve(undefined);
+        }
+    });
+};
+
+export const updateWatermarkSpriteAction = async (
+    renderWorker: Worker | undefined,
+    canvasAppRef: RefObject<Application | undefined>,
+    canvasContainerMapRef: RefObject<Map<string, Container>>,
+    lastWatermarkPropsRef: RefObject<WatermarkProps>,
+    watermarkContainerKey: string,
+    watermarkProps: WatermarkProps,
+    textResolution: number,
+): Promise<undefined> => {
+    return new Promise((resolve) => {
+        if (renderWorker) {
+            const UpdateWatermarkSpriteData: BaseLayerRenderUpdateWatermarkSpriteData = {
+                type: BaseLayerRenderMessageType.UpdateWatermarkSprite,
+                payload: {
+                    watermarkContainerKey: watermarkContainerKey,
+                    watermarkProps: watermarkProps,
+                    textResolution: textResolution,
+                },
+            };
+            const handleMessage = (event: MessageEvent<RenderResult>) => {
+                const { type, payload } = event.data;
+                if (type === BaseLayerRenderMessageType.UpdateWatermarkSprite) {
+                    resolve(payload);
+                    renderWorker.removeEventListener('message', handleMessage);
+                }
+            };
+
+            renderWorker.addEventListener('message', handleMessage);
+
+            renderWorker.postMessage(UpdateWatermarkSpriteData);
+        } else {
+            renderUpdateWatermarkSpriteAction(
+                canvasAppRef,
+                canvasContainerMapRef,
+                watermarkContainerKey,
+                lastWatermarkPropsRef,
+                watermarkProps,
+                textResolution,
+            );
             resolve(undefined);
         }
     });

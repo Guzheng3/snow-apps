@@ -66,6 +66,8 @@ import {
 } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useStateRef } from '@/hooks/useStateRef';
 import { getExcalidrawCanvas } from '@/utils/excalidraw';
+import { ExtraTool } from './components/tools/extraTool';
+import { DrawExtraTool } from './components/tools/drawExtraTool';
 
 export type DrawToolbarProps = {
     actionRef: React.RefObject<DrawToolbarActionType | undefined>;
@@ -316,6 +318,12 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                 case DrawState.Blur:
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'blur',
+                        locked: toolLocked,
+                    });
+                    break;
+                case DrawState.Watermark:
+                    drawCacheLayerActionRef.current?.setActiveTool({
+                        type: 'watermark',
                         locked: toolLocked,
                     });
                     break;
@@ -694,6 +702,8 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                                 }}
                             />
 
+                            <DrawExtraTool onToolClick={onToolClick} />
+
                             {!customToolbarToolHiddenMap?.[DrawState.Redo] && (
                                 <div className="draw-toolbar-splitter" />
                             )}
@@ -705,17 +715,24 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 
                             <div className="draw-toolbar-splitter" />
 
-                            {/* 额外工具 */}
-                            <ToolButton
-                                hidden={customToolbarToolHiddenMap?.[DrawState.ExtraTools]}
-                                componentKey={KeyEventKey.ExtraToolsTool}
-                                icon={<ToolIcon style={{ fontSize: '0.95em' }} />}
-                                drawState={DrawState.ExtraTools}
-                                extraDrawState={[DrawState.ScanQrcode, DrawState.VideoRecord]}
-                                disable={enableScrollScreenshot}
-                                onClick={() => {
-                                    onToolClick(DrawState.ExtraTools);
-                                }}
+                            <ExtraTool
+                                // 额外工具
+                                toolIcon={
+                                    <ToolButton
+                                        hidden={customToolbarToolHiddenMap?.[DrawState.ExtraTools]}
+                                        icon={<ToolIcon style={{ fontSize: '0.95em' }} />}
+                                        drawState={DrawState.ExtraTools}
+                                        extraDrawState={[
+                                            DrawState.ScanQrcode,
+                                            DrawState.VideoRecord,
+                                        ]}
+                                        disable={enableScrollScreenshot}
+                                        onClick={() => {
+                                            // 现在使用 Popover 来控制额外工具的显示
+                                            // onToolClick(DrawState.ExtraTools);
+                                        }}
+                                    />
+                                }
                             />
 
                             {/* 固定到屏幕 */}
@@ -897,6 +914,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     margin-left: -3px;
                 }
 
+                :global(.popover-toolbar) :global(.ant-btn) :global(.ant-btn-icon),
                 .draw-toolbar-container :global(.ant-btn) :global(.ant-btn-icon) {
                     font-size: 24px;
                     display: flex;

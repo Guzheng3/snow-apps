@@ -24,6 +24,7 @@ export type DrawLayerProps = {
 };
 
 export const DRAW_LAYER_BLUR_CONTAINER_KEY = 'draw_layer_blur_container';
+export const DRAW_LAYER_WATERMARK_CONTAINER_KEY = 'draw_layer_watermark_container';
 
 const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
     const {
@@ -33,11 +34,13 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
         clearContainer,
         createBlurSprite,
         updateBlurSprite,
+        updateWatermarkSprite,
         deleteBlurSprite,
     } = useContext(BaseLayerContext);
 
     const currentCaptureImageSrcRef = useRef<string | undefined>(undefined);
     const blurContainerKeyRef = useRef<string | undefined>(undefined);
+    const watermarkContainerKeyRef = useRef<string | undefined>(undefined);
     /*
      * 初始化截图
      */
@@ -47,7 +50,11 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
             currentCaptureImageSrcRef.current = imageSrc;
             await addImageToContainer(INIT_CONTAINER_KEY, imageSrc);
 
-            // 模糊层和和绘制层独立处理
+            // 水印层
+            watermarkContainerKeyRef.current = await createNewCanvasContainer(
+                DRAW_LAYER_WATERMARK_CONTAINER_KEY,
+            );
+            // 模糊层
             blurContainerKeyRef.current = await createNewCanvasContainer(
                 DRAW_LAYER_BLUR_CONTAINER_KEY,
             );
@@ -64,7 +71,10 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
     const switchCaptureHistory = useCallback(
         async (item: CaptureHistoryItem | undefined) => {
             // 移除当前显示的已有内容
-            await clearContainer(DRAW_LAYER_BLUR_CONTAINER_KEY);
+            await Promise.all([
+                clearContainer(DRAW_LAYER_BLUR_CONTAINER_KEY),
+                clearContainer(DRAW_LAYER_WATERMARK_CONTAINER_KEY),
+            ]);
 
             if (!item) {
                 if (currentCaptureImageSrcRef.current) {
@@ -92,6 +102,7 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
             switchCaptureHistory,
             createBlurSprite,
             updateBlurSprite,
+            updateWatermarkSprite,
             deleteBlurSprite,
             canvasRender,
         }),
@@ -101,6 +112,7 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
             switchCaptureHistory,
             createBlurSprite,
             updateBlurSprite,
+            updateWatermarkSprite,
             deleteBlurSprite,
             canvasRender,
         ],

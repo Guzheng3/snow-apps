@@ -46,6 +46,7 @@ import {
     textFileWrite,
 } from '@/commands/file';
 import { releaseDrawPage } from '@/functions/screenshot';
+import { ExtraToolList } from './draw/components/drawToolbar/components/tools/extraTool';
 
 export enum AppSettingsGroup {
     Common = 'common',
@@ -160,6 +161,12 @@ export type AppSettingsData = {
         selectRectShadowWidth: number;
         /** 截图选区阴影颜色 */
         selectRectShadowColor: string;
+        // 记录上一次使用的额外工具
+        lastExtraTool: ExtraToolList;
+        // 记录上一次使用的绘制额外工具
+        lastDrawExtraTool: DrawState;
+        // 上一次水印内容
+        lastWatermarkText: string;
     };
     [AppSettingsGroup.DrawToolbarKeyEvent]: Record<
         DrawToolbarKeyEventKey,
@@ -363,6 +370,9 @@ export const defaultAppSettingsData: AppSettingsData = {
         selectRectRadius: 0,
         selectRectShadowWidth: 0,
         selectRectShadowColor: '#595959',
+        lastExtraTool: ExtraToolList.None,
+        lastDrawExtraTool: DrawState.Idle,
+        lastWatermarkText: '',
     },
     [AppSettingsGroup.DrawToolbarKeyEvent]: defaultDrawToolbarKeyEventSettings,
     [AppSettingsGroup.KeyEvent]: defaultKeyEventSettings,
@@ -739,6 +749,18 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? newSettings.selectRectShadowColor
                             : (prevSettings?.selectRectShadowColor ??
                               defaultAppSettingsData[group].selectRectShadowColor),
+                    lastWatermarkText:
+                        typeof newSettings?.lastWatermarkText === 'string'
+                            ? newSettings.lastWatermarkText
+                            : (prevSettings?.lastWatermarkText ?? ''),
+                    lastExtraTool:
+                        typeof newSettings?.lastExtraTool === 'number'
+                            ? newSettings.lastExtraTool
+                            : (prevSettings?.lastExtraTool ?? ExtraToolList.None),
+                    lastDrawExtraTool:
+                        typeof newSettings?.lastDrawExtraTool === 'number'
+                            ? newSettings.lastDrawExtraTool
+                            : (prevSettings?.lastDrawExtraTool ?? DrawState.Idle),
                 };
             } else if (group === AppSettingsGroup.Screenshot) {
                 newSettings = newSettings as AppSettingsData[typeof group];

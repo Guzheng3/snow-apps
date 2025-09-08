@@ -89,6 +89,7 @@ export const draw = {
     'draw.selectPrevRectTool': '选择上一次选定的区域',
     'draw.fixedSelectSize': '固定选区宽高比',
     'draw.laserPointerTool': '激光笔',
+    'draw.watermarkTool': '水印',
     'draw.mouseThroughTool': '鼠标穿透',
     'draw.ocrLoading': 'OCR 识别中',
     'draw.copySelectedText': '复制选中文本',
@@ -138,4 +139,5 @@ export const draw = {
     'draw.scrollAction.rotateX': 'X 轴旋转',
     'draw.scrollAction.rotateY': 'Y 轴旋转',
     'draw.scrollAction.rotateZ': 'Z 轴旋转',
+    'draw.watermarkTool.text': '水印文本',
 };

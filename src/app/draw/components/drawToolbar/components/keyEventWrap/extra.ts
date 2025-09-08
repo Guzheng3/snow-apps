@@ -47,7 +47,6 @@ export enum KeyEventKey {
     RotateWithDiscreteAnglePicker = 'rotateWithDiscreteAnglePicker',
     AutoAlignPicker = 'autoAlignPicker',
     SwitchColorFormat = 'switchColorFormat',
-    ExtraToolsTool = 'extraToolsTool',
     SelectPrevRectTool = 'selectPrevRectTool',
     LockWidthHeightPicker = 'lockWidthHeightPicker',
     PreviousCapture = 'previousCapture',
@@ -118,10 +117,6 @@ export const defaultDrawToolbarKeyEventSettings: Record<KeyEventKey, KeyEventVal
     },
     [KeyEventKey.CopyTool]: {
         hotKey: getPlatformValue('Ctrl+C, Enter', 'Meta+C, Enter'),
-        unique: true,
-    },
-    [KeyEventKey.ExtraToolsTool]: {
-        hotKey: getPlatformValue('Ctrl+E', 'Meta+E'),
         unique: true,
     },
     [KeyEventKey.OcrDetectTool]: {

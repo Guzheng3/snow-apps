@@ -3,6 +3,7 @@ import * as PIXI from 'pixi.js';
 import { RefWrap } from './workers/renderWorkerTypes';
 import { RefObject } from 'react';
 import { ElementRect } from '@/commands';
+import { SelectRectParams } from '../selectLayer';
 
 export type RefType<T> = RefWrap<T> | RefObject<T>;
 
@@ -263,4 +264,139 @@ export const renderDeleteBlurSpriteAction = (
     blurSprite.spriteBlurFliter.destroy();
     blurSprite.spriteMask.destroy();
     blurSpriteMapRef.current.delete(blurElementId);
+};
+
+export type WatermarkProps = {
+    selectRectParams: SelectRectParams;
+    fontSize: number;
+    color: string;
+    opacity: number;
+    text: string;
+    visible: boolean;
+};
+
+const watermarkTextRotateAngle = Math.PI * (45 / 180);
+const watermarkTextPadding = 32;
+export const renderUpdateWatermarkSpriteAction = (
+    canvasAppRef: RefType<Application | undefined>,
+    canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
+    watermarkContainerKey: string,
+    lastWatermarkPropsRef: RefType<WatermarkProps>,
+    watermarkProps: WatermarkProps,
+    textResolution: number,
+) => {
+    const { selectRectParams: lastSelectRectParams } = lastWatermarkPropsRef.current;
+    const { selectRectParams } = watermarkProps;
+
+    const container = canvasContainerMapRef.current.get(watermarkContainerKey);
+    if (!container) {
+        return;
+    }
+
+    const canvasApp = canvasAppRef.current;
+    if (!canvasApp) {
+        return;
+    }
+
+    container.visible = watermarkProps.visible;
+
+    // 判断是否创建 watermark 的 sprite
+    let watermarkSprite = container.children[0] as PIXI.TilingSprite | undefined;
+    if (!watermarkSprite) {
+        watermarkSprite = new PIXI.TilingSprite({
+            texture: PIXI.Texture.WHITE,
+        });
+        container.addChild(watermarkSprite);
+    }
+
+    // 判断是否创建 watermark 的 mask
+    let watermarkSpriteMask = container.children[1] as PIXI.Graphics | undefined;
+    if (!watermarkSpriteMask) {
+        watermarkSpriteMask = new PIXI.Graphics();
+        container.addChild(watermarkSpriteMask);
+        watermarkSprite.setMask({
+            mask: watermarkSpriteMask,
+        });
+    }
+
+    const { rect: selectRect } = selectRectParams;
+
+    if (
+        lastWatermarkPropsRef.current.text !== watermarkProps.text ||
+        lastWatermarkPropsRef.current.fontSize !== watermarkProps.fontSize ||
+        lastWatermarkPropsRef.current.color !== watermarkProps.color
+    ) {
+        const textContainer = new PIXI.Container();
+        const textSource = new PIXI.Text({
+            text: watermarkProps.text,
+            style: {
+                fontSize: watermarkProps.fontSize,
+                stroke: {
+                    color: watermarkProps.color,
+                },
+                fill: watermarkProps.color,
+            },
+            resolution: textResolution,
+        });
+        const textWidth = textSource.width;
+        const textHeight = textSource.height;
+        const rotatedWidth = Math.ceil(
+            Math.abs(textWidth * Math.cos(watermarkTextRotateAngle)) +
+                Math.abs(textHeight * Math.sin(watermarkTextRotateAngle)),
+        );
+        const rotatedHeight = Math.ceil(
+            Math.abs(textWidth * Math.sin(watermarkTextRotateAngle)) +
+                Math.abs(textHeight * Math.cos(watermarkTextRotateAngle)),
+        );
+
+        textContainer.addChild(
+            new PIXI.Graphics()
+                .rect(
+                    0,
+                    0,
+                    rotatedWidth + watermarkTextPadding,
+                    rotatedHeight + watermarkTextPadding,
+                )
+                .fill('transparent'),
+        );
+        textContainer.addChild(textSource);
+        textContainer.width = rotatedWidth + watermarkTextPadding;
+        textContainer.height = rotatedHeight + watermarkTextPadding;
+        textSource.localTransform.rotate(watermarkTextRotateAngle);
+
+        const textTexture = canvasApp.renderer.extract.texture(textContainer);
+        watermarkSprite.texture = textTexture;
+    }
+
+    if (lastWatermarkPropsRef.current.opacity !== watermarkProps.opacity) {
+        watermarkSprite.alpha = (watermarkProps.opacity / 100) * 0.24; // 水印保持一定的透明度
+    }
+
+    // 比较耗时，做个节流
+    if (
+        lastSelectRectParams.radius !== selectRectParams.radius ||
+        lastSelectRectParams.rect.min_x !== selectRectParams.rect.min_x ||
+        lastSelectRectParams.rect.min_y !== selectRectParams.rect.min_y ||
+        lastSelectRectParams.rect.max_x !== selectRectParams.rect.max_x ||
+        lastSelectRectParams.rect.max_y !== selectRectParams.rect.max_y
+    ) {
+        watermarkSprite.width = selectRect.max_x - selectRect.min_x;
+        watermarkSprite.height = selectRect.max_y - selectRect.min_y;
+        watermarkSprite.x = selectRect.min_x;
+        watermarkSprite.y = selectRect.min_y;
+
+        watermarkSpriteMask
+            .clear()
+            .roundRect(
+                watermarkSprite.x,
+                watermarkSprite.y,
+                watermarkSprite.width,
+                watermarkSprite.height,
+                selectRectParams.radius,
+            )
+            .fill();
+    }
+
+    lastWatermarkPropsRef.current = watermarkProps;
+    canvasApp.render();
 };

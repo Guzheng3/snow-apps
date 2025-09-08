@@ -1,6 +1,6 @@
 import { CanvasLayer, CaptureStep } from './types';
 import { DrawLayerActionType } from './components/drawLayer';
-import { SelectLayerActionType } from './components/selectLayer';
+import { SelectLayerActionType, SelectRectParams } from './components/selectLayer';
 import { createPublisher } from '@/hooks/useStatePublisher';
 import { BaseLayerEventActionType } from './components/baseLayer';
 import { ScreenshotType } from '@/functions/screenshot';
@@ -84,6 +84,8 @@ export enum DrawEvent {
     MoveCursor = 2,
     /** 选区所在的 monitor 发生变化，可能相同值重复触发 */
     ChangeMonitor = 3,
+    /** 选区参数发生变化 */
+    SelectRectParamsChange = 4,
 }
 
 export type DrawEventParams =
@@ -108,6 +110,12 @@ export type DrawEventParams =
           event: DrawEvent.ChangeMonitor;
           params: {
               monitorRect: ElementRect;
+          };
+      }
+    | {
+          event: DrawEvent.SelectRectParamsChange;
+          params: {
+              selectRectParams: SelectRectParams;
           };
       }
     | undefined;

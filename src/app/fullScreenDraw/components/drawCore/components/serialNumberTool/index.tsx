@@ -22,7 +22,6 @@ import {
     ExcalidrawTextElement,
 } from '@mg-chao/excalidraw/element/types';
 import { AppState } from '@mg-chao/excalidraw/types';
-import Color from 'color';
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 export const isSerialNumberElement = (element: ExcalidrawElement | undefined) => {
@@ -113,7 +112,6 @@ export const generateSerialNumber = (
 ) => {
     const id = new Date().valueOf();
 
-    const ellipseBackgroundId = `snow-shot_serial-number_${id}-ellipse-background`;
     const ellipseId = `snow-shot_serial-number_${id}-ellipse`;
     const textId = `snow-shot_serial-number_${id}-text`;
     const serialNumberGroupNumber = `snow-shot_serial-number_${id}-group-number`;

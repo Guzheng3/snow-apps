@@ -240,6 +240,7 @@ const DrawCoreComponent: React.FC<{
             } else if (
                 getDrawState() === DrawState.Text ||
                 getDrawState() === DrawState.SerialNumber ||
+                getDrawState() === DrawState.Watermark ||
                 selectedElement?.type === 'text'
             ) {
                 const currentFontSize =

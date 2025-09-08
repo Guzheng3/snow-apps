@@ -56,7 +56,7 @@ import { getImageFormat, getImagePathFromSettings, showImageDialog } from '@/uti
 import { scrollScreenshotSaveToFile } from '@/commands/scrollScreenshot';
 import { AppSettingsActionContext, AppSettingsGroup } from '../contextWrap';
 import { AppSettingsPublisher } from '../contextWrap';
-import { ExtraTool } from './components/drawToolbar/components/tools/extraTool';
+import {} from './components/drawToolbar/components/tools/extraTool';
 import {
     closeWindowAfterDelay,
     createFixedContentWindow,
@@ -88,6 +88,7 @@ import {
     DrawContext as CommonDrawContext,
     DrawContextType as CommonDrawContextType,
 } from '../fullScreenDraw/extra';
+import { ScanQrcodeTool } from './components/drawToolbar/components/tools/scanQrcodeTool';
 
 const DrawCacheLayer = dynamic(
     async () => (await import('./components/drawCacheLayer')).DrawCacheLayer,
@@ -885,7 +886,6 @@ const DrawPageCore: React.FC<{
             (id) => currentAppState?.selectedGroupIds[id],
         );
 
-
         if (editingTextElement) {
             latestExcalidrawNewElementRef.current = {
                 editingTextElement: editingTextElement,
@@ -953,7 +953,7 @@ const DrawPageCore: React.FC<{
                 >
                     <CaptureHistoryController actionRef={captureHistoryActionRef} />
 
-                    <ExtraTool finishCapture={finishCapture} />
+                    <ScanQrcodeTool />
 
                     <OcrBlocks actionRef={ocrBlocksActionRef} finishCapture={finishCapture} />
 
