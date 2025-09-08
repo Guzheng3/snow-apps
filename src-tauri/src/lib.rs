@@ -133,6 +133,7 @@ pub fn run() {
                     if let Err(e) = window_clone.hide() {
                         log::error!("[macos] hide window error: {:?}", e);
                     }
+                    window_clone.emit("on-hide-main-window", ()).unwrap();
                 }
             });
 

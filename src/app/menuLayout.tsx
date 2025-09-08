@@ -239,6 +239,7 @@ const MenuContentCore: React.FC<{
                             icon={<CloseOutlined />}
                             onClick={() => {
                                 appWindowRef.current?.hide();
+                                appWindowRef.current?.emit('on-hide-main-window');
                             }}
                         />
                     </Space>

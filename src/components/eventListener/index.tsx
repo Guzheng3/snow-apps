@@ -254,6 +254,10 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
                     listenKeyStopByWindowLabel(payload);
                 },
             });
+            defaultListener.push({
+                event: 'on-hide-main-window',
+                callback: async () => {},
+            });
         } else {
             defaultListener.push({
                 event: FIXED_CONTENT_FOCUS_MODE_SHOW_ALL_WINDOW,

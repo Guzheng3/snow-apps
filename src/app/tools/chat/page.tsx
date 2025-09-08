@@ -66,6 +66,8 @@ import { writeTextToClipboard } from '@/utils/clipboard';
 import { formatKey } from '@/utils/format';
 import urlJoin from 'url-join';
 import { appError } from '@/utils/log';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { EventListenerContext } from '@/components/eventListener';
 
 type BubbleDataType = AntdBubbleDataType & {
     flow_config?: ChatMessageFlowConfig;
@@ -839,6 +841,21 @@ const Chat = () => {
             autoScrollRef.current = true;
         }, 3000);
     }, []);
+
+    const { addListener, removeListener } = useContext(EventListenerContext);
+
+    useEffect(() => {
+        const listener = addListener('on-hide-main-window', () => {
+            if (getAppSettings()[AppSettingsGroup.FunctionChat].autoCreateNewSessionOnCloseWindow) {
+                createNewSession();
+            }
+        });
+
+        return () => {
+            removeListener(listener);
+        };
+    }, [getAppSettings, createNewSession, addListener, removeListener]);
+
     const chatList = (
         <div className="chatList">
             <RSC

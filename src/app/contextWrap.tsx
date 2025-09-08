@@ -195,6 +195,8 @@ export type AppSettingsData = {
     };
     [AppSettingsGroup.FunctionChat]: {
         autoCreateNewSession: boolean;
+        /** 关闭窗口时自动创建新会话 */
+        autoCreateNewSessionOnCloseWindow: boolean;
         chatApiConfigList: ChatApiConfig[];
     };
     [AppSettingsGroup.FunctionTranslation]: {
@@ -398,6 +400,7 @@ export const defaultAppSettingsData: AppSettingsData = {
     },
     [AppSettingsGroup.FunctionChat]: {
         autoCreateNewSession: true,
+        autoCreateNewSessionOnCloseWindow: true,
         chatApiConfigList: [],
     },
     [AppSettingsGroup.FunctionTranslation]: {
@@ -1076,6 +1079,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                           }))
                         : (prevSettings?.chatApiConfigList ??
                           defaultAppSettingsData[group].chatApiConfigList),
+                    autoCreateNewSessionOnCloseWindow:
+                        typeof newSettings?.autoCreateNewSessionOnCloseWindow === 'boolean'
+                            ? newSettings.autoCreateNewSessionOnCloseWindow
+                            : (prevSettings?.autoCreateNewSessionOnCloseWindow ??
+                              defaultAppSettingsData[group].autoCreateNewSessionOnCloseWindow),
                 };
             } else if (group === AppSettingsGroup.FunctionTranslation) {
                 newSettings = newSettings as AppSettingsData[typeof group];

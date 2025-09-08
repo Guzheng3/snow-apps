@@ -70,7 +70,9 @@ export const settings = {
     'settings.functionSettings.translationSettings.chatPrompt.targetLanguage': '目标语言',
     'settings.functionSettings.translationSettings.chatPrompt.translationDomain': '翻译领域',
     'settings.functionSettings.chatSettings': 'AI 对话',
-    'settings.functionSettings.chatSettings.autoCreateNewSession': '快捷键启动自动创建新会话',
+    'settings.functionSettings.chatSettings.autoCreateNewSession': '快捷键启动时自动创建新会话',
+    'settings.functionSettings.chatSettings.autoCreateNewSessionOnCloseWindow':
+        '关闭窗口时自动创建新会话',
     'settings.functionSettings.chatSettings.apiConfig': 'API 配置',
     'settings.functionSettings.chatSettings.apiConfig.tip': '仅支持兼容 OpenAI SDK 的 API 配置',
     'settings.functionSettings.chatSettings.apiConfig.add': '添加 API 配置',
@@ -126,7 +128,8 @@ export const settings = {
     'settings.functionSettings.screenshotSettings.autoSaveFileMode.saveFileFormat': '保存文件格式',
     'settings.functionSettings.outputSettings': '输出',
     'settings.functionSettings.outputSettings.variables': '支持的变量',
-    'settings.functionSettings.outputSettings.variables.focusedWindowAppName': '截图当前具有焦点的窗口的程序名',
+    'settings.functionSettings.outputSettings.variables.focusedWindowAppName':
+        '截图当前具有焦点的窗口的程序名',
     'settings.functionSettings.outputSettings.variables.date': '日期',
     'settings.functionSettings.outputSettings.fileNameFormat': '文件名格式',
     'settings.functionSettings.outputSettings.manualSaveFileNameFormat': '手动保存文件名格式',

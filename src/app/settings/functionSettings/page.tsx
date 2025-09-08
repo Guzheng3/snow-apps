@@ -419,7 +419,7 @@ export default function SystemSettings() {
                         </Col>
                     </Row>
 
-                    <Row>
+                    <Row gutter={token.margin}>
                         <ProFormSwitch
                             name="focusedWindowCopyToClipboard"
                             layout="horizontal"
@@ -457,7 +457,7 @@ export default function SystemSettings() {
                         </Col>
                     </Row>
 
-                    <Row>
+                    <Row gutter={token.margin}>
                         <Col span={12}>
                             <ProForm.Item
                                 name="saveFileDirectory"
@@ -850,175 +850,202 @@ export default function SystemSettings() {
                     }}
                     submitter={false}
                 >
-                    <ProForm.Item
-                        label={
-                            <IconLabel
+                    <Row gutter={token.padding}>
+                        <Col span={12}>
+                            <ProForm.Item
                                 label={
-                                    <FormattedMessage id="settings.functionSettings.chatSettings.autoCreateNewSession" />
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.functionSettings.chatSettings.autoCreateNewSession" />
+                                        }
+                                    />
                                 }
-                            />
-                        }
-                        layout="horizontal"
-                        name="autoCreateNewSession"
-                        valuePropName="checked"
-                    >
-                        <Switch />
-                    </ProForm.Item>
+                                layout="horizontal"
+                                name="autoCreateNewSession"
+                                valuePropName="checked"
+                            >
+                                <Switch />
+                            </ProForm.Item>
+                        </Col>
 
-                    <ProFormList
-                        name="chatApiConfigList"
-                        label={
-                            <IconLabel
+                        <Col span={12}>
+                            <ProForm.Item
                                 label={
-                                    <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig" />
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.functionSettings.chatSettings.autoCreateNewSessionOnCloseWindow" />
+                                        }
+                                    />
                                 }
-                                tooltipTitle={
-                                    <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.tip" />
+                                layout="horizontal"
+                                name="autoCreateNewSession"
+                                valuePropName="checked"
+                            >
+                                <Switch />
+                            </ProForm.Item>
+                        </Col>
+                    </Row>
+
+                    <Row gutter={token.padding}>
+                        <Col span={24}>
+                            <ProFormList
+                                name="chatApiConfigList"
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig" />
+                                        }
+                                        tooltipTitle={
+                                            <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.tip" />
+                                        }
+                                    />
                                 }
-                            />
-                        }
-                        creatorButtonProps={{
-                            creatorButtonText: intl.formatMessage({
-                                id: 'settings.functionSettings.chatSettings.apiConfig.add',
-                            }),
-                        }}
-                        actionRender={(...params) => {
-                            const [field, , defaultActionDom] = params;
-                            return [
-                                defaultActionDom,
-                                <TestChat
-                                    key="test-chat"
-                                    config={
-                                        functionForm.getFieldValue('chatApiConfigList')[field.name]
-                                    }
-                                />,
-                            ];
-                        }}
-                        className="api-config-list"
-                        min={0}
-                        itemRender={({ listDom, action }) => (
-                            <Flex align="end" justify="space-between">
-                                {listDom}
-                                <div>{action}</div>
-                            </Flex>
-                        )}
-                        creatorRecord={() => ({
-                            api_uri: '',
-                            api_key: '',
-                            api_model: '',
-                            model_name: '',
-                        })}
-                    >
-                        <Row gutter={token.padding} style={{ width: '100%' }}>
-                            <Col span={12}>
-                                <ProFormText
-                                    name="model_name"
-                                    label={
-                                        <IconLabel
-                                            label={
-                                                <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.modelName" />
+                                creatorButtonProps={{
+                                    creatorButtonText: intl.formatMessage({
+                                        id: 'settings.functionSettings.chatSettings.apiConfig.add',
+                                    }),
+                                }}
+                                actionRender={(...params) => {
+                                    const [field, , defaultActionDom] = params;
+                                    return [
+                                        defaultActionDom,
+                                        <TestChat
+                                            key="test-chat"
+                                            config={
+                                                functionForm.getFieldValue('chatApiConfigList')[
+                                                    field.name
+                                                ]
                                             }
-                                            tooltipTitle={
-                                                <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.modelName.tip" />
+                                        />,
+                                    ];
+                                }}
+                                className="api-config-list"
+                                min={0}
+                                itemRender={({ listDom, action }) => (
+                                    <Flex align="end" justify="space-between">
+                                        {listDom}
+                                        <div>{action}</div>
+                                    </Flex>
+                                )}
+                                creatorRecord={() => ({
+                                    api_uri: '',
+                                    api_key: '',
+                                    api_model: '',
+                                    model_name: '',
+                                })}
+                            >
+                                <Row gutter={token.padding} style={{ width: '100%' }}>
+                                    <Col span={12}>
+                                        <ProFormText
+                                            name="model_name"
+                                            label={
+                                                <IconLabel
+                                                    label={
+                                                        <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.modelName" />
+                                                    }
+                                                    tooltipTitle={
+                                                        <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.modelName.tip" />
+                                                    }
+                                                />
+                                            }
+                                            rules={[
+                                                {
+                                                    required: true,
+                                                    message: intl.formatMessage({
+                                                        id: 'settings.functionSettings.chatSettings.apiConfig.modelName.required',
+                                                    }),
+                                                },
+                                            ]}
+                                        />
+                                    </Col>
+                                    <Col span={12}>
+                                        <ProFormSwitch
+                                            name="support_thinking"
+                                            label={
+                                                <IconLabel
+                                                    label={
+                                                        <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.supportThinking" />
+                                                    }
+                                                    tooltipTitle={
+                                                        <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.supportThinking.tip" />
+                                                    }
+                                                />
                                             }
                                         />
-                                    }
-                                    rules={[
-                                        {
-                                            required: true,
-                                            message: intl.formatMessage({
-                                                id: 'settings.functionSettings.chatSettings.apiConfig.modelName.required',
-                                            }),
-                                        },
-                                    ]}
-                                />
-                            </Col>
-                            <Col span={12}>
-                                <ProFormSwitch
-                                    name="support_thinking"
-                                    label={
-                                        <IconLabel
+                                    </Col>
+                                    <Col span={12}>
+                                        <ProFormText
+                                            name="api_uri"
                                             label={
-                                                <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.supportThinking" />
+                                                <IconLabel
+                                                    label={
+                                                        <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.apiUri" />
+                                                    }
+                                                    tooltipTitle={
+                                                        <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.apiUri.tip" />
+                                                    }
+                                                />
                                             }
-                                            tooltipTitle={
-                                                <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.supportThinking.tip" />
-                                            }
+                                            rules={[
+                                                {
+                                                    required: true,
+                                                    message: intl.formatMessage({
+                                                        id: 'settings.functionSettings.chatSettings.apiConfig.apiUri.required',
+                                                    }),
+                                                },
+                                            ]}
                                         />
-                                    }
-                                />
-                            </Col>
-                            <Col span={12}>
-                                <ProFormText
-                                    name="api_uri"
-                                    label={
-                                        <IconLabel
+                                    </Col>
+                                    <Col span={12}>
+                                        <ProFormText.Password
+                                            name="api_key"
                                             label={
-                                                <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.apiUri" />
+                                                <IconLabel
+                                                    label={
+                                                        <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.apiKey" />
+                                                    }
+                                                    tooltipTitle={
+                                                        <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.apiKey.tip" />
+                                                    }
+                                                />
                                             }
-                                            tooltipTitle={
-                                                <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.apiUri.tip" />
-                                            }
+                                            rules={[
+                                                {
+                                                    required: true,
+                                                    message: intl.formatMessage({
+                                                        id: 'settings.functionSettings.chatSettings.apiConfig.apiKey.required',
+                                                    }),
+                                                },
+                                            ]}
                                         />
-                                    }
-                                    rules={[
-                                        {
-                                            required: true,
-                                            message: intl.formatMessage({
-                                                id: 'settings.functionSettings.chatSettings.apiConfig.apiUri.required',
-                                            }),
-                                        },
-                                    ]}
-                                />
-                            </Col>
-                            <Col span={12}>
-                                <ProFormText.Password
-                                    name="api_key"
-                                    label={
-                                        <IconLabel
+                                    </Col>
+                                    <Col span={12}>
+                                        <ProFormText
+                                            name="api_model"
                                             label={
-                                                <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.apiKey" />
+                                                <IconLabel
+                                                    label={
+                                                        <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.apiModel" />
+                                                    }
+                                                    tooltipTitle={
+                                                        <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.apiModel.tip" />
+                                                    }
+                                                />
                                             }
-                                            tooltipTitle={
-                                                <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.apiKey.tip" />
-                                            }
+                                            rules={[
+                                                {
+                                                    required: true,
+                                                    message: intl.formatMessage({
+                                                        id: 'settings.functionSettings.chatSettings.apiConfig.apiModel.required',
+                                                    }),
+                                                },
+                                            ]}
                                         />
-                                    }
-                                    rules={[
-                                        {
-                                            required: true,
-                                            message: intl.formatMessage({
-                                                id: 'settings.functionSettings.chatSettings.apiConfig.apiKey.required',
-                                            }),
-                                        },
-                                    ]}
-                                />
-                            </Col>
-                            <Col span={12}>
-                                <ProFormText
-                                    name="api_model"
-                                    label={
-                                        <IconLabel
-                                            label={
-                                                <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.apiModel" />
-                                            }
-                                            tooltipTitle={
-                                                <FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.apiModel.tip" />
-                                            }
-                                        />
-                                    }
-                                    rules={[
-                                        {
-                                            required: true,
-                                            message: intl.formatMessage({
-                                                id: 'settings.functionSettings.chatSettings.apiConfig.apiModel.required',
-                                            }),
-                                        },
-                                    ]}
-                                />
-                            </Col>
-                        </Row>
-                    </ProFormList>
+                                    </Col>
+                                </Row>
+                            </ProFormList>
+                        </Col>
+                    </Row>
                 </ProForm>
             </Spin>
 
