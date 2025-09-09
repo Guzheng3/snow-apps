@@ -6,6 +6,7 @@ import {
     Col,
     Divider,
     Form,
+    Popconfirm,
     Row,
     Slider,
     Space,
@@ -37,6 +38,9 @@ import { CaptureHistory, HistoryValidDuration } from '@/utils/captureHistory';
 import { usePlatform } from '@/hooks/usePlatform';
 import { MacOSPermissionsSettings } from './components/macosPermissionsSettings';
 import { appLogDir } from '@tauri-apps/api/path';
+import { mkdir } from '@tauri-apps/plugin-fs';
+import { createLocalConfigDir } from '@/commands/file';
+import { appError } from '@/utils/log';
 
 export default function SystemSettings() {
     const intl = useIntl();
@@ -724,6 +728,33 @@ export default function SystemSettings() {
                                     >
                                         <FormattedMessage id="settings.systemSettings.dataFilePath.open" />
                                     </Button>
+                                    {currentPlatform === 'windows' && (
+                                        <Popconfirm
+                                            title={
+                                                <FormattedMessage id="settings.systemSettings.dataFilePath.enableLocalConfig.tip" />
+                                            }
+                                            onConfirm={async () => {
+                                                try {
+                                                    await createLocalConfigDir();
+                                                    relaunch();
+                                                } catch (error) {
+                                                    appError('[enableLocalConfig] error', error);
+                                                    message.error(`${error}`);
+                                                }
+                                            }}
+                                        >
+                                            <Button color="orange">
+                                                <IconLabel
+                                                    label={
+                                                        <FormattedMessage id="settings.systemSettings.dataFilePath.enableLocalConfig" />
+                                                    }
+                                                    tooltipTitle={
+                                                        <FormattedMessage id="settings.systemSettings.dataFilePath.enableLocalConfig.tip" />
+                                                    }
+                                                />
+                                            </Button>
+                                        </Popconfirm>
+                                    )}
                                 </Space>
                             </ProForm.Item>
                         </Col>

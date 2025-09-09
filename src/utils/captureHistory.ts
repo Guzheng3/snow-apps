@@ -1,13 +1,19 @@
 import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
 import { CaptureHistoryItem, CaptureHistoryStore } from './appStore';
-import { ElementRect, ImageBuffer, ImageEncoder } from '@/commands';
-import { BaseDirectory, copyFile, remove, writeFile } from '@tauri-apps/plugin-fs';
+import { ElementRect, ImageBuffer, ImageEncoder, saveFile } from '@/commands';
 import { join as joinPath } from '@tauri-apps/api/path';
 import path from 'path';
 import { NonDeletedExcalidrawElement, Ordered } from '@mg-chao/excalidraw/element/types';
 import { AppState } from '@mg-chao/excalidraw/types';
 import { appError, appWarn } from './log';
-import { createDir, getAppConfigDir } from '@/commands/file';
+import {
+    copyFile,
+    createDir,
+    getAppConfigBaseDir,
+    removeDir,
+    removeFile,
+    writeFile,
+} from '@/commands/file';
 
 const captureHistoryImagesDir = 'captureHistoryImages';
 
@@ -16,7 +22,7 @@ const getCaptureImageFilePath = (fileName: string) => {
 };
 
 export const getCaptureHistoryImageAbsPath = async (fileName: string) => {
-    return joinPath(await getAppConfigDir(), getCaptureImageFilePath(fileName));
+    return joinPath(await getAppConfigBaseDir(), getCaptureImageFilePath(fileName));
 };
 
 const dayDuration = 24 * 60 * 60 * 1000;
@@ -97,20 +103,13 @@ export class CaptureHistory {
 
             if ('encoder' in imageData) {
                 await writeFile(
-                    getCaptureImageFilePath(captureHistoryItem.file_name),
+                    await getCaptureHistoryImageAbsPath(captureHistoryItem.file_name),
                     new Uint8Array(imageData.buffer),
-                    {
-                        baseDir: BaseDirectory.AppConfig,
-                    },
                 );
             } else {
                 await copyFile(
-                    getCaptureImageFilePath(imageData.file_name),
-                    getCaptureImageFilePath(captureHistoryItem.file_name),
-                    {
-                        fromPathBaseDir: BaseDirectory.AppConfig,
-                        toPathBaseDir: BaseDirectory.AppConfig,
-                    },
+                    await getCaptureHistoryImageAbsPath(imageData.file_name),
+                    await getCaptureHistoryImageAbsPath(captureHistoryItem.file_name),
                 );
             }
 
@@ -170,9 +169,7 @@ export class CaptureHistory {
                     appWarn('[CaptureHistory] delete captureHistoryItem failed', error);
                 }
                 try {
-                    await remove(getCaptureImageFilePath(item.file_name), {
-                        baseDir: BaseDirectory.AppConfig,
-                    });
+                    await removeFile(await getCaptureHistoryImageAbsPath(item.file_name));
                 } catch (error) {
                     appWarn('[CaptureHistory] remove captureHistoryItem image failed', error);
                 }
@@ -183,10 +180,7 @@ export class CaptureHistory {
     async clearAll() {
         await this.store.clear();
         try {
-            await remove(captureHistoryImagesDir, {
-                baseDir: BaseDirectory.AppConfig,
-                recursive: true,
-            });
+            await removeDir(await getCaptureHistoryImageAbsPath(''));
         } catch (error) {
             appWarn('[CaptureHistory] remove captureHistoryImagesDir failed', error);
         }

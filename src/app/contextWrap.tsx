@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BaseDirectory, remove } from '@tauri-apps/plugin-fs';
 import { ConfigProvider, theme } from 'antd';
 import { debounce, isEqual, trim } from 'es-toolkit';
 import zhCN from 'antd/es/locale/zh_CN';
@@ -33,7 +32,6 @@ import {
 import { defaultTranslationPrompt } from './tools/translation/extra';
 import { ColorPickerShowMode } from './draw/components/colorPicker';
 import { ImageFormat } from '@/utils/file';
-import { join as joinPath } from '@tauri-apps/api/path';
 import { DrawState } from './fullScreenDraw/components/drawCore/extra';
 import { OcrDetectAfterAction } from './fixedContent/components/ocrResult';
 import { OcrModel } from '@/commands/ocr';
@@ -45,6 +43,7 @@ import { appError, appWarn } from '@/utils/log';
 import {
     createDir,
     getAppConfigDir,
+    removeDir,
     textFileClear,
     textFileRead,
     textFileWrite,
@@ -498,23 +497,18 @@ export type ScreenshotContextType = {
     setImageBuffer: (imageBuffer: ImageBuffer | undefined) => void;
 };
 
-const configDir = 'configs';
-
 let configDirPathCache: string | undefined = undefined;
 export const getConfigDirPath = async () => {
     if (configDirPathCache) {
         return configDirPathCache;
     }
 
-    configDirPathCache = await joinPath(await getAppConfigDir(), configDir);
+    configDirPathCache = await getAppConfigDir();
 
     return configDirPathCache;
 };
 export const clearAllConfig = async () => {
-    await Promise.all([
-        textFileClear(await getConfigDirPath()),
-        remove(configDir, { recursive: true, baseDir: BaseDirectory.AppConfig }),
-    ]);
+    await Promise.all([textFileClear(), removeDir(await getConfigDirPath())]);
 };
 const getFilePath = async (group: AppSettingsGroup) => {
     const configDirPath = await getConfigDirPath();

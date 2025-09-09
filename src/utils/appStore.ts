@@ -1,4 +1,5 @@
 import { ElementRect } from '@/commands';
+import { getAppConfigBaseDir } from '@/commands/file';
 import { BubbleDataType } from '@ant-design/x/es/bubble/BubbleList';
 import { Conversation } from '@ant-design/x/es/conversations';
 import { MessageInfo } from '@ant-design/x/es/use-x-chat';
@@ -18,7 +19,9 @@ class BaseStore<Value> {
     }
 
     public async init() {
-        this.instance = await load(`${this.name}.json`, { autoSave: this.autoSave });
+        this.instance = await load(`${await getAppConfigBaseDir()}/stores/${this.name}.json`, {
+            autoSave: this.autoSave,
+        });
     }
 
     public inited() {

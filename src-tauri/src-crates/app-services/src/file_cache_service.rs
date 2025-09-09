@@ -1,5 +1,5 @@
 use dashmap::{DashMap, DashSet};
-use std::{fs, path::PathBuf};
+use std::{env, fs, path::PathBuf};
 use tauri::Manager;
 
 /**
@@ -12,6 +12,10 @@ pub struct FileCacheService {
     env_path_cache: DashMap<String, PathBuf>,
 }
 
+const APP_CONFIG_DIR: &str = "app_config_dir";
+const APP_CONFIG_BASE_DIR: &str = "app_config_base_dir";
+const APP_CONFIG_DIR_NAME: &str = "configs";
+
 impl FileCacheService {
     pub fn new() -> Self {
         Self {
@@ -21,16 +25,114 @@ impl FileCacheService {
         }
     }
 
-    pub fn get_app_config_dir(&self, app: &tauri::AppHandle) -> Result<PathBuf, String> {
-        const APP_CONFIG_DIR: &str = "app_config_dir";
+    fn get_app_global_config_dir(&self, app: &tauri::AppHandle) -> Result<PathBuf, String> {
+        Ok(app
+            .path()
+            .app_config_dir()
+            .map_err(|e| e.to_string())?
+            .join(APP_CONFIG_DIR_NAME))
+    }
 
+    fn get_app_local_config_dir(&self) -> Option<PathBuf> {
+        #[cfg(not(target_os = "windows"))]
+        {
+            return None;
+        }
+
+        let current_exe_path = match env::current_exe() {
+            Ok(path) => Some(path),
+            Err(_) => None,
+        };
+
+        let local_config_dir = match current_exe_path {
+            Some(path) => match path.parent() {
+                Some(parent) => parent.join(APP_CONFIG_DIR_NAME),
+                None => return None,
+            },
+            None => return None,
+        };
+
+        Some(local_config_dir)
+    }
+
+    pub fn create_local_config_dir(&self, app: &tauri::AppHandle) -> Result<(), String> {
+        let local_config_dir = match self.get_app_local_config_dir() {
+            Some(path) => path,
+            None => {
+                return Err(format!(
+                    "[create_local_config_dir] Failed to get current executable directory"
+                ));
+            }
+        };
+
+        if local_config_dir.exists() {
+            return Ok(());
+        }
+
+        let app_config_dir = self.get_app_global_config_dir(app)?;
+        let copy_success = if app_config_dir.exists() {
+            match fs_extra::dir::copy(
+                &app_config_dir,
+                &local_config_dir.parent().unwrap(),
+                &fs_extra::dir::CopyOptions::default(),
+            ) {
+                Ok(_) => true,
+                Err(error) => {
+                    log::error!(
+                        "[create_local_config_dir] Failed to copy app config directory: {}",
+                        error.to_string()
+                    );
+                    false
+                }
+            }
+        } else {
+            false
+        };
+
+        if !copy_success {
+            fs::create_dir_all(&local_config_dir).map_err(|e| e.to_string())?;
+        }
+
+        Ok(())
+    }
+
+    pub fn get_app_config_dir(&self, app: &tauri::AppHandle) -> Result<PathBuf, String> {
         if let Some(path) = self.env_path_cache.get(APP_CONFIG_DIR) {
             return Ok(path.clone());
         }
 
-        let path = app.path().app_config_dir().map_err(|e| e.to_string())?;
+        let local_config_dir = match self.get_app_local_config_dir() {
+            Some(path) => {
+                if path.exists() {
+                    Some(path)
+                } else {
+                    None
+                }
+            }
+            None => None,
+        };
+
+        let path = match local_config_dir {
+            Some(path) => path,
+            None => self.get_app_global_config_dir(app)?,
+        };
+
         self.env_path_cache
             .insert(APP_CONFIG_DIR.to_string(), path.clone());
+
+        Ok(path)
+    }
+
+    pub fn get_app_config_base_dir(&self, app: &tauri::AppHandle) -> Result<PathBuf, String> {
+        if let Some(path) = self.env_path_cache.get(APP_CONFIG_BASE_DIR) {
+            return Ok(path.clone());
+        }
+
+        let path = self.get_app_config_dir(app)?;
+        let path = path.parent().unwrap().to_path_buf();
+
+        self.env_path_cache
+            .insert(APP_CONFIG_BASE_DIR.to_string(), path.clone());
 
         Ok(path)
     }
