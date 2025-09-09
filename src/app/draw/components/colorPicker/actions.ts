@@ -10,11 +10,14 @@ import {
     ColorPickerRenderGetPreviewImageDataResult,
     ColorPickerRenderSwitchCaptureHistoryData,
     ColorPickerRenderSwitchCaptureHistoryResult,
+    ColorPickerRenderPickColorData,
+    ColorPickerRenderPickColorResult,
 } from './workers/renderWorkerTypes';
 import {
     renderGetPreviewImageDataAction,
     renderInitImageDataAction,
     renderInitPreviewCanvasAction,
+    renderPickColorAction,
     renderPixelsWorkerTerminateAction,
     renderPutImageDataAction,
     renderSwitchCaptureHistoryAction,
@@ -227,6 +230,42 @@ export const switchCaptureHistoryAction = async (
                 imageSrc,
             );
             resolve(undefined);
+        }
+    });
+};
+
+export const pickColorAction = async (
+    renderWorker: Worker | undefined,
+    captureHistoryImageDataRef: RefType<ImageData | undefined>,
+    previewImageDataRef: RefType<ImageData | null>,
+    baseIndex: number,
+): Promise<{ color: [red: number, green: number, blue: number] }> => {
+    return new Promise((resolve) => {
+        if (renderWorker) {
+            const PickColorData: ColorPickerRenderPickColorData = {
+                type: ColorPickerRenderMessageType.PickColor,
+                payload: {
+                    baseIndex,
+                },
+            };
+
+            const handleMessage = (event: MessageEvent<ColorPickerRenderPickColorResult>) => {
+                const { type, payload } = event.data;
+                if (type === ColorPickerRenderMessageType.PickColor) {
+                    resolve(payload);
+                    renderWorker.removeEventListener('message', handleMessage);
+                }
+            };
+            renderWorker.addEventListener('message', handleMessage);
+
+            renderWorker.postMessage(PickColorData);
+        } else {
+            const color = renderPickColorAction(
+                captureHistoryImageDataRef,
+                previewImageDataRef,
+                baseIndex,
+            );
+            resolve(color);
         }
     });
 };

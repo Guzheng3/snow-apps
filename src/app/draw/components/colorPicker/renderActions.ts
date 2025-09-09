@@ -160,3 +160,28 @@ export function renderSwitchCaptureHistoryAction(
 export function renderPixelsWorkerTerminateAction() {
     getPixelsWorker().terminate();
 }
+
+export function renderPickColorAction(
+    captureHistoryImageDataRef: RefType<ImageData | undefined>,
+    previewImageDataRef: RefType<ImageData | null>,
+    baseIndex: number,
+): {
+    color: [red: number, green: number, blue: number];
+} {
+    const imageData = captureHistoryImageDataRef.current ?? previewImageDataRef.current;
+    if (!imageData) {
+        return {
+            color: [0, 0, 0],
+        };
+    }
+
+    const color: [red: number, green: number, blue: number] = [
+        imageData.data[baseIndex] ?? 0,
+        imageData.data[baseIndex + 1] ?? 0,
+        imageData.data[baseIndex + 2] ?? 0,
+    ];
+
+    return {
+        color,
+    };
+}

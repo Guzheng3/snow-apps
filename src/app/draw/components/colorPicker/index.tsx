@@ -36,7 +36,7 @@ import {
     AppSettingsGroup,
     AppSettingsPublisher,
 } from '@/app/contextWrap';
-import Color from 'color';
+import Color, { ColorInstance } from 'color';
 import { DrawToolbarStatePublisher } from '../drawToolbar';
 import { SelectState } from '../selectLayer/extra';
 import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
@@ -54,6 +54,7 @@ import {
     getPreviewImageDataAction,
     initImageDataAction,
     initPreviewCanvasAction,
+    pickColorAction,
     putImageDataAction,
     switchCaptureHistoryAction,
     terminateWorkerAction,
@@ -61,6 +62,7 @@ import {
 import { writeTextToClipboard } from '@/utils/clipboard';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
+import { useStateRef } from '@/hooks/useStateRef';
 
 export enum ColorPickerShowMode {
     Always = 0,
@@ -91,6 +93,11 @@ export const isEnableColorPicker = (
 export type ColorPickerActionType = {
     getPreviewImageData: () => Promise<ImageData | null>;
     switchCaptureHistory: (item: CaptureHistoryItem | undefined) => Promise<void>;
+    pickColor: (mousePosition: MousePosition) => Promise<string>;
+    /** 强制启用取色器 */
+    setForceEnable: (forceEnable: boolean) => void;
+    /** 获取当前颜色 */
+    getCurrentColor: () => ColorInstance | undefined;
 };
 
 export enum ColorPickerColorFormat {
@@ -134,6 +141,9 @@ const ColorPickerCore: React.FC<{
     const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
     const imageDataReadyRef = useRef(false);
 
+    /** 强制启用取色器 */
+    const [, setForceEnable, forceEnableRef] = useStateRef(false);
+
     const { updateAppSettings } = useContext(AppSettingsActionContext);
 
     const { token } = theme.useToken();
@@ -156,7 +166,7 @@ const ColorPickerCore: React.FC<{
 
         let opacity = '1';
 
-        if (enableRef.current) {
+        if (enableRef.current || forceEnableRef.current) {
             const mouseX = pickerPositionRef.current.mouseX;
             const mouseY = pickerPositionRef.current.mouseY;
             if (
@@ -213,7 +223,13 @@ const ColorPickerCore: React.FC<{
         }
 
         colorPickerRef.current.style.opacity = opacity;
-    }, [captureBoundingBoxInfoRef, getAppSettings, selectLayerActionRef, token.marginXXS]);
+    }, [
+        captureBoundingBoxInfoRef,
+        forceEnableRef,
+        getAppSettings,
+        selectLayerActionRef,
+        token.marginXXS,
+    ]);
 
     const appWindowRef = useRef<AppWindow | undefined>(undefined);
     useEffect(() => {
@@ -322,6 +338,8 @@ const ColorPickerCore: React.FC<{
     const colorElementRef = useRef<HTMLDivElement>(null);
     const previewColorElementRef = useRef<HTMLDivElement>(null);
 
+    const currentColorRef = useRef<ColorInstance | undefined>(undefined);
+
     const getFormatColor = useCallback(
         (red: number, green: number, blue: number) => {
             const currentColor = new Color({
@@ -329,6 +347,15 @@ const ColorPickerCore: React.FC<{
                 g: green,
                 b: blue,
             });
+            currentColorRef.current = currentColor;
+            setDrawEvent({
+                event: DrawEvent.ColorPickerColorChange,
+                params: {
+                    color: currentColor,
+                },
+            });
+            setDrawEvent(undefined);
+
             const colorFormatIndex =
                 colorPickerColorFormatList[
                     getAppSettings()[AppSettingsGroup.Cache].colorPickerColorFormatIndex
@@ -387,6 +414,19 @@ const ColorPickerCore: React.FC<{
         },
         [getAppSettings, renderWorker, updateColor],
     );
+
+    const convertPositionToImageDataIndex = useCallback(
+        (mouseX: number, mouseY: number) => {
+            const captureBoundingBoxInfo = captureBoundingBoxInfoRef.current;
+            if (!captureBoundingBoxInfo) {
+                return 0;
+            }
+
+            return (mouseY * captureBoundingBoxInfo.width + mouseX) * 4;
+        },
+        [captureBoundingBoxInfoRef],
+    );
+
     const updateImageDataPutImageRender = useCallbackRender(updateImageDataPutImage);
     const updateImageData = useCallback(
         async (mouseX: number, mouseY: number, physicalX?: number, physicalY?: number) => {
@@ -422,7 +462,7 @@ const ColorPickerCore: React.FC<{
             // 将数据绘制到预览画布
             updatePickerPosition(mouseX, mouseY);
 
-            const baseIndex = (mouseY * captureBoundingBoxInfo.width + mouseX) * 4;
+            const baseIndex = convertPositionToImageDataIndex(mouseX, mouseY);
 
             // 计算和绘制错开 1 帧率
             updateImageDataPutImageRender(
@@ -433,6 +473,7 @@ const ColorPickerCore: React.FC<{
         },
         [
             captureBoundingBoxInfoRef,
+            convertPositionToImageDataIndex,
             enableMouseMove,
             updateImageDataPutImageRender,
             updatePickerPosition,
@@ -643,13 +684,40 @@ const ColorPickerCore: React.FC<{
         [renderWorker, refreshMouseMove],
     );
 
+    const pickColor = useCallback(
+        async (mousePosition: MousePosition): Promise<string> => {
+            const baseIndex = convertPositionToImageDataIndex(
+                Math.round(mousePosition.mouseX * window.devicePixelRatio),
+                Math.round(mousePosition.mouseY * window.devicePixelRatio),
+            );
+            const color = await pickColorAction(
+                renderWorker,
+                captureHistoryImageDataRef,
+                previewImageDataRef,
+                baseIndex,
+            );
+
+            return Color({
+                r: color.color[0],
+                g: color.color[1],
+                b: color.color[2],
+            })
+                .hex()
+                .toString();
+        },
+        [convertPositionToImageDataIndex, renderWorker],
+    );
+
     useImperativeHandle(
         actionRef,
         () => ({
             getPreviewImageData,
             switchCaptureHistory,
+            pickColor,
+            setForceEnable,
+            getCurrentColor: () => currentColorRef.current,
         }),
-        [getPreviewImageData, switchCaptureHistory],
+        [getPreviewImageData, switchCaptureHistory, pickColor, setForceEnable, currentColorRef],
     );
 
     useEffect(() => {

@@ -4,6 +4,7 @@ import {
     renderGetPreviewImageDataAction,
     renderInitImageDataAction,
     renderInitPreviewCanvasAction,
+    renderPickColorAction,
     renderPutImageDataAction,
     renderSwitchCaptureHistoryAction,
 } from '../renderActions';
@@ -12,6 +13,7 @@ import {
     ColorPickerRenderInitImageDataData,
     ColorPickerRenderInitPreviewCanvasData,
     ColorPickerRenderMessageType,
+    ColorPickerRenderPickColorData,
     ColorPickerRenderPutImageDataData,
     ColorPickerRenderResult,
     ColorPickerRenderSwitchCaptureHistoryData,
@@ -81,6 +83,11 @@ const handleSwitchCaptureHistory = async (data: ColorPickerRenderSwitchCaptureHi
     );
 };
 
+const handlePickColor = async (data: ColorPickerRenderPickColorData) => {
+    const { baseIndex } = data.payload;
+    return renderPickColorAction(captureHistoryImageDataRef, previewImageDataRef, baseIndex);
+};
+
 self.onmessage = async ({ data }: MessageEvent<ColorPickerRenderData>) => {
     let message: ColorPickerRenderResult;
     switch (data.type) {
@@ -119,6 +126,13 @@ self.onmessage = async ({ data }: MessageEvent<ColorPickerRenderData>) => {
             message = {
                 type: ColorPickerRenderMessageType.SwitchCaptureHistory,
                 payload: undefined,
+            };
+            break;
+        case ColorPickerRenderMessageType.PickColor:
+            const pickColorResult = await handlePickColor(data);
+            message = {
+                type: ColorPickerRenderMessageType.PickColor,
+                payload: pickColorResult,
             };
             break;
     }

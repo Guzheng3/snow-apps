@@ -1242,4 +1242,26 @@ export const WatermarkSVG = () => (
     </svg>
 );
 
-export const WatermarkIcon = (props: IconComponentProps) => <Icon component={WatermarkSVG} {...props} />;
+export const WatermarkIcon = (props: IconComponentProps) => (
+    <Icon component={WatermarkSVG} {...props} />
+);
+
+export const PickColorSVG = () => (
+    <svg
+        viewBox="0 0 1024 1024"
+        version="1.1"
+        xmlns="http://www.w3.org/2000/svg"
+        width="1em"
+        height="1em"
+        fill="currentColor"
+    >
+        <path
+            d="M869.76 122.837333a128 128 0 0 0-181.034667 0L598.186667 213.333333l-30.165334-30.208A42.666667 42.666667 0 1 0 507.733333 243.541333l241.365334 241.322667A42.666667 42.666667 0 0 0 809.386667 424.533333l-30.165334-30.165333 90.538667-90.538667a128 128 0 0 0 0-180.992zM509.013333 302.549333L177.152 634.453333a128.042667 128.042667 0 0 0-25.045333 145.706667L85.333333 846.933333l60.330667 60.373334 66.773333-66.816a128.042667 128.042667 0 0 0 145.706667-25.002667l331.861333-331.861333L509.013333 302.506667z m60.330667 181.034667L297.813333 755.114667a42.666667 42.666667 0 0 1-60.330666-60.373334L509.013333 423.253333l60.330667 60.330667z"
+            p-id="6904"
+        ></path>
+    </svg>
+);
+
+export const PickColorIcon = (props: IconComponentProps) => (
+    <Icon component={PickColorSVG} {...props} />
+);

@@ -10,6 +10,7 @@ import { ElementRect, ImageBuffer } from '@/commands';
 import { MousePosition } from '@/utils/mousePosition';
 import Flatbush from 'flatbush';
 import { last } from 'es-toolkit';
+import { ColorInstance } from 'color';
 
 export const switchLayer = (
     layer: CanvasLayer | undefined,
@@ -86,6 +87,8 @@ export enum DrawEvent {
     ChangeMonitor = 3,
     /** 选区参数动画发生变化 */
     SelectRectParamsAnimationChange = 4,
+    /** ColorPicker 颜色发生变化 */
+    ColorPickerColorChange = 5,
 }
 
 export type DrawEventParams =
@@ -116,6 +119,12 @@ export type DrawEventParams =
           event: DrawEvent.SelectRectParamsAnimationChange;
           params: {
               selectRectParams: SelectRectParams;
+          };
+      }
+    | {
+          event: DrawEvent.ColorPickerColorChange;
+          params: {
+              color: ColorInstance;
           };
       }
     | undefined;

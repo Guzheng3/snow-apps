@@ -2,6 +2,7 @@ export enum ColorPickerRenderMessageType {
     InitPreviewCanvas = 'initPreviewCanvas',
     InitImageData = 'initImageData',
     PutImageData = 'putImageData',
+    PickColor = 'pickColor',
     GetPreviewImageData = 'getPreviewImageData',
     SwitchCaptureHistory = 'switchCaptureHistory',
 }
@@ -31,6 +32,13 @@ export type ColorPickerRenderPutImageDataData = {
     };
 };
 
+export type ColorPickerRenderPickColorData = {
+    type: ColorPickerRenderMessageType.PickColor;
+    payload: {
+        baseIndex: number;
+    };
+};
+
 export type ColorPickerRenderGetPreviewImageDataData = {
     type: ColorPickerRenderMessageType.GetPreviewImageData;
     payload: undefined;
@@ -47,6 +55,7 @@ export type ColorPickerRenderData =
     | ColorPickerRenderInitPreviewCanvasData
     | ColorPickerRenderInitImageDataData
     | ColorPickerRenderPutImageDataData
+    | ColorPickerRenderPickColorData
     | ColorPickerRenderGetPreviewImageDataData
     | ColorPickerRenderSwitchCaptureHistoryData;
 
@@ -62,6 +71,13 @@ export type ColorPickerRenderInitImageDataResult = {
 
 export type ColorPickerRenderPutImageDataResult = {
     type: ColorPickerRenderMessageType.PutImageData;
+    payload: {
+        color: [red: number, green: number, blue: number];
+    };
+};
+
+export type ColorPickerRenderPickColorResult = {
+    type: ColorPickerRenderMessageType.PickColor;
     payload: {
         color: [red: number, green: number, blue: number];
     };
@@ -83,5 +99,6 @@ export type ColorPickerRenderResult =
     | ColorPickerRenderInitPreviewCanvasResult
     | ColorPickerRenderInitImageDataResult
     | ColorPickerRenderPutImageDataResult
+    | ColorPickerRenderPickColorResult
     | ColorPickerRenderGetPreviewImageDataResult
     | ColorPickerRenderSwitchCaptureHistoryResult;

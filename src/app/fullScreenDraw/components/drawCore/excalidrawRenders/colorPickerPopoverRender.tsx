@@ -1,12 +1,70 @@
-import { ColorPicker } from 'antd';
+import { Button, ColorPicker, Flex, theme } from 'antd';
 import { ExcalidrawPropsCustomOptions } from '@mg-chao/excalidraw/types';
-import React from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { PickColorIcon } from '@/components/icons';
+import { DrawContext } from '@/app/fullScreenDraw/extra';
+import { useIntl } from 'react-intl';
+import { useStateSubscriber } from '@/hooks/useStateSubscriber';
+import { DrawEvent, DrawEventParams, DrawEventPublisher } from '@/app/draw/extra';
+import { debounce } from 'es-toolkit';
 
 const ColorPickerCore: React.FC<{
     color: string | null;
     onChange: (color: string) => void;
 }> = ({ color: colorProp, onChange }) => {
+    const intl = useIntl();
+    const { token } = theme.useToken();
     const color = colorProp === 'transparent' ? '#00000000' : colorProp;
+
+    const { enableColorPicker, setColorPickerForceEnable } = useContext(DrawContext);
+
+    const [activePick, setActivePick] = useState(false);
+
+    const updateColor = useMemo(() => {
+        return debounce((event: DrawEventParams) => {
+            if (event?.event === DrawEvent.ColorPickerColorChange) {
+                onChange(event.params.color.hex());
+            }
+        }, 100);
+    }, [onChange]);
+    useStateSubscriber(DrawEventPublisher, activePick ? updateColor : undefined);
+
+    useEffect(() => {
+        setColorPickerForceEnable(activePick);
+
+        return () => {
+            setColorPickerForceEnable(false);
+        };
+    }, [activePick, setColorPickerForceEnable]);
+
+    const onEnablePickClick = useCallback(
+        (event: React.MouseEvent<HTMLButtonElement>) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            setActivePick((prev) => !prev);
+        },
+        [setActivePick],
+    );
+    const enablePickTitle = useMemo(() => {
+        return intl.formatMessage({ id: 'draw.pickColor' });
+    }, [intl]);
+
+    const onMouseDown = useCallback(() => {
+        setActivePick(false);
+    }, [setActivePick]);
+
+    useEffect(() => {
+        if (!enableColorPicker) {
+            return;
+        }
+
+        document.addEventListener('mousedown', onMouseDown);
+        return () => {
+            document.removeEventListener('mousedown', onMouseDown);
+        };
+    }, [enableColorPicker, onMouseDown]);
+
     return (
         <div title={color ?? undefined} className="color-picker-popover-render">
             <ColorPicker
@@ -17,6 +75,26 @@ const ColorPickerCore: React.FC<{
                 size="small"
                 placement="rightTop"
                 disabledFormat
+                panelRender={(panel) => {
+                    return (
+                        <>
+                            {panel}
+                            {enableColorPicker && (
+                                <Flex
+                                    justify="end"
+                                    className="color-picker-popover-render-pick-color"
+                                >
+                                    <Button
+                                        type={activePick === true ? 'primary' : 'default'}
+                                        icon={<PickColorIcon style={{ fontSize: '1.2em' }} />}
+                                        onClick={onEnablePickClick}
+                                        title={enablePickTitle}
+                                    />
+                                </Flex>
+                            )}
+                        </>
+                    );
+                }}
             />
 
             <style jsx>{`
@@ -28,6 +106,10 @@ const ColorPickerCore: React.FC<{
                 .color-picker-popover-render :global(.ant-color-picker-color-block) {
                     width: 19px !important;
                     height: 19px !important;
+                }
+
+                :global(.color-picker-popover-render-pick-color) {
+                    margin-top: ${token.marginXS}px;
                 }
             `}</style>
         </div>

@@ -832,6 +832,16 @@ const DrawPageCore: React.FC<{
             setTool: (drawState: DrawState) => {
                 drawToolbarActionRef.current?.onToolClick(drawState);
             },
+            enableColorPicker: true,
+            pickColor: async (mousePosition: MousePosition) => {
+                return await colorPickerActionRef.current?.pickColor(mousePosition);
+            },
+            setColorPickerForceEnable: (forceEnable: boolean) => {
+                colorPickerActionRef.current?.setForceEnable(forceEnable);
+            },
+            getColorPickerCurrentColor: () => {
+                return colorPickerActionRef.current?.getCurrentColor();
+            },
         };
     }, []);
 
@@ -971,12 +981,7 @@ const DrawPageCore: React.FC<{
                         onOcrDetect={onOcrDetect}
                         onTopWindow={onTopWindow}
                     />
-                    <ColorPicker
-                        onCopyColor={() => {
-                            finishCapture();
-                        }}
-                        actionRef={colorPickerActionRef}
-                    />
+                    <ColorPicker onCopyColor={finishCapture} actionRef={colorPickerActionRef} />
                     <StatusBar />
 
                     <div

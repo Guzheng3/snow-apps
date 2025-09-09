@@ -140,4 +140,5 @@ export const draw = {
     'draw.scrollAction.rotateY': 'Y 轴旋转',
     'draw.scrollAction.rotateZ': 'Z 轴旋转',
     'draw.watermarkTool.text': '水印文本',
+    'draw.pickColor': '拾取颜色',
 };
