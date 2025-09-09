@@ -318,6 +318,7 @@ const ColorPickerCore: React.FC<{
     useStateSubscriber(CaptureEventPublisher, updateEnableDebounce);
     useStateSubscriber(ScreenshotTypePublisher, updateEnableDebounce);
     useStateSubscriber(DrawToolbarStatePublisher, updateEnableDebounce);
+    const [, setDrawEvent] = useStateSubscriber(DrawEventPublisher, undefined);
 
     const previewImageDataRef = useRef<ImageData | null>(null);
     const captureHistoryImageDataRef = useRef<ImageData | undefined>(undefined);
@@ -372,7 +373,7 @@ const ColorPickerCore: React.FC<{
                     return currentColor.rgb().string();
             }
         },
-        [getAppSettings],
+        [getAppSettings, setDrawEvent],
     );
     const updateColor = useCallback(
         (red: number, green: number, blue: number) => {
@@ -573,7 +574,6 @@ const ColorPickerCore: React.FC<{
         },
         [initImageData],
     );
-    const [, setDrawEvent] = useStateSubscriber(DrawEventPublisher, undefined);
     const onCaptureLoad = useCallback(
         (captureLoading: boolean) => {
             setEnableKeyEvent(!captureLoading);

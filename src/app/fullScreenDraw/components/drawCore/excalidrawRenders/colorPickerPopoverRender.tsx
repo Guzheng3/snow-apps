@@ -30,10 +30,10 @@ const ColorPickerCore: React.FC<{
     useStateSubscriber(DrawEventPublisher, activePick ? updateColor : undefined);
 
     useEffect(() => {
-        setColorPickerForceEnable(activePick);
+        setColorPickerForceEnable?.(activePick);
 
         return () => {
-            setColorPickerForceEnable(false);
+            setColorPickerForceEnable?.(false);
         };
     }, [activePick, setColorPickerForceEnable]);
 
