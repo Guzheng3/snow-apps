@@ -1012,7 +1012,7 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                 if (
                     saveToFile &&
                     process.env.NODE_ENV !== 'development' &&
-                    !hasInitAutoStart.current
+                    (!hasInitAutoStart.current || prevSettings?.autoStart !== settings.autoStart)
                 ) {
                     hasInitAutoStart.current = true;
 

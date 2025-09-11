@@ -153,7 +153,6 @@ pub async fn auto_start_enable(app: tauri::AppHandle) -> Result<(), String> {
             Err(_) => return Err(String::from("[auto_start_enable] Failed to check if admin")),
         };
 
-        println!("is_admin: {}", is_admin);
 
         // 如果是管理员模式，则禁用普通的自启动方式，使用 Windows 的任务计划程序实现自启动
         if !is_admin {
