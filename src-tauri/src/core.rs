@@ -1,6 +1,7 @@
 use snow_shot_app_shared::{ElementRect, EnigoManager};
 use snow_shot_tauri_commands_core::MonitorsBoundingBox;
 use tauri::{Manager, command, ipc::Response};
+use tauri_plugin_autostart::ManagerExt;
 use tokio::sync::Mutex;
 
 #[command]
@@ -127,4 +128,121 @@ pub async fn set_current_window_always_on_top(
 #[command]
 pub async fn close_window_after_delay(window: tauri::Window, delay: u64) {
     snow_shot_tauri_commands_core::close_window_after_delay(window, delay).await
+}
+
+#[command]
+pub async fn auto_start_enable(app: tauri::AppHandle) -> Result<(), String> {
+    let autostart_manager = app.autolaunch();
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        return match autostart_manager.enable() {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!(
+                "[auto_start_enable] Failed to enable autostart: {}",
+                e,
+            )),
+        };
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        // 判断是否是管理员模式
+        let is_admin = match snow_shot_tauri_commands_core::is_admin().await {
+            Ok(is_admin) => is_admin,
+            Err(_) => return Err(String::from("[auto_start_enable] Failed to check if admin")),
+        };
+
+        println!("is_admin: {}", is_admin);
+
+        // 如果是管理员模式，则禁用普通的自启动方式，使用 Windows 的任务计划程序实现自启动
+        if !is_admin {
+            match autostart_manager.enable() {
+                Ok(_) => (),
+                Err(e) => {
+                    return Err(format!(
+                        "[auto_start_enable] Failed to enable autostart: {}",
+                        e,
+                    ));
+                }
+            }
+
+            return Ok(());
+        }
+
+        // 禁用普通自启动方式
+        match autostart_manager.disable() {
+            Ok(_) => (),
+            Err(e) => {
+                return Err(format!(
+                    "[auto_start_enable] Failed to disable autostart: {}",
+                    e,
+                ));
+            }
+        }
+
+        // 创建管理员自启动任务
+        match snow_shot_tauri_commands_core::create_admin_auto_start_task().await {
+            Ok(_) => (),
+            Err(e) => {
+                return Err(format!(
+                    "[auto_start_enable] Failed to create admin auto start task: {}",
+                    e,
+                ));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[command]
+pub async fn auto_start_disable(app: tauri::AppHandle) -> Result<(), String> {
+    let autostart_manager = app.autolaunch();
+
+    // 先禁用普通自启动方式
+    match autostart_manager.disable() {
+        Ok(_) => (),
+        Err(e) => {
+            return Err(format!(
+                "[auto_start_disable] Failed to disable autostart: {}",
+                e,
+            ));
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        // 判断是否是管理员模式
+        let is_admin = match snow_shot_tauri_commands_core::is_admin().await {
+            Ok(is_admin) => is_admin,
+            Err(_) => {
+                return Err(String::from(
+                    "[auto_start_disable] Failed to check if admin",
+                ));
+            }
+        };
+
+        if !is_admin {
+            return Ok(());
+        }
+
+        // 删除管理员自启动任务
+        match snow_shot_tauri_commands_core::delete_admin_auto_start_task().await {
+            Ok(_) => (),
+            Err(e) => {
+                return Err(format!(
+                    "[auto_start_disable] Failed to delete admin auto start task: {}",
+                    e,
+                ));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[command]
+pub async fn restart_with_admin() -> Result<(), String> {
+    snow_shot_tauri_commands_core::restart_with_admin().await
 }

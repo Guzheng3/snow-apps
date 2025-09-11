@@ -6214,7 +6214,7 @@ dependencies = [
  "snow-shot-app-shared",
  "tauri",
  "tokio",
- "windows 0.62.0",
+ "windows 0.61.3",
  "xcap",
  "zune-core",
  "zune-jpegxl",

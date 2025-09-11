@@ -40,6 +40,7 @@ import { appLogDir } from '@tauri-apps/api/path';
 import { createLocalConfigDir, getAppConfigBaseDir } from '@/commands/file';
 import { appError } from '@/utils/log';
 import * as dialog from '@tauri-apps/plugin-dialog';
+import { restartWithAdmin } from '@/commands/core';
 
 export default function SystemSettings() {
     const intl = useIntl();
@@ -235,6 +236,30 @@ export default function SystemSettings() {
                                 <Switch />
                             </ProForm.Item>
                         </Col>
+                        {currentPlatform === 'windows' && (
+                            <>
+                                <Col span={12}>
+                                    <ProForm.Item
+                                        label={
+                                            <IconLabel
+                                                label={
+                                                    <FormattedMessage id="settings.systemSettings.commonSettings.useAdminAutoStart" />
+                                                }
+                                            />
+                                        }
+                                    >
+                                        <Button
+                                            type="default"
+                                            onClick={() => {
+                                                restartWithAdmin();
+                                            }}
+                                        >
+                                            <FormattedMessage id="settings.systemSettings.commonSettings.useAdminAutoStart.enable" />
+                                        </Button>
+                                    </ProForm.Item>
+                                </Col>
+                            </>
+                        )}
                         <Col span={12}>
                             <ProForm.Item
                                 label={

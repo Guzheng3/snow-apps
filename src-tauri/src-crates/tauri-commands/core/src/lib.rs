@@ -504,3 +504,19 @@ pub async fn close_window_after_delay(window: tauri::Window, delay: u64) {
         }
     });
 }
+
+pub async fn create_admin_auto_start_task() -> Result<(), String> {
+    snow_shot_app_os::utils::create_admin_auto_start_task()
+}
+
+pub async fn delete_admin_auto_start_task() -> Result<(), String> {
+    snow_shot_app_os::utils::delete_admin_auto_start_task()
+}
+
+pub async fn restart_with_admin() -> Result<(), String> {
+    snow_shot_app_os::utils::restart_with_admin()
+}
+
+pub async fn is_admin() -> Result<bool, String> {
+    Ok(snow_shot_app_os::utils::is_admin())
+}

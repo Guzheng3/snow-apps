@@ -47,6 +47,8 @@ export const settings = {
     'settings.drawLineSmoothIterations.tip': '迭代次数越多，线条越平滑',
     'settings.systemSettings.commonSettings': '常用',
     'settings.systemSettings.commonSettings.autoStart': '开机自动启动',
+    'settings.systemSettings.commonSettings.useAdminAutoStart': '使用管理员自动启动',
+    'settings.systemSettings.commonSettings.useAdminAutoStart.enable': '启用',
     'settings.systemSettings.commonSettings.autoCheckVersion': '自动检查更新',
     'settings.hotKeySettings.translation': '翻译',
     'settings.hotKeySettings.chat': 'AI 对话',

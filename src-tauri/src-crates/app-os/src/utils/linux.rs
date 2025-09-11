@@ -15,3 +15,19 @@ pub fn set_draw_window_style(window: tauri::Window) {
 
     ()
 }
+
+pub fn create_admin_auto_start_task() -> Result<(), String> {
+    Ok(())
+}
+
+pub fn delete_admin_auto_start_task() -> Result<(), String> {
+    Ok(())
+}
+
+pub fn restart_with_admin() -> Result<(), String> {
+    Ok(())
+}
+
+pub fn is_admin() -> bool {
+    false
+}

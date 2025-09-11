@@ -125,3 +125,18 @@ export const closeWindowAfterDelay = async (delay: number) => {
     });
     return result;
 };
+
+export const autoStartEnable = async () => {
+    const result = await invoke<void>('auto_start_enable');
+    return result;
+};
+
+export const autoStartDisable = async () => {
+    const result = await invoke<void>('auto_start_disable');
+    return result;
+};
+
+export const restartWithAdmin = async () => {
+    const result = await invoke<void>('restart_with_admin');
+    return result;
+};
