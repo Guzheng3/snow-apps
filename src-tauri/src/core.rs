@@ -153,7 +153,6 @@ pub async fn auto_start_enable(app: tauri::AppHandle) -> Result<(), String> {
             Err(_) => return Err(String::from("[auto_start_enable] Failed to check if admin")),
         };
 
-
         // 如果是管理员模式，则禁用普通的自启动方式，使用 Windows 的任务计划程序实现自启动
         if !is_admin {
             match autostart_manager.enable() {
@@ -173,10 +172,9 @@ pub async fn auto_start_enable(app: tauri::AppHandle) -> Result<(), String> {
         match autostart_manager.disable() {
             Ok(_) => (),
             Err(e) => {
-                return Err(format!(
-                    "[auto_start_enable] Failed to disable autostart: {}",
-                    e,
-                ));
+                // 如果 autostart_manager 不是设置了的状态，则可能报错
+                // 所以不提前退出
+                log::warn!("[auto_start_enable] Failed to disable autostart: {}", e);
             }
         }
 
@@ -203,10 +201,7 @@ pub async fn auto_start_disable(app: tauri::AppHandle) -> Result<(), String> {
     match autostart_manager.disable() {
         Ok(_) => (),
         Err(e) => {
-            return Err(format!(
-                "[auto_start_disable] Failed to disable autostart: {}",
-                e,
-            ));
+            log::warn!("[auto_start_disable] Failed to disable autostart: {}", e);
         }
     }
 
