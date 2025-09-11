@@ -142,8 +142,9 @@ pub fn run() {
                 }
             });
 
-            // 如果不是自动启动，则显示窗口
-            if !std::env::args().any(|arg| arg == "--auto_start") {
+            // 如果是调试模式，则显示窗口
+            #[cfg(debug_assertions)]
+            {
                 main_window.show().unwrap();
             }
 
