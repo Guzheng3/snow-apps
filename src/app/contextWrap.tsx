@@ -606,6 +606,7 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
         [writeAppSettings],
     );
 
+    const hasInitAutoStart = useRef(false);
     const updateAppSettings = useCallback(
         (
             group: AppSettingsGroup,
@@ -1008,7 +1009,13 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                 if (process.env.NODE_ENV === 'development') {
                 }
 
-                if (saveToFile && process.env.NODE_ENV !== 'development') {
+                if (
+                    saveToFile &&
+                    process.env.NODE_ENV !== 'development' &&
+                    !hasInitAutoStart.current
+                ) {
+                    hasInitAutoStart.current = true;
+
                     (async () => {
                         // 每次启动都重新注册一下
                         await autoStartEnable();
