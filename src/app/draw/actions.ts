@@ -13,6 +13,7 @@ import { AppOcrResult } from '../fixedContent/components/ocrResult';
 import { CaptureBoundingBoxInfo } from './extra';
 import { setWindowRect } from '@/utils/window';
 import { appError } from '@/utils/log';
+import { getPlatform } from '@/utils';
 
 export const getCanvas = async (
     selectRectParams: SelectRectParams | undefined,
@@ -245,7 +246,12 @@ export const copyToClipboard = async (imageData: Blob, appSettings: AppSettingsD
     let browserClipboardWriteSuccess = false;
     try {
         if (appSettings[AppSettingsGroup.SystemScreenshot].enableBrowserClipboard) {
-            if ('clipboard' in navigator && 'write' in navigator.clipboard) {
+            if (
+                'clipboard' in navigator &&
+                'write' in navigator.clipboard &&
+                (getPlatform() !== 'macos' ||
+                    ('userActivation' in navigator && navigator.userActivation?.isActive))
+            ) {
                 if (window.isSecureContext && window.document.hasFocus()) {
                     await navigator.clipboard.write([
                         new ClipboardItem({ ['image/png']: imageData }),
