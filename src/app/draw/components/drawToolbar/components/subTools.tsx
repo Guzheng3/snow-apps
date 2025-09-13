@@ -8,6 +8,7 @@ import { useIntl } from 'react-intl';
 import { updateElementPosition } from './dragButton/extra';
 import { DrawContext } from '@/app/draw/types';
 import { zIndexs } from '@/utils/zIndex';
+import { useMonitorRect } from '../../statusBar';
 
 export type SubToolsActionType = {
     getSubToolContainer: () => HTMLDivElement | null;
@@ -52,6 +53,9 @@ export const SubTools: React.FC<{
         draggingRef.current = false;
     }, []);
 
+    const {
+        contentScale: [, , contentScaleRef],
+    } = useMonitorRect();
     const updateDrawToolbarStyle = useCallback(() => {
         const subTools = subToolsRef.current;
         if (!subTools) {
@@ -64,7 +68,8 @@ export const SubTools: React.FC<{
         }
 
         const baseOffsetX =
-            selectedRect.min_x / window.devicePixelRatio - subTools.clientWidth - token.marginXXS;
+            selectedRect.min_x / window.devicePixelRatio -
+            (subTools.clientWidth + token.marginXXS) * contentScaleRef.current;
         const baseOffsetY = selectedRect.min_y / window.devicePixelRatio;
 
         const dragRes = updateElementPosition(
@@ -74,11 +79,13 @@ export const SubTools: React.FC<{
             mouseOriginPositionRef.current,
             mouseCurrentPositionRef.current,
             toolbarPreviousRectRef.current,
+            undefined,
+            contentScaleRef.current,
         );
 
         toolbarCurrentRectRef.current = dragRes.rect;
         mouseOriginPositionRef.current = dragRes.originPosition;
-    }, [selectLayerActionRef, token.marginXXS]);
+    }, [selectLayerActionRef, token.marginXXS, contentScaleRef]);
 
     const updateDrawToolbarStyleRender = useCallbackRender(updateDrawToolbarStyle);
 
@@ -161,6 +168,7 @@ export const SubTools: React.FC<{
                     color: ${token.colorText};
                     box-shadow: 0 0 3px 0px ${token.colorPrimaryHover};
                     transition: opacity ${token.motionDurationMid} ${token.motionEaseInOut};
+                    transform-origin: top left;
                 }
 
                 .drag-button {

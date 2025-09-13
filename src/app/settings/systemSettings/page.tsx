@@ -245,6 +245,9 @@ export default function SystemSettings() {
                                                 label={
                                                     <FormattedMessage id="settings.systemSettings.commonSettings.useAdminAutoStart" />
                                                 }
+                                                tooltipTitle={
+                                                    <FormattedMessage id="settings.systemSettings.commonSettings.useAdminAutoStart.tip" />
+                                                }
                                             />
                                         }
                                     >

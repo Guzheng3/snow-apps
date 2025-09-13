@@ -18,6 +18,7 @@ import {
     DrawEvent,
     DrawEventParams,
     DrawEventPublisher,
+    MonitorRect,
     ScreenshotTypePublisher,
 } from '../../extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
@@ -29,8 +30,8 @@ import { ScreenshotType } from '@/functions/screenshot';
 import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { getPlatformValue } from '@/utils';
-import { ElementRect } from '@/commands';
 import { formatKey } from '@/utils/format';
+import { useContentScale } from '@/hooks/useTextScaleFactor';
 
 const KeyLabel: React.FC<{
     messageId?: string;
@@ -48,6 +49,57 @@ const KeyLabel: React.FC<{
             {formatHotKey}
         </div>
     );
+};
+
+// 新实例化的组件可能收不到 DrawEvent.ChangeMonitor 消息
+// 用个全局变量存一下然后初始化
+let useMonitorRectData: MonitorRect | undefined = undefined;
+export const useMonitorRect = (): {
+    monitorRect: MonitorRect;
+    contentScale: ReturnType<typeof useContentScale>;
+} => {
+    const [monitorRectInfo, setMonitorRectInfo] = useState<MonitorRect>({
+        rect: {
+            min_x: 0,
+            min_y: 0,
+            max_x: 0,
+            max_y: 0,
+        },
+        scale_factor: 0,
+    });
+
+    useEffect(() => {
+        if (useMonitorRectData) {
+            setMonitorRectInfo(useMonitorRectData);
+        }
+    }, []);
+    useStateSubscriber(
+        DrawEventPublisher,
+        useCallback((event: DrawEventParams) => {
+            if (event?.event === DrawEvent.ChangeMonitor) {
+                const { rect, scale_factor } = event.params.rect;
+                setMonitorRectInfo({
+                    rect: {
+                        min_x: rect.min_x / window.devicePixelRatio,
+                        min_y: rect.min_y / window.devicePixelRatio,
+                        max_x: rect.max_x / window.devicePixelRatio,
+                        max_y: rect.max_y / window.devicePixelRatio,
+                    },
+                    scale_factor,
+                });
+                useMonitorRectData = event.params.rect;
+            }
+        }, []),
+    );
+
+    const contentScaleValues = useContentScale(monitorRectInfo.scale_factor);
+
+    return useMemo(() => {
+        return {
+            monitorRect: monitorRectInfo,
+            contentScale: contentScaleValues,
+        };
+    }, [monitorRectInfo, contentScaleValues]);
 };
 
 const StatusBar: React.FC = () => {
@@ -306,25 +358,10 @@ const StatusBar: React.FC = () => {
         };
     }, [getCaptureLoading, onMouseMoveRender, selectLayerActionRef]);
 
-    const [monitorRect, setMonitorRect] = useState<ElementRect>({
-        min_x: 0,
-        min_y: 0,
-        max_x: 0,
-        max_y: 0,
-    });
-    useStateSubscriber(
-        DrawEventPublisher,
-        useCallback((event: DrawEventParams) => {
-            if (event?.event === DrawEvent.ChangeMonitor) {
-                setMonitorRect({
-                    min_x: event.params.monitorRect.min_x / window.devicePixelRatio,
-                    min_y: event.params.monitorRect.min_y / window.devicePixelRatio,
-                    max_x: event.params.monitorRect.max_x / window.devicePixelRatio,
-                    max_y: event.params.monitorRect.max_y / window.devicePixelRatio,
-                });
-            }
-        }, []),
-    );
+    const {
+        monitorRect: { rect: monitorRect },
+        contentScale: [contentScale],
+    } = useMonitorRect();
 
     return (
         <div
@@ -342,11 +379,13 @@ const StatusBar: React.FC = () => {
                 {/* 在这里处理下 antd message 的样式*/}
                 :global(.app-global-message) {
                     {/* 刘海屏可能会被遮挡，加个 margin */}
-                    top: calc(${monitorRect.min_y}px + ${token.marginLG}px) !important;
+                    top: calc(${monitorRect.min_y}px + ${token.marginLG * contentScale}px) !important;
                     left: ${monitorRect.min_x}px !important;
                     width: ${monitorRect.max_x - monitorRect.min_x}px !important;
-                    transform: unset !important;
+                    transform: scale(${contentScale}) !important;
+                    transform-origin: top;
                 }
+                
                 :global(.ant-modal-wrap),
                 :global(.ant-modal-mask) {
                     top: ${monitorRect.min_y}px !important;
@@ -355,13 +394,27 @@ const StatusBar: React.FC = () => {
                     bottom: unset !important;
                     width: ${monitorRect.max_x - monitorRect.min_x}px !important;
                     height: ${monitorRect.max_y - monitorRect.min_y}px !important;
+                    max-height: ${monitorRect.max_y - monitorRect.min_y}px !important;
+                }
+
+                :global(.ant-modal-wrap .ant-modal>div) {
+                    transform-origin: calc(100% * ${contentScale - 1}) 0 !important;
+                    transform: translate(0, calc(-100% * ${contentScale - 1} / 2)) scale(${contentScale}) !important;
+                }
+
+               :global(.draw-modal-body) {
+                    overflow-y: auto;
+                    overflow-x: hidden;
+                    max-height: calc(50vh / ${contentScale});
+                    padding-bottom: ${64}px;
                 }
 
                 .status-bar {
                     position: fixed;
                     top: ${monitorRect.max_y}px;
                     left: ${monitorRect.min_x}px;
-                    transform: translate(0, -100%);
+                    transform: translate(0, calc(-100% * ${contentScale})) scale(${contentScale});
+                    transform-origin: top left;
                     padding: ${token.paddingLG}px ${token.paddingLG}px ${token.padding}px
                         ${token.padding}px;
                     transition: opacity ${token.motionDurationMid} ${token.motionEaseInOut};

@@ -112,7 +112,7 @@ export type DrawEventParams =
     | {
           event: DrawEvent.ChangeMonitor;
           params: {
-              monitorRect: ElementRect;
+              rect: MonitorRect;
           };
       }
     | {
@@ -131,15 +131,25 @@ export type DrawEventParams =
 
 export const DrawEventPublisher = createPublisher<DrawEventParams>(undefined, true);
 
+/**
+ * 显示器范围
+ */
+export type MonitorRect = {
+    /** 显示器范围 */
+    rect: ElementRect;
+    /** 显示器缩放 */
+    scale_factor: number;
+};
+
 export class CaptureBoundingBoxInfo {
     rect: ElementRect;
     width: number;
     height: number;
     mousePosition: MousePosition;
-    monitorRectList: ElementRect[];
+    monitorRectList: MonitorRect[];
     monitorRTree: Flatbush;
 
-    constructor(rect: ElementRect, monitorRectList: ElementRect[], mousePosition: MousePosition) {
+    constructor(rect: ElementRect, monitorRectList: MonitorRect[], mousePosition: MousePosition) {
         this.rect = rect;
         this.width = rect.max_x - rect.min_x;
         this.height = rect.max_y - rect.min_y;
@@ -150,7 +160,7 @@ export class CaptureBoundingBoxInfo {
         );
         this.monitorRectList = monitorRectList;
         this.monitorRTree = new Flatbush(monitorRectList.length);
-        monitorRectList.forEach((rect) => {
+        monitorRectList.forEach(({ rect }) => {
             this.monitorRTree.add(rect.min_x, rect.min_y, rect.max_x, rect.max_y);
         });
         this.monitorRTree.finish();
@@ -184,15 +194,84 @@ export class CaptureBoundingBoxInfo {
         };
     }
 
-    getActiveMonitorRectList(selectedRect: ElementRect): ElementRect[] {
-        const monitorRectIndexList = this.monitorRTree.search(
+    /**
+     * 获取选区所在的显示器索引
+     * @param selectedRect 选区
+     * @param querySelectedRectPoints 是否查询选区的所有点
+     * @returns 显示器索引列表
+     */
+    getActiveMonitorIndex(
+        selectedRect: ElementRect,
+        querySelectedRectPoints: boolean = false,
+    ): number[] {
+        // 优先遍历中心点
+        const centerX = selectedRect.min_x + (selectedRect.max_x - selectedRect.min_x) / 2;
+        const centerY = selectedRect.min_y + (selectedRect.max_y - selectedRect.min_y) / 2;
+        let result = this.monitorRTree.search(centerX, centerY, centerX, centerY);
+
+        if (result.length !== 0) {
+            return result;
+        }
+
+        if (!querySelectedRectPoints) {
+            return result;
+        }
+
+        // 左上
+        result = this.monitorRTree.search(
             selectedRect.min_x,
             selectedRect.min_y,
+            selectedRect.min_x,
+            selectedRect.min_y,
+        );
+
+        if (result.length !== 0) {
+            return result;
+        }
+
+        // 右上
+        result = this.monitorRTree.search(
+            selectedRect.max_x,
+            selectedRect.min_y,
+            selectedRect.max_x,
+            selectedRect.min_y,
+        );
+
+        if (result.length !== 0) {
+            return result;
+        }
+
+        // 左下
+        result = this.monitorRTree.search(
+            selectedRect.min_x,
+            selectedRect.max_y,
+            selectedRect.min_x,
+            selectedRect.max_y,
+        );
+
+        if (result.length !== 0) {
+            return result;
+        }
+
+        // 右下
+        result = this.monitorRTree.search(
+            selectedRect.max_x,
+            selectedRect.max_y,
             selectedRect.max_x,
             selectedRect.max_y,
         );
 
-        return monitorRectIndexList.map((index) => this.monitorRectList[index]);
+        if (result.length !== 0) {
+            return result;
+        }
+
+        return result;
+    }
+
+    getActiveMonitorRectList(selectedRect: ElementRect): ElementRect[] {
+        const monitorRectIndexList = this.getActiveMonitorIndex(selectedRect);
+
+        return monitorRectIndexList.map((index) => this.monitorRectList[index].rect);
     }
 
     getActiveMonitorRect(selectedRect: ElementRect) {
@@ -206,5 +285,16 @@ export class CaptureBoundingBoxInfo {
                 max_y: this.height,
             }
         );
+    }
+
+    getActiveMonitor(selectedRect: ElementRect, querySelectedRectPoints: boolean = false) {
+        const monitorRectIndexList = this.getActiveMonitorIndex(
+            selectedRect,
+            querySelectedRectPoints,
+        );
+
+        const lastIndex = last(monitorRectIndexList) ?? 0;
+
+        return this.monitorRectList[lastIndex];
     }
 }

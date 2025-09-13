@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { ElementRect } from '.';
+import { MonitorRect } from '@/app/draw/extra';
 
 export const getSelectedText = async () => {
     const result = await invoke<string>('get_selected_text');
@@ -109,7 +110,7 @@ export const setCurrentWindowAlwaysOnTop = async (allowInputMethodOverlay: boole
 
 export type MonitorBoundingBox = {
     rect: ElementRect;
-    monitor_rect_list: ElementRect[];
+    monitor_rect_list: MonitorRect[];
 };
 
 export const getMonitorsBoundingBox = async (region?: ElementRect) => {

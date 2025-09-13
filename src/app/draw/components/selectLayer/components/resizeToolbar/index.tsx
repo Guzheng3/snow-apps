@@ -21,6 +21,7 @@ import { SelectState } from '../../extra';
 import { ResizeModal, ResizeModalActionType, ResizeModalParams } from './components/resizeModal';
 import { useIntl } from 'react-intl';
 import { AggregationColor } from 'antd/es/color-picker/color';
+import { useMonitorRect } from '../../../statusBar';
 
 export type ResizeToolbarActionType = {
     updateStyle: (selectedRect: ElementRect) => void;
@@ -61,6 +62,10 @@ export const ResizeToolbar: React.FC<{
     });
     const [selectState, setSelectState] = useState(SelectState.Auto);
 
+    const {
+        contentScale: [, , contentScaleRef],
+    } = useMonitorRect();
+
     const updateStyle = useCallback(
         (selectedRect: ElementRect) => {
             const resizeToolbar = resizeToolbarRef.current;
@@ -72,13 +77,17 @@ export const ResizeToolbar: React.FC<{
                 resizeToolbar,
                 0,
                 0,
-                new MousePosition(0, resizeToolbar.clientHeight + token.marginXXS),
+                new MousePosition(
+                    0,
+                    (resizeToolbar.clientHeight + token.marginXXS) * contentScaleRef.current,
+                ),
                 new MousePosition(
                     selectedRect.min_x / window.devicePixelRatio,
                     selectedRect.min_y / window.devicePixelRatio,
                 ),
                 undefined,
                 true,
+                contentScaleRef.current,
             );
             if (isBeyond) {
                 updateElementPosition(
@@ -87,7 +96,7 @@ export const ResizeToolbar: React.FC<{
                     0,
                     new MousePosition(
                         -(selectedRect.max_x - selectedRect.min_x) / window.devicePixelRatio -
-                            token.marginXXS,
+                            token.marginXXS * contentScaleRef.current,
                         0,
                     ),
                     new MousePosition(
@@ -95,10 +104,12 @@ export const ResizeToolbar: React.FC<{
                         selectedRect.min_y / window.devicePixelRatio,
                     ),
                     undefined,
+                    undefined,
+                    contentScaleRef.current,
                 );
             }
         },
-        [token.marginXXS],
+        [contentScaleRef, token.marginXXS],
     );
 
     const setEnable = useCallback((enable: boolean) => {
@@ -402,6 +413,7 @@ export const ResizeToolbar: React.FC<{
                     selectState === SelectState.ScrollResize
                         ? 'auto'
                         : 'none'};
+                    transform-origin: top left;
                 }
 
                 .draw-resize-toolbar:hover {

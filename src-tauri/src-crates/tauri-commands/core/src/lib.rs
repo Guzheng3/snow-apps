@@ -11,7 +11,7 @@ use tokio::{sync::Mutex, time::Duration};
 use snow_shot_app_os::notification;
 use snow_shot_app_services::free_drag_window_service::FreeDragWindowService;
 use snow_shot_app_shared::{ElementRect, EnigoManager};
-use snow_shot_app_utils::get_target_monitor;
+use snow_shot_app_utils::{get_target_monitor, monitor_info::MonitorRect};
 
 pub async fn exit_app(window: tauri::Window, handle: tauri::AppHandle) {
     window.hide().unwrap();
@@ -297,7 +297,7 @@ pub async fn get_current_monitor_info() -> Result<MonitorInfo, String> {
 #[derive(Serialize, Clone)]
 pub struct MonitorsBoundingBox {
     rect: ElementRect,
-    monitor_rect_list: Vec<ElementRect>,
+    monitor_rect_list: Vec<MonitorRect>,
 }
 
 pub async fn get_monitors_bounding_box(

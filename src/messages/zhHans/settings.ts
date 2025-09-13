@@ -47,8 +47,10 @@ export const settings = {
     'settings.drawLineSmoothIterations.tip': '迭代次数越多，线条越平滑',
     'settings.systemSettings.commonSettings': '常用',
     'settings.systemSettings.commonSettings.autoStart': '开机自动启动',
-    'settings.systemSettings.commonSettings.useAdminAutoStart': '使用管理员自动启动',
-    'settings.systemSettings.commonSettings.useAdminAutoStart.enable': '启用',
+    'settings.systemSettings.commonSettings.useAdminAutoStart': '使用管理员权限重启',
+    'settings.systemSettings.commonSettings.useAdminAutoStart.tip':
+        '使用管理员启动应用后，如果开启了“开机自动启动”则当应用自动启动时将使用管理员权限启动',
+    'settings.systemSettings.commonSettings.useAdminAutoStart.enable': '重新启动',
     'settings.systemSettings.commonSettings.autoCheckVersion': '自动检查更新',
     'settings.hotKeySettings.translation': '翻译',
     'settings.hotKeySettings.chat': 'AI 对话',
@@ -102,7 +104,7 @@ export const settings = {
     'settings.functionSettings.screenshotSettings.colorPickerShowMode': '颜色拾取器模式',
     'settings.functionSettings.screenshotSettings.beyondSelectRect': '超出选区后隐藏',
     'settings.functionSettings.screenshotSettings.alwaysShowColorPicker': '始终显示',
-    'settings.functionSettings.screenshotSettings.neverShowColorPicker': '从不显示',
+    'settings.functionSettings.screenshotSettings.neverShowColorPicker': '始终隐藏',
     'settings.functionSettings.screenshotSettings.beyondSelectRectElementOpacity':
         '超出选区范围的元素透明度',
     'settings.functionSettings.screenshotSettings.beyondSelectRectElementOpacity.tip':

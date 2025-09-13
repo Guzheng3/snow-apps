@@ -2,6 +2,7 @@ use image::{DynamicImage, ImageBuffer, Rgb, RgbImage};
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
 };
+use serde::Serialize;
 use snow_shot_app_shared::ElementRect;
 use xcap::Monitor;
 
@@ -9,11 +10,19 @@ use xcap::Monitor;
 pub struct MonitorInfo {
     pub monitor: Monitor,
     pub rect: ElementRect,
+    pub scale_factor: f32,
+}
+
+#[derive(Serialize, Clone)]
+pub struct MonitorRect {
+    pub rect: ElementRect,
+    pub scale_factor: f32,
 }
 
 impl MonitorInfo {
     pub fn new(monitor: &Monitor) -> Self {
         let monitor_rect: ElementRect;
+        let scale_factor: f32;
 
         #[cfg(target_os = "windows")]
         {
@@ -25,7 +34,8 @@ impl MonitorInfo {
                 max_y: unsafe {
                     rect.Anonymous1.Anonymous2.dmPosition.y + rect.dmPelsHeight as i32
                 },
-            }
+            };
+            scale_factor = monitor.scale_factor().unwrap_or(0.0);
         }
 
         #[cfg(target_os = "macos")]
@@ -37,12 +47,14 @@ impl MonitorInfo {
                 min_y: (rect.origin.y * monitor_scale_factor) as i32,
                 max_x: ((rect.origin.x + rect.size.width) * monitor_scale_factor) as i32,
                 max_y: ((rect.origin.y + rect.size.height) * monitor_scale_factor) as i32,
-            }
+            };
+            scale_factor = 0.0;
         }
 
         MonitorInfo {
             monitor: monitor.clone(),
             rect: monitor_rect,
+            scale_factor,
         }
     }
 
@@ -457,8 +469,14 @@ impl MonitorList {
         self.capture_core(Some(region), exclude_window).await
     }
 
-    pub fn monitor_rect_list(&self) -> Vec<ElementRect> {
-        self.0.iter().map(|monitor| monitor.rect).collect()
+    pub fn monitor_rect_list(&self) -> Vec<MonitorRect> {
+        self.0
+            .iter()
+            .map(|monitor| MonitorRect {
+                rect: monitor.rect,
+                scale_factor: monitor.scale_factor,
+            })
+            .collect()
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &MonitorInfo> {

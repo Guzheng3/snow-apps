@@ -4,7 +4,7 @@ import {
     AppSettingsGroup,
     AppSettingsPublisher,
 } from '@/app/contextWrap';
-import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { TranslationApiType } from '@/app/settings/functionSettings/extra';
 import { OcrDetectResult } from '@/commands/ocr';
 import { AntdContext, HotkeysScope } from '@/components/globalLayoutExtra';
@@ -23,6 +23,7 @@ import React, {
 } from 'react';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { FormattedMessage, useIntl } from 'react-intl';
+import RSC from 'react-scrollbars-custom';
 
 export type ModalTranslatorActionType = {
     startTranslate: () => void;
@@ -274,62 +275,65 @@ export const ModalTranslator: React.FC<{
             }}
             centered
             forceRender={!!ocrResult}
+            title={<FormattedMessage id="draw.ocrDetect.translate" />}
         >
-            <Form style={{ margin: token.margin }}>
-                <Space size={token.margin}>
-                    <Form.Item
-                        label={<FormattedMessage id="draw.ocrDetect.translate.autoReplace" />}
-                        name="result"
-                        layout="horizontal"
-                    >
-                        <Switch
-                            checked={autoReplace}
-                            onChange={(checked) => {
-                                updateAppSettings(
-                                    AppSettingsGroup.Cache,
-                                    { ocrTranslateAutoReplace: checked },
-                                    true,
-                                    true,
-                                    false,
-                                    true,
-                                    true,
-                                );
-                                setAutoReplace(checked);
-                            }}
-                        />
-                    </Form.Item>
-                    <Form.Item
-                        label={<FormattedMessage id="draw.ocrDetect.translate.keepLayout" />}
-                        name="result"
-                        layout="horizontal"
-                    >
-                        <Switch
-                            checked={keepLayout}
-                            onChange={(checked) => {
-                                updateAppSettings(
-                                    AppSettingsGroup.Cache,
-                                    { ocrTranslateKeepLayout: checked },
-                                    true,
-                                    true,
-                                    false,
-                                    true,
-                                    true,
-                                );
-                                setKeepLayout(checked);
-                            }}
-                        />
-                    </Form.Item>
-                </Space>
-            </Form>
+            <div className="draw-modal-body">
+                <Form style={{ margin: token.margin }}>
+                    <Space size={token.margin}>
+                        <Form.Item
+                            label={<FormattedMessage id="draw.ocrDetect.translate.autoReplace" />}
+                            name="result"
+                            layout="horizontal"
+                        >
+                            <Switch
+                                checked={autoReplace}
+                                onChange={(checked) => {
+                                    updateAppSettings(
+                                        AppSettingsGroup.Cache,
+                                        { ocrTranslateAutoReplace: checked },
+                                        true,
+                                        true,
+                                        false,
+                                        true,
+                                        true,
+                                    );
+                                    setAutoReplace(checked);
+                                }}
+                            />
+                        </Form.Item>
+                        <Form.Item
+                            label={<FormattedMessage id="draw.ocrDetect.translate.keepLayout" />}
+                            name="result"
+                            layout="horizontal"
+                        >
+                            <Switch
+                                checked={keepLayout}
+                                onChange={(checked) => {
+                                    updateAppSettings(
+                                        AppSettingsGroup.Cache,
+                                        { ocrTranslateKeepLayout: checked },
+                                        true,
+                                        true,
+                                        false,
+                                        true,
+                                        true,
+                                    );
+                                    setKeepLayout(checked);
+                                }}
+                            />
+                        </Form.Item>
+                    </Space>
+                </Form>
 
-            {ocrResult && (
-                <Translator
-                    disableInput
-                    actionRef={translatorActionRef}
-                    onTranslateComplete={onTranslateComplete}
-                    tryCatchTranslation
-                />
-            )}
+                {ocrResult && (
+                    <Translator
+                        disableInput
+                        actionRef={translatorActionRef}
+                        onTranslateComplete={onTranslateComplete}
+                        tryCatchTranslation
+                    />
+                )}
+            </div>
         </Modal>
     );
 };

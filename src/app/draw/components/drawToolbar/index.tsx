@@ -880,6 +880,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                 .draw-toolbar {
                     position: absolute;
                     opacity: 0;
+                    transform-origin: top left;
                 }
 
                 .draw-toolbar {

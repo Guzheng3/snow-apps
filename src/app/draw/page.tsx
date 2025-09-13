@@ -399,7 +399,7 @@ const DrawPageCore: React.FC<{
         ]);
 
         const rTree = new Flatbush(captureBoundingBox.monitor_rect_list.length);
-        captureBoundingBox.monitor_rect_list.forEach((rect) => {
+        captureBoundingBox.monitor_rect_list.forEach(({ rect }) => {
             rTree.add(rect.min_x, rect.min_y, rect.max_x, rect.max_y);
         });
         rTree.finish();

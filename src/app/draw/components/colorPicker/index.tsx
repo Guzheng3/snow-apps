@@ -63,6 +63,7 @@ import { writeTextToClipboard } from '@/utils/clipboard';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
 import { useStateRef } from '@/hooks/useStateRef';
+import { useMonitorRect } from '../statusBar';
 
 export enum ColorPickerShowMode {
     Always = 0,
@@ -150,6 +151,9 @@ const ColorPickerCore: React.FC<{
 
     const { captureBoundingBoxInfoRef, selectLayerActionRef } = useContext(DrawContext);
 
+    const {
+        contentScale: [, , contentScaleRef],
+    } = useMonitorRect();
     const updateOpacity = useCallback(() => {
         if (!colorPickerRef.current) {
             return;
@@ -209,10 +213,14 @@ const ColorPickerCore: React.FC<{
                     // 一般都是从左上到右下，所以只判断右下边缘即可
                     const maxX =
                         captureBoundingBoxInfo.width -
-                        colorPickerRef.current!.clientWidth * window.devicePixelRatio;
+                        colorPickerRef.current!.clientWidth *
+                            window.devicePixelRatio *
+                            contentScaleRef.current;
                     const maxY =
                         captureBoundingBoxInfo.height -
-                        colorPickerRef.current!.clientHeight * window.devicePixelRatio;
+                        colorPickerRef.current!.clientHeight *
+                            window.devicePixelRatio *
+                            contentScaleRef.current;
                     if (mouseX > maxX || mouseY > maxY) {
                         opacity = '0.5';
                     }
@@ -229,6 +237,7 @@ const ColorPickerCore: React.FC<{
         getAppSettings,
         selectLayerActionRef,
         token.marginXXS,
+        contentScaleRef,
     ]);
 
     const appWindowRef = useRef<AppWindow | undefined>(undefined);
@@ -489,8 +498,8 @@ const ColorPickerCore: React.FC<{
                 return;
             }
 
-            const colorPickerWidth = colorPickerElement.clientWidth;
-            const colorPickerHeight = colorPickerElement.clientHeight;
+            const colorPickerWidth = colorPickerElement.clientWidth * contentScaleRef.current;
+            const colorPickerHeight = colorPickerElement.clientHeight * contentScaleRef.current;
 
             const canvasWidth = document.body.clientWidth;
             const canvasHeight = document.body.clientHeight;
@@ -501,11 +510,11 @@ const ColorPickerCore: React.FC<{
             const colorPickerLeft = Math.min(Math.max(mouseX, 0), maxLeft);
             const colorPickerTop = Math.min(Math.max(mouseY, 0), maxTop);
 
-            colorPickerElement.style.transform = `translate(${colorPickerLeft}px, ${colorPickerTop}px)`;
+            colorPickerElement.style.transform = `translate(${colorPickerLeft}px, ${colorPickerTop}px) scale(${contentScaleRef.current})`;
 
             updateOpacity();
         },
-        [updateOpacity],
+        [contentScaleRef, updateOpacity],
     );
     const updateTransformRender = useCallbackRender(updateTransform);
     const update = useCallback(
@@ -850,6 +859,7 @@ const ColorPickerCore: React.FC<{
                         flex-direction: column;
                         padding: ${token.paddingXXS}px;
                         transition: opacity ${token.motionDurationFast} ${token.motionEaseInOut};
+                        transform-origin: top left;
                     }
 
                     .color-picker-container {

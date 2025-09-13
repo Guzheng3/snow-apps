@@ -15,7 +15,6 @@ import {
     ElementRect,
     getElementFromPosition,
     getWindowElements,
-    initUiElements,
     initUiElementsCache,
 } from '@/commands';
 import {
@@ -68,6 +67,7 @@ import { CaptureHistoryItem } from '@/utils/appStore';
 import { useStateRef } from '@/hooks/useStateRef';
 import Color from 'color';
 import { debounce } from 'es-toolkit';
+import { useMonitorRect } from '../statusBar';
 
 export type SelectRectParams = {
     rect: ElementRect;
@@ -421,6 +421,9 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
     const { currentTheme } = useContext(AppContext);
 
+    const {
+        contentScale: [, , contentScaleRef],
+    } = useMonitorRect();
     const drawCanvasSelectRect = useCallback(
         (
             rect: ElementRect,
@@ -442,7 +445,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 selectRectRadiusRef.current,
                 selectLayerCanvasContextRef.current!,
                 currentTheme === AppSettingsTheme.Dark,
-                window.devicePixelRatio,
+                contentScaleRef.current,
                 getScreenshotType() === ScreenshotType.TopWindow ||
                     selectStateRef.current === SelectState.Auto,
                 drawElementMask,
@@ -470,7 +473,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             // 和 canvas 同步下
             resizeToolbarUpdateStyleRenderCallback(rect);
         },
-        [currentTheme, getScreenshotType, resizeToolbarUpdateStyleRenderCallback],
+        [contentScaleRef, currentTheme, getScreenshotType, resizeToolbarUpdateStyleRenderCallback],
     );
 
     const publishSelectRectAnimationParams = useCallback(
@@ -719,21 +722,21 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 return;
             }
 
+            const activeMonitor = captureBoundingBoxInfo.getActiveMonitor(
+                captureBoundingBoxInfo.transformWindowRect(rect),
+                true,
+            );
             currentActiveMonitorRectRef.current = captureBoundingBoxInfo.transformMonitorRect(
-                captureBoundingBoxInfo.getActiveMonitorRect(
-                    captureBoundingBoxInfo.transformWindowRect({
-                        min_x: rect.min_x,
-                        min_y: rect.min_y,
-                        max_x: rect.min_x,
-                        max_y: rect.min_y,
-                    }),
-                ),
+                activeMonitor.rect,
             );
 
             setDrawEvent({
                 event: DrawEvent.ChangeMonitor,
                 params: {
-                    monitorRect: currentActiveMonitorRectRef.current,
+                    rect: {
+                        rect: currentActiveMonitorRectRef.current,
+                        scale_factor: activeMonitor.scale_factor,
+                    },
                 },
             });
             setDrawEvent(undefined);
