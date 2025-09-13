@@ -249,8 +249,7 @@ export const copyToClipboard = async (imageData: Blob, appSettings: AppSettingsD
             if (
                 'clipboard' in navigator &&
                 'write' in navigator.clipboard &&
-                (getPlatform() !== 'macos' ||
-                    ('userActivation' in navigator && navigator.userActivation?.isActive))
+                getPlatform() !== 'macos'
             ) {
                 if (window.isSecureContext && window.document.hasFocus()) {
                     await navigator.clipboard.write([
