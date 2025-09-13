@@ -96,7 +96,7 @@ export const useMonitorRect = (): {
 
     const calculatedBoundaryRect = useCallback(
         (rect: ElementRect) => {
-            if (monitorRectInfoRef.current.scale_factor === 0) {
+            if (monitorRectInfoRef.current.rect.max_x === 0) {
                 return rect;
             }
 
