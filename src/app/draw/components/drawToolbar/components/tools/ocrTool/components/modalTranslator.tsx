@@ -23,7 +23,6 @@ import React, {
 } from 'react';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { FormattedMessage, useIntl } from 'react-intl';
-import RSC from 'react-scrollbars-custom';
 
 export type ModalTranslatorActionType = {
     startTranslate: () => void;

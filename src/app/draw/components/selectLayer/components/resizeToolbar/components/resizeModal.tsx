@@ -5,7 +5,6 @@ import ProForm, { ModalForm, ProFormDigit } from '@ant-design/pro-form';
 import { Col, ColorPicker, Form, Row, theme } from 'antd';
 import { useImperativeHandle, useState } from 'react';
 import { FormattedMessage } from 'react-intl';
-import RSC from 'react-scrollbars-custom';
 
 export type ResizeModalActionType = {
     show: (

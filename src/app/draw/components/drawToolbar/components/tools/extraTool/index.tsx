@@ -1,4 +1,4 @@
-import { Button, Flex, message, Popover, theme } from 'antd';
+import { Button, Flex, message, theme } from 'antd';
 import { useIntl } from 'react-intl';
 import { ScanOutlined } from '@ant-design/icons';
 import { useState, useCallback, useContext } from 'react';
@@ -16,7 +16,7 @@ import {
     AppSettingsGroup,
     AppSettingsPublisher,
 } from '@/app/contextWrap';
-import { InnerPopover } from '@/components/innerPopover';
+import { ToolbarPopover } from '@/app/draw/components/drawToolbar/components/toolbarPopover';
 
 export enum ExtraToolList {
     None = 0,
@@ -162,7 +162,7 @@ export const ExtraTool: React.FC<{
     }
 
     return (
-        <InnerPopover
+        <ToolbarPopover
             trigger="hover"
             content={
                 <Flex align="center" gap={token.paddingXS} className="popover-toolbar">
@@ -173,6 +173,6 @@ export const ExtraTool: React.FC<{
             }
         >
             <div>{mainToolbarButton}</div>
-        </InnerPopover>
+        </ToolbarPopover>
     );
 };

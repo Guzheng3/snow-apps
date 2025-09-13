@@ -435,9 +435,6 @@ const StatusBar: React.FC = () => {
                     padding-bottom: ${64}px;
                 }
 
-                :global(.ant-popover) {
-                }
-
                 .status-bar {
                     position: fixed;
                     top: ${monitorRect.max_y}px;

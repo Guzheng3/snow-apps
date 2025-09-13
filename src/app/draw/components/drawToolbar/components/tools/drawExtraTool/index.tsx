@@ -1,8 +1,8 @@
 'use client';
 
-import { Button, Flex, Popover, theme } from 'antd';
+import { Button, Flex, theme } from 'antd';
 import { useIntl } from 'react-intl';
-import { useState, useCallback, useContext, useMemo, useRef } from 'react';
+import { useState, useCallback, useContext, useMemo } from 'react';
 import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { DrawState } from '@/app/fullScreenDraw/components/drawCore/extra';
@@ -15,7 +15,7 @@ import {
     AppSettingsPublisher,
 } from '@/app/contextWrap';
 import { WatermarkTool } from './components/watermarkTool';
-import { InnerPopover } from '@/components/innerPopover';
+import { ToolbarPopover } from '@/app/draw/components/drawToolbar/components/toolbarPopover';
 
 export const DrawExtraTool: React.FC<{
     onToolClickAction: (tool: DrawState) => void;
@@ -84,7 +84,7 @@ export const DrawExtraTool: React.FC<{
 
     return (
         <>
-            <InnerPopover
+            <ToolbarPopover
                 trigger="hover"
                 content={
                     <Flex align="center" gap={token.paddingXS} className="popover-toolbar">
@@ -93,7 +93,7 @@ export const DrawExtraTool: React.FC<{
                 }
             >
                 <div>{mainToolbarButton}</div>
-            </InnerPopover>
+            </ToolbarPopover>
 
             <WatermarkTool />
         </>
