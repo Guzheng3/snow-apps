@@ -19,6 +19,7 @@ import { ElementRect } from '@/commands';
 import { theme } from 'antd';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { ExcalidrawPropsCustomOptions, NormalizedZoomValue } from '@mg-chao/excalidraw/types';
+import { useMonitorRect } from '../statusBar';
 
 const DrawCacheLayerCore: React.FC<{
     actionRef: React.RefObject<DrawCacheLayerActionType | undefined>;
@@ -113,6 +114,11 @@ const DrawCacheLayerCore: React.FC<{
     );
 
     const { selectLayerActionRef } = useContext(DrawContext);
+
+    const {
+        contentScale: [, , contentScaleRef],
+        calculatedBoundaryRect,
+    } = useMonitorRect();
     const drawCoreContextValue = useMemo<DrawCoreContextValue>(() => {
         return {
             getLimitRect: () => {
@@ -123,7 +129,9 @@ const DrawCacheLayerCore: React.FC<{
             },
             getBaseOffset: (limitRect: ElementRect, devicePixelRatio: number) => {
                 return {
-                    x: limitRect.max_x / devicePixelRatio + token.marginXXS,
+                    x:
+                        limitRect.max_x / devicePixelRatio +
+                        token.marginXXS * contentScaleRef.current,
                     y: limitRect.min_y / devicePixelRatio,
                 };
             },
@@ -133,8 +141,18 @@ const DrawCacheLayerCore: React.FC<{
             getMousePosition: () => {
                 return mousePositionRef.current;
             },
+            calculatedBoundaryRect,
+            getContentScale: () => {
+                return contentScaleRef.current;
+            },
         };
-    }, [selectLayerActionRef, token.marginXXS, mousePositionRef]);
+    }, [
+        calculatedBoundaryRect,
+        selectLayerActionRef,
+        token.marginXXS,
+        mousePositionRef,
+        contentScaleRef,
+    ]);
 
     const excalidrawCustomOptions = useMemo<NonNullable<ExcalidrawPropsCustomOptions>>(() => {
         return {

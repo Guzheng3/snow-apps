@@ -47,27 +47,9 @@ const DragButtonCore: React.FC<{
     const toolbarPreviousRectRef = useRef<ElementRect>(undefined);
 
     const {
-        monitorRect: { rect: monitorRect },
         contentScale: [, , contentScaleRef],
+        calculatedBoundaryRect,
     } = useMonitorRect();
-
-    // 限制拖动范围在显示器内
-    const calculatedBoundaryRect = useCallback(
-        (rect: ElementRect) => {
-            const monitorWidth = monitorRect.max_x - monitorRect.min_x;
-            const monitorHeight = monitorRect.max_y - monitorRect.min_y;
-
-            const minX = rect.min_x + monitorRect.min_x;
-            const minY = rect.min_y + monitorRect.min_y;
-            return {
-                min_x: minX,
-                min_y: minY,
-                max_x: minX + monitorWidth,
-                max_y: minY + monitorHeight,
-            };
-        },
-        [monitorRect.min_x, monitorRect.min_y, monitorRect.max_x, monitorRect.max_y],
-    );
 
     const updateDrawToolbarStyle = useCallback(() => {
         const drawToolbar = drawToolbarRef.current;

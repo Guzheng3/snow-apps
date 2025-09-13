@@ -15,7 +15,13 @@ const LayoutMenuRender: React.FC<{
     const intl = useIntl();
 
     const layoutMenuRenderRef = useRef<HTMLDivElement>(null);
-    const { getLimitRect, getBaseOffset, getDevicePixelRatio } = useContext(DrawCoreContext);
+    const {
+        getLimitRect,
+        getBaseOffset,
+        getDevicePixelRatio,
+        calculatedBoundaryRect,
+        getContentScale,
+    } = useContext(DrawCoreContext);
 
     const mouseOriginPositionRef = useRef<MousePosition>(new MousePosition(0, 0));
     const mouseCurrentPositionRef = useRef<MousePosition>(new MousePosition(0, 0));
@@ -55,11 +61,14 @@ const LayoutMenuRender: React.FC<{
             mouseOriginPositionRef.current,
             mouseCurrentPositionRef.current,
             toolbarPreviousRectRef.current,
+            undefined,
+            getContentScale?.(),
+            calculatedBoundaryRect,
         );
 
         toolbarCurrentRectRef.current = dragRes.rect;
         mouseOriginPositionRef.current = dragRes.originPosition;
-    }, [getBaseOffset, getDevicePixelRatio, getLimitRect]);
+    }, [calculatedBoundaryRect, getContentScale, getBaseOffset, getDevicePixelRatio, getLimitRect]);
     const updateDrawToolbarStyleRender = useCallbackRender(updateDrawToolbarStyle);
 
     useEffect(() => {

@@ -16,6 +16,7 @@ import {
     AppSettingsGroup,
     AppSettingsPublisher,
 } from '@/app/contextWrap';
+import { InnerPopover } from '@/components/innerPopover';
 
 export enum ExtraToolList {
     None = 0,
@@ -161,7 +162,7 @@ export const ExtraTool: React.FC<{
     }
 
     return (
-        <Popover
+        <InnerPopover
             trigger="hover"
             content={
                 <Flex align="center" gap={token.paddingXS} className="popover-toolbar">
@@ -172,6 +173,6 @@ export const ExtraTool: React.FC<{
             }
         >
             <div>{mainToolbarButton}</div>
-        </Popover>
+        </InnerPopover>
     );
 };

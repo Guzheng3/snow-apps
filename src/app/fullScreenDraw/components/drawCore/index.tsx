@@ -608,6 +608,7 @@ const DrawCoreComponent: React.FC<{
 
                         .draw-core-layer :global(.excalidraw .layout-menu-render) {
                             --popup-bg-color: ${token.colorBgContainer};
+                            transform-origin: top left;
                         }
 
                         .draw-core-layer :global(.excalidraw .layout-menu-render .picker) {

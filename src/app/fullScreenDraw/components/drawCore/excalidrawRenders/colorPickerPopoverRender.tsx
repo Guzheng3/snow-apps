@@ -1,6 +1,14 @@
 import { Button, ColorPicker, Flex, theme } from 'antd';
 import { ExcalidrawPropsCustomOptions } from '@mg-chao/excalidraw/types';
-import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+    ComponentProps,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { PickColorIcon } from '@/components/icons';
 import { DrawContext } from '@/app/fullScreenDraw/extra';
 import { useIntl } from 'react-intl';
@@ -54,10 +62,13 @@ const ColorPickerCore: React.FC<{
         setActivePick(false);
     }, [setActivePick]);
 
+    const containerRef = useRef<HTMLElement>(null);
     useEffect(() => {
         if (!enableColorPicker) {
             return;
         }
+
+        containerRef.current = document.getElementById('layout-menu-render') ?? document.body;
 
         document.addEventListener('mousedown', onMouseDown);
         return () => {
@@ -65,36 +76,49 @@ const ColorPickerCore: React.FC<{
         };
     }, [enableColorPicker, onMouseDown]);
 
+    const getPopupContainer = useCallback(() => {
+        return containerRef.current ?? document.body;
+    }, []);
+
+    const onChangeComplete = useCallback<
+        NonNullable<ComponentProps<typeof ColorPicker>['onChangeComplete']>
+    >(
+        (newColor) => {
+            onChange(newColor.toHexString());
+        },
+        [onChange],
+    );
+
+    const panelRender = useCallback<NonNullable<ComponentProps<typeof ColorPicker>['panelRender']>>(
+        (panel) => {
+            return (
+                <>
+                    {panel}
+                    {enableColorPicker && (
+                        <Flex justify="end" className="color-picker-popover-render-pick-color">
+                            <Button
+                                type={activePick === true ? 'primary' : 'default'}
+                                icon={<PickColorIcon style={{ fontSize: '1.2em' }} />}
+                                onClick={onEnablePickClick}
+                                title={enablePickTitle}
+                            />
+                        </Flex>
+                    )}
+                </>
+            );
+        },
+        [activePick, enableColorPicker, enablePickTitle, onEnablePickClick],
+    );
     return (
         <div title={color ?? undefined} className="color-picker-popover-render">
             <ColorPicker
                 value={color}
-                onChangeComplete={(newColor) => {
-                    onChange(newColor.toHexString());
-                }}
+                onChangeComplete={onChangeComplete}
                 size="small"
                 placement="rightTop"
                 disabledFormat
-                panelRender={(panel) => {
-                    return (
-                        <>
-                            {panel}
-                            {enableColorPicker && (
-                                <Flex
-                                    justify="end"
-                                    className="color-picker-popover-render-pick-color"
-                                >
-                                    <Button
-                                        type={activePick === true ? 'primary' : 'default'}
-                                        icon={<PickColorIcon style={{ fontSize: '1.2em' }} />}
-                                        onClick={onEnablePickClick}
-                                        title={enablePickTitle}
-                                    />
-                                </Flex>
-                            )}
-                        </>
-                    );
-                }}
+                getPopupContainer={getPopupContainer}
+                panelRender={panelRender}
             />
 
             <style jsx>{`

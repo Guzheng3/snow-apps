@@ -54,8 +54,10 @@ export const SubTools: React.FC<{
     }, []);
 
     const {
+        calculatedBoundaryRect,
         contentScale: [, , contentScaleRef],
     } = useMonitorRect();
+
     const updateDrawToolbarStyle = useCallback(() => {
         const subTools = subToolsRef.current;
         if (!subTools) {
@@ -81,11 +83,12 @@ export const SubTools: React.FC<{
             toolbarPreviousRectRef.current,
             undefined,
             contentScaleRef.current,
+            calculatedBoundaryRect,
         );
 
         toolbarCurrentRectRef.current = dragRes.rect;
         mouseOriginPositionRef.current = dragRes.originPosition;
-    }, [selectLayerActionRef, token.marginXXS, contentScaleRef]);
+    }, [selectLayerActionRef, token.marginXXS, contentScaleRef, calculatedBoundaryRect]);
 
     const updateDrawToolbarStyleRender = useCallbackRender(updateDrawToolbarStyle);
 

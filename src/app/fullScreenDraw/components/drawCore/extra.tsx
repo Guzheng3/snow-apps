@@ -212,6 +212,9 @@ export type DrawCoreContextValue = {
     };
     getAction: () => DrawCoreActionType | undefined;
     getMousePosition: () => MousePosition | undefined;
+    calculatedBoundaryRect?: (rect: ElementRect) => ElementRect;
+    getContentScale?: () => number;
+    getPopoverPopupContainer?: () => HTMLElement;
 };
 
 export const DrawCoreContext = createContext<DrawCoreContextValue>({

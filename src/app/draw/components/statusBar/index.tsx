@@ -32,6 +32,8 @@ import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { getPlatformValue } from '@/utils';
 import { formatKey } from '@/utils/format';
 import { useContentScale } from '@/hooks/useTextScaleFactor';
+import { ElementRect } from '@/commands';
+import { useStateRef } from '@/hooks/useStateRef';
 
 const KeyLabel: React.FC<{
     messageId?: string;
@@ -53,43 +55,66 @@ const KeyLabel: React.FC<{
 
 // 新实例化的组件可能收不到 DrawEvent.ChangeMonitor 消息
 // 用个全局变量存一下然后初始化
-let useMonitorRectData: MonitorRect | undefined = undefined;
+let useMonitorRectData: MonitorRect = {
+    rect: {
+        min_x: 0,
+        min_y: 0,
+        max_x: 0,
+        max_y: 0,
+    },
+    scale_factor: 0,
+};
 export const useMonitorRect = (): {
     monitorRect: MonitorRect;
     contentScale: ReturnType<typeof useContentScale>;
+    calculatedBoundaryRect: (rect: ElementRect) => ElementRect;
 } => {
-    const [monitorRectInfo, setMonitorRectInfo] = useState<MonitorRect>({
-        rect: {
-            min_x: 0,
-            min_y: 0,
-            max_x: 0,
-            max_y: 0,
-        },
-        scale_factor: 0,
-    });
+    const [monitorRectInfo, setMonitorRectInfo, monitorRectInfoRef] =
+        useStateRef<MonitorRect>(useMonitorRectData);
 
-    useEffect(() => {
-        if (useMonitorRectData) {
-            setMonitorRectInfo(useMonitorRectData);
-        }
-    }, []);
     useStateSubscriber(
         DrawEventPublisher,
-        useCallback((event: DrawEventParams) => {
-            if (event?.event === DrawEvent.ChangeMonitor) {
-                const { rect, scale_factor } = event.params.rect;
-                setMonitorRectInfo({
-                    rect: {
-                        min_x: rect.min_x / window.devicePixelRatio,
-                        min_y: rect.min_y / window.devicePixelRatio,
-                        max_x: rect.max_x / window.devicePixelRatio,
-                        max_y: rect.max_y / window.devicePixelRatio,
-                    },
-                    scale_factor,
-                });
-                useMonitorRectData = event.params.rect;
+        useCallback(
+            (event: DrawEventParams) => {
+                if (event?.event === DrawEvent.ChangeMonitor) {
+                    const { rect, scale_factor } = event.params.rect;
+                    setMonitorRectInfo({
+                        rect: {
+                            min_x: rect.min_x / window.devicePixelRatio,
+                            min_y: rect.min_y / window.devicePixelRatio,
+                            max_x: rect.max_x / window.devicePixelRatio,
+                            max_y: rect.max_y / window.devicePixelRatio,
+                        },
+                        scale_factor,
+                    });
+                    useMonitorRectData = event.params.rect;
+                }
+            },
+            [setMonitorRectInfo],
+        ),
+    );
+
+    const calculatedBoundaryRect = useCallback(
+        (rect: ElementRect) => {
+            if (monitorRectInfoRef.current.scale_factor === 0) {
+                return rect;
             }
-        }, []),
+
+            const monitorWidth =
+                monitorRectInfoRef.current.rect.max_x - monitorRectInfoRef.current.rect.min_x;
+            const monitorHeight =
+                monitorRectInfoRef.current.rect.max_y - monitorRectInfoRef.current.rect.min_y;
+
+            const minX = rect.min_x + monitorRectInfoRef.current.rect.min_x;
+            const minY = rect.min_y + monitorRectInfoRef.current.rect.min_y;
+            return {
+                min_x: minX,
+                min_y: minY,
+                max_x: minX + monitorWidth,
+                max_y: minY + monitorHeight,
+            };
+        },
+        [monitorRectInfoRef],
     );
 
     const contentScaleValues = useContentScale(monitorRectInfo.scale_factor);
@@ -98,8 +123,9 @@ export const useMonitorRect = (): {
         return {
             monitorRect: monitorRectInfo,
             contentScale: contentScaleValues,
+            calculatedBoundaryRect,
         };
-    }, [monitorRectInfo, contentScaleValues]);
+    }, [monitorRectInfo, contentScaleValues, calculatedBoundaryRect]);
 };
 
 const StatusBar: React.FC = () => {
@@ -407,6 +433,9 @@ const StatusBar: React.FC = () => {
                     overflow-x: hidden;
                     max-height: calc(50vh / ${contentScale});
                     padding-bottom: ${64}px;
+                }
+
+                :global(.ant-popover) {
                 }
 
                 .status-bar {
