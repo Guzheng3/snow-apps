@@ -277,6 +277,8 @@ export type AppSettingsData = {
         historyValidDuration: HistoryValidDuration;
         ocrModel: OcrModel;
         ocrDetectAngle: boolean;
+        /** 启用浏览器剪贴板 */
+        enableBrowserClipboard: boolean;
     };
     [AppSettingsGroup.SystemScrollScreenshot]: {
         tryRollback: boolean;
@@ -460,6 +462,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         ocrModel: OcrModel.RapidOcrV4,
         ocrDetectAngle: false,
         historyValidDuration: HistoryValidDuration.Week,
+        enableBrowserClipboard: true,
     },
     [AppSettingsGroup.FunctionTrayIcon]: {
         iconClickAction: TrayIconClickAction.Screenshot,
@@ -1378,6 +1381,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? (newSettings.historyValidDuration as HistoryValidDuration)
                             : (prevSettings?.historyValidDuration ??
                               defaultAppSettingsData[group].historyValidDuration),
+                    enableBrowserClipboard:
+                        typeof newSettings?.enableBrowserClipboard === 'boolean'
+                            ? newSettings.enableBrowserClipboard
+                            : (prevSettings?.enableBrowserClipboard ??
+                              defaultAppSettingsData[group].enableBrowserClipboard),
                 };
             } else {
                 return defaultAppSettingsData[group];

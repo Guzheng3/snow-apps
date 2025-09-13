@@ -366,6 +366,25 @@ export default function SystemSettings() {
                             />
                         </Col>
                     </Row>
+
+                    <Row gutter={token.margin}>
+                        <Col span={12}>
+                            <ProFormSwitch
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.enableBrowserClipboard" />
+                                        }
+                                        tooltipTitle={
+                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.enableBrowserClipboard.tip" />
+                                        }
+                                    />
+                                }
+                                name="enableBrowserClipboard"
+                                valuePropName="checked"
+                            />
+                        </Col>
+                    </Row>
                 </ProForm>
             </Spin>
 

@@ -2,12 +2,12 @@ import { DrawLayerActionType } from './components/drawLayer';
 import { SelectLayerActionType, SelectRectParams } from './components/selectLayer';
 import { DrawCacheLayerActionType } from './components/drawCacheLayer/extra';
 import { createDrawWindow, saveFile } from '@/commands';
-import { Window as AppWindow } from '@tauri-apps/api/window';
+import { Window as AppWindow, getCurrentWindow } from '@tauri-apps/api/window';
 import { CaptureStep } from './types';
 import { FixedContentActionType } from '../fixedContent/components/fixedContentCore';
 import { OcrBlocksActionType } from './components/ocrBlocks';
 import { showImageDialog, ImageFormat, ImagePath } from '@/utils/file';
-import { AppSettingsData } from '../contextWrap';
+import { AppSettingsData, AppSettingsGroup } from '../contextWrap';
 import { writeImageToClipboard } from '@/utils/clipboard';
 import { AppOcrResult } from '../fixedContent/components/ocrResult';
 import { CaptureBoundingBoxInfo } from './extra';
@@ -240,31 +240,27 @@ export const fixedToScreen = async (
     layerContainerElement.style.opacity = '1';
 };
 
-export const copyToClipboard = async (imageCanvas: HTMLCanvasElement | undefined) => {
-    if (!imageCanvas) {
-        appError('[copyToClipboard] imageCanvas is undefined');
-        return;
+export const copyToClipboard = async (imageData: Blob, appSettings: AppSettingsData) => {
+    // 尝试使用浏览器剪贴板写入，浏览器写入更快
+    let browserClipboardWriteSuccess = false;
+    try {
+        if (appSettings[AppSettingsGroup.SystemScreenshot].enableBrowserClipboard) {
+            if ('clipboard' in navigator && 'write' in navigator.clipboard) {
+                if (window.isSecureContext && window.document.hasFocus()) {
+                    await navigator.clipboard.write([
+                        new ClipboardItem({ ['image/png']: imageData }),
+                    ]);
+                    browserClipboardWriteSuccess = true;
+                }
+            }
+        }
+    } catch {
+        browserClipboardWriteSuccess = false;
     }
 
-    new Promise(async (resolve) => {
-        const imageData = await new Promise<Blob | null>((resolve) => {
-            imageCanvas.toBlob(
-                (blob) => {
-                    resolve(blob);
-                },
-                'image/png',
-                1,
-            );
-        });
-
-        if (!imageData) {
-            return;
-        }
-
+    if (!browserClipboardWriteSuccess) {
         await writeImageToClipboard(imageData);
-
-        resolve(undefined);
-    });
+    }
 };
 
 export const handleOcrDetect = async (

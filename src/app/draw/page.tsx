@@ -389,6 +389,10 @@ const DrawPageCore: React.FC<{
     );
 
     const initCaptureBoundingBoxInfoAndShowWindow = useCallback(async () => {
+        // 恢复窗口
+        appWindowRef.current.setIgnoreCursorEvents(false);
+        layerContainerRef.current!.style.opacity = '1';
+
         const [captureBoundingBox, mousePosition] = await Promise.all([
             getMonitorsBoundingBox(),
             getMousePosition().catch((error) => {
@@ -709,25 +713,52 @@ const DrawPageCore: React.FC<{
                 return;
             }
 
+            // 保持焦点，假隐藏窗口
+            appWindowRef.current.setIgnoreCursorEvents(true);
+            layerContainerRef.current!.style.opacity = '0';
+
             const imageCanvas = await getCanvas(
                 selectLayerActionRef.current.getSelectRectParams(),
                 drawLayerActionRef.current,
                 drawCacheLayerActionRef.current,
             );
 
-            finishCapture();
-
-            copyToClipboard(imageCanvas);
-
-            if (enableAutoSave) {
-                await saveToFile(
-                    getAppSettings(),
-                    imageCanvas,
-                    undefined,
-                    undefined,
-                    await getImagePathFromSettings(getAppSettings(), 'auto'),
-                );
+            if (!imageCanvas) {
+                return;
             }
+
+            const imageData = await new Promise<Blob | null>((resolve) => {
+                imageCanvas.toBlob(
+                    (blob) => {
+                        resolve(blob);
+                    },
+                    'image/png',
+                    1,
+                );
+            });
+
+            if (!imageData) {
+                return;
+            }
+
+            await Promise.all([
+                copyToClipboard(imageData, getAppSettings()),
+                (async () => {
+                    await new Promise((resolve) => {
+                        setTimeout(resolve, 0);
+                    });
+                    await finishCapture();
+                })(),
+                enableAutoSave
+                    ? saveToFile(
+                          getAppSettings(),
+                          imageCanvas,
+                          undefined,
+                          undefined,
+                          await getImagePathFromSettings(getAppSettings(), 'auto'),
+                      )
+                    : Promise.resolve(),
+            ]);
         }
     }, [finishCapture, getAppSettings, getDrawState, saveCaptureHistory]);
 

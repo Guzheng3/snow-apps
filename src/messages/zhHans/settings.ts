@@ -300,6 +300,9 @@ export const settings = {
     'settings.systemSettings.screenshotSettings.ocrModel.rapidOcrV5': 'Rapid OCR V5',
     'settings.systemSettings.screenshotSettings.ocrDetectAngle': 'OCR 检测角度',
     'settings.systemSettings.screenshotSettings.historyValidDuration': '截图历史有效时长',
+    'settings.systemSettings.screenshotSettings.enableBrowserClipboard': '使用浏览器剪贴板',
+    'settings.systemSettings.screenshotSettings.enableBrowserClipboard.tip':
+        '尝试使用浏览器接口快速写入剪贴板内容，如果出现无法复制到剪贴板的问题请禁用该功能',
     'settings.systemSettings.screenshotSettings.historyValidDuration.day': '1 天',
     'settings.systemSettings.screenshotSettings.historyValidDuration.week': '7 天',
     'settings.systemSettings.screenshotSettings.historyValidDuration.month': '30 天',
