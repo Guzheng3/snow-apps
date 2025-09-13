@@ -61,6 +61,9 @@ export default function FixedContentPage() {
                 if (textContent === '') {
                     textContent = await clipboard.readText();
                 }
+                if (textContent === '' && 'readText' in navigator.clipboard) {
+                    textContent = await navigator.clipboard.readText();
+                }
 
                 if (textContent) {
                     fixedContentActionRef.current?.init({ textContent });
