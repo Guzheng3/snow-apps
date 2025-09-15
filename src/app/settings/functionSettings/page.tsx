@@ -420,13 +420,15 @@ export default function SystemSettings() {
                     </Row>
 
                     <Row gutter={token.margin}>
-                        <ProFormSwitch
-                            name="focusedWindowCopyToClipboard"
-                            layout="horizontal"
-                            label={
-                                <FormattedMessage id="settings.functionSettings.screenshotSettings.focusedWindowCopyToClipboard" />
-                            }
-                        />
+                        <Col span={24}>
+                            <ProFormSwitch
+                                name="focusedWindowCopyToClipboard"
+                                layout="horizontal"
+                                label={
+                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.focusedWindowCopyToClipboard" />
+                                }
+                            />
+                        </Col>
                     </Row>
 
                     <Row gutter={token.padding}>

@@ -84,29 +84,33 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
+            use tauri_plugin_log::{Target, TargetKind};
+
+            let current_date = chrono::Local::now().format("%Y-%m-%d").to_string();
+
             // log 文件可能因为某些异常情况不断输出，造成日志文件过大
             // 先在 release 下屏蔽日志输出
-            #[cfg(debug_assertions)]
-            {
-                use tauri_plugin_log::{Target, TargetKind};
+            // 禁用 log 未知原因导致 cpu 持续高占用，只屏蔽 log 文件输出（怪恶心的）
+            let log_targets: Vec<Target> = if cfg!(debug_assertions) {
+                vec![
+                    Target::new(TargetKind::Stdout),
+                    Target::new(TargetKind::LogDir {
+                        file_name: Some(format!("snow-shot-{}", current_date)),
+                    }),
+                    Target::new(TargetKind::Webview),
+                ]
+            } else {
+                vec![Target::new(TargetKind::Stdout)]
+            };
 
-                let current_date = chrono::Local::now().format("%Y-%m-%d").to_string();
-
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
-                        .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
-                        .targets([
-                            Target::new(TargetKind::Stdout),
-                            Target::new(TargetKind::LogDir {
-                                file_name: Some(format!("snow-shot-{}", current_date)),
-                            }),
-                            Target::new(TargetKind::Webview),
-                        ])
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
+            app.handle().plugin(
+                tauri_plugin_log::Builder::default()
+                    .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
+                    .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
+                    .targets(log_targets)
+                    .level(log::LevelFilter::Info)
+                    .build(),
+            )?;
 
             let main_window = app
                 .get_webview_window("main")

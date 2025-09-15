@@ -161,14 +161,17 @@ impl FileCacheService {
             return Ok(content.clone());
         }
 
+        // 文件读写不返回异常，提高稳定性
         let content = match fs::read_to_string(file_path.clone()) {
             Ok(content) => content,
             Err(e) => {
-                return Err(format!(
+                log::error!(
                     "[TextFileCacheService] read failed: [{}] {}",
                     file_path.display(),
                     e.to_string()
-                ));
+                );
+
+                "".to_string()
             }
         };
 
@@ -176,12 +179,13 @@ impl FileCacheService {
     }
 
     pub fn write(&self, file_path: PathBuf, content: String) -> Result<(), String> {
+        // 文件读写不返回异常，提高稳定性
         if let Err(e) = fs::write(file_path.clone(), content.clone()) {
-            return Err(format!(
-                "[TextFileCacheService] write failed: [{}] {}",
+            log::error!(
+                "[TextFileCacheService] write file failed: [{}] {}",
                 file_path.display(),
                 e.to_string()
-            ));
+            );
         };
 
         self.file_cache.insert(file_path, content.clone());

@@ -587,7 +587,13 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
             syncAllWindow: boolean,
         ) => {
             const filePath = await getFilePath(group);
-            await textFileWrite(filePath, JSON.stringify(data));
+            try {
+                await textFileWrite(filePath, JSON.stringify(data));
+            } catch (error) {
+                appError(
+                    `[writeAppSettings] write file ${filePath} failed: ${JSON.stringify(error)}`,
+                );
+            }
             if (syncAllWindow) {
                 emit('reload-app-settings');
             }

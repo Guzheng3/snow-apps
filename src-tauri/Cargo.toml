@@ -107,7 +107,7 @@ tauri-plugin-macos-permissions = "2.3.0"
 # 其他依赖
 
 
-[target.'cfg(debug_assertions)'.dependencies]
+# [target.'cfg(debug_assertions)'.dependencies]
 chrono = { version = "^0.4" }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
