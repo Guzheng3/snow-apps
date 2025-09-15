@@ -248,15 +248,8 @@ export const SerialNumberTool: React.FC = () => {
             (drawState: DrawState) => {
                 const isEnable = drawState === DrawState.SerialNumber;
                 setEnable(isEnable);
-            },
-            [setEnable],
-        ),
-    );
-    useStateSubscriber(
-        CaptureEventPublisher,
-        useCallback(
-            (event: CaptureEventParams | undefined) => {
-                if (event?.event === CaptureEvent.onExecuteScreenshot) {
+
+                if (isEnable) {
                     arrowElementIdsRef.current = new Set(
                         getAction()
                             ?.getExcalidrawAPI()
@@ -266,12 +259,16 @@ export const SerialNumberTool: React.FC = () => {
                     );
                 }
             },
-            [getAction],
+            [setEnable, getAction],
         ),
     );
 
     const latestSerialNumberElementListRef = useRef<ExcalidrawElement[]>([]);
-    const onMouseDown = useCallback(() => {
+    const onMouseDown = useCallback(async () => {
+        await new Promise((resolve) => {
+            setTimeout(resolve, 17);
+        });
+
         const mousePosition = getMousePosition();
         if (!mousePosition) {
             return;
@@ -360,7 +357,7 @@ export const SerialNumberTool: React.FC = () => {
 
         getAction()?.updateScene({
             elements: [...sceneElements, ...serialNumberElement],
-            captureUpdate: 'IMMEDIATELY',
+            captureUpdate: 'NEVER',
         });
 
         setSerialNumber(limitSerialNumber(currentNumber + 1));

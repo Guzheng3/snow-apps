@@ -749,16 +749,17 @@ const DrawPageCore: React.FC<{
                     });
                     await finishCapture();
                 })(),
-                enableAutoSave
-                    ? saveToFile(
-                          getAppSettings(),
-                          imageCanvas,
-                          undefined,
-                          undefined,
-                          await getImagePathFromSettings(getAppSettings(), 'auto'),
-                      )
-                    : Promise.resolve(),
             ]);
+
+            if (enableAutoSave) {
+                await saveToFile(
+                    getAppSettings(),
+                    imageCanvas,
+                    undefined,
+                    undefined,
+                    await getImagePathFromSettings(getAppSettings(), 'auto'),
+                );
+            }
         }
     }, [finishCapture, getAppSettings, getDrawState, saveCaptureHistory]);
 
@@ -927,7 +928,41 @@ const DrawPageCore: React.FC<{
             (id) => currentAppState?.selectedGroupIds[id],
         );
 
-        if (editingTextElement) {
+        if (newElement && 'updated' in newElement) {
+            let created = newElement.updated;
+            if (
+                latestExcalidrawNewElementRef.current &&
+                'id' in latestExcalidrawNewElementRef.current &&
+                latestExcalidrawNewElementRef.current.id === newElement.id
+            ) {
+                created = latestExcalidrawNewElementRef.current.created ?? created;
+            }
+
+            // 如果是箭头，判断下箭头长度，长度很小判断为无效
+            if (newElement.type === 'arrow') {
+                let pointsDistance = 0;
+                if (newElement.points.length === 2 || newElement.points.length === 3) {
+                    for (let i = newElement.points.length - 1; i > 0; i--) {
+                        pointsDistance +=
+                            Math.abs(newElement.points[i][0] - newElement.points[i - 1][0]) +
+                            Math.abs(newElement.points[i][1] - newElement.points[i - 1][1]);
+                    }
+                } else {
+                    pointsDistance = 999;
+                }
+                console.log(pointsDistance);
+                if (pointsDistance < 3) {
+                    created = Date.now();
+                } else {
+                    created = 0;
+                }
+            }
+
+            latestExcalidrawNewElementRef.current = {
+                id: newElement.id,
+                created: created,
+            };
+        } else if (editingTextElement) {
             latestExcalidrawNewElementRef.current = {
                 editingTextElement: editingTextElement,
             };
@@ -939,33 +974,20 @@ const DrawPageCore: React.FC<{
             latestExcalidrawNewElementRef.current = {
                 editingTextElement: selectedElements[0],
             };
-        } else if (newElement && 'updated' in newElement) {
-            let created = newElement.updated;
-            if (
-                latestExcalidrawNewElementRef.current &&
-                'id' in latestExcalidrawNewElementRef.current &&
-                latestExcalidrawNewElementRef.current.id === newElement.id
-            ) {
-                created = latestExcalidrawNewElementRef.current.created ?? created;
-            }
-
-            latestExcalidrawNewElementRef.current = {
-                id: newElement.id,
-                created: created,
-            };
         } else {
             unsetLatestExcalidrawNewElement();
         }
     }, [unsetLatestExcalidrawNewElement]);
     const onDoubleClick = useCallback<React.MouseEventHandler<HTMLDivElement>>(
         (e) => {
+            console.log(latestExcalidrawNewElementRef.current);
             if (
                 e.button === 0 &&
-                // 如果存在创建时间大于 200ms 的在编辑中的元素，则认为是对箭头的双击
+                // 如果存在创建时间大于 300ms 的在编辑中的元素，则认为是对箭头的双击
                 !(
                     (latestExcalidrawNewElementRef.current &&
                         'created' in latestExcalidrawNewElementRef.current &&
-                        latestExcalidrawNewElementRef.current.created < Date.now() - 200) ||
+                        latestExcalidrawNewElementRef.current.created < Date.now() - 300) ||
                     (latestExcalidrawNewElementRef.current &&
                         'editingTextElement' in latestExcalidrawNewElementRef.current)
                 )
