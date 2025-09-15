@@ -357,7 +357,7 @@ export const SerialNumberTool: React.FC = () => {
 
         getAction()?.updateScene({
             elements: [...sceneElements, ...serialNumberElement],
-            captureUpdate: 'NEVER',
+            captureUpdate: 'IMMEDIATELY',
         });
 
         setSerialNumber(limitSerialNumber(currentNumber + 1));
