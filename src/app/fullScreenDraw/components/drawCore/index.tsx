@@ -449,7 +449,7 @@ const DrawCoreComponent: React.FC<{
             .filter((item) => item.startsWith('currentItem'))
             .forEach((item) => {
                 const value = appState[item as keyof AppState];
-                if (!value) {
+                if (value === undefined) {
                     return;
                 }
 
