@@ -950,7 +950,6 @@ const DrawPageCore: React.FC<{
                 } else {
                     pointsDistance = 999;
                 }
-                console.log(pointsDistance);
                 if (pointsDistance < 3) {
                     created = Date.now();
                 } else {
@@ -980,7 +979,6 @@ const DrawPageCore: React.FC<{
     }, [unsetLatestExcalidrawNewElement]);
     const onDoubleClick = useCallback<React.MouseEventHandler<HTMLDivElement>>(
         (e) => {
-            console.log(latestExcalidrawNewElementRef.current);
             if (
                 e.button === 0 &&
                 // 如果存在创建时间大于 300ms 的在编辑中的元素，则认为是对箭头的双击
