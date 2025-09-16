@@ -771,9 +771,10 @@ const DrawPageCore: React.FC<{
             await Promise.all([
                 copyToClipboard(imageData, getAppSettings()),
                 (async () => {
-                    await new Promise((resolve) => {
-                        setTimeout(resolve, 0);
-                    });
+                    const { promise, resolve } = Promise.withResolvers();
+                    setTimeout(resolve, 0);
+                    await promise;
+
                     await finishCapture();
                 })(),
             ]);

@@ -21,7 +21,8 @@ export default function RootLayout({
             if (
                 event.key === 'F5' ||
                 (event.ctrlKey && event.key === 'r') ||
-                (event.metaKey && event.key === 'r')
+                (event.metaKey && event.key === 'r') ||
+                event.key === 'Alt' // 屏蔽 Alt + A, Alt + A 可能阻塞浏览器??? 逆天 Bug
             ) {
                 event.preventDefault();
             }
