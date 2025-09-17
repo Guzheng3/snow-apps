@@ -154,36 +154,40 @@ export const useChangeFontSizeProps = (
 
     useStateSubscriber(
         ExcalidrawEventCallbackPublisher,
-        useCallback((value: ExcalidrawEventCallbackParams | undefined) => {
-            const currentProps = propsRef.current;
-            if (!currentProps) {
-                return;
-            }
+        useCallback(
+            (value: ExcalidrawEventCallbackParams | undefined) => {
+                const currentProps = propsRef.current;
+                if (!currentProps) {
+                    return;
+                }
 
-            if (!('group' in currentProps) || currentProps.group !== 'font-size') {
-                return;
-            }
+                if (!('group' in currentProps) || currentProps.group !== 'font-size') {
+                    return;
+                }
 
-            if (value?.event === ExcalidrawEventCallbackType.ChangeFontSize) {
-                const fontSize = value.params.fontSize;
-                if (isSlider) {
-                    if ('onChange' in currentProps) {
-                        currentProps.onChange(fontSize);
-                    }
-                } else {
-                    const fontSizeIndex = currentProps.options.findIndex(
-                        (option) => typeof option.value === 'number' && option.value === fontSize,
-                    );
-                    if (fontSizeIndex === -1) {
-                        return;
-                    }
-                    const targetFontSize = currentProps.options[fontSizeIndex].value;
-                    if ('onChange' in currentProps) {
-                        currentProps.onChange(targetFontSize);
+                if (value?.event === ExcalidrawEventCallbackType.ChangeFontSize) {
+                    const fontSize = value.params.fontSize;
+                    if (isSlider) {
+                        if ('onChange' in currentProps) {
+                            currentProps.onChange(fontSize);
+                        }
+                    } else {
+                        const fontSizeIndex = currentProps.options.findIndex(
+                            (option) =>
+                                typeof option.value === 'number' && option.value === fontSize,
+                        );
+                        if (fontSizeIndex === -1) {
+                            return;
+                        }
+                        const targetFontSize = currentProps.options[fontSizeIndex].value;
+                        if ('onChange' in currentProps) {
+                            currentProps.onChange(targetFontSize);
+                        }
                     }
                 }
-            }
-        }, []),
+            },
+            [isSlider],
+        ),
     );
 
     return {
