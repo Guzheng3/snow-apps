@@ -1,4 +1,5 @@
 use base64::prelude::*;
+use image::DynamicImage;
 use std::path::PathBuf;
 use tokio::fs;
 use zune_core::bit_depth::BitDepth;
@@ -64,13 +65,22 @@ pub async fn save_file(request: tauri::ipc::Request<'_>) -> Result<(), String> {
             Ok(image) => image,
             Err(_) => return Err(String::from("[save_file] Invalid image")),
         };
-        let image_data = image.to_rgb8();
+        let has_alpha = image.color().has_alpha();
+        let image_data = if has_alpha {
+            DynamicImage::ImageRgba8(image.to_rgba8())
+        } else {
+            DynamicImage::ImageRgb8(image.to_rgb8())
+        };
         let encoder = JxlSimpleEncoder::new(
-            image_data.as_raw(),
+            image_data.as_bytes(),
             EncoderOptions::new(
                 image.width() as usize,
                 image.height() as usize,
-                ColorSpace::RGB,
+                if has_alpha {
+                    ColorSpace::RGBA
+                } else {
+                    ColorSpace::RGB
+                },
                 BitDepth::Eight,
             ),
         );

@@ -3,11 +3,11 @@ use std::path::PathBuf;
 use tokio::fs;
 
 use device_query::{DeviceQuery, DeviceState, MouseState};
-use image::DynamicImage;
 use image::codecs::avif::AvifEncoder;
 use image::codecs::jpeg::JpegEncoder;
 use image::codecs::png::{CompressionType, FilterType, PngEncoder};
 use image::codecs::webp::WebPEncoder;
+use image::{DynamicImage, GenericImageView};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use snow_shot_app_shared::ElementRect;
@@ -104,13 +104,23 @@ pub async fn save_image_to_file(
     };
 
     if extension == "jxl" {
-        let image_data = image.to_rgba8();
+        let has_alpha = image.color().has_alpha();
+        let (width, height) = image.dimensions();
+        let image_data = if has_alpha {
+            DynamicImage::ImageRgba8(image.to_rgba8())
+        } else {
+            DynamicImage::ImageRgb8(image.to_rgb8())
+        };
         let encoder = JxlSimpleEncoder::new(
-            image_data.as_raw(),
+            image_data.as_bytes(),
             EncoderOptions::new(
-                image.width() as usize,
-                image.height() as usize,
-                ColorSpace::RGBA,
+                width as usize,
+                height as usize,
+                if has_alpha {
+                    ColorSpace::RGBA
+                } else {
+                    ColorSpace::RGB
+                },
                 BitDepth::Eight,
             ),
         );
