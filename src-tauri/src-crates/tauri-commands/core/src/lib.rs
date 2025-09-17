@@ -630,8 +630,6 @@ pub async fn write_bitmap_image_to_clipboard(
             });
         });
 
-        println!("dib_data.len(): {}", dib_data.len());
-
         let _clip = clipboard_win::Clipboard::new().unwrap();
 
         formats::RawData(formats::CF_DIB).write_clipboard(&dib_data).map_err(|e| {
