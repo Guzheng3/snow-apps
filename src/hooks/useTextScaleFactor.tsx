@@ -1,8 +1,7 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Dispatch, RefObject, SetStateAction, useCallback, useEffect, useState } from 'react';
 import { useStateRef } from './useStateRef';
-import { AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
-import { useStateSubscriber } from './useStateSubscriber';
+import { AppSettingsGroup } from '@/app/contextWrap';
 import { useAppSettingsLoad } from './useAppSettingsLoad';
 
 function listenDevicePixelRatio(callback: (ratio: number) => void) {

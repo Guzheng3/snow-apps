@@ -524,17 +524,8 @@ pub async fn is_admin() -> Result<bool, String> {
 }
 
 pub async fn write_bitmap_image_to_clipboard(
-    request: tauri::ipc::Request<'_>,
+    #[allow(unused_variables)] request: tauri::ipc::Request<'_>,
 ) -> Result<(), String> {
-    let image_data = match request.body() {
-        tauri::ipc::InvokeBody::Raw(data) => data,
-        _ => {
-            return Err(String::from(
-                "[write_bitmap_image_to_clipboard] Invalid request body",
-            ));
-        }
-    };
-
     #[cfg(not(target_os = "windows"))]
     {
         return Err(String::from(
@@ -546,6 +537,15 @@ pub async fn write_bitmap_image_to_clipboard(
     // Windows 下使用 DIB 格式写入到剪贴板，比 BMP 文件格式更标准
     #[cfg(target_os = "windows")]
     {
+        let image_data = match request.body() {
+            tauri::ipc::InvokeBody::Raw(data) => data,
+            _ => {
+                return Err(String::from(
+                    "[write_bitmap_image_to_clipboard] Invalid request body",
+                ));
+            }
+        };
+
         use clipboard_win::{Setter, formats, types::BITMAPINFOHEADER};
         use image::ImageDecoder;
         use rayon::prelude::*;
@@ -644,7 +644,7 @@ pub async fn write_bitmap_image_to_clipboard(
             })?;
 
         drop(_clip);
-    }
 
-    Ok(())
+        Ok(())
+    }
 }

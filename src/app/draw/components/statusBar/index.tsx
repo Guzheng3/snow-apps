@@ -4,7 +4,6 @@ import Color from 'color';
 import { FormattedMessage } from 'react-intl';
 import {
     AppContext,
-    AppSettingsData,
     AppSettingsGroup,
     AppSettingsPublisher,
     AppSettingsTheme,
