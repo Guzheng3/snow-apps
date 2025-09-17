@@ -53,7 +53,11 @@ impl OcrService {
         Ok(())
     }
 
-    pub fn init_models(&mut self, app: tauri::AppHandle, model: OcrModel) -> Result<(), String> {
+    pub async fn init_models(
+        &mut self,
+        app: tauri::AppHandle,
+        model: OcrModel,
+    ) -> Result<(), String> {
         let resource_path = match app.path().resolve("models", BaseDirectory::Resource) {
             Ok(resource_path) => resource_path,
             Err(_) => {
@@ -78,15 +82,15 @@ impl OcrService {
         };
 
         self.det_model =
-            Some(std::fs::read(det_model_path).map_err(|e| {
+            Some(tokio::fs::read(det_model_path).await.map_err(|e| {
                 format!("[OcrService::init_models] Failed to read det model: {}", e)
             })?);
         self.cls_model =
-            Some(std::fs::read(cls_model_path).map_err(|e| {
+            Some(tokio::fs::read(cls_model_path).await.map_err(|e| {
                 format!("[OcrService::init_models] Failed to read cls model: {}", e)
             })?);
         self.rec_model =
-            Some(std::fs::read(rec_model_path).map_err(|e| {
+            Some(tokio::fs::read(rec_model_path).await.map_err(|e| {
                 format!("[OcrService::init_models] Failed to read rec model: {}", e)
             })?);
 

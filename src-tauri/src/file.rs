@@ -66,7 +66,8 @@ pub async fn create_local_config_dir(
 
 #[command]
 pub async fn remove_dir(dir_path: PathBuf) -> Result<(), String> {
-    std::fs::remove_dir_all(dir_path)
+    tokio::fs::remove_dir_all(dir_path)
+        .await
         .map_err(|e| format!("[remove_dir] Failed to remove directory: {}", e.to_string()))?;
 
     Ok(())

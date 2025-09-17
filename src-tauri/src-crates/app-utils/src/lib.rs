@@ -1,6 +1,6 @@
 use std::ffi::OsStr;
-use std::fs;
 use std::path::PathBuf;
+use tokio::fs;
 
 use device_query::{DeviceQuery, DeviceState, MouseState};
 use image::DynamicImage;
@@ -76,7 +76,7 @@ pub async fn save_image_to_file(
     // 确保文件路径的父目录存在
     if let Some(parent_dir) = file_path.parent() {
         if !parent_dir.exists() {
-            match fs::create_dir_all(parent_dir) {
+            match fs::create_dir_all(parent_dir).await {
                 Ok(_) => {
                     log::info!(
                         "[save_image_to_file] Created directory: {}",
@@ -104,13 +104,13 @@ pub async fn save_image_to_file(
     };
 
     if extension == "jxl" {
-        let image_data = image.to_rgb8();
+        let image_data = image.to_rgba8();
         let encoder = JxlSimpleEncoder::new(
             image_data.as_raw(),
             EncoderOptions::new(
                 image.width() as usize,
                 image.height() as usize,
-                ColorSpace::RGB,
+                ColorSpace::RGBA,
                 BitDepth::Eight,
             ),
         );
@@ -124,7 +124,7 @@ pub async fn save_image_to_file(
             }
         };
 
-        return match fs::write(file_path.clone(), encoder_result) {
+        return match fs::write(file_path.clone(), encoder_result).await {
             Ok(_) => Ok(()),
             Err(e) => Err(format!(
                 "[save_image_to_file] Failed to save image to file: {} {}",

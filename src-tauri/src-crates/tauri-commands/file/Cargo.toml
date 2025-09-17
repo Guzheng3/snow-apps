@@ -9,5 +9,6 @@ zune-core = { workspace = true }
 zune-jpegxl = { workspace = true }
 tauri = { workspace = true }
 log = { workspace = true }
+tokio = { workspace = true }
 
 base64 = "^0.22"

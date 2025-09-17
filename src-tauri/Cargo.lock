@@ -6186,6 +6186,7 @@ dependencies = [
  "snow-shot-app-shared",
  "snow-shot-app-utils",
  "tauri",
+ "tokio",
  "xcap",
 ]
 
@@ -6249,6 +6250,7 @@ dependencies = [
  "image",
  "log",
  "tauri",
+ "tokio",
  "zune-core",
  "zune-jpegxl",
 ]

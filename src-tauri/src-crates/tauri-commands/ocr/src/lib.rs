@@ -12,7 +12,7 @@ pub async fn ocr_init(
 ) -> Result<(), String> {
     let mut ocr_service = ocr_service.lock().await;
 
-    ocr_service.init_models(app, model)?;
+    ocr_service.init_models(app, model).await?;
 
     Ok(())
 }
