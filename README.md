@@ -60,6 +60,7 @@ Windows 用户可以在 [Snow Shot 官网](https://snowshot.top/) 加速下载�
 [玄夜の资源小站](https://www.sakuraxy.top/)
 [资源汇社区](https://space.bilibili.com/175870152)
 [FreeDw资源库](https://space.bilibili.com/383210848)
+[大象老师资源库](https://space.bilibili.com/577256311)
 
 真的非常感谢，为项目带来了大量关注~
 
