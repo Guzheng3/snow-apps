@@ -744,8 +744,9 @@ const DrawPageCore: React.FC<{
             appWindowRef.current.setIgnoreCursorEvents(true);
             layerContainerRef.current!.style.opacity = '0';
 
+            const selectRectParams = selectLayerActionRef.current.getSelectRectParams();
             const imageCanvas = await getCanvas(
-                selectLayerActionRef.current.getSelectRectParams(),
+                selectRectParams,
                 drawLayerActionRef.current,
                 drawCacheLayerActionRef.current,
             );
@@ -769,11 +770,11 @@ const DrawPageCore: React.FC<{
             }
 
             await Promise.all([
-                copyToClipboard(imageData, getAppSettings()),
+                copyToClipboard(imageData, getAppSettings(), selectRectParams),
                 (async () => {
-                    const { promise, resolve } = Promise.withResolvers();
-                    setTimeout(resolve, 0);
-                    await promise;
+                    await new Promise((resolve) => {
+                        setTimeout(resolve, 0);
+                    });
 
                     await finishCapture();
                 })(),

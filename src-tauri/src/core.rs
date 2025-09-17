@@ -245,3 +245,10 @@ pub async fn auto_start_disable(app: tauri::AppHandle) -> Result<(), String> {
 pub async fn restart_with_admin() -> Result<(), String> {
     snow_shot_tauri_commands_core::restart_with_admin().await
 }
+
+#[command]
+pub async fn write_bitmap_image_to_clipboard(
+    request: tauri::ipc::Request<'_>,
+) -> Result<(), String> {
+    snow_shot_tauri_commands_core::write_bitmap_image_to_clipboard(request).await
+}

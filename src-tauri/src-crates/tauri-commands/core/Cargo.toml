@@ -20,3 +20,8 @@ get-selected-text = "^0.1"
 [target.'cfg(any(target_os = "macos"))'.dependencies]
 objc2 = { workspace = true }
 objc2-app-kit = { workspace = true }
+
+[target.'cfg(any(target_os = "windows"))'.dependencies]
+clipboard-win = "5.4.1"
+rayon = { workspace = true }
+image = { workspace = true }

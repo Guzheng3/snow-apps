@@ -6107,7 +6107,6 @@ checksum = "51d44cfb396c3caf6fbfd0ab422af02631b69ddd96d2eff0b0f0724f9024051b"
 name = "snow-shot"
 version = "0.3.2-beta"
 dependencies = [
- "chrono",
  "log",
  "snow-shot-app-os",
  "snow-shot-app-scroll-screenshot-service",
@@ -6225,11 +6224,14 @@ dependencies = [
 name = "snow-shot-tauri-commands-core"
 version = "0.1.0"
 dependencies = [
+ "clipboard-win",
  "enigo 0.6.1",
  "get-selected-text",
+ "image",
  "log",
  "objc2 0.6.2",
  "objc2-app-kit",
+ "rayon",
  "serde",
  "snow-shot-app-os",
  "snow-shot-app-services",

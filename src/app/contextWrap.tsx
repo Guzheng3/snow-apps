@@ -281,6 +281,8 @@ export type AppSettingsData = {
         ocrDetectAngle: boolean;
         /** 启用浏览器剪贴板 */
         enableBrowserClipboard: boolean;
+        /** 尝试使用 Bitmap 格式写入到剪贴板 */
+        tryWriteBitmapImageToClipboard: boolean;
     };
     [AppSettingsGroup.SystemScrollScreenshot]: {
         tryRollback: boolean;
@@ -466,6 +468,8 @@ export const defaultAppSettingsData: AppSettingsData = {
         ocrDetectAngle: false,
         historyValidDuration: HistoryValidDuration.Week,
         enableBrowserClipboard: true,
+        /** 尝试使用 Bitmap 格式写入到剪贴板 */
+        tryWriteBitmapImageToClipboard: true,
     },
     [AppSettingsGroup.FunctionTrayIcon]: {
         iconClickAction: TrayIconClickAction.Screenshot,
@@ -1400,6 +1404,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? newSettings.enableBrowserClipboard
                             : (prevSettings?.enableBrowserClipboard ??
                               defaultAppSettingsData[group].enableBrowserClipboard),
+                    tryWriteBitmapImageToClipboard:
+                        typeof newSettings?.tryWriteBitmapImageToClipboard === 'boolean'
+                            ? newSettings.tryWriteBitmapImageToClipboard
+                            : (prevSettings?.tryWriteBitmapImageToClipboard ??
+                              defaultAppSettingsData[group].tryWriteBitmapImageToClipboard),
                 };
             } else {
                 return defaultAppSettingsData[group];

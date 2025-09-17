@@ -384,6 +384,25 @@ export default function SystemSettings() {
                                 valuePropName="checked"
                             />
                         </Col>
+
+                        {currentPlatform === 'windows' && (
+                            <Col span={12}>
+                                <ProFormSwitch
+                                    label={
+                                        <IconLabel
+                                            label={
+                                                <FormattedMessage id="settings.systemSettings.screenshotSettings.tryWriteBitmapImageToClipboard" />
+                                            }
+                                            tooltipTitle={
+                                                <FormattedMessage id="settings.systemSettings.screenshotSettings.tryWriteBitmapImageToClipboard.tip" />
+                                            }
+                                        />
+                                    }
+                                    name="tryWriteBitmapImageToClipboard"
+                                    valuePropName="checked"
+                                />
+                            </Col>
+                        )}
                     </Row>
                 </ProForm>
             </Spin>

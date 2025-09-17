@@ -86,17 +86,15 @@ pub fn run() {
         .setup(|app| {
             use tauri_plugin_log::{Target, TargetKind};
 
-            let current_date = chrono::Local::now().format("%Y-%m-%d").to_string();
+            // let current_date = chrono::Local::now().format("%Y-%m-%d").to_string();
 
             // log 文件可能因为某些异常情况不断输出，造成日志文件过大
             // 先在 release 下屏蔽日志输出
-            // 禁用 log 未知原因导致 cpu 持续高占用，只屏蔽 log 文件输出（怪恶心的）
+            // 注意不要移除 log 插件的初始化,避免前端调用 log 时保存再次报错,持续循环报错
             let log_targets: Vec<Target> = if cfg!(debug_assertions) {
                 vec![
                     Target::new(TargetKind::Stdout),
-                    Target::new(TargetKind::LogDir {
-                        file_name: Some(format!("snow-shot-{}", current_date)),
-                    }),
+                    Target::new(TargetKind::LogDir { file_name: None }),
                     Target::new(TargetKind::Webview),
                 ]
             } else {
@@ -206,6 +204,7 @@ pub fn run() {
             core::auto_start_enable,
             core::auto_start_disable,
             core::restart_with_admin,
+            core::write_bitmap_image_to_clipboard,
             scroll_screenshot::scroll_screenshot_get_image_data,
             scroll_screenshot::scroll_screenshot_init,
             scroll_screenshot::scroll_screenshot_capture,

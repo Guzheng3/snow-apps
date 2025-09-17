@@ -12,8 +12,9 @@ import { writeImageToClipboard } from '@/utils/clipboard';
 import { AppOcrResult } from '../fixedContent/components/ocrResult';
 import { CaptureBoundingBoxInfo } from './extra';
 import { setWindowRect } from '@/utils/window';
-import { appError } from '@/utils/log';
+import { appError, appWarn } from '@/utils/log';
 import { getPlatform } from '@/utils';
+import { writeBitmapImageToClipboard } from '@/commands/core';
 
 export const getCanvas = async (
     selectRectParams: SelectRectParams | undefined,
@@ -241,7 +242,30 @@ export const fixedToScreen = async (
     layerContainerElement.style.opacity = '1';
 };
 
-export const copyToClipboard = async (imageData: Blob, appSettings: AppSettingsData) => {
+export const copyToClipboard = async (
+    imageData: Blob,
+    appSettings: AppSettingsData,
+    selectRectParams: SelectRectParams | undefined,
+) => {
+    let imageDataArrayBuffer: ArrayBuffer | undefined;
+    if (
+        getPlatform() === 'windows' &&
+        appSettings[AppSettingsGroup.SystemScreenshot].tryWriteBitmapImageToClipboard &&
+        selectRectParams &&
+        selectRectParams.shadowWidth === 0 &&
+        selectRectParams.radius === 0
+    ) {
+        try {
+            imageDataArrayBuffer = await imageData.arrayBuffer();
+            await writeBitmapImageToClipboard(imageDataArrayBuffer);
+
+            // 写入成功后直接返回
+            return;
+        } catch {
+            appWarn('[copyToClipboard] writeBitmapImageToClipboard error');
+        }
+    }
+
     // 尝试使用浏览器剪贴板写入，浏览器写入更快
     let browserClipboardWriteSuccess = false;
     try {
@@ -264,7 +288,7 @@ export const copyToClipboard = async (imageData: Blob, appSettings: AppSettingsD
     }
 
     if (!browserClipboardWriteSuccess) {
-        await writeImageToClipboard(imageData);
+        await writeImageToClipboard(imageDataArrayBuffer ?? imageData);
     }
 };
 

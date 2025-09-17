@@ -18,10 +18,10 @@ export const writeTextToClipboard = async (text: string) => {
     await navigator.clipboard.write([new ClipboardItem({ 'text/plain': text })]);
 };
 
-export const writeImageToClipboard = async (image: Blob, format = 'image/png') => {
+export const writeImageToClipboard = async (image: Blob | ArrayBuffer, format = 'image/png') => {
     let isSuccess = false;
     try {
-        await clipboard.writeImage(await image.arrayBuffer());
+        await clipboard.writeImage(image instanceof Blob ? await image.arrayBuffer() : image);
         isSuccess = true;
     } catch (error) {
         appWarn('[clipboard] writeImageToClipboard error', error);
@@ -31,7 +31,9 @@ export const writeImageToClipboard = async (image: Blob, format = 'image/png') =
         return;
     }
 
-    await navigator.clipboard.write([new ClipboardItem({ [format]: image })]);
+    await navigator.clipboard.write([
+        new ClipboardItem({ [format]: image instanceof Blob ? image : new Blob([image]) }),
+    ]);
 };
 
 export const writeHtmlToClipboard = async (html: string) => {

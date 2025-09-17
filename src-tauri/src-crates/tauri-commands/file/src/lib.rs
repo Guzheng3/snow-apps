@@ -1,6 +1,6 @@
 use base64::prelude::*;
+use std::fs;
 use std::path::PathBuf;
-use std::{fs, io::Cursor};
 use zune_core::bit_depth::BitDepth;
 use zune_core::colorspace::ColorSpace;
 use zune_core::options::EncoderOptions;
@@ -41,7 +41,10 @@ pub async fn save_file(request: tauri::ipc::Request<'_>) -> Result<(), String> {
 
     // 如果是 avif 则重写解码写入
     if file_type == "image/avif" {
-        let image = match image::load(Cursor::new(file_data), image::ImageFormat::WebP) {
+        let image = match image::load_from_memory_with_format(
+            file_data.as_slice(),
+            image::ImageFormat::WebP,
+        ) {
             Ok(image) => image,
             Err(_) => return Err(String::from("[save_file] Invalid image")),
         };
@@ -54,7 +57,10 @@ pub async fn save_file(request: tauri::ipc::Request<'_>) -> Result<(), String> {
             )),
         };
     } else if file_type == "image/jpeg-xl" {
-        let image = match image::load(Cursor::new(file_data), image::ImageFormat::WebP) {
+        let image = match image::load_from_memory_with_format(
+            file_data.as_slice(),
+            image::ImageFormat::WebP,
+        ) {
             Ok(image) => image,
             Err(_) => return Err(String::from("[save_file] Invalid image")),
         };
