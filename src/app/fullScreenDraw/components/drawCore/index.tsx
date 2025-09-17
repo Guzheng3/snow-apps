@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useCallback, useImperativeHandle, useMemo, useRef } from 'react';
 import { Excalidraw } from '@mg-chao/excalidraw';
 import {
@@ -29,7 +29,7 @@ import {
 import { useIntl } from 'react-intl';
 import { theme } from 'antd';
 import { layoutRenders } from './excalidrawRenders';
-import { pickerRenders } from './excalidrawRenders';
+import { generatePickerRenders } from './excalidrawRenders';
 import { ElementRect } from '@/commands';
 import { ExcalidrawAppStateStore } from '@/utils/appStore';
 import { debounce } from 'es-toolkit';
@@ -40,6 +40,10 @@ import {
 } from '@/app/fullScreenDraw/components/drawCore/components/serialNumberTool';
 import { ExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 import { usePlatform } from '@/hooks/usePlatform';
+import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
+import { AppSettingsGroup } from '@/app/contextWrap';
+import { useStateRef } from '@/hooks/useStateRef';
+import { FONT_SIZE_MAX_VALUE, STROKE_WIDTH_MAX_VALUE } from './excalidrawRenders/radioSlider';
 
 const strokeWidthList = [1, 2, 4];
 const fontSizeList = [16, 20, 28, 36];
@@ -184,6 +188,17 @@ const DrawCoreComponent: React.FC<{
         });
     }, [appStateStorageKey]);
 
+    const [enableSliderChangeWidth, setEnableSliderChangeWidth, enableSliderChangeWidthRef] =
+        useStateRef(false);
+    useAppSettingsLoad(
+        useCallback((appSettings) => {
+            setEnableSliderChangeWidth(
+                appSettings[AppSettingsGroup.CommonDraw].enableSliderChangeWidth,
+            );
+        }, []),
+        true,
+    );
+
     const handleWheel = useCallback(
         (
             event: WheelEvent | React.WheelEvent<HTMLDivElement | HTMLCanvasElement>,
@@ -213,6 +228,10 @@ const DrawCoreComponent: React.FC<{
             if (Object.keys(selectedElementIds).length === 1) {
                 selectedElement = sceneElements.find((item) => selectedElementIds[item.id]);
             }
+            let editingTextElement: typeof appState.editingTextElement | undefined = undefined;
+            if (appState.editingTextElement) {
+                editingTextElement = appState.editingTextElement;
+            }
 
             let changeTargetProp:
                 | {
@@ -241,18 +260,27 @@ const DrawCoreComponent: React.FC<{
                 getDrawState() === DrawState.Text ||
                 getDrawState() === DrawState.SerialNumber ||
                 getDrawState() === DrawState.Watermark ||
+                editingTextElement?.type === 'text' ||
                 selectedElement?.type === 'text'
             ) {
-                const currentFontSize =
-                    selectedElement && 'fontSize' in selectedElement
-                        ? selectedElement.fontSize
-                        : appState.currentItemFontSize;
+                let currentFontSize: number;
+                if (editingTextElement && 'fontSize' in editingTextElement) {
+                    currentFontSize = editingTextElement.fontSize;
+                } else if (selectedElement && 'fontSize' in selectedElement) {
+                    currentFontSize = selectedElement.fontSize;
+                } else {
+                    currentFontSize = appState.currentItemFontSize;
+                }
 
-                const targetFontSize = getNextValueInList(
-                    currentFontSize,
-                    fontSizeList,
-                    isIncrease,
-                );
+                let targetFontSize: number;
+                if (enableSliderChangeWidthRef.current) {
+                    targetFontSize = Math.min(
+                        Math.max(currentFontSize + (isIncrease ? 1 : -1) * 2, 1),
+                        FONT_SIZE_MAX_VALUE,
+                    );
+                } else {
+                    targetFontSize = getNextValueInList(currentFontSize, fontSizeList, isIncrease);
+                }
 
                 changeTargetProp = {
                     fontSize: targetFontSize,
@@ -262,11 +290,19 @@ const DrawCoreComponent: React.FC<{
                     selectedElement && 'strokeWidth' in selectedElement
                         ? selectedElement.strokeWidth
                         : appState.currentItemStrokeWidth;
-                const targetStrokeWidth = getNextValueInList(
-                    currentStrokeWidth,
-                    strokeWidthList,
-                    isIncrease,
-                );
+                let targetStrokeWidth: number;
+                if (enableSliderChangeWidthRef.current) {
+                    targetStrokeWidth = Math.min(
+                        Math.max(currentStrokeWidth + (isIncrease ? 1 : -1) * 2, 1),
+                        STROKE_WIDTH_MAX_VALUE,
+                    );
+                } else {
+                    targetStrokeWidth = getNextValueInList(
+                        currentStrokeWidth,
+                        strokeWidthList,
+                        isIncrease,
+                    );
+                }
 
                 changeTargetProp = {
                     strokeWidth: targetStrokeWidth,
@@ -295,6 +331,7 @@ const DrawCoreComponent: React.FC<{
 
                             return item;
                         }),
+                        captureUpdate: 'IMMEDIATELY',
                     });
                 } else {
                     excalidrawAPIRef.current?.updateScene({
@@ -317,6 +354,7 @@ const DrawCoreComponent: React.FC<{
 
                             return item;
                         }),
+                        captureUpdate: 'IMMEDIATELY',
                     });
                 } else {
                     excalidrawAPIRef.current?.updateScene({
@@ -328,7 +366,7 @@ const DrawCoreComponent: React.FC<{
                 }
             }
         },
-        [getDrawState, setExcalidrawEventCallback],
+        [enableSliderChangeWidthRef, getDrawState, setExcalidrawEventCallback],
     );
 
     useImperativeHandle(
@@ -550,7 +588,7 @@ const DrawCoreComponent: React.FC<{
             shouldSnapping,
             getExtraTools,
             shouldRotateWithDiscreteAngle,
-            pickerRenders: pickerRenders,
+            pickerRenders: generatePickerRenders(enableSliderChangeWidth),
             layoutRenders: layoutRenders,
             onHistoryChange,
             onHandleEraser: (elements) => {
@@ -561,6 +599,7 @@ const DrawCoreComponent: React.FC<{
             ...excalidrawCustomOptionsProp,
         };
     }, [
+        enableSliderChangeWidth,
         excalidrawCustomOptionsProp,
         getExtraTools,
         handleWheel,

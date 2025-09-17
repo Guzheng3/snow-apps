@@ -890,7 +890,7 @@ const TranslatorCore: React.FC<{
                         </Form.Item>
                     </Flex>
                 </Flex>
-                <Row gutter={16} style={{ marginTop: token.marginXXS }}>
+                <Row gutter={token.marginLG} style={{ marginTop: token.marginXXS }}>
                     <Col span={12} style={{ position: 'relative' }}>
                         <TextArea
                             ref={sourceContentRef}

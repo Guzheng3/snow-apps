@@ -1,6 +1,7 @@
 import { Slider, theme } from 'antd';
 import { ExcalidrawPropsCustomOptions } from '@mg-chao/excalidraw/types';
 import React from 'react';
+import { useGetPopupContainer } from '.';
 
 const RangeRenderCore: React.FC<
     Parameters<
@@ -8,6 +9,9 @@ const RangeRenderCore: React.FC<
     >[0]
 > = (props) => {
     const { token } = theme.useToken();
+
+    const getPopupContainer = useGetPopupContainer();
+
     return (
         <Slider
             style={{ marginTop: token.marginSM, marginBottom: token.marginXXS }}
@@ -16,7 +20,7 @@ const RangeRenderCore: React.FC<
             step={props.step}
             value={props.value}
             onChange={props.onChange}
-            tooltip={{ placement: 'bottom' }}
+            tooltip={{ placement: 'bottom', getPopupContainer }}
         />
     );
 };

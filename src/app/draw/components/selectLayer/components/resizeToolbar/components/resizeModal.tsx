@@ -88,7 +88,7 @@ export const ResizeModal: React.FC<{
             }}
             onFinish={onFinish}
         >
-            <Row gutter={token.margin}>
+            <Row gutter={token.marginLG}>
                 <Col span={12}>
                     <ProFormDigit
                         name="minX"
@@ -108,7 +108,7 @@ export const ResizeModal: React.FC<{
                     />
                 </Col>
             </Row>
-            <Row gutter={token.margin}>
+            <Row gutter={token.marginLG}>
                 <Col span={12}>
                     <ProFormDigit
                         name="width"
@@ -128,7 +128,7 @@ export const ResizeModal: React.FC<{
                     />
                 </Col>
             </Row>
-            <Row gutter={token.margin}>
+            <Row gutter={token.marginLG}>
                 <Col span={12}>
                     <ProFormDigit
                         name="radius"
@@ -140,7 +140,7 @@ export const ResizeModal: React.FC<{
                 </Col>
             </Row>
 
-            <Row gutter={token.margin}>
+            <Row gutter={token.marginLG}>
                 <Col span={12}>
                     <ProFormDigit
                         name="shadowWidth"

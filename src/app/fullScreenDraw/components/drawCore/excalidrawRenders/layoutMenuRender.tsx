@@ -140,12 +140,18 @@ const LayoutMenuRender: React.FC<{
         event.stopPropagation();
     }, []);
 
+    const onWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+    }, []);
+
     return (
         <div
             ref={layoutMenuRenderRef}
             className="layout-menu-render"
             id="layout-menu-render"
             onDoubleClick={handleDoubleClick}
+            onWheel={onWheel}
         >
             <div
                 className="drag-button layout-menu-render-drag-button"

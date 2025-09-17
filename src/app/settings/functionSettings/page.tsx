@@ -366,7 +366,7 @@ export default function SystemSettings() {
                     submitter={false}
                     layout="horizontal"
                 >
-                    <Row gutter={token.padding}>
+                    <Row gutter={token.marginLG}>
                         {currentPlatform !== 'macos' && (
                             <Col span={12}>
                                 <ProFormSwitch
@@ -407,7 +407,7 @@ export default function SystemSettings() {
                         </Col>
                     </Row>
 
-                    <Row gutter={token.padding}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSelect
                                 name="ocrAfterAction"
@@ -449,7 +449,7 @@ export default function SystemSettings() {
                         </Col>
                     </Row>
 
-                    <Row gutter={token.margin}>
+                    <Row gutter={token.marginLG}>
                         <Col span={24}>
                             <ProFormSwitch
                                 name="focusedWindowCopyToClipboard"
@@ -461,7 +461,7 @@ export default function SystemSettings() {
                         </Col>
                     </Row>
 
-                    <Row gutter={token.padding}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSwitch
                                 name="autoSaveOnCopy"
@@ -489,7 +489,7 @@ export default function SystemSettings() {
                         </Col>
                     </Row>
 
-                    <Row gutter={token.margin}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProForm.Item
                                 name="saveFileDirectory"
@@ -576,7 +576,7 @@ export default function SystemSettings() {
                     submitter={false}
                     layout="horizontal"
                 >
-                    <Row gutter={token.padding}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSwitch
                                 name="zoomWithMouse"
@@ -695,7 +695,7 @@ export default function SystemSettings() {
                             api_type: TranslationApiType.DeepL,
                         })}
                     >
-                        <Row gutter={token.padding} style={{ width: '100%' }}>
+                        <Row gutter={token.marginLG} style={{ width: '100%' }}>
                             <Col span={12}>
                                 <ProFormSelect
                                     name="api_type"
@@ -882,7 +882,7 @@ export default function SystemSettings() {
                     }}
                     submitter={false}
                 >
-                    <Row gutter={token.padding}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProForm.Item
                                 label={
@@ -918,7 +918,7 @@ export default function SystemSettings() {
                         </Col>
                     </Row>
 
-                    <Row gutter={token.padding}>
+                    <Row gutter={token.marginLG}>
                         <Col span={24}>
                             <ProFormList
                                 name="chatApiConfigList"
@@ -966,7 +966,7 @@ export default function SystemSettings() {
                                     model_name: '',
                                 })}
                             >
-                                <Row gutter={token.padding} style={{ width: '100%' }}>
+                                <Row gutter={token.marginLG} style={{ width: '100%' }}>
                                     <Col span={12}>
                                         <ProFormText
                                             name="model_name"
@@ -1114,7 +1114,7 @@ export default function SystemSettings() {
                     submitter={false}
                     layout="horizontal"
                 >
-                    <Row gutter={token.padding}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSelect
                                 name="defaultTool"
@@ -1175,7 +1175,7 @@ export default function SystemSettings() {
                     submitter={false}
                     layout="horizontal"
                 >
-                    <Row gutter={token.padding}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSelect
                                 name="videoMaxSize"
@@ -1232,7 +1232,7 @@ export default function SystemSettings() {
                         </Col>
                     </Row>
 
-                    <Row gutter={token.padding}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSelect
                                 name="gifMaxSize"
@@ -1279,7 +1279,7 @@ export default function SystemSettings() {
                             />
                         </Col>
                     </Row>
-                    <Row gutter={token.padding}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSelect
                                 name="microphoneDeviceName"
@@ -1291,7 +1291,7 @@ export default function SystemSettings() {
                             />
                         </Col>
                     </Row>
-                    <Row gutter={token.padding}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSelect
                                 name="encoder"
@@ -1390,7 +1390,7 @@ export default function SystemSettings() {
                             />
                         </Col>
                     </Row>
-                    <Row gutter={token.padding}>
+                    <Row gutter={token.marginLG}>
                         <Col span={24}>
                             <ProForm.Item
                                 name="saveDirectory"
@@ -1441,7 +1441,7 @@ export default function SystemSettings() {
                     submitter={false}
                     layout="horizontal"
                 >
-                    <Row gutter={token.margin}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSelect
                                 name="iconClickAction"
@@ -1508,7 +1508,7 @@ export default function SystemSettings() {
                     submitter={false}
                     layout="horizontal"
                 >
-                    <Row gutter={token.padding}>
+                    <Row gutter={token.marginLG}>
                         <Col span={24}>
                             <ProFormText
                                 name="manualSaveFileNameFormat"

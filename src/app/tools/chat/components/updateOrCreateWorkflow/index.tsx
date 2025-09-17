@@ -80,7 +80,7 @@ export const UpdateOrCreateWorkflow: React.FC<{
                     return true;
                 }}
             >
-                <Row gutter={token.padding}>
+                <Row gutter={token.marginLG}>
                     <Col span={12}>
                         <ProFormText
                             name={'name'}
@@ -89,7 +89,7 @@ export const UpdateOrCreateWorkflow: React.FC<{
                         />
                     </Col>
                 </Row>
-                <Row gutter={token.padding}>
+                <Row gutter={token.marginLG}>
                     <Col span={24}>
                         <ProFormTextArea
                             name={'description'}
@@ -147,7 +147,7 @@ export const UpdateOrCreateWorkflow: React.FC<{
                         },
                     ]}
                 >
-                    <Row gutter={token.padding} style={{ width: '100%' }}>
+                    <Row gutter={token.marginLG} style={{ width: '100%' }}>
                         <Col span={12}>
                             <ProFormText
                                 name="variable_name"

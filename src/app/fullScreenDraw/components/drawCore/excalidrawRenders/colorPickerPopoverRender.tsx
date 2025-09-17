@@ -6,7 +6,6 @@ import React, {
     useContext,
     useEffect,
     useMemo,
-    useRef,
     useState,
 } from 'react';
 import { PickColorIcon } from '@/components/icons';
@@ -15,6 +14,7 @@ import { useIntl } from 'react-intl';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { DrawEvent, DrawEventParams, DrawEventPublisher } from '@/app/draw/extra';
 import { debounce } from 'es-toolkit';
+import { useGetPopupContainer } from '.';
 
 const ColorPickerCore: React.FC<{
     color: string | null;
@@ -62,13 +62,10 @@ const ColorPickerCore: React.FC<{
         setActivePick(false);
     }, [setActivePick]);
 
-    const containerRef = useRef<HTMLElement>(null);
     useEffect(() => {
         if (!enableColorPicker) {
             return;
         }
-
-        containerRef.current = document.getElementById('layout-menu-render') ?? document.body;
 
         document.addEventListener('mousedown', onMouseDown);
         return () => {
@@ -76,9 +73,7 @@ const ColorPickerCore: React.FC<{
         };
     }, [enableColorPicker, onMouseDown]);
 
-    const getPopupContainer = useCallback(() => {
-        return containerRef.current ?? document.body;
-    }, []);
+    const getPopupContainer = useGetPopupContainer();
 
     const onChangeComplete = useCallback<
         NonNullable<ComponentProps<typeof ColorPicker>['onChangeComplete']>

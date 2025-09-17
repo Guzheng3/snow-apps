@@ -10,6 +10,10 @@ export const settings = {
     'settings.controlNode.polyline': '多边形',
     'settings.screenshotSettings': '截图',
     'settings.disableAnimation': '禁用动画',
+    'settings.commonSettings.draw': '绘制',
+    'settings.commonSettings.draw.enableSliderChangeWidth': '启用更精细的大小控制',
+    'settings.commonSettings.draw.enableSliderChangeWidth.tip':
+        '启用后将使用滑块控制矩形宽度、字体大小等绘制样式',
     'settings.fixedContentSettings': '固定到屏幕',
     'settings.fixedContentSettings.borderColor': '边框颜色',
     'settings.selectRectMaskColor': '选区遮罩颜色',

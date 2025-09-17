@@ -211,7 +211,7 @@ export default function HotKeySettings() {
                                 <FormattedMessage id={`settings.hotKeySettings.${configGroup}`} />
                             </GroupTitle>
                             <Spin spinning={appSettingsLoading}>
-                                <Row gutter={token.margin}>
+                                <Row gutter={token.marginLG}>
                                     {keyEventFormItemList[configGroup as KeyEventGroup]}
                                 </Row>
                             </Spin>
@@ -238,7 +238,7 @@ export default function HotKeySettings() {
 
             <Form className="settings-form common-settings-form" form={drawToolbarKeyEventForm}>
                 <Spin spinning={appSettingsLoading}>
-                    <Row gutter={token.margin}>{drawToolbarKeyEventFormItemList}</Row>
+                    <Row gutter={token.marginLG}>{drawToolbarKeyEventFormItemList}</Row>
                 </Spin>
             </Form>
 

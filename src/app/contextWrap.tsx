@@ -53,6 +53,7 @@ import { ExtraToolList } from './draw/components/drawToolbar/components/tools/ex
 export enum AppSettingsGroup {
     Common = 'common',
     CommonTrayIcon = 'commonTrayIcon',
+    CommonDraw = 'commonDraw',
     Cache = 'cache_20250731',
     Screenshot = 'screenshot',
     FixedContent = 'fixedContent',
@@ -144,6 +145,10 @@ export type AppSettingsData = {
         defaultIcons: TrayIconDefaultIcon;
         /** 启用托盘 */
         enableTrayIcon: boolean;
+    };
+    [AppSettingsGroup.CommonDraw]: {
+        /** 启用更精细的大小控制 */
+        enableSliderChangeWidth: boolean;
     };
     [AppSettingsGroup.Cache]: {
         menuCollapsed: boolean;
@@ -365,6 +370,9 @@ export const defaultAppSettingsData: AppSettingsData = {
         iconPath: '',
         defaultIcons: TrayIconDefaultIcon.Default,
         enableTrayIcon: true,
+    },
+    [AppSettingsGroup.CommonDraw]: {
+        enableSliderChangeWidth: false,
     },
     [AppSettingsGroup.Cache]: {
         menuCollapsed: false,
@@ -852,6 +860,19 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? newSettings.customToolbarToolList
                             : (prevSettings?.customToolbarToolList ??
                               defaultAppSettingsData[group].customToolbarToolList),
+                };
+            } else if (group === AppSettingsGroup.CommonDraw) {
+                newSettings = newSettings as AppSettingsData[typeof group];
+                const prevSettings = appSettingsRef.current[group] as
+                    | AppSettingsData[typeof group]
+                    | undefined;
+
+                settings = {
+                    enableSliderChangeWidth:
+                        typeof newSettings?.enableSliderChangeWidth === 'boolean'
+                            ? newSettings.enableSliderChangeWidth
+                            : (prevSettings?.enableSliderChangeWidth ??
+                              defaultAppSettingsData[group].enableSliderChangeWidth),
                 };
             } else if (group === AppSettingsGroup.FixedContent) {
                 newSettings = newSettings as AppSettingsData[typeof group];

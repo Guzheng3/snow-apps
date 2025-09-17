@@ -1,9 +1,8 @@
-import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import {
-    ExcalidrawEventCallbackPublisher,
-    ExcalidrawEventCallbackParams,
-    ExcalidrawEventCallbackType,
     DrawCoreContext,
+    ExcalidrawEventCallbackParams,
+    ExcalidrawEventCallbackPublisher,
+    ExcalidrawEventCallbackType,
 } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { ExcalidrawPropsCustomOptions } from '@mg-chao/excalidraw/types';
 import { Radio, Space } from 'antd';
@@ -16,8 +15,14 @@ import {
 } from '../components/serialNumberTool';
 import { last } from 'es-toolkit';
 import { ExcalidrawElement } from '@mg-chao/excalidraw/element/types';
+import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 
-export const RadioSelection = ((props) => {
+export const useChangeFontSizeProps = (
+    isSlider: boolean,
+    props: React.ComponentProps<
+        NonNullable<NonNullable<ExcalidrawPropsCustomOptions['pickerRenders']>['RadioSelection']>
+    >,
+) => {
     const { getAction } = useContext(DrawCoreContext);
 
     const propsRef = useRef<typeof props | undefined>(undefined);
@@ -161,19 +166,37 @@ export const RadioSelection = ((props) => {
 
             if (value?.event === ExcalidrawEventCallbackType.ChangeFontSize) {
                 const fontSize = value.params.fontSize;
-                const fontSizeIndex = currentProps.options.findIndex(
-                    (option) => typeof option.value === 'number' && option.value === fontSize,
-                );
-                if (fontSizeIndex === -1) {
-                    return;
-                }
-                const targetFontSize = currentProps.options[fontSizeIndex].value;
-                if ('onChange' in currentProps) {
-                    currentProps.onChange(targetFontSize);
+                if (isSlider) {
+                    if ('onChange' in currentProps) {
+                        currentProps.onChange(fontSize);
+                    }
+                } else {
+                    const fontSizeIndex = currentProps.options.findIndex(
+                        (option) => typeof option.value === 'number' && option.value === fontSize,
+                    );
+                    if (fontSizeIndex === -1) {
+                        return;
+                    }
+                    const targetFontSize = currentProps.options[fontSizeIndex].value;
+                    if ('onChange' in currentProps) {
+                        currentProps.onChange(targetFontSize);
+                    }
                 }
             }
         }, []),
     );
+
+    return {
+        propsRef,
+    };
+};
+
+export const RadioSelection = (
+    props: React.ComponentProps<
+        NonNullable<NonNullable<ExcalidrawPropsCustomOptions['pickerRenders']>['RadioSelection']>
+    >,
+) => {
+    const { propsRef } = useChangeFontSizeProps(false, props);
 
     if (props.type === 'button') {
         return (
@@ -222,7 +245,7 @@ export const RadioSelection = ((props) => {
                                 return;
                             }
 
-                            propsRef.current.onChange(option.value);
+                            propsRef.current.onChange(option.value as unknown as number);
                         }}
                     >
                         {option.icon}
@@ -231,4 +254,4 @@ export const RadioSelection = ((props) => {
             ))}
         </Radio.Group>
     );
-}) as NonNullable<ExcalidrawPropsCustomOptions['pickerRenders']>['RadioSelection'];
+};

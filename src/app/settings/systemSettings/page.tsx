@@ -220,7 +220,7 @@ export default function SystemSettings() {
                     submitter={false}
                     layout="horizontal"
                 >
-                    <Row gutter={token.margin}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProForm.Item
                                 label={
@@ -321,7 +321,7 @@ export default function SystemSettings() {
                     submitter={false}
                     layout="horizontal"
                 >
-                    <Row gutter={token.margin}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSwitch
                                 label={
@@ -340,7 +340,7 @@ export default function SystemSettings() {
                         </Col>
                     </Row>
 
-                    <Row gutter={token.margin}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSelect
                                 label={
@@ -356,7 +356,7 @@ export default function SystemSettings() {
                         </Col>
                     </Row>
 
-                    <Row gutter={token.margin}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSelect
                                 label={
@@ -386,7 +386,7 @@ export default function SystemSettings() {
                         </Col>
                     </Row>
 
-                    <Row gutter={token.margin}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSwitch
                                 label={
@@ -539,7 +539,7 @@ export default function SystemSettings() {
                     submitter={false}
                     layout="vertical"
                 >
-                    <Row gutter={token.margin}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSwitch
                                 label={
@@ -557,7 +557,7 @@ export default function SystemSettings() {
                         </Col>
                     </Row>
 
-                    <Row gutter={token.margin}>
+                    <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSlider
                                 label={
@@ -784,7 +784,7 @@ export default function SystemSettings() {
 
             <Spin spinning={!configDirPath}>
                 <ProForm submitter={false} layout="horizontal">
-                    <Row gutter={token.margin}>
+                    <Row gutter={token.marginLG}>
                         <Col span={24}>
                             <ProForm.Item
                                 label={
