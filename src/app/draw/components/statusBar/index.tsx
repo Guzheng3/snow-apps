@@ -78,7 +78,8 @@ export const useMonitorRect = (): {
             (event: DrawEventParams) => {
                 if (event?.event === DrawEvent.ChangeMonitor) {
                     const { rect, scale_factor } = event.params.rect;
-                    setMonitorRectInfo({
+
+                    const info = {
                         rect: {
                             min_x: rect.min_x / window.devicePixelRatio,
                             min_y: rect.min_y / window.devicePixelRatio,
@@ -86,8 +87,9 @@ export const useMonitorRect = (): {
                             max_y: rect.max_y / window.devicePixelRatio,
                         },
                         scale_factor,
-                    });
-                    useMonitorRectData = event.params.rect;
+                    };
+                    setMonitorRectInfo(info);
+                    useMonitorRectData = info;
                 }
             },
             [setMonitorRectInfo],
