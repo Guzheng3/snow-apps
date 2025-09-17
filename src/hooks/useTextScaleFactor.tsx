@@ -1,6 +1,9 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { Dispatch, RefObject, SetStateAction, useEffect, useState } from 'react';
+import { Dispatch, RefObject, SetStateAction, useCallback, useEffect, useState } from 'react';
 import { useStateRef } from './useStateRef';
+import { AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
+import { useStateSubscriber } from './useStateSubscriber';
+import { useAppSettingsLoad } from './useAppSettingsLoad';
 
 function listenDevicePixelRatio(callback: (ratio: number) => void) {
     const media = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
@@ -67,15 +70,37 @@ export const calculateContentScale = (
  */
 export const useContentScale = (
     monitorScaleFactor: number,
+    isToolbar?: boolean,
 ): [number, Dispatch<SetStateAction<number>>, RefObject<number>] => {
     const [textScaleFactor, devicePixelRatio] = useTextScaleFactor();
     const [contentScale, setContentScale, contentScaleRef] = useStateRef(1);
 
+    const [uiScale, setUiScale] = useState(1);
+    const [toolbarUiScale, setToolbarUiScale] = useState(1);
+
+    useAppSettingsLoad(
+        useCallback((settings) => {
+            setUiScale(settings[AppSettingsGroup.Screenshot].uiScale);
+            setToolbarUiScale(settings[AppSettingsGroup.Screenshot].toolbarUiScale);
+        }, []),
+        true,
+    );
+
     useEffect(() => {
         setContentScale(
-            calculateContentScale(monitorScaleFactor, textScaleFactor, devicePixelRatio),
+            calculateContentScale(monitorScaleFactor, textScaleFactor, devicePixelRatio) *
+                (uiScale / 100) *
+                (isToolbar ? toolbarUiScale / 100 : 1),
         );
-    }, [monitorScaleFactor, textScaleFactor, devicePixelRatio, setContentScale]);
+    }, [
+        devicePixelRatio,
+        isToolbar,
+        monitorScaleFactor,
+        setContentScale,
+        textScaleFactor,
+        toolbarUiScale,
+        uiScale,
+    ]);
 
     return [contentScale, setContentScale, contentScaleRef];
 };

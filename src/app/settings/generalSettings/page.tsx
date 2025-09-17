@@ -421,6 +421,38 @@ export default function GeneralSettings() {
                 <Spin spinning={appSettingsLoading}>
                     <Row gutter={token.marginLG}>
                         <Col span={12}>
+                            <ProFormSlider
+                                name="uiScale"
+                                label={
+                                    <FormattedMessage id="settings.commonSettings.screenshotSettings.uiScale" />
+                                }
+                                min={25}
+                                max={100}
+                                step={1}
+                                marks={{
+                                    25: '25%',
+                                    100: '100%',
+                                }}
+                            />
+                        </Col>
+
+                        <Col span={12}>
+                            <ProFormSlider
+                                name="toolbarUiScale"
+                                label={
+                                    <FormattedMessage id="settings.commonSettings.screenshotSettings.toolbarUiScale" />
+                                }
+                                min={25}
+                                max={100}
+                                step={1}
+                                marks={{
+                                    25: '25%',
+                                    100: '100%',
+                                }}
+                            />
+                        </Col>
+
+                        <Col span={12}>
                             <ProForm.Item
                                 className="settings-wrap-language"
                                 name="controlNode"

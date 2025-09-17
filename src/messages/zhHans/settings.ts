@@ -6,6 +6,8 @@ export const settings = {
     'settings.theme.dark': '暗黑',
     'settings.theme.system': '跟随系统',
     'settings.controlNode': '选区控件样式',
+    'settings.commonSettings.screenshotSettings.uiScale': '界面缩放比例',
+    'settings.commonSettings.screenshotSettings.toolbarUiScale': '工具栏缩放比例',
     'settings.controlNode.circle': '圆形',
     'settings.controlNode.polyline': '多边形',
     'settings.screenshotSettings': '截图',

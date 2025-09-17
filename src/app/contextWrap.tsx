@@ -114,6 +114,10 @@ export type AppSettingsData = {
         browserLanguage: string;
     };
     [AppSettingsGroup.Screenshot]: {
+        /** 界面缩放比例 */
+        uiScale: number;
+        /** 工具栏缩放比例 */
+        toolbarUiScale: number;
         /** 选区控件样式 */
         controlNode: AppSettingsControlNode;
         /** 颜色选择器模式 */
@@ -338,6 +342,8 @@ export const defaultAppSettingsData: AppSettingsData = {
         browserLanguage: '',
     },
     [AppSettingsGroup.Screenshot]: {
+        uiScale: 100,
+        toolbarUiScale: 100,
         controlNode: AppSettingsControlNode.Circle,
         // 在 Mac 上禁用动画
         disableAnimation: getPlatformValue(false, true),
@@ -821,6 +827,15 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                 }
 
                 settings = {
+                    uiScale:
+                        typeof newSettings?.uiScale === 'number'
+                            ? Math.min(Math.max(newSettings.uiScale, 25), 100)
+                            : (prevSettings?.uiScale ?? defaultAppSettingsData[group].uiScale),
+                    toolbarUiScale:
+                        typeof newSettings?.toolbarUiScale === 'number'
+                            ? Math.min(Math.max(newSettings.toolbarUiScale, 25), 100)
+                            : (prevSettings?.toolbarUiScale ??
+                              defaultAppSettingsData[group].toolbarUiScale),
                     controlNode,
                     disableAnimation:
                         typeof newSettings?.disableAnimation === 'boolean'

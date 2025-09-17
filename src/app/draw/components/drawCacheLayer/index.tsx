@@ -118,7 +118,7 @@ const DrawCacheLayerCore: React.FC<{
     const {
         contentScale: [, , contentScaleRef],
         calculatedBoundaryRect,
-    } = useMonitorRect();
+    } = useMonitorRect(true);
     const drawCoreContextValue = useMemo<DrawCoreContextValue>(() => {
         return {
             getLimitRect: () => {

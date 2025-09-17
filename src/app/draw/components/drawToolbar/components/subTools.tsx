@@ -56,7 +56,7 @@ export const SubTools: React.FC<{
     const {
         calculatedBoundaryRect,
         contentScale: [, , contentScaleRef],
-    } = useMonitorRect();
+    } = useMonitorRect(true);
 
     const updateDrawToolbarStyle = useCallback(() => {
         const subTools = subToolsRef.current;

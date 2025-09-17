@@ -49,7 +49,7 @@ const DragButtonCore: React.FC<{
     const {
         contentScale: [, , contentScaleRef],
         calculatedBoundaryRect,
-    } = useMonitorRect();
+    } = useMonitorRect(true);
 
     const updateDrawToolbarStyle = useCallback(() => {
         const drawToolbar = drawToolbarRef.current;

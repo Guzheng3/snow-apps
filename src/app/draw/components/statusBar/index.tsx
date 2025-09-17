@@ -4,6 +4,7 @@ import Color from 'color';
 import { FormattedMessage } from 'react-intl';
 import {
     AppContext,
+    AppSettingsData,
     AppSettingsGroup,
     AppSettingsPublisher,
     AppSettingsTheme,
@@ -64,7 +65,9 @@ let useMonitorRectData: MonitorRect = {
     },
     scale_factor: 0,
 };
-export const useMonitorRect = (): {
+export const useMonitorRect = (
+    isToolbar?: boolean,
+): {
     monitorRect: MonitorRect;
     contentScale: ReturnType<typeof useContentScale>;
     calculatedBoundaryRect: (rect: ElementRect) => ElementRect;
@@ -119,7 +122,7 @@ export const useMonitorRect = (): {
         [monitorRectInfoRef],
     );
 
-    const contentScaleValues = useContentScale(monitorRectInfo.scale_factor);
+    const contentScaleValues = useContentScale(monitorRectInfo.scale_factor, isToolbar);
 
     return useMemo(() => {
         return {
