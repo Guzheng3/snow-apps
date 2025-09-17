@@ -908,6 +908,12 @@ const ColorPickerCore: React.FC<{
                     .color-picker-content-text {
                         text-align: center;
                     }
+
+                    .color-picker-content-text,
+                    .color-picker-content-color {
+                        user-select: none;
+                        pointer-events: none;
+                    }
                 `}
             </style>
         </div>
