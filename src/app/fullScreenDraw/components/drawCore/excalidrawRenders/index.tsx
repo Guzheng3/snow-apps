@@ -11,7 +11,7 @@ import { RadioSelection } from './radioSelection';
 import SerialNumberEditor from './serialNumberEditor';
 import SubToolEditor from './SubToolEditor';
 import { useCallback, useEffect, useRef } from 'react';
-import { RadioSlider } from './radioSlider';
+import { ChangeFontSizeSlider, ChangeStrokeWidthSlider } from './radioSlider';
 
 export const useGetPopupContainer = () => {
     const containerRef = useRef<HTMLElement>(null);
@@ -32,7 +32,9 @@ export const generatePickerRenders: (
         colorPickerPopoverRender,
         buttonIconSelectRadioRender,
         CustomButtonIcon: ButtonIcon,
-        RadioSelection,
+        RadioSelection: RadioSelection as unknown as NonNullable<
+            ExcalidrawPropsCustomOptions['pickerRenders']
+        >['RadioSelection'],
         rangeRender,
         layerButtonRender,
         elementStrokeColors: ['#1e1e1e', '#f5222d', '#52c41a', '#1677ff', '#faad14'],
@@ -40,8 +42,8 @@ export const generatePickerRenders: (
         ButtonList: ButtonList,
         SerialNumberEditor,
         SubToolEditor,
-        ChangeStrokeWidthSlider: enableSliderChangeWidth ? RadioSlider : undefined,
-        ChangeFontSizeSlider: enableSliderChangeWidth ? RadioSlider : undefined,
+        ChangeStrokeWidthSlider: enableSliderChangeWidth ? ChangeStrokeWidthSlider : undefined,
+        ChangeFontSizeSlider: enableSliderChangeWidth ? ChangeFontSizeSlider : undefined,
     };
 };
 
