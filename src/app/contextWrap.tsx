@@ -53,7 +53,7 @@ import { ExtraToolList } from './draw/components/drawToolbar/components/tools/ex
 export enum AppSettingsGroup {
     Common = 'common',
     CommonTrayIcon = 'commonTrayIcon',
-    CommonDraw = 'commonDraw',
+    FunctionDraw = 'functionDraw',
     Cache = 'cache_20250731',
     Screenshot = 'screenshot',
     FixedContent = 'fixedContent',
@@ -146,9 +146,13 @@ export type AppSettingsData = {
         /** 启用托盘 */
         enableTrayIcon: boolean;
     };
-    [AppSettingsGroup.CommonDraw]: {
+    [AppSettingsGroup.FunctionDraw]: {
+        /** 锁定绘制工具 */
+        lockDrawTool: boolean;
         /** 启用更精细的大小控制 */
         enableSliderChangeWidth: boolean;
+        /** 独立的工具样式 */
+        toolIndependentStyle: boolean;
     };
     [AppSettingsGroup.Cache]: {
         menuCollapsed: boolean;
@@ -231,8 +235,6 @@ export type AppSettingsData = {
         ocrAfterAction: OcrDetectAfterAction;
         /** OCR 复制时复制文本 */
         ocrCopyText: boolean;
-        /** 锁定绘制工具 */
-        lockDrawTool: boolean;
     };
     [AppSettingsGroup.FunctionOutput]: {
         /** 手动保存文件名格式 */
@@ -371,8 +373,10 @@ export const defaultAppSettingsData: AppSettingsData = {
         defaultIcons: TrayIconDefaultIcon.Default,
         enableTrayIcon: true,
     },
-    [AppSettingsGroup.CommonDraw]: {
+    [AppSettingsGroup.FunctionDraw]: {
+        lockDrawTool: true,
         enableSliderChangeWidth: false,
+        toolIndependentStyle: true,
     },
     [AppSettingsGroup.Cache]: {
         menuCollapsed: false,
@@ -438,7 +442,6 @@ export const defaultAppSettingsData: AppSettingsData = {
         saveFileFormat: ImageFormat.PNG,
         ocrAfterAction: OcrDetectAfterAction.None,
         ocrCopyText: true,
-        lockDrawTool: true,
     },
     [AppSettingsGroup.SystemScrollScreenshot]: {
         tryRollback: true,
@@ -861,18 +864,28 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             : (prevSettings?.customToolbarToolList ??
                               defaultAppSettingsData[group].customToolbarToolList),
                 };
-            } else if (group === AppSettingsGroup.CommonDraw) {
+            } else if (group === AppSettingsGroup.FunctionDraw) {
                 newSettings = newSettings as AppSettingsData[typeof group];
                 const prevSettings = appSettingsRef.current[group] as
                     | AppSettingsData[typeof group]
                     | undefined;
 
                 settings = {
+                    lockDrawTool:
+                        typeof newSettings?.lockDrawTool === 'boolean'
+                            ? newSettings.lockDrawTool
+                            : (prevSettings?.lockDrawTool ??
+                              defaultAppSettingsData[group].lockDrawTool),
                     enableSliderChangeWidth:
                         typeof newSettings?.enableSliderChangeWidth === 'boolean'
                             ? newSettings.enableSliderChangeWidth
                             : (prevSettings?.enableSliderChangeWidth ??
                               defaultAppSettingsData[group].enableSliderChangeWidth),
+                    toolIndependentStyle:
+                        typeof newSettings?.toolIndependentStyle === 'boolean'
+                            ? newSettings.toolIndependentStyle
+                            : (prevSettings?.toolIndependentStyle ??
+                              defaultAppSettingsData[group].toolIndependentStyle),
                 };
             } else if (group === AppSettingsGroup.FixedContent) {
                 newSettings = newSettings as AppSettingsData[typeof group];
@@ -1207,10 +1220,6 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.ocrCopyText === 'boolean'
                             ? newSettings.ocrCopyText
                             : (prevSettings?.ocrCopyText ?? false),
-                    lockDrawTool:
-                        typeof newSettings?.lockDrawTool === 'boolean'
-                            ? newSettings.lockDrawTool
-                            : (prevSettings?.lockDrawTool ?? true),
                     focusedWindowCopyToClipboard:
                         typeof newSettings?.focusedWindowCopyToClipboard === 'boolean'
                             ? newSettings.focusedWindowCopyToClipboard

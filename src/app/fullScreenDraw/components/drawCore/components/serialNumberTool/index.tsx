@@ -235,7 +235,7 @@ export const SerialNumberTool: React.FC = () => {
     );
     const lockTool = useCallback(() => {
         let toolLocked = true;
-        if (!getAppSettings()[AppSettingsGroup.FunctionScreenshot].lockDrawTool) {
+        if (!getAppSettings()[AppSettingsGroup.FunctionDraw].lockDrawTool) {
             toolLocked = getAppSettings()[AppSettingsGroup.Cache].enableLockDrawTool;
         }
         return toolLocked;

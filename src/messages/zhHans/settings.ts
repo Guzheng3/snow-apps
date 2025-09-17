@@ -11,9 +11,12 @@ export const settings = {
     'settings.screenshotSettings': '截图',
     'settings.disableAnimation': '禁用动画',
     'settings.commonSettings.draw': '绘制',
-    'settings.commonSettings.draw.enableSliderChangeWidth': '启用更精细的大小控制',
+    'settings.commonSettings.draw.enableSliderChangeWidth': '更精细的大小控制',
     'settings.commonSettings.draw.enableSliderChangeWidth.tip':
         '启用后将使用滑块控制矩形宽度、字体大小等绘制样式',
+    'settings.commonSettings.draw.toolIndependentStyle': '独立的工具样式',
+    'settings.commonSettings.draw.toolIndependentStyle.tip':
+        '每个工具都有独立的样式配置，修改某个工具的样式后，不会影响其他工具的样式',
     'settings.fixedContentSettings': '固定到屏幕',
     'settings.fixedContentSettings.borderColor': '边框颜色',
     'settings.selectRectMaskColor': '选区遮罩颜色',

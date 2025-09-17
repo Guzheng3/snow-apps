@@ -90,7 +90,7 @@ export class ExcalidrawAppStateStore extends BaseStore<{
     appState: Partial<AppState>;
 }> {
     constructor() {
-        super('excalidraw-app-state', 0);
+        super('excalidraw-app-state', 1000);
     }
 }
 

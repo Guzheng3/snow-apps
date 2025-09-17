@@ -53,7 +53,6 @@ export default function GeneralSettings() {
     const { updateAppSettings } = useContext(AppSettingsActionContext);
     const [commonForm] = Form.useForm<AppSettingsData[AppSettingsGroup.Common]>();
     const [screenshotForm] = Form.useForm<AppSettingsData[AppSettingsGroup.Screenshot]>();
-    const [commonDrawForm] = Form.useForm<AppSettingsData[AppSettingsGroup.CommonDraw]>();
     const [fixedContentForm] = Form.useForm<AppSettingsData[AppSettingsGroup.FixedContent]>();
     const [trayIconForm] = Form.useForm<AppSettingsData[AppSettingsGroup.CommonTrayIcon]>();
 
@@ -92,23 +91,8 @@ export default function GeneralSettings() {
                 ) {
                     fixedContentForm.setFieldsValue(settings[AppSettingsGroup.FixedContent]);
                 }
-
-                if (
-                    preSettings === undefined ||
-                    preSettings[AppSettingsGroup.CommonDraw] !==
-                        settings[AppSettingsGroup.CommonDraw]
-                ) {
-                    commonDrawForm.setFieldsValue(settings[AppSettingsGroup.CommonDraw]);
-                }
             },
-            [
-                commonForm,
-                commonDrawForm,
-                fixedContentForm,
-                screenshotForm,
-                setAppSettingsLoading,
-                trayIconForm,
-            ],
+            [commonForm, fixedContentForm, screenshotForm, setAppSettingsLoading, trayIconForm],
         ),
         true,
     );
@@ -610,58 +594,6 @@ export default function GeneralSettings() {
                                 label={<FormattedMessage id="settings.customToolbarToolList" />}
                                 options={customToolbarToolListOptions}
                                 mode="multiple"
-                            />
-                        </Col>
-                    </Row>
-                </Spin>
-            </ProForm>
-
-            <Divider />
-
-            <GroupTitle
-                id="commonDrawSettings"
-                extra={
-                    <ResetSettingsButton
-                        title={intl.formatMessage({ id: 'settings.commonSettings.draw' })}
-                        appSettingsGroup={AppSettingsGroup.CommonDraw}
-                    />
-                }
-            >
-                <FormattedMessage id="settings.commonSettings.draw" />
-            </GroupTitle>
-
-            <ProForm<AppSettingsData[AppSettingsGroup.CommonDraw]>
-                className="settings-form common-draw-settings-form"
-                form={commonDrawForm}
-                submitter={false}
-                onValuesChange={(_, values) => {
-                    updateAppSettings(
-                        AppSettingsGroup.CommonDraw,
-                        values,
-                        true,
-                        true,
-                        true,
-                        true,
-                        false,
-                    );
-                }}
-                layout="horizontal"
-            >
-                <Spin spinning={appSettingsLoading}>
-                    <Row gutter={token.marginLG}>
-                        <Col span={12}>
-                            <ProFormSwitch
-                                name="enableSliderChangeWidth"
-                                label={
-                                    <IconLabel
-                                        label={
-                                            <FormattedMessage id="settings.commonSettings.draw.enableSliderChangeWidth" />
-                                        }
-                                        tooltipTitle={
-                                            <FormattedMessage id="settings.commonSettings.draw.enableSliderChangeWidth.tip" />
-                                        }
-                                    />
-                                }
                             />
                         </Col>
                     </Row>

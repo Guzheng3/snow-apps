@@ -64,6 +64,7 @@ export default function SystemSettings() {
 
     const { updateAppSettings } = useContext(AppSettingsActionContext);
     const [functionForm] = Form.useForm<AppSettingsData[AppSettingsGroup.FunctionChat]>();
+    const [functionDrawForm] = Form.useForm<AppSettingsData[AppSettingsGroup.FunctionDraw]>();
     const [trayIconForm] = Form.useForm<AppSettingsData[AppSettingsGroup.FunctionTrayIcon]>();
     const [translationForm] = Form.useForm<AppSettingsData[AppSettingsGroup.FunctionTranslation]>();
     const [screenshotForm] = Form.useForm<AppSettingsData[AppSettingsGroup.FunctionScreenshot]>();
@@ -94,6 +95,14 @@ export default function SystemSettings() {
                         settings[AppSettingsGroup.FunctionChat]
                 ) {
                     functionForm.setFieldsValue(settings[AppSettingsGroup.FunctionChat]);
+                }
+
+                if (
+                    preSettings === undefined ||
+                    preSettings[AppSettingsGroup.FunctionDraw] !==
+                        settings[AppSettingsGroup.FunctionDraw]
+                ) {
+                    functionDrawForm.setFieldsValue(settings[AppSettingsGroup.FunctionDraw]);
                 }
 
                 if (
@@ -166,6 +175,7 @@ export default function SystemSettings() {
             [
                 translationForm,
                 functionForm,
+                functionDrawForm,
                 screenshotForm,
                 outputForm,
                 fixedContentForm,
@@ -542,6 +552,87 @@ export default function SystemSettings() {
                     </Row>
                 </ProForm>
             </Spin>
+
+            <Divider />
+
+            <GroupTitle
+                id="functionDrawSettings"
+                extra={
+                    <ResetSettingsButton
+                        title={intl.formatMessage({ id: 'settings.commonSettings.draw' })}
+                        appSettingsGroup={AppSettingsGroup.FunctionDraw}
+                    />
+                }
+            >
+                <FormattedMessage id="settings.commonSettings.draw" />
+            </GroupTitle>
+
+            <ProForm<AppSettingsData[AppSettingsGroup.FunctionDraw]>
+                className="settings-form common-draw-settings-form"
+                form={functionDrawForm}
+                submitter={false}
+                onValuesChange={(_, values) => {
+                    updateAppSettings(
+                        AppSettingsGroup.FunctionDraw,
+                        values,
+                        true,
+                        true,
+                        true,
+                        true,
+                        false,
+                    );
+                }}
+                layout="horizontal"
+            >
+                <Spin spinning={appSettingsLoading}>
+                    <Row gutter={token.marginLG}>
+                        <Col span={12}>
+                            <ProFormSwitch
+                                name="lockDrawTool"
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.functionSettings.screenshotSettings.lockDrawTool" />
+                                        }
+                                    />
+                                }
+                            />
+                        </Col>
+
+                        <Col span={12}>
+                            <ProFormSwitch
+                                name="enableSliderChangeWidth"
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.commonSettings.draw.enableSliderChangeWidth" />
+                                        }
+                                        tooltipTitle={
+                                            <FormattedMessage id="settings.commonSettings.draw.enableSliderChangeWidth.tip" />
+                                        }
+                                    />
+                                }
+                            />
+                        </Col>
+
+                        <Col span={12}>
+                            <ProFormSwitch
+                                name="toolIndependentStyle"
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.commonSettings.draw.toolIndependentStyle" />
+                                        }
+                                        tooltipTitle={
+                                            <FormattedMessage id="settings.commonSettings.draw.toolIndependentStyle.tip" />
+                                        }
+                                    />
+                                }
+                            />
+                        </Col>
+                    </Row>
+                </Spin>
+            </ProForm>
 
             <Divider />
 

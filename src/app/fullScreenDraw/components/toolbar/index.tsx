@@ -191,7 +191,7 @@ export const FullScreenDrawToolbar: React.FC<{
         useCallback(
             (settings: AppSettingsData) => {
                 // 不显示锁定绘制工具
-                setShowLockDrawTool(!settings[AppSettingsGroup.FunctionScreenshot].lockDrawTool);
+                setShowLockDrawTool(!settings[AppSettingsGroup.FunctionDraw].lockDrawTool);
                 // 是否启用锁定绘制工具
                 setEnableLockDrawTool(settings[AppSettingsGroup.Cache].enableLockDrawTool);
 

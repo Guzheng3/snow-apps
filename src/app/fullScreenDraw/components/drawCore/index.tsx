@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useCallback, useImperativeHandle, useMemo, useRef } from 'react';
 import { Excalidraw } from '@mg-chao/excalidraw';
 import {
@@ -190,12 +190,18 @@ const DrawCoreComponent: React.FC<{
 
     const [enableSliderChangeWidth, setEnableSliderChangeWidth, enableSliderChangeWidthRef] =
         useStateRef(false);
+    const toolIndependentStyleRef = useRef(false);
     useAppSettingsLoad(
-        useCallback((appSettings) => {
-            setEnableSliderChangeWidth(
-                appSettings[AppSettingsGroup.CommonDraw].enableSliderChangeWidth,
-            );
-        }, []),
+        useCallback(
+            (appSettings) => {
+                setEnableSliderChangeWidth(
+                    appSettings[AppSettingsGroup.FunctionDraw].enableSliderChangeWidth,
+                );
+                toolIndependentStyleRef.current =
+                    appSettings[AppSettingsGroup.FunctionDraw].toolIndependentStyle;
+            },
+            [setEnableSliderChangeWidth],
+        ),
         true,
     );
 
@@ -369,10 +375,61 @@ const DrawCoreComponent: React.FC<{
         [enableSliderChangeWidthRef, getDrawState, setExcalidrawEventCallback],
     );
 
+    const getAppStateStorageKey = useCallback(
+        (drawState: DrawState) => {
+            if (toolIndependentStyleRef.current) {
+                return `${appStateStorageKey}:${drawState}`;
+            }
+
+            return appStateStorageKey;
+        },
+        [appStateStorageKey],
+    );
+
+    const needSaveAppState = useCallback((drawState: DrawState) => {
+        switch (drawState) {
+            case DrawState.Rect:
+            case DrawState.Diamond:
+            case DrawState.Ellipse:
+            case DrawState.Arrow:
+            case DrawState.Line:
+            case DrawState.Pen:
+            case DrawState.Text:
+            case DrawState.SerialNumber:
+            case DrawState.Blur:
+            case DrawState.Watermark:
+                return true;
+            default:
+                return false;
+        }
+    }, []);
+
     useImperativeHandle(
         actionRef,
         () => ({
             setActiveTool: (...args) => {
+                setTimeout(() => {
+                    const drawState = getDrawState();
+                    if (needSaveAppState(drawState) && toolIndependentStyleRef.current) {
+                        // 读取 AppState
+                        excalidrawAppStateStoreRef.current
+                            ?.get(getAppStateStorageKey(drawState))
+                            .then((value) => {
+                                if (!value) {
+                                    return;
+                                }
+
+                                excalidrawAPIRef.current?.updateScene({
+                                    appState: {
+                                        ...excalidrawAPIRef.current?.getAppState(),
+                                        ...(value.appState as AppState),
+                                    },
+                                    captureUpdate: 'NEVER',
+                                });
+                            });
+                    }
+                }, 0);
+
                 excalidrawAPIRef.current?.setActiveTool(...args);
             },
             syncActionResult: (...args) => {
@@ -402,7 +459,15 @@ const DrawCoreComponent: React.FC<{
                 });
             },
         }),
-        [getCanvas, getCanvasContext, getImageData, updateScene],
+        [
+            getAppStateStorageKey,
+            getCanvas,
+            getCanvasContext,
+            getDrawState,
+            getImageData,
+            needSaveAppState,
+            updateScene,
+        ],
     );
 
     const [currentPlatform, currentPlatformRef] = usePlatform();
@@ -469,36 +534,39 @@ const DrawCoreComponent: React.FC<{
         [history],
     );
 
-    const saveAppState = useCallback(async () => {
-        const appState = excalidrawAPIRef.current?.getAppState();
-        if (!appState) {
-            return;
-        }
+    const saveAppState = useCallback(
+        async (appState: Readonly<AppState> | undefined, drawState: DrawState) => {
+            if (!appState) {
+                return;
+            }
 
-        if (
-            appState.activeTool.type === 'selection' ||
-            !excalidrawAppStateStoreRef.current?.inited()
-        ) {
-            return;
-        }
+            if (
+                !needSaveAppState(drawState) ||
+                !excalidrawAppStateStoreRef.current?.inited() ||
+                Object.keys(appState.selectedElementIds).length > 0 // 选择状态不做更改
+            ) {
+                return;
+            }
 
-        const storageAppState: Partial<AppState> = {};
-        Object.keys(appState)
-            .filter((item) => item.startsWith('currentItem'))
-            .forEach((item) => {
-                const value = appState[item as keyof AppState];
-                if (value === undefined) {
-                    return;
-                }
+            const storageAppState: Partial<AppState> = {};
+            Object.keys(appState)
+                .filter((item) => item.startsWith('currentItem'))
+                .forEach((item) => {
+                    const value = appState[item as keyof AppState];
+                    if (value === undefined) {
+                        return;
+                    }
 
-                storageAppState[item as keyof AppState] = value;
+                    storageAppState[item as keyof AppState] = value;
+                });
+
+            await excalidrawAppStateStoreRef.current!.set(getAppStateStorageKey(drawState), {
+                appState: storageAppState,
             });
-
-        await excalidrawAppStateStoreRef.current!.set(appStateStorageKey, {
-            appState: storageAppState,
-        });
-    }, [appStateStorageKey]);
-    const saveAppStateDebounce = useMemo(() => debounce(saveAppState, 1000), [saveAppState]);
+        },
+        [getAppStateStorageKey, needSaveAppState],
+    );
+    const saveAppStateDebounce = useMemo(() => debounce(saveAppState, 256), [saveAppState]);
 
     const getExtraTools = useCallback<
         NonNullable<ExcalidrawPropsCustomOptions['getExtraTools']>
@@ -562,7 +630,7 @@ const DrawCoreComponent: React.FC<{
 
     const excalidrawOnChange = useCallback<NonNullable<ExcalidrawProps['onChange']>>(
         (elements, appState, files) => {
-            saveAppStateDebounce();
+            saveAppStateDebounce(appState, getDrawState());
             setExcalidrawEvent({
                 event: 'onChange',
                 params: {
@@ -573,7 +641,7 @@ const DrawCoreComponent: React.FC<{
             });
             setExcalidrawEvent(undefined);
         },
-        [saveAppStateDebounce, setExcalidrawEvent],
+        [getDrawState, saveAppStateDebounce, setExcalidrawEvent],
     );
 
     const excalidrawCustomOptions = useMemo<NonNullable<ExcalidrawPropsCustomOptions>>(() => {
