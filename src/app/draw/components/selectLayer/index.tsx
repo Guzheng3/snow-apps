@@ -445,7 +445,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 selectRectRadiusRef.current,
                 selectLayerCanvasContextRef.current!,
                 currentTheme === AppSettingsTheme.Dark,
-                contentScaleRef.current,
+                window.devicePixelRatio * contentScaleRef.current,
                 getScreenshotType() === ScreenshotType.TopWindow ||
                     selectStateRef.current === SelectState.Auto,
                 drawElementMask,
