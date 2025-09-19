@@ -18,8 +18,9 @@ import { WatermarkTool } from './components/watermarkTool';
 import { ToolbarPopover } from '@/app/draw/components/drawToolbar/components/toolbarPopover';
 
 export const DrawExtraTool: React.FC<{
+    customToolbarToolHiddenMap: Partial<Record<DrawState, boolean>> | undefined;
     onToolClickAction: (tool: DrawState) => void;
-}> = ({ onToolClickAction }) => {
+}> = ({ customToolbarToolHiddenMap, onToolClickAction }) => {
     const intl = useIntl();
     const { token } = theme.useToken();
 
@@ -80,6 +81,10 @@ export const DrawExtraTool: React.FC<{
 
     if (lastDrawExtraTool === DrawState.Watermark) {
         mainToolbarButton = watermarkButton;
+    }
+
+    if (customToolbarToolHiddenMap?.[DrawState.Watermark]) {
+        return null;
     }
 
     return (

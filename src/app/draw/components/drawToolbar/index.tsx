@@ -159,15 +159,15 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 
                 const toolHiddenMap = CanHiddenToolSet.values().reduce(
                     (acc, drawState) => {
-                        acc[drawState] = true;
+                        acc[drawState] = false;
                         return acc;
                     },
                     {} as Partial<Record<DrawState, boolean>>,
                 );
                 setCustomToolbarToolHiddenMap(
-                    settings[AppSettingsGroup.Screenshot].customToolbarToolList.reduce(
+                    settings[AppSettingsGroup.Screenshot].toolbarHiddenToolList.reduce(
                         (acc, drawState) => {
-                            acc[drawState] = false;
+                            acc[drawState] = true;
                             return acc;
                         },
                         toolHiddenMap,
@@ -718,7 +718,10 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                                 }}
                             />
 
-                            <DrawExtraTool onToolClickAction={onToolClick} />
+                            <DrawExtraTool
+                                customToolbarToolHiddenMap={customToolbarToolHiddenMap}
+                                onToolClickAction={onToolClick}
+                            />
 
                             {!customToolbarToolHiddenMap?.[DrawState.Redo] && (
                                 <div className="draw-toolbar-splitter" />

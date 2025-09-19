@@ -136,8 +136,8 @@ export type AppSettingsData = {
         colorPickerCenterAuxiliaryLineColor: string;
         /** 禁用动画 */
         disableAnimation: boolean;
-        /** 自定义工具栏工具 */
-        customToolbarToolList: DrawState[];
+        /** 隐藏工具栏工具 */
+        toolbarHiddenToolList: DrawState[];
     };
     [AppSettingsGroup.FixedContent]: {
         /** 边框颜色 */
@@ -354,22 +354,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         monitorCenterAuxiliaryLineColor: '#00000000',
         hotKeyTipOpacity: 100,
         colorPickerCenterAuxiliaryLineColor: '#00000000',
-        customToolbarToolList: [
-            DrawState.Select,
-            DrawState.Ellipse,
-            DrawState.Arrow,
-            DrawState.Pen,
-            DrawState.Text,
-            DrawState.SerialNumber,
-            DrawState.Blur,
-            DrawState.Eraser,
-            /** 特殊值，如果禁用则不显示撤销和重做 */
-            DrawState.Redo,
-            DrawState.Fixed,
-            DrawState.OcrDetect,
-            DrawState.OcrTranslate,
-            DrawState.ScrollScreenshot,
-        ],
+        toolbarHiddenToolList: [],
     },
     [AppSettingsGroup.FixedContent]: {
         borderColor: '#dbdbdb',
@@ -873,11 +858,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.colorPickerCenterAuxiliaryLineColor === 'string'
                             ? newSettings.colorPickerCenterAuxiliaryLineColor
                             : (prevSettings?.colorPickerCenterAuxiliaryLineColor ?? '#00000000'),
-                    customToolbarToolList:
-                        typeof newSettings?.customToolbarToolList === 'object'
-                            ? newSettings.customToolbarToolList
-                            : (prevSettings?.customToolbarToolList ??
-                              defaultAppSettingsData[group].customToolbarToolList),
+                    toolbarHiddenToolList:
+                        typeof newSettings?.toolbarHiddenToolList === 'object'
+                            ? newSettings.toolbarHiddenToolList
+                            : (prevSettings?.toolbarHiddenToolList ??
+                              defaultAppSettingsData[group].toolbarHiddenToolList),
                 };
             } else if (group === AppSettingsGroup.FunctionDraw) {
                 newSettings = newSettings as AppSettingsData[typeof group];

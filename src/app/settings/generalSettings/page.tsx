@@ -132,6 +132,10 @@ export default function GeneralSettings() {
                 value: DrawState.Eraser,
             },
             {
+                label: intl.formatMessage({ id: 'draw.watermarkTool' }),
+                value: DrawState.Watermark,
+            },
+            {
                 label: intl.formatMessage({ id: 'draw.redoUndoTool' }),
                 value: DrawState.Redo,
             },
@@ -622,7 +626,7 @@ export default function GeneralSettings() {
                     <Row gutter={token.marginLG}>
                         <Col span={24}>
                             <ProFormSelect
-                                name="customToolbarToolList"
+                                name="toolbarHiddenToolList"
                                 label={<FormattedMessage id="settings.customToolbarToolList" />}
                                 options={customToolbarToolListOptions}
                                 mode="multiple"
