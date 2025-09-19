@@ -656,7 +656,7 @@ export const OcrResult: React.FC<{
                         </style>
                         <script>
                             document.oncopy = (e) => {
-                                if (${enableCopy}) {
+                                if (${enableCopy ? 'true' : 'false'}) {
                                     return;
                                 }
 
@@ -704,7 +704,7 @@ export const OcrResult: React.FC<{
                                 }, '*');
                             });
 
-                            document.addEventListener('mouseup', (e) => {
+                            document.onmouseup = (e) => {
                                 window.parent.postMessage({
                                     type: 'mouseup',
                                     clientX: e.clientX,
@@ -716,10 +716,10 @@ export const OcrResult: React.FC<{
                                     altKey: e.altKey,
                                     metaKey: e.metaKey,
                                 }, '*');
-                            });
+                            };
 
                             // 转发键盘事件到父窗口
-                            document.addEventListener('keydown', (e) => {
+                            document.onkeydown = (e) => {
                                 window.parent.postMessage({
                                     type: 'keydown',
                                     key: e.key,
@@ -731,9 +731,9 @@ export const OcrResult: React.FC<{
                                     metaKey: e.metaKey,
                                     repeat: e.repeat,
                                 }, '*');
-                            });
+                            };
 
-                            document.addEventListener('keyup', (e) => {
+                            document.onkeyup = (e) => {
                                 window.parent.postMessage({
                                     type: 'keyup',
                                     key: e.key,
@@ -744,7 +744,7 @@ export const OcrResult: React.FC<{
                                     altKey: e.altKey,
                                     metaKey: e.metaKey,
                                 }, '*');
-                            });
+                            };
                         </script>
                     `}
                 />

@@ -725,7 +725,6 @@ const DrawPageCore: React.FC<{
         } else if (getDrawState() === DrawState.ScanQrcode) {
             selectedText = window.getSelection()?.toString().trim();
         }
-
         if (
             selectedText &&
             (isOcrTool(getDrawState()) || getDrawState() === DrawState.ScanQrcode)

@@ -5,7 +5,7 @@ import { appWarn } from './log';
 export const writeTextToClipboard = async (text: string) => {
     let isSuccess = false;
     try {
-        await clipboard.writeText(text);
+        await extraClipboard.writeText(text);
         isSuccess = true;
     } catch (error) {
         isSuccess = false;
