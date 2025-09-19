@@ -3,7 +3,7 @@ import { ElementRect } from '@/commands';
 import { useStateRef } from '@/hooks/useStateRef';
 import ProForm, { ModalForm, ProFormDigit } from '@ant-design/pro-form';
 import { Col, ColorPicker, Form, Row, theme } from 'antd';
-import { useImperativeHandle, useState } from 'react';
+import { useCallback, useImperativeHandle, useState } from 'react';
 import { FormattedMessage } from 'react-intl';
 
 export type ResizeModalActionType = {
@@ -35,8 +35,8 @@ export const ResizeModal: React.FC<{
     const [selectRectLimit, setSelectRectLimit] = useState<ElementRect>({
         min_x: 0,
         min_y: 0,
-        max_x: 128,
-        max_y: 128,
+        max_x: 83,
+        max_y: 83,
     });
 
     const [form] = Form.useForm();
@@ -70,6 +70,15 @@ export const ResizeModal: React.FC<{
         };
     }, [form, openRef, setOpen]);
 
+    const handleDoubleClick = useCallback((e: React.MouseEvent<HTMLFormElement>) => {
+        e.stopPropagation();
+        e.preventDefault();
+    }, []);
+    const handleClick = useCallback((e: React.MouseEvent<HTMLFormElement>) => {
+        e.stopPropagation();
+        e.preventDefault();
+    }, []);
+
     return (
         <ModalForm
             form={form}
@@ -78,14 +87,8 @@ export const ResizeModal: React.FC<{
             modalProps={{ centered: true }}
             width={500}
             title={<FormattedMessage id="draw.resizeModal" />}
-            onDoubleClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-            }}
-            onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-            }}
+            onDoubleClick={handleDoubleClick}
+            onClick={handleClick}
             onFinish={onFinish}
         >
             <Row gutter={token.marginLG}>
