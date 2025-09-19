@@ -68,6 +68,37 @@ const getNextValueInList = <T,>(currentValue: T, valueList: T[], isIncrease: boo
     }
 };
 
+export const convertToolTypeToDrawState = (toolType: ToolType): DrawState | undefined => {
+    switch (toolType) {
+        case 'hand':
+            return DrawState.Idle;
+        case 'selection':
+            return DrawState.Select;
+        case 'rectangle':
+            return DrawState.Rect;
+        case 'diamond':
+            return DrawState.Diamond;
+        case 'ellipse':
+            return DrawState.Ellipse;
+        case 'arrow':
+            return DrawState.Arrow;
+        case 'line':
+            return DrawState.Line;
+        case 'freedraw':
+            return DrawState.Pen;
+        case 'text':
+            return DrawState.Text;
+        case 'blur':
+            return DrawState.Blur;
+        case 'watermark':
+            return DrawState.Watermark;
+        case 'eraser':
+            return DrawState.Eraser;
+    }
+
+    return undefined;
+};
+
 const storageKey = 'global';
 const DrawCoreComponent: React.FC<{
     actionRef: React.RefObject<DrawCoreActionType | undefined>;
@@ -95,24 +126,7 @@ const DrawCoreComponent: React.FC<{
         };
     }, []);
 
-    const [getDrawState] = useStateSubscriber(
-        DrawStatePublisher,
-        useCallback((drawState: DrawState) => {
-            if (drawCacheLayerElementRef.current) {
-                if (
-                    drawState === DrawState.OcrTranslate ||
-                    drawState === DrawState.OcrDetect ||
-                    drawState === DrawState.ScanQrcode ||
-                    drawState === DrawState.ExtraTools ||
-                    drawState === DrawState.VideoRecord
-                ) {
-                    drawCacheLayerElementRef.current.style.pointerEvents = 'none';
-                } else {
-                    drawCacheLayerElementRef.current.style.pointerEvents = 'auto';
-                }
-            }
-        }, []),
-    );
+    const [getDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
     const [, setExcalidrawEvent] = useStateSubscriber(ExcalidrawEventPublisher, undefined);
     const [, setExcalidrawOnHandleEraserEvent] = useStateSubscriber(
         ExcalidrawOnHandleEraserPublisher,
@@ -426,42 +440,40 @@ const DrawCoreComponent: React.FC<{
         actionRef,
         () => ({
             setActiveTool: (...args) => {
-                setTimeout(() => {
-                    const drawState = getDrawState();
-                    if (needSaveAppState(drawState) && toolIndependentStyleRef.current) {
-                        // 读取 AppState
-                        excalidrawAppStateStoreRef.current
-                            ?.get(getAppStateStorageKey(drawState))
-                            .then((value) => {
-                                if (!value) {
-                                    return;
-                                }
+                const drawState = convertToolTypeToDrawState(args[0].type as ToolType);
+                if (drawState && needSaveAppState(drawState) && toolIndependentStyleRef.current) {
+                    // 读取 AppState
+                    excalidrawAppStateStoreRef.current
+                        ?.get(getAppStateStorageKey(drawState))
+                        .then((value) => {
+                            if (!value) {
+                                return;
+                            }
 
-                                const appState = excalidrawAPIRef.current?.getAppState();
-                                if (!appState) {
-                                    return;
-                                }
+                            const appState = excalidrawAPIRef.current?.getAppState();
+                            if (!appState) {
+                                return;
+                            }
 
-                                excalidrawAPIRef.current?.updateScene({
-                                    appState: {
-                                        ...appState,
-                                        ...(value.appState as AppState),
-                                        activeTool: {
-                                            type: args[0].type as ToolType,
-                                            locked: args[0].locked ?? false,
-                                            lastActiveTool: appState.activeTool,
-                                            fromSelection: appState.activeTool.fromSelection,
-                                            customType: null,
-                                        },
+                            excalidrawAPIRef.current?.updateScene({
+                                appState: {
+                                    ...appState,
+                                    ...(value.appState as AppState),
+                                    activeTool: {
+                                        type: args[0].type as ToolType,
+                                        locked: args[0].locked ?? false,
+                                        lastActiveTool: appState.activeTool,
+                                        fromSelection: appState.activeTool.fromSelection,
+                                        customType: null,
                                     },
-                                    captureUpdate: 'NEVER',
-                                });
+                                },
+                                captureUpdate: 'NEVER',
                             });
-                        return;
-                    }
+                        });
+                    return;
+                }
 
-                    excalidrawAPIRef.current?.setActiveTool(...args);
-                }, 0);
+                excalidrawAPIRef.current?.setActiveTool(...args);
             },
             syncActionResult: (...args) => {
                 excalidrawActionRef.current?.syncActionResult(...args);
@@ -494,7 +506,6 @@ const DrawCoreComponent: React.FC<{
             getAppStateStorageKey,
             getCanvas,
             getCanvasContext,
-            getDrawState,
             getImageData,
             needSaveAppState,
             updateScene,

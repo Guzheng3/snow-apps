@@ -74,6 +74,7 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
             await Promise.all([
                 clearContainer(DRAW_LAYER_BLUR_CONTAINER_KEY),
                 clearContainer(DRAW_LAYER_WATERMARK_CONTAINER_KEY),
+                clearContainer(INIT_CONTAINER_KEY),
             ]);
 
             if (!item) {

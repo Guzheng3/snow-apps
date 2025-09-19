@@ -9,6 +9,8 @@ import {
     DrawCoreActionType,
     DrawCoreContext,
     DrawCoreContextValue,
+    DrawState,
+    DrawStatePublisher,
     ExcalidrawEventPublisher,
 } from '@/app/fullScreenDraw/components/drawCore/extra';
 import React from 'react';
@@ -188,6 +190,27 @@ const DrawCacheLayerCore: React.FC<{
             },
         };
     }, [selectLayerActionRef]);
+
+    /** 在 OCR、扫描二维码时禁用画布 */
+    useStateSubscriber(
+        DrawStatePublisher,
+        useCallback((drawState: DrawState) => {
+            const drawCoreElement = drawCoreActionRef.current?.getDrawCacheLayerElement();
+            if (drawCoreElement) {
+                if (
+                    drawState === DrawState.OcrTranslate ||
+                    drawState === DrawState.OcrDetect ||
+                    drawState === DrawState.ScanQrcode ||
+                    drawState === DrawState.ExtraTools ||
+                    drawState === DrawState.VideoRecord
+                ) {
+                    drawCoreElement.style.pointerEvents = 'none';
+                } else {
+                    drawCoreElement.style.pointerEvents = 'auto';
+                }
+            }
+        }, []),
+    );
 
     return (
         <DrawCoreContext.Provider value={drawCoreContextValue}>

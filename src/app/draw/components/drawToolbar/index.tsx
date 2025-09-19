@@ -287,7 +287,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'selection',
                     });
-
                     break;
                 case DrawState.Rect:
                     drawCacheLayerActionRef.current?.setActiveTool({
@@ -545,13 +544,20 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
         ),
     );
 
+    const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        e.stopPropagation();
+        e.preventDefault();
+    }, []);
+    const handleContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        e.stopPropagation();
+        e.preventDefault();
+    }, []);
+
     return (
         <div
             className="draw-toolbar-container"
-            onMouseDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-            }}
+            onMouseDown={handleMouseDown}
+            onContextMenu={handleContextMenu}
             ref={drawToolarContainerRef}
         >
             <DrawToolbarContext.Provider value={drawToolbarContextValue}>
