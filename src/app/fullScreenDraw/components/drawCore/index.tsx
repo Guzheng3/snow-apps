@@ -95,7 +95,24 @@ const DrawCoreComponent: React.FC<{
         };
     }, []);
 
-    const [getDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
+    const [getDrawState] = useStateSubscriber(
+        DrawStatePublisher,
+        useCallback((drawState: DrawState) => {
+            if (drawCacheLayerElementRef.current) {
+                if (
+                    drawState === DrawState.OcrTranslate ||
+                    drawState === DrawState.OcrDetect ||
+                    drawState === DrawState.ScanQrcode ||
+                    drawState === DrawState.ExtraTools ||
+                    drawState === DrawState.VideoRecord
+                ) {
+                    drawCacheLayerElementRef.current.style.pointerEvents = 'none';
+                } else {
+                    drawCacheLayerElementRef.current.style.pointerEvents = 'auto';
+                }
+            }
+        }, []),
+    );
     const [, setExcalidrawEvent] = useStateSubscriber(ExcalidrawEventPublisher, undefined);
     const [, setExcalidrawOnHandleEraserEvent] = useStateSubscriber(
         ExcalidrawOnHandleEraserPublisher,

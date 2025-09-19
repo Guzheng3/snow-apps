@@ -67,10 +67,6 @@ export enum OcrDetectAfterAction {
     CopyTextAndCloseWindow = 'copyTextAndCloseWindow',
 }
 
-const stopPropagation: HTMLDivElement['onmousedown'] = (e) => {
-    e.stopPropagation();
-};
-
 export const OcrResult: React.FC<{
     zIndex: number;
     actionRef: React.RefObject<OcrResultActionType | undefined>;
@@ -79,6 +75,9 @@ export const OcrResult: React.FC<{
     onWheel?: (event: React.WheelEvent<HTMLDivElement>) => void;
     enableCopy?: boolean;
     disabled?: boolean;
+    onMouseDown?: (event: React.MouseEvent<HTMLDivElement>) => void;
+    onMouseMove?: (event: React.MouseEvent<HTMLDivElement>) => void;
+    onMouseUp?: (event: React.MouseEvent<HTMLDivElement>) => void;
 }> = ({
     zIndex,
     actionRef,
@@ -87,6 +86,9 @@ export const OcrResult: React.FC<{
     onWheel,
     enableCopy,
     disabled,
+    onMouseDown,
+    onMouseMove,
+    onMouseUp,
 }) => {
     const intl = useIntl();
     const { token } = theme.useToken();
@@ -125,7 +127,7 @@ export const OcrResult: React.FC<{
     const selectRectRef = useRef<ElementRect>(undefined);
     const monitorScaleFactorRef = useRef<number>(undefined);
     const updateOcrTextElements = useCallback(
-        (ocrResult: OcrDetectResult, ignoreScale?: boolean) => {
+        async (ocrResult: OcrDetectResult, ignoreScale?: boolean) => {
             const monitorScaleFactor = monitorScaleFactorRef.current;
             const selectRect = selectRectRef.current;
 
@@ -158,110 +160,125 @@ export const OcrResult: React.FC<{
             textContainerElement.style.height =
                 textIframeContainerElement.style.height = `${(selectRect.max_y - selectRect.min_y) * transformScale}px`;
 
-            ocrResult.text_blocks.map((block) => {
-                if (isNaN(block.text_score) || block.text_score < 0.3) {
-                    return null;
-                }
-
-                const rectLeftTopX = block.box_points[0].x * transformScale;
-                const rectLeftTopY = block.box_points[0].y * transformScale;
-                const rectRightTopX = block.box_points[1].x * transformScale;
-                const rectRightTopY = block.box_points[1].y * transformScale;
-                const rectRightBottomX = block.box_points[2].x * transformScale;
-                const rectRightBottomY = block.box_points[2].y * transformScale;
-                const rectLeftBottomX = block.box_points[3].x * transformScale;
-                const rectLeftBottomY = block.box_points[3].y * transformScale;
-
-                // 计算矩形中心点
-                const centerX =
-                    (rectLeftTopX + rectRightTopX + rectRightBottomX + rectLeftBottomX) / 4;
-                const centerY =
-                    (rectLeftTopY + rectRightTopY + rectRightBottomY + rectLeftBottomY) / 4;
-
-                // 计算矩形旋转角度 (使用顶边与水平线的夹角)
-                const rotationRad = Math.atan2(
-                    rectRightTopY - rectLeftTopY,
-                    rectRightTopX - rectLeftTopX,
-                );
-                let rotationDeg = rotationRad * (180 / Math.PI);
-
-                // 如果旋转角度小于阈值，则视为误差，不进行旋转
-                if (Math.abs(rotationDeg) < ROTATION_THRESHOLD) {
-                    rotationDeg = 0;
-                }
-
-                // 计算宽度和高度
-                const width = Math.sqrt(
-                    Math.pow(rectRightTopX - rectLeftTopX, 2) +
-                        Math.pow(rectRightTopY - rectLeftTopY, 2),
-                );
-                const height = Math.sqrt(
-                    Math.pow(rectLeftBottomX - rectLeftTopX, 2) +
-                        Math.pow(rectLeftBottomY - rectLeftTopY, 2),
-                );
-
-                const textElement = document.createElement('div');
-                textElement.innerText = block.text;
-                textElement.style.color = token.colorText;
-                textElement.style.display = 'inline-block';
-
-                const textWrapElement = document.createElement('div');
-                const textBackgroundElement = document.createElement('div');
-                textBackgroundElement.style.position = textWrapElement.style.position = 'absolute';
-                textBackgroundElement.style.width = textWrapElement.style.width = `${width}px`;
-                textBackgroundElement.style.height = textWrapElement.style.height = `${height}px`;
-                textBackgroundElement.style.transformOrigin =
-                    textWrapElement.style.transformOrigin = 'center';
-
-                textWrapElement.style.display = 'flex';
-                textWrapElement.style.alignItems = 'center';
-                textWrapElement.style.justifyContent = 'center';
-                textWrapElement.style.backgroundColor = 'transparent';
-                textWrapElement.style.zIndex = '1';
-
-                textBackgroundElement.style.backgroundColor = Color(token.colorBgContainer)
-                    .alpha(0.42)
-                    .toString();
-                textBackgroundElement.style.backdropFilter = 'blur(3.6px)';
-
-                const isVertical = !ignoreScale && height > width * 1.5;
-                if (isVertical) {
-                    textWrapElement.style.writingMode = 'vertical-rl';
-                }
-
-                if (ignoreScale) {
-                    textElement.style.whiteSpace = 'normal';
-                    textElement.style.fontSize = '16px';
-                    textElement.style.wordBreak = 'break-all';
-                } else {
-                    textElement.style.fontSize = '12px';
-                    textElement.style.whiteSpace = 'nowrap';
-                    textWrapElement.style.textAlign = 'center';
-                }
-
-                textElement.onmousedown = stopPropagation;
-
-                textWrapElement.appendChild(textElement);
-                textContainerElement.appendChild(textBackgroundElement);
-                textContainerElement.appendChild(textWrapElement);
-
-                requestAnimationFrame(() => {
-                    let textWidth = textElement.clientWidth;
-                    let textHeight = textElement.clientHeight;
-                    if (isVertical) {
-                        textWidth -= 3;
-                    } else {
-                        textHeight -= 3;
+            await Promise.all(
+                ocrResult.text_blocks.map(async (block) => {
+                    if (isNaN(block.text_score) || block.text_score < 0.3) {
+                        return null;
                     }
 
-                    const scale = Math.min(height / textHeight, width / textWidth);
-                    textElement.style.transform = `scale(${scale})`;
-                    textBackgroundElement.style.transform =
-                        textWrapElement.style.transform = `translate(${centerX - width * 0.5}px, ${centerY - height * 0.5}px) rotate(${rotationDeg}deg)`;
+                    const rectLeftTopX = block.box_points[0].x * transformScale;
+                    const rectLeftTopY = block.box_points[0].y * transformScale;
+                    const rectRightTopX = block.box_points[1].x * transformScale;
+                    const rectRightTopY = block.box_points[1].y * transformScale;
+                    const rectRightBottomX = block.box_points[2].x * transformScale;
+                    const rectRightBottomY = block.box_points[2].y * transformScale;
+                    const rectLeftBottomX = block.box_points[3].x * transformScale;
+                    const rectLeftBottomY = block.box_points[3].y * transformScale;
 
-                    setTextContainerContent(textContainerElement.innerHTML);
-                });
-            });
+                    // 计算矩形中心点
+                    const centerX =
+                        (rectLeftTopX + rectRightTopX + rectRightBottomX + rectLeftBottomX) / 4;
+                    const centerY =
+                        (rectLeftTopY + rectRightTopY + rectRightBottomY + rectLeftBottomY) / 4;
+
+                    // 计算矩形旋转角度 (使用顶边与水平线的夹角)
+                    const rotationRad = Math.atan2(
+                        rectRightTopY - rectLeftTopY,
+                        rectRightTopX - rectLeftTopX,
+                    );
+                    let rotationDeg = rotationRad * (180 / Math.PI);
+
+                    // 如果旋转角度小于阈值，则视为误差，不进行旋转
+                    if (Math.abs(rotationDeg) < ROTATION_THRESHOLD) {
+                        rotationDeg = 0;
+                    }
+
+                    // 计算宽度和高度
+                    const width = Math.sqrt(
+                        Math.pow(rectRightTopX - rectLeftTopX, 2) +
+                            Math.pow(rectRightTopY - rectLeftTopY, 2),
+                    );
+                    const height = Math.sqrt(
+                        Math.pow(rectLeftBottomX - rectLeftTopX, 2) +
+                            Math.pow(rectLeftBottomY - rectLeftTopY, 2),
+                    );
+
+                    const textElement = document.createElement('div');
+                    textElement.innerText = block.text;
+                    textElement.style.color = token.colorText;
+                    textElement.style.display = 'inline-block';
+
+                    const textWrapElement = document.createElement('div');
+                    const textBackgroundElement = document.createElement('div');
+                    textBackgroundElement.style.position = textWrapElement.style.position =
+                        'absolute';
+                    textBackgroundElement.style.width = textWrapElement.style.width = `${width}px`;
+                    textBackgroundElement.style.height =
+                        textWrapElement.style.height = `${height}px`;
+                    textBackgroundElement.style.transformOrigin =
+                        textWrapElement.style.transformOrigin = 'center';
+
+                    textWrapElement.style.display = 'flex';
+                    textWrapElement.style.alignItems = 'center';
+                    textWrapElement.style.justifyContent = 'center';
+                    textWrapElement.style.backgroundColor = 'transparent';
+                    textWrapElement.style.zIndex = '1';
+
+                    textBackgroundElement.style.backgroundColor = Color(token.colorBgContainer)
+                        .alpha(0.42)
+                        .toString();
+                    textBackgroundElement.style.backdropFilter = 'blur(3.6px)';
+
+                    const isVertical = !ignoreScale && height > width * 1.5;
+                    if (isVertical) {
+                        textWrapElement.style.writingMode = 'vertical-rl';
+                    }
+
+                    if (ignoreScale) {
+                        textElement.style.whiteSpace = 'normal';
+                        textElement.style.fontSize = '16px';
+                        textElement.style.wordBreak = 'break-all';
+                    } else {
+                        textElement.style.fontSize = '12px';
+                        textElement.style.whiteSpace = 'nowrap';
+                        textWrapElement.style.textAlign = 'center';
+                    }
+
+                    textElement.setAttribute('onmousedown', 'event.stopPropagation();');
+                    textElement.style.cursor = 'text';
+
+                    textWrapElement.appendChild(textElement);
+                    textContainerElement.appendChild(textBackgroundElement);
+                    textContainerElement.appendChild(textWrapElement);
+
+                    await new Promise((resolve) => {
+                        requestAnimationFrame(() => {
+                            let textWidth = textElement.clientWidth;
+                            let textHeight = textElement.clientHeight;
+                            if (isVertical) {
+                                textWidth -= 3;
+                            } else {
+                                textHeight -= 3;
+                            }
+
+                            const scale = Math.min(height / textHeight, width / textWidth);
+                            textElement.style.transform = `scale(${scale})`;
+                            const leftWidth = Math.max(0, width - (textWidth + 16) * scale); // 文本的宽度可能小于 OCR 识别的宽度
+                            let letterSpaceWidth = 0;
+                            if (textElement.innerText.length > 1) {
+                                letterSpaceWidth =
+                                    leftWidth / (textElement.innerText.length - 1) / scale;
+                            }
+                            textElement.style.letterSpacing = `${letterSpaceWidth}px`;
+                            textBackgroundElement.style.transform =
+                                textWrapElement.style.transform = `translate(${centerX - width * 0.5}px, ${centerY - height * 0.5}px) rotate(${rotationDeg}deg)`;
+
+                            resolve(undefined);
+                        });
+                    });
+                }),
+            );
+            setTextContainerContent(textContainerElement.innerHTML);
         },
         [token.colorBgContainer, token.colorText],
     );
@@ -420,7 +437,6 @@ export const OcrResult: React.FC<{
                     id: `${appWindow.label}-copySelectedText`,
                     text: intl.formatMessage({ id: 'draw.copySelectedText' }),
                     action: async () => {
-                        console.log(selectedTextRef.current);
                         writeTextToClipboard(selectedTextRef.current || '');
                     },
                 },
@@ -513,6 +529,51 @@ export const OcrResult: React.FC<{
                     cancelable: true,
                 });
                 document.dispatchEvent(keyEvent);
+            } else if (type === 'mousedown') {
+                // 重新组装鼠标事件对象，模拟React.MouseEvent
+                const mouseEvent = {
+                    clientX: event.data.clientX,
+                    clientY: event.data.clientY,
+                    button: event.data.button,
+                    buttons: event.data.buttons,
+                    ctrlKey: event.data.ctrlKey,
+                    shiftKey: event.data.shiftKey,
+                    altKey: event.data.altKey,
+                    metaKey: event.data.metaKey,
+                    preventDefault: () => {},
+                    stopPropagation: () => {},
+                } as React.MouseEvent<HTMLDivElement>;
+                onMouseDown?.(mouseEvent);
+            } else if (type === 'mousemove') {
+                // 重新组装鼠标移动事件对象
+                const mouseEvent = {
+                    clientX: event.data.clientX,
+                    clientY: event.data.clientY,
+                    button: event.data.button,
+                    buttons: event.data.buttons,
+                    ctrlKey: event.data.ctrlKey,
+                    shiftKey: event.data.shiftKey,
+                    altKey: event.data.altKey,
+                    metaKey: event.data.metaKey,
+                    preventDefault: () => {},
+                    stopPropagation: () => {},
+                } as React.MouseEvent<HTMLDivElement>;
+                onMouseMove?.(mouseEvent);
+            } else if (type === 'mouseup') {
+                // 重新组装鼠标释放事件对象
+                const mouseEvent = {
+                    clientX: event.data.clientX,
+                    clientY: event.data.clientY,
+                    button: event.data.button,
+                    buttons: event.data.buttons,
+                    ctrlKey: event.data.ctrlKey,
+                    shiftKey: event.data.shiftKey,
+                    altKey: event.data.altKey,
+                    metaKey: event.data.metaKey,
+                    preventDefault: () => {},
+                    stopPropagation: () => {},
+                } as React.MouseEvent<HTMLDivElement>;
+                onMouseUp?.(mouseEvent);
             }
         };
 
@@ -521,13 +582,14 @@ export const OcrResult: React.FC<{
         return () => {
             window.removeEventListener('message', handleMessage);
         };
-    }, [disabled, onContextMenu]);
+    }, [disabled, onContextMenu, onMouseDown, onMouseMove, onMouseUp]);
 
     const handleContainerContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
         event.preventDefault();
         event.stopPropagation();
     }, []);
 
+    const enableDrag = !!(onMouseDown && onMouseMove && onMouseUp);
     return (
         <>
             <div
@@ -568,12 +630,23 @@ export const OcrResult: React.FC<{
                     className="ocr-result-text-iframe"
                     srcDoc={`${textContainerContent}
                         <style>
+                            html {
+                                height: 100%;
+                                width: 100%;
+                            }
                             body {
+                                height: 100%;
+                                width: 100%;
                                 padding: 0;
                                 margin: 0;
                                 border: none;
                                 overflow: hidden;
+                                ${enableDrag ? 'cursor: grab;' : ''}
                             }
+                            body:active {
+                                ${enableDrag ? 'cursor: grabbing;' : ''}
+                            }
+
                             * {
                                 -webkit-user-select: text !important;
                                 -moz-user-select: text !important;
@@ -602,7 +675,49 @@ export const OcrResult: React.FC<{
                                     }
                                 }, '*');
                             };
-                            
+
+                            document.addEventListener('mousedown', (e) => {
+                                window.parent.postMessage({
+                                    type: 'mousedown',
+                                    clientX: e.clientX,
+                                    clientY: e.clientY,
+                                    button: e.button,
+                                    buttons: e.buttons,
+                                    ctrlKey: e.ctrlKey,
+                                    shiftKey: e.shiftKey,
+                                    altKey: e.altKey,
+                                    metaKey: e.metaKey,
+                                }, '*');
+                            });
+
+                            document.addEventListener('mousemove', (e) => {
+                                window.parent.postMessage({
+                                    type: 'mousemove',
+                                    clientX: e.clientX,
+                                    clientY: e.clientY,
+                                    button: e.button,
+                                    buttons: e.buttons,
+                                    ctrlKey: e.ctrlKey,
+                                    shiftKey: e.shiftKey,
+                                    altKey: e.altKey,
+                                    metaKey: e.metaKey,
+                                }, '*');
+                            });
+
+                            document.addEventListener('mouseup', (e) => {
+                                window.parent.postMessage({
+                                    type: 'mouseup',
+                                    clientX: e.clientX,
+                                    clientY: e.clientY,
+                                    button: e.button,
+                                    buttons: e.buttons,
+                                    ctrlKey: e.ctrlKey,
+                                    shiftKey: e.shiftKey,
+                                    altKey: e.altKey,
+                                    metaKey: e.metaKey,
+                                }, '*');
+                            });
+
                             // 转发键盘事件到父窗口
                             document.addEventListener('keydown', (e) => {
                                 window.parent.postMessage({

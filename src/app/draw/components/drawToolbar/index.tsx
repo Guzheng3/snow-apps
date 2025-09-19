@@ -90,6 +90,24 @@ export const DrawToolbarStatePublisher = createPublisher<{
     mouseHover: false,
 });
 
+const isDrawTool = (drawState: DrawState) => {
+    switch (drawState) {
+        case DrawState.Rect:
+        case DrawState.Diamond:
+        case DrawState.Ellipse:
+        case DrawState.Arrow:
+        case DrawState.Line:
+        case DrawState.Pen:
+        case DrawState.Text:
+        case DrawState.SerialNumber:
+        case DrawState.Blur:
+        case DrawState.Watermark:
+            return true;
+        default:
+            return false;
+    }
+};
+
 const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
     actionRef,
     onCancel,
@@ -334,23 +352,12 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     });
                     break;
                 case DrawState.OcrDetect:
-                    drawCacheLayerActionRef.current?.setActiveTool({
-                        type: 'hand',
-                    });
-                    onOcrDetect();
-                    break;
                 case DrawState.OcrTranslate:
-                    drawCacheLayerActionRef.current?.setActiveTool({
-                        type: 'hand',
-                    });
                     onOcrDetect();
                     break;
                 case DrawState.VideoRecord:
                 case DrawState.ScanQrcode:
                 case DrawState.ExtraTools:
-                    drawCacheLayerActionRef.current?.setActiveTool({
-                        type: 'hand',
-                    });
                     break;
                 default:
                     break;
@@ -388,10 +395,12 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                 }
 
                 if (params?.event === 'onChange') {
+                    // 非锁定状态自动回退到选择状态
                     if (
                         params.params.appState.activeTool.type === 'selection' &&
                         getDrawState() !== DrawState.Select &&
-                        getDrawState() !== DrawState.Idle
+                        getDrawState() !== DrawState.Idle &&
+                        isDrawTool(getDrawState())
                     ) {
                         onToolClick(DrawState.Select);
                     }

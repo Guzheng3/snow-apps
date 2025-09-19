@@ -79,7 +79,6 @@ export const useContentScale = (
 
     useAppSettingsLoad(
         useCallback((settings) => {
-            console.log('settings', settings);
             setUiScale(settings[AppSettingsGroup.Screenshot].uiScale);
             setToolbarUiScale(settings[AppSettingsGroup.Screenshot].toolbarUiScale);
         }, []),

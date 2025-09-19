@@ -1666,6 +1666,9 @@ export const FixedContentCore: React.FC<{
                     onContextMenu={handleContextMenu}
                     disabled={disabled || getSelectTextMode(fixedContentType) !== 'ocr'}
                     enableCopy
+                    onMouseDown={onDragRegionMouseDown}
+                    onMouseMove={onDragRegionMouseMove}
+                    onMouseUp={onDragRegionMouseUp}
                 />
 
                 {(canvasImageUrl || imageUrl) && (
