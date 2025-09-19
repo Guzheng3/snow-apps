@@ -1299,6 +1299,14 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             },
             getSelectState: () => selectStateRef.current,
             switchCaptureHistory: (captureHistory: CaptureHistoryItem | undefined) => {
+                // 截图 OCR 和复制到剪贴板等如果固定了选区，会触发对应操作，所以保持状态不变
+                if (
+                    getScreenshotType() !== ScreenshotType.Default &&
+                    selectStateRef.current === SelectState.Auto
+                ) {
+                    return;
+                }
+
                 // 清除遮罩缓存
                 opacityImageDataRef.current = undefined;
 
@@ -1312,6 +1320,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             },
         }),
         [
+            getScreenshotType,
             getSelectRect,
             getSelectRectParams,
             onCaptureBoundingBoxInfoReady,

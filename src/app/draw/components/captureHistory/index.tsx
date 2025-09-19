@@ -2,7 +2,7 @@ import { useCallback, useContext, useImperativeHandle, useRef } from 'react';
 import { DrawContext } from '../../types';
 import { CaptureHistory } from '@/utils/captureHistory';
 import { CaptureHistoryItem } from '@/utils/appStore';
-import { AppSettingsData } from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsPublisher } from '@/app/contextWrap';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { KeyEventWrap } from '../drawToolbar/components/keyEventWrap';
 import { KeyEventKey } from '../drawToolbar/components/keyEventWrap/extra';
@@ -11,13 +11,19 @@ import { withStatePublisher } from '@/hooks/useStatePublisher';
 import { EnableKeyEventPublisher } from '../drawToolbar/components/keyEventWrap/extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
-import { CaptureEvent, CaptureEventParams, CaptureEventPublisher } from '../../extra';
+import {
+    CaptureEvent,
+    CaptureEventParams,
+    CaptureEventPublisher,
+    ScreenshotTypePublisher,
+} from '../../extra';
 import { Ordered } from '@mg-chao/excalidraw/element/types';
 import { NonDeletedExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 import { AntdContext } from '@/components/globalLayoutExtra';
 import { FormattedMessage } from 'react-intl';
 import { appError } from '@/utils/log';
 import { ImageBuffer } from '@/commands';
+import { ScreenshotType } from '@/functions/screenshot';
 
 export type CaptureHistoryActionType = {
     saveCurrentCapture: (imageBuffer: ImageBuffer | undefined) => Promise<void>;
@@ -30,6 +36,7 @@ const CaptureHistoryControllerCore: React.FC<{
     const currentIndexRef = useRef<number>(0);
     const captureHistoryRef = useRef<CaptureHistory | undefined>(undefined);
     const isImageLoadingRef = useRef<boolean>(false);
+    const [getScreenshotType] = useStateSubscriber(ScreenshotTypePublisher, undefined);
     const [, setEnableKeyEvent] = useStateSubscriber(EnableKeyEventPublisher, undefined);
     const {
         selectLayerActionRef,
@@ -42,15 +49,32 @@ const CaptureHistoryControllerCore: React.FC<{
         currentIndexRef.current = captureHistoryListRef.current.length;
     }, [captureHistoryListRef]);
 
+    const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
+    const reloadCaptureHistoryList = useCallback(
+        async (appSettings?: AppSettingsData) => {
+            if (!captureHistoryRef.current) {
+                return;
+            }
+
+            captureHistoryListRef.current = await captureHistoryRef.current.getList(
+                appSettings ?? getAppSettings(),
+            );
+            resetCurrentIndex();
+        },
+        [resetCurrentIndex, getAppSettings],
+    );
     const init = useCallback(
         async (appSettings: AppSettingsData) => {
+            if (captureHistoryRef.current?.inited()) {
+                return;
+            }
+
             captureHistoryRef.current = new CaptureHistory();
             await captureHistoryRef.current.init();
 
-            captureHistoryListRef.current = await captureHistoryRef.current.getList(appSettings);
-            resetCurrentIndex();
+            reloadCaptureHistoryList(appSettings);
         },
-        [resetCurrentIndex],
+        [reloadCaptureHistoryList],
     );
 
     useStateSubscriber(
@@ -60,12 +84,12 @@ const CaptureHistoryControllerCore: React.FC<{
                 if (captureEvent?.event === CaptureEvent.onExecuteScreenshot) {
                     isImageLoadingRef.current = true;
                 } else if (captureEvent?.event === CaptureEvent.onCaptureReady) {
-                    resetCurrentIndex();
+                    reloadCaptureHistoryList();
                 } else if (captureEvent?.event === CaptureEvent.onCaptureLoad) {
                     isImageLoadingRef.current = false;
                 }
             },
-            [resetCurrentIndex],
+            [reloadCaptureHistoryList],
         ),
     );
     useStateSubscriber(
@@ -94,6 +118,10 @@ const CaptureHistoryControllerCore: React.FC<{
         useRef<readonly Ordered<NonDeletedExcalidrawElement>[]>(undefined);
     const changeCurrentIndex = useCallback(
         async (delta: number) => {
+            if (getScreenshotType() === ScreenshotType.TopWindow) {
+                return;
+            }
+
             if (captureHistoryListRef.current.length === 0) {
                 return;
             }
@@ -110,6 +138,7 @@ const CaptureHistoryControllerCore: React.FC<{
             if (newIndex === currentIndexRef.current) {
                 return;
             }
+
             currentIndexRef.current = newIndex;
 
             isImageLoadingRef.current = true;
@@ -187,6 +216,7 @@ const CaptureHistoryControllerCore: React.FC<{
             colorPickerActionRef,
             drawCacheLayerActionRef,
             drawLayerActionRef,
+            getScreenshotType,
             message,
             selectLayerActionRef,
         ],
@@ -215,16 +245,14 @@ const CaptureHistoryControllerCore: React.FC<{
 
             const excalidrawApi = drawCacheLayerActionRef.current?.getExcalidrawAPI();
 
-            const captureHistoryItem = await captureHistoryRef.current.save(
+            await captureHistoryRef.current.save(
                 captureHistoryListRef.current[currentIndexRef.current] ?? imageBuffer,
                 excalidrawApi?.getSceneElements(),
                 excalidrawApi?.getAppState(),
                 selectRect,
             );
-            captureHistoryListRef.current.push(captureHistoryItem);
-            resetCurrentIndex();
         },
-        [drawCacheLayerActionRef, resetCurrentIndex, selectLayerActionRef],
+        [drawCacheLayerActionRef, selectLayerActionRef],
     );
 
     useImperativeHandle(actionRef, () => {

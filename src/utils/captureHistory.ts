@@ -46,6 +46,10 @@ export class CaptureHistory {
         await this.store.init();
     }
 
+    async inited() {
+        return this.store.inited();
+    }
+
     static generateCaptureHistoryItem(
         imageBuffer: ImageBuffer | CaptureHistoryItem,
         excalidrawElements: readonly Ordered<NonDeletedExcalidrawElement>[] | undefined,
