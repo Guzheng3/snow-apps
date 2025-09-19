@@ -55,7 +55,7 @@ export const SubTools: React.FC<{
 
     const {
         calculatedBoundaryRect,
-        contentScale: [, , contentScaleRef],
+        contentScale: [contentScale],
     } = useMonitorRect(true);
 
     const updateDrawToolbarStyle = useCallback(() => {
@@ -71,7 +71,7 @@ export const SubTools: React.FC<{
 
         const baseOffsetX =
             selectedRect.min_x / window.devicePixelRatio -
-            (subTools.clientWidth + token.marginXXS) * contentScaleRef.current;
+            (subTools.clientWidth + token.marginXXS) * contentScale;
         const baseOffsetY = selectedRect.min_y / window.devicePixelRatio;
 
         const dragRes = updateElementPosition(
@@ -82,13 +82,13 @@ export const SubTools: React.FC<{
             mouseCurrentPositionRef.current,
             toolbarPreviousRectRef.current,
             undefined,
-            contentScaleRef.current,
+            contentScale,
             calculatedBoundaryRect,
         );
 
         toolbarCurrentRectRef.current = dragRes.rect;
         mouseOriginPositionRef.current = dragRes.originPosition;
-    }, [selectLayerActionRef, token.marginXXS, contentScaleRef, calculatedBoundaryRect]);
+    }, [selectLayerActionRef, token.marginXXS, contentScale, calculatedBoundaryRect]);
 
     const updateDrawToolbarStyleRender = useCallbackRender(updateDrawToolbarStyle);
 

@@ -1,8 +1,9 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Dispatch, RefObject, SetStateAction, useCallback, useEffect, useState } from 'react';
 import { useStateRef } from './useStateRef';
-import { AppSettingsGroup } from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
 import { useAppSettingsLoad } from './useAppSettingsLoad';
+import { useStateSubscriber } from './useStateSubscriber';
 
 function listenDevicePixelRatio(callback: (ratio: number) => void) {
     const media = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
@@ -77,12 +78,12 @@ export const useContentScale = (
     const [uiScale, setUiScale] = useState<number>();
     const [toolbarUiScale, setToolbarUiScale] = useState<number>();
 
-    useAppSettingsLoad(
-        useCallback((settings) => {
+    useStateSubscriber(
+        AppSettingsPublisher,
+        useCallback((settings: AppSettingsData) => {
             setUiScale(settings[AppSettingsGroup.Screenshot].uiScale);
             setToolbarUiScale(settings[AppSettingsGroup.Screenshot].toolbarUiScale);
         }, []),
-        true,
     );
 
     useEffect(() => {
