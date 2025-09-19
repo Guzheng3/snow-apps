@@ -25,6 +25,7 @@ export type OcrBlocksActionType = {
     ) => Promise<void>;
     setEnable: (enable: boolean | ((enable: boolean) => boolean)) => void;
     getOcrResultAction: () => OcrResultActionType | undefined;
+    getSelectedText: () => string | undefined;
 };
 
 export const OcrBlocks: React.FC<{
@@ -64,6 +65,9 @@ export const OcrBlocks: React.FC<{
             },
             getOcrResultAction: () => {
                 return ocrResultActionRef.current;
+            },
+            getSelectedText: () => {
+                return ocrResultActionRef.current?.getSelectedText();
             },
         }),
         [],

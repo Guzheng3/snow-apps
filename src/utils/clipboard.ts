@@ -1,4 +1,5 @@
 import * as clipboard from '@tauri-apps/plugin-clipboard-manager';
+import extraClipboard from 'tauri-plugin-clipboard-api';
 import { appWarn } from './log';
 
 export const writeTextToClipboard = async (text: string) => {
@@ -39,7 +40,7 @@ export const writeImageToClipboard = async (image: Blob | ArrayBuffer, format = 
 export const writeHtmlToClipboard = async (html: string) => {
     let isSuccess = false;
     try {
-        await clipboard.writeHtml(html);
+        await extraClipboard.writeHtml(html);
         isSuccess = true;
     } catch (error) {
         isSuccess = false;

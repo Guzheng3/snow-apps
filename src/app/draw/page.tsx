@@ -719,7 +719,12 @@ const DrawPageCore: React.FC<{
             return;
         }
 
-        const selectedText = window.getSelection()?.toString().trim();
+        let selectedText: string | undefined;
+        if (isOcrTool(getDrawState())) {
+            selectedText = ocrBlocksActionRef.current?.getSelectedText();
+        } else if (getDrawState() === DrawState.ScanQrcode) {
+            selectedText = window.getSelection()?.toString().trim();
+        }
 
         if (
             selectedText &&

@@ -1375,6 +1375,14 @@ export const FixedContentCore: React.FC<{
     }, []);
 
     useEffect(() => {
+        if (disabled) {
+            return;
+        }
+
+        if (fixedContentType !== FixedContentType.Html) {
+            return;
+        }
+
         const handleMessage = (event: MessageEvent) => {
             const { type, x, y, width, height, href } = event.data;
 
@@ -1409,6 +1417,7 @@ export const FixedContentCore: React.FC<{
                 // 处理来自iframe的右键菜单事件
                 const syntheticEvent = {
                     preventDefault: () => {},
+                    stopPropagation: () => {},
                     clientX: x,
                     clientY: y,
                 } as React.MouseEvent<HTMLDivElement>;
@@ -1440,7 +1449,7 @@ export const FixedContentCore: React.FC<{
         return () => {
             window.removeEventListener('message', handleMessage);
         };
-    }, [onHtmlLoad, setWindowSize, handleContextMenu, onWheel]);
+    }, [onHtmlLoad, setWindowSize, handleContextMenu, onWheel, disabled, fixedContentType]);
 
     useHotkeys(
         hotkeys?.[KeyEventKey.FixedContentSwitchThumbnail]?.hotKey ?? '',
@@ -1655,6 +1664,8 @@ export const FixedContentCore: React.FC<{
                     zIndex={1}
                     onWheel={onWheel}
                     onContextMenu={handleContextMenu}
+                    disabled={disabled || getSelectTextMode(fixedContentType) !== 'ocr'}
+                    enableCopy
                 />
 
                 {(canvasImageUrl || imageUrl) && (

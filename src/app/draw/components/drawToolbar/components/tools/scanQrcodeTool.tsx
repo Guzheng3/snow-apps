@@ -10,6 +10,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { getPlatformValue } from '@/utils';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { useMonitorRect } from '../../../statusBar';
 
 const ScanQrcodeToolCore: React.FC<{}> = ({}) => {
     const intl = useIntl();
@@ -21,6 +22,10 @@ const ScanQrcodeToolCore: React.FC<{}> = ({}) => {
     const containerElementRef = useRef<HTMLDivElement>(null);
     const [containerStyle, setContainerStyle] = useState<React.CSSProperties>({});
     const [qrCode, setQrCode] = useState<string | undefined>(undefined);
+
+    const {
+        contentScale: [contentScale],
+    } = useMonitorRect();
 
     const init = useCallback(async () => {
         const selectRect = selectLayerActionRef.current?.getSelectRect();
@@ -65,7 +70,7 @@ const ScanQrcodeToolCore: React.FC<{}> = ({}) => {
                     }),
                 );
             });
-    }, [intl, message, drawLayerActionRef, selectLayerActionRef]);
+    }, [selectLayerActionRef, drawLayerActionRef, message, intl]);
 
     const inited = useRef(false);
     useEffect(() => {
@@ -123,10 +128,16 @@ const ScanQrcodeToolCore: React.FC<{}> = ({}) => {
     return (
         <div
             style={{
-                width: 0,
-                height: 0,
                 opacity: 0,
                 ...containerStyle,
+                width:
+                    typeof containerStyle.width === 'number'
+                        ? containerStyle.width / contentScale
+                        : 0,
+                height:
+                    typeof containerStyle.height === 'number'
+                        ? containerStyle.height / contentScale
+                        : 0,
                 background: token.colorBgContainer,
                 padding: token.padding,
                 position: 'fixed',
@@ -134,6 +145,8 @@ const ScanQrcodeToolCore: React.FC<{}> = ({}) => {
                 pointerEvents: 'auto',
                 boxSizing: 'border-box',
                 transition: `opacity ${token.motionDurationFast} ${token.motionEaseInOut}`,
+                transformOrigin: 'top left',
+                transform: `scale(${contentScale})`,
             }}
             ref={containerElementRef}
         >

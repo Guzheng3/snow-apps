@@ -1,7 +1,7 @@
 import { FormattedMessage } from 'react-intl';
 import { ExcalidrawPropsCustomOptions } from '@mg-chao/excalidraw/types';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { DrawState, DrawStatePublisher, ExcalidrawEventPublisher } from '../extra';
+import { useCallback, useContext, useEffect, useMemo } from 'react';
+import { DrawState, ExcalidrawEventPublisher } from '../extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { Input, Radio } from 'antd';
 import { ArrowIcon, DiamondIcon, LineIcon, RectIcon } from '@/components/icons';

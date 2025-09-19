@@ -405,16 +405,6 @@ export default function SystemSettings() {
                                 layout="horizontal"
                             />
                         </Col>
-
-                        <Col span={12}>
-                            <ProFormSwitch
-                                label={
-                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.lockDrawTool" />
-                                }
-                                name="lockDrawTool"
-                                layout="horizontal"
-                            />
-                        </Col>
                     </Row>
 
                     <Row gutter={token.marginLG}>

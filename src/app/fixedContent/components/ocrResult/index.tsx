@@ -1,4 +1,12 @@
-import { useCallback, useContext, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import {
+    useCallback,
+    useContext,
+    useEffect,
+    useImperativeHandle,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { ElementRect } from '@/commands';
 import { ocrDetect, OcrDetectResult } from '@/commands/ocr';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -43,6 +51,7 @@ export type OcrResultActionType = {
     clear: () => void;
     updateOcrTextElements: (ocrResult: OcrDetectResult, ignoreScale?: boolean) => void;
     getOcrResult: () => AppOcrResult | undefined;
+    getSelectedText: () => string | undefined;
 };
 
 export const covertOcrResultToText = (ocrResult: OcrDetectResult) => {
@@ -66,15 +75,27 @@ export const OcrResult: React.FC<{
     zIndex: number;
     actionRef: React.RefObject<OcrResultActionType | undefined>;
     onOcrDetect?: (ocrResult: OcrDetectResult) => void;
-    onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
+    onContextMenu?: (event: React.MouseEvent<HTMLDivElement>) => void;
     onWheel?: (event: React.WheelEvent<HTMLDivElement>) => void;
-}> = ({ zIndex, actionRef, onOcrDetect, onContextMenu: onContextMenuProp, onWheel }) => {
+    enableCopy?: boolean;
+    disabled?: boolean;
+}> = ({
+    zIndex,
+    actionRef,
+    onOcrDetect,
+    onContextMenu: onContextMenuProp,
+    onWheel,
+    enableCopy,
+    disabled,
+}) => {
     const intl = useIntl();
     const { token } = theme.useToken();
     const { message } = useContext(AntdContext);
 
     const containerElementRef = useRef<HTMLDivElement>(null);
     const textContainerElementRef = useRef<HTMLDivElement>(null);
+    const textIframeContainerElementRef = useRef<HTMLIFrameElement>(null);
+    const [textContainerContent, setTextContainerContent] = useState('');
 
     const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
 
@@ -123,16 +144,19 @@ export const OcrResult: React.FC<{
             const baseY = selectRect.min_y * transformScale;
 
             const textContainerElement = textContainerElementRef.current;
-            if (!textContainerElement) {
+            const textIframeContainerElement = textIframeContainerElementRef.current;
+            if (!textContainerElement || !textIframeContainerElement) {
                 return;
             }
 
-            textContainerElement.style.left = `${baseX}px`;
-            textContainerElement.style.top = `${baseY}px`;
-            textContainerElement.style.width = `${(selectRect.max_x - selectRect.min_x) * transformScale}px`;
-            textContainerElement.style.height = `${(selectRect.max_y - selectRect.min_y) * transformScale}px`;
-
             textContainerElement.innerHTML = '';
+
+            textContainerElement.style.left = textIframeContainerElement.style.left = `${baseX}px`;
+            textContainerElement.style.top = textIframeContainerElement.style.top = `${baseY}px`;
+            textContainerElement.style.width =
+                textIframeContainerElement.style.width = `${(selectRect.max_x - selectRect.min_x) * transformScale}px`;
+            textContainerElement.style.height =
+                textIframeContainerElement.style.height = `${(selectRect.max_y - selectRect.min_y) * transformScale}px`;
 
             ocrResult.text_blocks.map((block) => {
                 if (isNaN(block.text_score) || block.text_score < 0.3) {
@@ -175,8 +199,6 @@ export const OcrResult: React.FC<{
                     Math.pow(rectLeftBottomX - rectLeftTopX, 2) +
                         Math.pow(rectLeftBottomY - rectLeftTopY, 2),
                 );
-
-                textContainerElement.style.opacity = '0';
 
                 const textElement = document.createElement('div');
                 textElement.innerText = block.text;
@@ -236,7 +258,8 @@ export const OcrResult: React.FC<{
                     textElement.style.transform = `scale(${scale})`;
                     textBackgroundElement.style.transform =
                         textWrapElement.style.transform = `translate(${centerX - width * 0.5}px, ${centerY - height * 0.5}px) rotate(${rotationDeg}deg)`;
-                    textContainerElement.style.opacity = '1';
+
+                    setTextContainerContent(textContainerElement.innerHTML);
                 });
             });
         },
@@ -330,6 +353,14 @@ export const OcrResult: React.FC<{
         [getAppSettings, onOcrDetect, updateOcrTextElements],
     );
 
+    const selectedTextRef = useRef<string>(undefined);
+    const getSelectedText = useCallback(() => {
+        return textIframeContainerElementRef.current?.contentWindow
+            ?.getSelection()
+            ?.toString()
+            .trim();
+    }, []);
+
     useImperativeHandle(
         actionRef,
         () => ({
@@ -347,6 +378,7 @@ export const OcrResult: React.FC<{
             setEnable,
             setScale,
             clear: () => {
+                setTextContainerContent('');
                 if (textContainerElementRef.current) {
                     textContainerElementRef.current.innerHTML = '';
                 }
@@ -355,13 +387,26 @@ export const OcrResult: React.FC<{
             getOcrResult: () => {
                 return currentOcrResultRef.current;
             },
+            getSelectedText,
         }),
-        [initDrawCanvas, initImage, message, setEnable, setScale, updateOcrTextElements],
+        [
+            getSelectedText,
+            initDrawCanvas,
+            initImage,
+            message,
+            setEnable,
+            setScale,
+            updateOcrTextElements,
+        ],
     );
 
     const menuRef = useRef<Menu>(undefined);
 
     const initMenu = useCallback(async () => {
+        if (disabled) {
+            return;
+        }
+
         if (menuRef.current) {
             await menuRef.current.close();
             menuRef.current = undefined;
@@ -375,13 +420,14 @@ export const OcrResult: React.FC<{
                     id: `${appWindow.label}-copySelectedText`,
                     text: intl.formatMessage({ id: 'draw.copySelectedText' }),
                     action: async () => {
-                        writeTextToClipboard(window.getSelection()?.toString() || '');
+                        console.log(selectedTextRef.current);
+                        writeTextToClipboard(selectedTextRef.current || '');
                     },
                 },
             ],
         });
         menuRef.current = menu;
-    }, [intl]);
+    }, [disabled, intl]);
 
     useEffect(() => {
         initMenu();
@@ -401,10 +447,12 @@ export const OcrResult: React.FC<{
 
             event.preventDefault();
 
-            const selection = window.getSelection();
-            if (containerElementRef.current && selection) {
-                const range = document.createRange();
-                range.selectNodeContents(containerElementRef.current);
+            const selection = textIframeContainerElementRef.current?.contentWindow?.getSelection();
+            const targetElement = textIframeContainerElementRef.current?.contentDocument;
+            if (containerElementRef.current && selection && targetElement) {
+                textIframeContainerElementRef.current?.focus();
+                const range = targetElement.createRange();
+                range.selectNodeContents(targetElement.body);
                 selection.removeAllRanges();
                 selection.addRange(range);
             }
@@ -419,25 +467,65 @@ export const OcrResult: React.FC<{
         ),
     );
 
-    const onContextMenu = useCallback(
-        (e: React.MouseEvent<HTMLDivElement>) => {
-            e.preventDefault();
-            e.stopPropagation();
+    const onContextMenu = useCallback(() => {
+        selectedTextRef.current = getSelectedText();
+        if (selectedTextRef.current) {
+            menuRef.current?.popup();
+            return;
+        }
 
-            if (window.getSelection()?.toString()) {
-                menuRef.current?.popup();
-                return;
-            }
-
-            onContextMenuProp?.(e);
-        },
-        [onContextMenuProp],
-    );
+        onContextMenuProp?.({
+            preventDefault: () => {},
+            stopPropagation: () => {},
+            clientX: 0,
+            clientY: 0,
+        } as React.MouseEvent<HTMLDivElement>);
+    }, [getSelectedText, onContextMenuProp]);
 
     const onDoubleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         // 阻止截图双击复制和固定到屏幕双击缩放的操作
         e.preventDefault();
         e.stopPropagation();
+    }, []);
+
+    useEffect(() => {
+        if (disabled) {
+            return;
+        }
+
+        const handleMessage = (event: MessageEvent) => {
+            const { type } = event.data;
+
+            if (type === 'contextMenu') {
+                onContextMenu();
+            } else if (type === 'keydown' || type === 'keyup') {
+                // 创建并触发自定义键盘事件
+                const keyEvent = new KeyboardEvent(type, {
+                    key: event.data.key,
+                    code: event.data.code,
+                    keyCode: event.data.keyCode,
+                    ctrlKey: event.data.ctrlKey,
+                    shiftKey: event.data.shiftKey,
+                    altKey: event.data.altKey,
+                    metaKey: event.data.metaKey,
+                    repeat: event.data.repeat,
+                    bubbles: true,
+                    cancelable: true,
+                });
+                document.dispatchEvent(keyEvent);
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+
+        return () => {
+            window.removeEventListener('message', handleMessage);
+        };
+    }, [disabled, onContextMenu]);
+
+    const handleContainerContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
     }, []);
 
     return (
@@ -452,8 +540,8 @@ export const OcrResult: React.FC<{
                     height: '100%',
                 }}
                 className="ocr-result-container"
-                onContextMenu={onContextMenu}
                 ref={containerElementRef}
+                onContextMenu={handleContainerContextMenu}
                 onWheel={onWheel}
             >
                 <div
@@ -463,9 +551,98 @@ export const OcrResult: React.FC<{
                         position: 'absolute',
                         top: 0,
                         left: 0,
+                        opacity: 0,
                     }}
                     onDoubleClick={onDoubleClick}
+                    className="ocr-result-text-container"
+                ></div>
+                <iframe
+                    ref={textIframeContainerElementRef}
+                    style={{
+                        transformOrigin: 'top left',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        opacity: 1,
+                    }}
+                    className="ocr-result-text-iframe"
+                    srcDoc={`${textContainerContent}
+                        <style>
+                            body {
+                                padding: 0;
+                                margin: 0;
+                                border: none;
+                                overflow: hidden;
+                            }
+                            * {
+                                -webkit-user-select: text !important;
+                                -moz-user-select: text !important;
+                                -ms-user-select: text !important;
+                                user-select: text !important;
+                            }
+                        </style>
+                        <script>
+                            document.oncopy = (e) => {
+                                if (${enableCopy}) {
+                                    return;
+                                }
+
+                                e.preventDefault();
+                            };
+
+                            document.oncontextmenu = (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.parent.postMessage({
+                                    type: 'contextMenu',
+                                    eventData: {
+                                        type: 'contextmenu',
+                                        clientX: e.clientX,
+                                        clientY: e.clientY,
+                                    }
+                                }, '*');
+                            };
+                            
+                            // 转发键盘事件到父窗口
+                            document.addEventListener('keydown', (e) => {
+                                window.parent.postMessage({
+                                    type: 'keydown',
+                                    key: e.key,
+                                    code: e.code,
+                                    keyCode: e.keyCode,
+                                    ctrlKey: e.ctrlKey,
+                                    shiftKey: e.shiftKey,
+                                    altKey: e.altKey,
+                                    metaKey: e.metaKey,
+                                    repeat: e.repeat,
+                                }, '*');
+                            });
+
+                            document.addEventListener('keyup', (e) => {
+                                window.parent.postMessage({
+                                    type: 'keyup',
+                                    key: e.key,
+                                    code: e.code,
+                                    keyCode: e.keyCode,
+                                    ctrlKey: e.ctrlKey,
+                                    shiftKey: e.shiftKey,
+                                    altKey: e.altKey,
+                                    metaKey: e.metaKey,
+                                }, '*');
+                            });
+                        </script>
+                    `}
                 />
+
+                <style jsx>{`
+                    .ocr-result-text-iframe {
+                        width: 100%;
+                        height: 100%;
+                        padding: 0;
+                        margin: 0;
+                        border: none;
+                    }
+                `}</style>
             </div>
         </>
     );
