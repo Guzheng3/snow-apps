@@ -176,6 +176,8 @@ export const generateSerialNumber = (
             width: 32 * sizeScale,
             height: textHeight,
             angle: 0,
+            textStrokeColor: 'transparent',
+            textBackgroundColor: 'transparent',
             strokeColor: appState.currentItemStrokeColor,
             backgroundColor: appState.currentItemBackgroundColor,
             fillStyle: appState.currentItemFillStyle,
