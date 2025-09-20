@@ -227,7 +227,6 @@ export const OcrResult: React.FC<{
                     textBackgroundElement.style.backgroundColor = Color(token.colorBgContainer)
                         .alpha(0.42)
                         .toString();
-                    textBackgroundElement.style.backdropFilter = 'blur(3.6px)';
 
                     const isVertical = !ignoreScale && height > width * 1.5;
                     if (isVertical) {
@@ -263,7 +262,7 @@ export const OcrResult: React.FC<{
 
                             const scale = Math.min(height / textHeight, width / textWidth);
                             textElement.style.transform = `scale(${scale})`;
-                            const leftWidth = Math.max(0, width - (textWidth + 16) * scale); // 文本的宽度可能小于 OCR 识别的宽度
+                            const leftWidth = Math.max(0, width - textWidth * scale); // 文本的宽度可能小于 OCR 识别的宽度
                             let letterSpaceWidth = 0;
                             if (textElement.innerText.length > 1) {
                                 letterSpaceWidth =
@@ -626,6 +625,7 @@ export const OcrResult: React.FC<{
                         top: 0,
                         left: 0,
                         opacity: 1,
+                        backdropFilter: textContainerContent ? 'blur(4.2px)' : 'none',
                     }}
                     className="ocr-result-text-iframe"
                     srcDoc={`${textContainerContent}
@@ -633,6 +633,7 @@ export const OcrResult: React.FC<{
                             html {
                                 height: 100%;
                                 width: 100%;
+                                background-color: transparent;
                             }
                             body {
                                 height: 100%;
@@ -642,6 +643,7 @@ export const OcrResult: React.FC<{
                                 border: none;
                                 overflow: hidden;
                                 ${enableDrag ? 'cursor: grab;' : ''}
+                                background-color: transparent;
                             }
                             body:active {
                                 ${enableDrag ? 'cursor: grabbing;' : ''}
