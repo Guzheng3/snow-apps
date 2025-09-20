@@ -439,8 +439,7 @@ const DrawCoreComponent: React.FC<{
     useImperativeHandle(
         actionRef,
         () => ({
-            setActiveTool: (...args) => {
-                const drawState = convertToolTypeToDrawState(args[0].type as ToolType);
+            setActiveTool: (tool, keepSelection, drawState) => {
                 if (drawState && needSaveAppState(drawState) && toolIndependentStyleRef.current) {
                     // 读取 AppState
                     excalidrawAppStateStoreRef.current
@@ -459,21 +458,15 @@ const DrawCoreComponent: React.FC<{
                                 appState: {
                                     ...appState,
                                     ...(value.appState as AppState),
-                                    activeTool: {
-                                        type: args[0].type as ToolType,
-                                        locked: args[0].locked ?? false,
-                                        lastActiveTool: appState.activeTool,
-                                        fromSelection: appState.activeTool.fromSelection,
-                                        customType: null,
-                                    },
                                 },
                                 captureUpdate: 'NEVER',
                             });
+                            excalidrawAPIRef.current?.setActiveTool(tool, keepSelection);
                         });
                     return;
                 }
 
-                excalidrawAPIRef.current?.setActiveTool(...args);
+                excalidrawAPIRef.current?.setActiveTool(tool, keepSelection);
             },
             syncActionResult: (...args) => {
                 excalidrawActionRef.current?.syncActionResult(...args);

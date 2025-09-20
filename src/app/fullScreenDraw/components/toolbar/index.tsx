@@ -96,70 +96,114 @@ export const FullScreenDrawToolbar: React.FC<{
 
             switch (next) {
                 case DrawState.Select:
-                    drawCoreAction?.setActiveTool({
-                        type: 'selection',
-                    });
+                    drawCoreAction?.setActiveTool(
+                        {
+                            type: 'selection',
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Rect:
-                    drawCoreAction?.setActiveTool({
-                        type: 'rectangle',
-                        locked: toolLocked,
-                    });
+                    drawCoreAction?.setActiveTool(
+                        {
+                            type: 'rectangle',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Diamond:
-                    drawCoreAction?.setActiveTool({
-                        type: 'diamond',
-                        locked: toolLocked,
-                    });
+                    drawCoreAction?.setActiveTool(
+                        {
+                            type: 'diamond',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Ellipse:
-                    drawCoreAction?.setActiveTool({
-                        type: 'ellipse',
-                        locked: toolLocked,
-                    });
+                    drawCoreAction?.setActiveTool(
+                        {
+                            type: 'ellipse',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Arrow:
-                    drawCoreAction?.setActiveTool({
-                        type: 'arrow',
-                        locked: toolLocked,
-                    });
+                    drawCoreAction?.setActiveTool(
+                        {
+                            type: 'arrow',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Line:
-                    drawCoreAction?.setActiveTool({
-                        type: 'line',
-                        locked: toolLocked,
-                    });
+                    drawCoreAction?.setActiveTool(
+                        {
+                            type: 'line',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Pen:
-                    drawCoreAction?.setActiveTool({
-                        type: 'freedraw',
-                        locked: toolLocked,
-                    });
+                    drawCoreAction?.setActiveTool(
+                        {
+                            type: 'freedraw',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Text:
-                    drawCoreAction?.setActiveTool({
-                        type: 'text',
-                        locked: toolLocked,
-                    });
+                    drawCoreAction?.setActiveTool(
+                        {
+                            type: 'text',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.SerialNumber:
                     break;
                 case DrawState.Eraser:
-                    drawCoreAction?.setActiveTool({
-                        type: 'eraser',
-                        locked: toolLocked,
-                    });
+                    drawCoreAction?.setActiveTool(
+                        {
+                            type: 'eraser',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.LaserPointer:
-                    drawCoreAction?.setActiveTool({
-                        type: 'laser',
-                        locked: true,
-                    });
+                    drawCoreAction?.setActiveTool(
+                        {
+                            type: 'laser',
+                            locked: true,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.MouseThrough:
-                    drawCoreAction?.setActiveTool({
-                        type: 'selection',
-                    });
+                    drawCoreAction?.setActiveTool(
+                        {
+                            type: 'selection',
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 default:
                     break;

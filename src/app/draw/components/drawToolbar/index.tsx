@@ -279,76 +279,124 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 
             switch (next) {
                 case DrawState.Idle:
-                    drawCacheLayerActionRef.current?.setActiveTool({
-                        type: 'hand',
-                    });
+                    drawCacheLayerActionRef.current?.setActiveTool(
+                        {
+                            type: 'hand',
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Select:
-                    drawCacheLayerActionRef.current?.setActiveTool({
-                        type: 'selection',
-                    });
+                    drawCacheLayerActionRef.current?.setActiveTool(
+                        {
+                            type: 'selection',
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Rect:
-                    drawCacheLayerActionRef.current?.setActiveTool({
-                        type: 'rectangle',
-                        locked: toolLocked,
-                    });
+                    drawCacheLayerActionRef.current?.setActiveTool(
+                        {
+                            type: 'rectangle',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Diamond:
-                    drawCacheLayerActionRef.current?.setActiveTool({
-                        type: 'diamond',
-                        locked: toolLocked,
-                    });
+                    drawCacheLayerActionRef.current?.setActiveTool(
+                        {
+                            type: 'diamond',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Ellipse:
-                    drawCacheLayerActionRef.current?.setActiveTool({
-                        type: 'ellipse',
-                        locked: toolLocked,
-                    });
+                    drawCacheLayerActionRef.current?.setActiveTool(
+                        {
+                            type: 'ellipse',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Arrow:
-                    drawCacheLayerActionRef.current?.setActiveTool({
-                        type: 'arrow',
-                        locked: toolLocked,
-                    });
+                    drawCacheLayerActionRef.current?.setActiveTool(
+                        {
+                            type: 'arrow',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Line:
-                    drawCacheLayerActionRef.current?.setActiveTool({
-                        type: 'line',
-                        locked: toolLocked,
-                    });
+                    drawCacheLayerActionRef.current?.setActiveTool(
+                        {
+                            type: 'line',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Pen:
-                    drawCacheLayerActionRef.current?.setActiveTool({
-                        type: 'freedraw',
-                        locked: toolLocked,
-                    });
+                    drawCacheLayerActionRef.current?.setActiveTool(
+                        {
+                            type: 'freedraw',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Text:
-                    drawCacheLayerActionRef.current?.setActiveTool({
-                        type: 'text',
-                        locked: toolLocked,
-                    });
+                    drawCacheLayerActionRef.current?.setActiveTool(
+                        {
+                            type: 'text',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.SerialNumber:
                     break;
                 case DrawState.Blur:
-                    drawCacheLayerActionRef.current?.setActiveTool({
-                        type: 'blur',
-                        locked: toolLocked,
-                    });
+                    drawCacheLayerActionRef.current?.setActiveTool(
+                        {
+                            type: 'blur',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Watermark:
-                    drawCacheLayerActionRef.current?.setActiveTool({
-                        type: 'watermark',
-                        locked: toolLocked,
-                    });
+                    drawCacheLayerActionRef.current?.setActiveTool(
+                        {
+                            type: 'watermark',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.Eraser:
-                    drawCacheLayerActionRef.current?.setActiveTool({
-                        type: 'eraser',
-                        locked: toolLocked,
-                    });
+                    drawCacheLayerActionRef.current?.setActiveTool(
+                        {
+                            type: 'eraser',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
                     break;
                 case DrawState.OcrDetect:
                 case DrawState.OcrTranslate:

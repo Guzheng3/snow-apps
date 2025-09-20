@@ -4,7 +4,7 @@ import { ElementRect } from '@/commands';
 import { DrawCoreActionType } from '@/app/fullScreenDraw/components/drawCore/extra';
 
 export type DrawCacheLayerActionType = {
-    setActiveTool: ExcalidrawImperativeAPI['setActiveTool'];
+    setActiveTool: DrawCoreActionType['setActiveTool'];
     syncActionResult: ExcalidrawActionType['syncActionResult'];
     updateScene: ExcalidrawImperativeAPI['updateScene'];
     onCaptureReady: () => Promise<void>;

@@ -3,6 +3,7 @@ import {
     BinaryFiles,
     ExcalidrawActionType,
     PointerDownState,
+    ToolType,
 } from '@mg-chao/excalidraw/types';
 import { ExcalidrawImperativeAPI } from '@mg-chao/excalidraw/types';
 import { createPublisher } from '@/hooks/useStatePublisher';
@@ -12,7 +13,22 @@ import { createContext } from 'react';
 import { MousePosition } from '@/utils/mousePosition';
 
 export type DrawCoreActionType = {
-    setActiveTool: ExcalidrawImperativeAPI['setActiveTool'];
+    setActiveTool: (
+        tool: (
+            | {
+                  type: ToolType;
+              }
+            | {
+                  type: 'custom';
+                  customType: string;
+              }
+        ) & {
+            locked?: boolean;
+            fromSelection?: boolean;
+        },
+        keepSelection?: boolean,
+        drawState?: DrawState,
+    ) => void;
     syncActionResult: ExcalidrawActionType['syncActionResult'];
     updateScene: ExcalidrawImperativeAPI['updateScene'];
     getImageData: (selectRect: ElementRect) => Promise<ImageData | undefined>;
