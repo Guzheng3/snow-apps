@@ -17,6 +17,7 @@ import {
     ScreenshotTypePublisher,
     DrawEventPublisher,
     CaptureBoundingBoxInfo,
+    ElementDraggingPublisher,
 } from './extra';
 import {
     DrawToolbar,
@@ -1098,6 +1099,7 @@ const DrawPageContent = React.memo(
             ScreenshotTypePublisher,
             DrawEventPublisher,
             DrawToolbarStatePublisher,
+            ElementDraggingPublisher,
         ),
     ),
 );

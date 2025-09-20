@@ -1,14 +1,12 @@
-import { ElementRect } from '@/commands';
 import { useCallbackRender } from '@/hooks/useCallbackRender';
-import { MousePosition } from '@/utils/mousePosition';
 import { HolderOutlined } from '@ant-design/icons';
 import { Flex, theme } from 'antd';
 import { useCallback, useContext, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { useIntl } from 'react-intl';
-import { updateElementPosition } from './dragButton/extra';
 import { DrawContext } from '@/app/draw/types';
 import { zIndexs } from '@/utils/zIndex';
 import { useMonitorRect } from '../../statusBar';
+import { useDragElement } from './dragButton';
 
 export type SubToolsActionType = {
     getSubToolContainer: () => HTMLDivElement | null;
@@ -26,80 +24,68 @@ export const SubTools: React.FC<{
     const subToolsContainerRef = useRef<HTMLDivElement>(null);
     const subToolsRef = useRef<HTMLDivElement>(null);
 
-    const draggingRef = useRef(false);
-    const mouseOriginPositionRef = useRef<MousePosition>(new MousePosition(0, 0));
-    const mouseCurrentPositionRef = useRef<MousePosition>(new MousePosition(0, 0));
-    const toolbarCurrentRectRef = useRef<ElementRect>({
-        min_x: 0,
-        min_y: 0,
-        max_x: 0,
-        max_y: 0,
-    });
-    const toolbarPreviousRectRef = useRef<ElementRect>(undefined);
-
-    const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-        e.stopPropagation();
-        draggingRef.current = true;
-        mouseOriginPositionRef.current = new MousePosition(e.clientX, e.clientY);
-        mouseCurrentPositionRef.current = new MousePosition(e.clientX, e.clientY);
-        toolbarPreviousRectRef.current = toolbarCurrentRectRef.current;
-    }, []);
-    // 处理鼠标释放事件
-    const handleMouseUp = useCallback(() => {
-        if (!draggingRef.current) {
-            return;
-        }
-
-        draggingRef.current = false;
-    }, []);
-
     const {
         calculatedBoundaryRect,
         contentScale: [contentScale],
     } = useMonitorRect(true);
 
-    const updateDrawToolbarStyle = useCallback(() => {
-        const subTools = subToolsRef.current;
-        if (!subTools) {
-            return;
-        }
-
-        const selectedRect = selectLayerActionRef.current?.getSelectRect();
-        if (!selectedRect) {
-            return;
-        }
-
-        const baseOffsetX =
-            selectedRect.min_x / window.devicePixelRatio -
-            (subTools.clientWidth + token.marginXXS) * contentScale;
-        const baseOffsetY = selectedRect.min_y / window.devicePixelRatio;
-
-        const dragRes = updateElementPosition(
-            subTools,
-            baseOffsetX,
-            baseOffsetY,
-            mouseOriginPositionRef.current,
-            mouseCurrentPositionRef.current,
-            toolbarPreviousRectRef.current,
-            undefined,
-            contentScale,
-            calculatedBoundaryRect,
+    const getSelectedRect = useCallback(() => {
+        return (
+            selectLayerActionRef.current?.getSelectRect() ?? {
+                min_x: 0,
+                min_y: 0,
+                max_x: 0,
+                max_y: 0,
+            }
         );
+    }, [selectLayerActionRef]);
+    const {
+        update: updateDrawToolbarStyleCore,
+        onMouseDown,
+        onMouseMove,
+        onMouseUp,
+    } = useDragElement(
+        useMemo(() => {
+            return {
+                getBaseOffset: (element) => {
+                    const selectedRect = getSelectedRect();
 
-        toolbarCurrentRectRef.current = dragRes.rect;
-        mouseOriginPositionRef.current = dragRes.originPosition;
-    }, [selectLayerActionRef, token.marginXXS, contentScale, calculatedBoundaryRect]);
+                    return {
+                        x:
+                            selectedRect.min_x / window.devicePixelRatio -
+                            (element.clientWidth + token.marginXXS) * contentScale,
+                        y: selectedRect.min_y / window.devicePixelRatio,
+                    };
+                },
+            };
+        }, [contentScale, getSelectedRect, token.marginXXS]),
+    );
+
+    const updateDrawToolbarStyle = useCallback(() => {
+        if (!subToolsRef.current) {
+            return;
+        }
+
+        updateDrawToolbarStyleCore(subToolsRef.current, contentScale, calculatedBoundaryRect);
+    }, [updateDrawToolbarStyleCore, contentScale, calculatedBoundaryRect]);
+
+    const handleMouseDown = useCallback(
+        (e: React.MouseEvent<HTMLDivElement>) => {
+            e.stopPropagation();
+            onMouseDown(e);
+        },
+        [onMouseDown],
+    );
 
     const updateDrawToolbarStyleRender = useCallbackRender(updateDrawToolbarStyle);
 
     const handleMouseMove = useCallback(
-        (mousePosition: MousePosition) => {
-            if (!draggingRef.current) return;
+        (event: MouseEvent) => {
+            if (!subToolsRef.current) return;
 
-            mouseCurrentPositionRef.current = mousePosition;
-            updateDrawToolbarStyleRender();
+            onMouseMove(event, subToolsRef.current, contentScale, calculatedBoundaryRect);
         },
-        [draggingRef, updateDrawToolbarStyleRender],
+        [onMouseMove, contentScale, calculatedBoundaryRect],
     );
 
     const dragTitle = useMemo(() => {
@@ -116,18 +102,13 @@ export const SubTools: React.FC<{
     }, [updateDrawToolbarStyleRender]);
 
     useEffect(() => {
-        const onMouseMove = (e: MouseEvent) => {
-            const mousePosition = new MousePosition(e.clientX, e.clientY);
-            handleMouseMove(mousePosition);
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
         return () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
         };
-    }, [handleMouseMove, handleMouseUp]);
+    }, [handleMouseMove, onMouseUp]);
 
     useImperativeHandle(
         actionRef,

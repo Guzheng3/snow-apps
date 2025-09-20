@@ -76,6 +76,7 @@ export type CaptureEventParams =
 
 export const CaptureStepPublisher = createPublisher<CaptureStep>(CaptureStep.Select);
 export const CaptureLoadingPublisher = createPublisher<boolean>(true);
+export const ElementDraggingPublisher = createPublisher<boolean>(false);
 export const CaptureEventPublisher = createPublisher<CaptureEventParams | undefined>(undefined);
 export const ScreenshotTypePublisher = createPublisher<ScreenshotType>(ScreenshotType.Default);
 

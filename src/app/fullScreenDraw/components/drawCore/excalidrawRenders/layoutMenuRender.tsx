@@ -1,13 +1,10 @@
 import { ExcalidrawPropsCustomOptions } from '@mg-chao/excalidraw/types';
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
-import { MousePosition } from '@/utils/mousePosition';
-import { ElementRect } from '@/commands';
-import { useCallbackRender } from '@/hooks/useCallbackRender';
 import { HolderOutlined } from '@ant-design/icons';
 import { useIntl } from 'react-intl';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { DrawCoreContext, ExcalidrawEventParams, ExcalidrawEventPublisher } from '../extra';
-import { updateElementPosition } from '@/app/draw/components/drawToolbar/components/dragButton/extra';
+import { useDragElement } from '@/app/draw/components/drawToolbar/components/dragButton';
 
 const LayoutMenuRender: React.FC<{
     children: React.ReactNode;
@@ -20,18 +17,39 @@ const LayoutMenuRender: React.FC<{
         getBaseOffset,
         getDevicePixelRatio,
         calculatedBoundaryRect,
+        getDragElementOptionalConfig,
         getContentScale,
     } = useContext(DrawCoreContext);
 
-    const mouseOriginPositionRef = useRef<MousePosition>(new MousePosition(0, 0));
-    const mouseCurrentPositionRef = useRef<MousePosition>(new MousePosition(0, 0));
-    const toolbarPreviousRectRef = useRef<ElementRect>(undefined);
-    const toolbarCurrentRectRef = useRef<ElementRect>({
-        min_x: 0,
-        min_y: 0,
-        max_x: 0,
-        max_y: 0,
-    });
+    const getSelectedRect = useCallback(() => {
+        return (
+            getLimitRect() ?? {
+                min_x: 0,
+                min_y: 0,
+                max_x: 0,
+                max_y: 0,
+            }
+        );
+    }, [getLimitRect]);
+    const {
+        update: updateDrawToolbarStyleCore,
+        resetConfig,
+        resetDrag,
+        onMouseDown,
+        onMouseMove,
+        onMouseUp,
+    } = useDragElement(
+        useMemo(() => {
+            return {
+                getBaseOffset: () => {
+                    return getBaseOffset(getSelectedRect(), getDevicePixelRatio());
+                },
+            };
+        }, [getBaseOffset, getDevicePixelRatio, getSelectedRect]),
+        useMemo(() => {
+            return getDragElementOptionalConfig?.(getSelectedRect(), getDevicePixelRatio());
+        }, [getDevicePixelRatio, getDragElementOptionalConfig, getSelectedRect]),
+    );
 
     const updateDrawToolbarStyle = useCallback(() => {
         const element = layoutMenuRenderRef.current;
@@ -39,51 +57,24 @@ const LayoutMenuRender: React.FC<{
             return;
         }
 
-        const limitRect = getLimitRect();
-        if (!limitRect) {
-            return;
-        }
-
-        const selectedRect = limitRect;
-        if (!selectedRect) {
-            return;
-        }
-
-        const { x: baseOffsetX, y: baseOffsetY } = getBaseOffset(
-            selectedRect,
-            getDevicePixelRatio(),
-        );
-
-        const dragRes = updateElementPosition(
-            element,
-            baseOffsetX,
-            baseOffsetY,
-            mouseOriginPositionRef.current,
-            mouseCurrentPositionRef.current,
-            toolbarPreviousRectRef.current,
-            undefined,
-            getContentScale?.(),
-            calculatedBoundaryRect,
-        );
-
-        toolbarCurrentRectRef.current = dragRes.rect;
-        mouseOriginPositionRef.current = dragRes.originPosition;
-    }, [calculatedBoundaryRect, getContentScale, getBaseOffset, getDevicePixelRatio, getLimitRect]);
-    const updateDrawToolbarStyleRender = useCallbackRender(updateDrawToolbarStyle);
+        updateDrawToolbarStyleCore(element, getContentScale?.(), calculatedBoundaryRect);
+    }, [calculatedBoundaryRect, getContentScale, updateDrawToolbarStyleCore]);
 
     useEffect(() => {
-        updateDrawToolbarStyleRender();
-    }, [updateDrawToolbarStyleRender]);
+        resetConfig();
+        resetDrag();
+        updateDrawToolbarStyle();
+    }, [updateDrawToolbarStyle, resetConfig, resetDrag]);
 
     useStateSubscriber(
         ExcalidrawEventPublisher,
         useCallback(
             (event: ExcalidrawEventParams | undefined) => {
                 if (event?.event === 'onChange') {
-                    updateDrawToolbarStyleRender();
+                    updateDrawToolbarStyle();
                 }
             },
-            [updateDrawToolbarStyleRender],
+            [updateDrawToolbarStyle],
         ),
     );
 
@@ -91,46 +82,41 @@ const LayoutMenuRender: React.FC<{
         return intl.formatMessage({ id: 'draw.drag' });
     }, [intl]);
 
-    const draggingRef = useRef(false);
-
-    const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-        e.stopPropagation();
-        draggingRef.current = true;
-        mouseOriginPositionRef.current = new MousePosition(e.clientX, e.clientY);
-        mouseCurrentPositionRef.current = new MousePosition(e.clientX, e.clientY);
-        toolbarPreviousRectRef.current = toolbarCurrentRectRef.current;
-    }, []);
+    const handleMouseDown = useCallback(
+        (e: React.MouseEvent<HTMLDivElement>) => {
+            e.stopPropagation();
+            onMouseDown(e);
+        },
+        [onMouseDown],
+    );
 
     // 处理鼠标释放事件
     const handleMouseUp = useCallback(() => {
-        if (!draggingRef.current) {
-            return;
-        }
-
-        draggingRef.current = false;
-    }, []);
+        onMouseUp();
+    }, [onMouseUp]);
 
     // 处理鼠标移动事件
     const handleMouseMove = useCallback(
-        (mousePosition: MousePosition) => {
-            if (!draggingRef.current) return;
+        (event: MouseEvent) => {
+            if (!layoutMenuRenderRef.current) {
+                return;
+            }
 
-            mouseCurrentPositionRef.current = mousePosition;
-            updateDrawToolbarStyleRender();
+            onMouseMove(
+                event,
+                layoutMenuRenderRef.current,
+                getContentScale?.(),
+                calculatedBoundaryRect,
+            );
         },
-        [draggingRef, updateDrawToolbarStyleRender],
+        [calculatedBoundaryRect, getContentScale, onMouseMove],
     );
 
     useEffect(() => {
-        const onMouseMove = (e: MouseEvent) => {
-            const mousePosition = new MousePosition(e.clientX, e.clientY);
-            handleMouseMove(mousePosition);
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
         return () => {
-            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
         };
     }, [handleMouseMove, handleMouseUp]);

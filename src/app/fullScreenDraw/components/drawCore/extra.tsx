@@ -11,6 +11,7 @@ import { ExcalidrawElement, OrderedExcalidrawElement } from '@mg-chao/excalidraw
 import { ElementRect } from '@/commands';
 import { createContext } from 'react';
 import { MousePosition } from '@/utils/mousePosition';
+import { DragElementOptionalConfig } from '@/app/draw/components/drawToolbar/components/dragButton';
 
 export type DrawCoreActionType = {
     setActiveTool: (
@@ -226,6 +227,10 @@ export type DrawCoreContextValue = {
         x: number;
         y: number;
     };
+    getDragElementOptionalConfig?: (
+        limitRect: ElementRect,
+        devicePixelRatio: number,
+    ) => DragElementOptionalConfig[];
     getAction: () => DrawCoreActionType | undefined;
     getMousePosition: () => MousePosition | undefined;
     calculatedBoundaryRect?: (rect: ElementRect) => ElementRect;
@@ -240,6 +245,7 @@ export const DrawCoreContext = createContext<DrawCoreContextValue>({
         x: 0,
         y: 0,
     }),
+    getDragElementOptionalConfig: undefined,
     getAction: () => undefined,
     getMousePosition: () => undefined,
 });

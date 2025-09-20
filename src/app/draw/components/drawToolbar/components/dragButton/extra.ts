@@ -22,11 +22,11 @@ export const dragRect = (
     const height = maxY - minY;
 
     // 检测是否超出边界（在调整之前）
-    const isBeyond =
-        minX < boundaryRect.min_x ||
-        minY < boundaryRect.min_y ||
-        maxX > boundaryRect.max_x ||
-        maxY > boundaryRect.max_y;
+    const isBeyondMinX = minX < boundaryRect.min_x;
+    const isBeyondMaxX = maxX > boundaryRect.max_x;
+    const isBeyondMinY = minY < boundaryRect.min_y;
+    const isBeyondMaxY = maxY > boundaryRect.max_y;
+    const isBeyond = isBeyondMinX || isBeyondMaxX || isBeyondMinY || isBeyondMaxY;
 
     // 检测是否触碰边界
     const adjustedOriginPosition = new MousePosition(
@@ -72,7 +72,21 @@ export const dragRect = (
         },
         newOriginPosition: boundaryHit ? adjustedOriginPosition : originMousePosition,
         isBeyond,
+        isBeyondMinX,
+        isBeyondMaxX,
+        isBeyondMinY,
+        isBeyondMaxY,
     };
+};
+
+export type UpdateElementPositionResult = {
+    rect: ElementRect;
+    originPosition: MousePosition;
+    isBeyond: boolean;
+    isBeyondMinX: boolean;
+    isBeyondMaxX: boolean;
+    isBeyondMinY: boolean;
+    isBeyondMaxY: boolean;
 };
 
 export const updateElementPosition = (
@@ -85,7 +99,7 @@ export const updateElementPosition = (
     cancelOnBeyond: boolean = false,
     contentScale: number = 1,
     calculatedBoundaryRect: (rect: ElementRect) => ElementRect = (rect) => rect,
-) => {
+): UpdateElementPositionResult => {
     let { clientWidth: toolbarWidth, clientHeight: toolbarHeight } = element;
 
     toolbarWidth = toolbarWidth * contentScale;
@@ -123,5 +137,9 @@ export const updateElementPosition = (
         rect: dragRes.rect,
         originPosition: dragRes.newOriginPosition,
         isBeyond: dragRes.isBeyond,
+        isBeyondMinX: dragRes.isBeyondMinX,
+        isBeyondMaxX: dragRes.isBeyondMaxX,
+        isBeyondMinY: dragRes.isBeyondMinY,
+        isBeyondMaxY: dragRes.isBeyondMaxY,
     };
 };

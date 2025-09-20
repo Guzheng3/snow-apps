@@ -23,9 +23,11 @@ export const useMoveCursor = (): {
         }, 256);
     }, []);
 
-    return {
-        disableMouseMove,
-        isDisableMouseMove,
-        enableMouseMove,
-    };
+    return useMemo(() => {
+        return {
+            disableMouseMove,
+            isDisableMouseMove,
+            enableMouseMove,
+        };
+    }, [disableMouseMove, enableMouseMove, isDisableMouseMove]);
 };

@@ -6,7 +6,7 @@ import {
 } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { ExcalidrawPropsCustomOptions } from '@mg-chao/excalidraw/types';
 import { Radio, Space } from 'antd';
-import { useCallback, useContext, useEffect, useRef } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import {
     convertSerialNumberElementIdToEllipseElementId,
     convertSerialNumberElementIdToEllipseTextElementId,
@@ -190,9 +190,11 @@ export const useChangeFontSizeProps = (
         ),
     );
 
-    return {
-        propsRef,
-    };
+    return useMemo(() => {
+        return {
+            propsRef,
+        };
+    }, [propsRef]);
 };
 
 export const RadioSelection = (

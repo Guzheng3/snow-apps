@@ -73,7 +73,7 @@ export const ResizeToolbar: React.FC<{
                 return;
             }
 
-            const { isBeyond } = updateElementPosition(
+            const { isBeyondMinY } = updateElementPosition(
                 resizeToolbar,
                 0,
                 0,
@@ -89,7 +89,7 @@ export const ResizeToolbar: React.FC<{
                 true,
                 contentScaleRef.current,
             );
-            if (isBeyond) {
+            if (isBeyondMinY) {
                 updateElementPosition(
                     resizeToolbar,
                     0,
@@ -112,6 +112,7 @@ export const ResizeToolbar: React.FC<{
         [contentScaleRef, token.marginXXS],
     );
 
+    const [enable, _setEnable] = useState(false);
     const setEnable = useCallback((enable: boolean) => {
         const resizeToolbar = resizeToolbarRef.current;
         if (!resizeToolbar) {
@@ -123,6 +124,7 @@ export const ResizeToolbar: React.FC<{
         } else {
             resizeToolbar.style.opacity = '0';
         }
+        _setEnable(enable);
     }, []);
 
     const [getScreenshotType] = useStateSubscriber(ScreenshotTypePublisher, undefined);
@@ -299,6 +301,7 @@ export const ResizeToolbar: React.FC<{
         },
         [onRadiusChange, onSelectedRectChange, onShadowConfigChange],
     );
+
     return (
         <div className="draw-resize-toolbar" ref={resizeToolbarRef} onClick={showResizeModal}>
             <ResizeModal actionRef={resizeModalActionRef} onFinish={onFinish} />
@@ -409,8 +412,9 @@ export const ResizeToolbar: React.FC<{
                     color: ${token.colorWhite};
                     cursor: pointer;
                     transition: box-shadow ${token.motionDurationFast} ${token.motionEaseInOut};
-                    pointer-events: ${selectState === SelectState.Selected ||
-                    selectState === SelectState.ScrollResize
+                    pointer-events: ${enable &&
+                    (selectState === SelectState.Selected ||
+                        selectState === SelectState.ScrollResize)
                         ? 'auto'
                         : 'none'};
                     transform-origin: top left;

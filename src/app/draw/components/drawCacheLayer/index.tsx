@@ -137,6 +137,29 @@ const DrawCacheLayerCore: React.FC<{
                     y: limitRect.min_y / devicePixelRatio,
                 };
             },
+            getDragElementOptionalConfig: (limitRect: ElementRect, devicePixelRatio: number) => {
+                return [
+                    {
+                        config: {
+                            getBaseOffset: (element: HTMLElement) => {
+                                return {
+                                    x:
+                                        limitRect.min_x / devicePixelRatio -
+                                        token.marginXXS * contentScaleRef.current -
+                                        element.clientWidth * contentScaleRef.current,
+                                    y: limitRect.min_y / devicePixelRatio,
+                                };
+                            },
+                        },
+                        needTry: (dragRes) => {
+                            return dragRes.isBeyondMaxX;
+                        },
+                        canApply: (dragRes) => {
+                            return !(dragRes.isBeyondMaxX || dragRes.isBeyondMinX);
+                        },
+                    },
+                ];
+            },
             getAction: () => {
                 return drawCoreActionRef.current;
             },

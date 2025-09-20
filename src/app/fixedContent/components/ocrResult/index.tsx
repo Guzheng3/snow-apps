@@ -16,7 +16,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Menu } from '@tauri-apps/api/menu';
 import { useHotkeysApp } from '@/hooks/useHotkeysApp';
 import { AntdContext } from '@/components/globalLayoutExtra';
-import { CaptureBoundingBoxInfo } from '@/app/draw/extra';
+import { CaptureBoundingBoxInfo, ElementDraggingPublisher } from '@/app/draw/extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
 import { writeTextToClipboard } from '@/utils/clipboard';
@@ -503,8 +503,12 @@ export const OcrResult: React.FC<{
         e.stopPropagation();
     }, []);
 
+    // 避免 iframe 影响元素拖拽
+    const [isElementDragging, setIsElementDragging] = useState(false);
+    useStateSubscriber(ElementDraggingPublisher, setIsElementDragging);
+
     useEffect(() => {
-        if (disabled) {
+        if (disabled || isElementDragging) {
             return;
         }
 
@@ -581,7 +585,7 @@ export const OcrResult: React.FC<{
         return () => {
             window.removeEventListener('message', handleMessage);
         };
-    }, [disabled, onContextMenu, onMouseDown, onMouseMove, onMouseUp]);
+    }, [disabled, isElementDragging, onContextMenu, onMouseDown, onMouseMove, onMouseUp]);
 
     const handleContainerContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
         event.preventDefault();
@@ -589,6 +593,7 @@ export const OcrResult: React.FC<{
     }, []);
 
     const enableDrag = !!(onMouseDown && onMouseMove && onMouseUp);
+
     return (
         <>
             <div
@@ -624,11 +629,20 @@ export const OcrResult: React.FC<{
                         position: 'absolute',
                         top: 0,
                         left: 0,
+                        width: textContainerContent ? undefined : 0,
+                        height: textContainerContent ? undefined : 0,
                         opacity: 1,
-                        backdropFilter: textContainerContent ? 'blur(4.2px)' : 'none',
+                        backdropFilter: textContainerContent ? 'blur(2.4px)' : 'none',
+                        userSelect: 'none',
+                        pointerEvents:
+                            isElementDragging || disabled || !textContainerContent
+                                ? 'none'
+                                : 'auto',
                     }}
                     className="ocr-result-text-iframe"
-                    srcDoc={`${textContainerContent}
+                    srcDoc={
+                        textContainerContent
+                            ? `${textContainerContent}
                         <style>
                             html {
                                 height: 100%;
@@ -748,7 +762,9 @@ export const OcrResult: React.FC<{
                                 }, '*');
                             };
                         </script>
-                    `}
+                    `
+                            : undefined
+                    }
                 />
 
                 <style jsx>{`
