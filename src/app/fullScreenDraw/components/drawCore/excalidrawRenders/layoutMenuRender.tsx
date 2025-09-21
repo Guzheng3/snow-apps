@@ -33,8 +33,7 @@ const LayoutMenuRender: React.FC<{
     }, [getLimitRect]);
     const {
         update: updateDrawToolbarStyleCore,
-        resetConfig,
-        resetDrag,
+        reset: resetDrag,
         onMouseDown,
         onMouseMove,
         onMouseUp,
@@ -61,10 +60,9 @@ const LayoutMenuRender: React.FC<{
     }, [calculatedBoundaryRect, getContentScale, updateDrawToolbarStyleCore]);
 
     useEffect(() => {
-        resetConfig();
         resetDrag();
         updateDrawToolbarStyle();
-    }, [updateDrawToolbarStyle, resetConfig, resetDrag]);
+    }, [updateDrawToolbarStyle, resetDrag]);
 
     useStateSubscriber(
         ExcalidrawEventPublisher,

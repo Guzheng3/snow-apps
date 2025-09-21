@@ -6105,7 +6105,7 @@ checksum = "51d44cfb396c3caf6fbfd0ab422af02631b69ddd96d2eff0b0f0724f9024051b"
 
 [[package]]
 name = "snow-shot"
-version = "0.3.6-beta"
+version = "0.3.7-beta"
 dependencies = [
  "log",
  "snow-shot-app-os",

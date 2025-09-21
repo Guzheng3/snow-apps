@@ -130,8 +130,7 @@ export const useDragElement = (
         contentScale?: number,
         calculatedBoundaryRect?: (rect: ElementRect) => ElementRect,
     ) => UpdateElementPositionResult;
-    resetConfig: () => void;
-    resetDrag: () => void;
+    reset: () => void;
     onMouseDown: (event: React.MouseEvent<HTMLDivElement> | MouseEvent) => void;
     onMouseMove: (
         event: React.MouseEvent<HTMLDivElement> | MouseEvent,
@@ -264,8 +263,10 @@ export const useDragElement = (
     return useMemo(() => {
         return {
             update: updateRender,
-            resetConfig,
-            resetDrag,
+            reset: () => {
+                resetConfig();
+                resetDrag();
+            },
             onMouseDown,
             onMouseMove: onMouseMoveCore,
             onMouseUp,
@@ -302,8 +303,7 @@ const DragButtonCore: React.FC<{
     }, [selectLayerActionRef]);
     const {
         update: updateDrawToolbarStyleCore,
-        resetConfig,
-        resetDrag,
+        reset: resetDrag,
         onMouseDown,
         onMouseMove,
         onMouseUp,
@@ -424,11 +424,10 @@ const DragButtonCore: React.FC<{
                 drawToolarContainerRef.current!.style.opacity = '0';
                 drawToolbarRef.current!.style.opacity = '0';
                 drawToolbarRef.current!.style.pointerEvents = 'none';
-                resetConfig();
                 resetDrag();
             }
         },
-        [drawToolarContainerRef, drawToolbarRef, resetConfig, resetDrag, updateDrawToolbarStyle],
+        [drawToolarContainerRef, drawToolbarRef, resetDrag, updateDrawToolbarStyle],
     );
 
     const setEnable = useCallback(
