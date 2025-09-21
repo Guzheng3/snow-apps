@@ -1648,7 +1648,7 @@ export const FixedContentCore: React.FC<{
                 pointerEvents:
                     canvasImageUrl || htmlBlobUrl || textContent || imageUrl ? 'auto' : 'none',
                 opacity: isThumbnail ? 0.72 : contentOpacity,
-                userSelect: isThumbnail ? 'none' : undefined,
+                userSelect: isThumbnail || !enableSelectText ? 'none' : undefined,
             }}
             onContextMenu={handleContextMenu}
             onDoubleClick={onDoubleClick}
