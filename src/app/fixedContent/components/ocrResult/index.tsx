@@ -280,7 +280,9 @@ export const OcrResult: React.FC<{
                     });
                 }),
             );
-            setTextContainerContent(textContainerElement.innerHTML);
+            setTextContainerContent(
+                textContainerElement.innerHTML ? textContainerElement.innerHTML : ' ', // 避免空字符串导致 iframe 内容为空
+            );
         },
         [token.colorBgContainer, token.colorText],
     );
