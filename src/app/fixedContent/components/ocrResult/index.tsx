@@ -96,6 +96,7 @@ export const OcrResult: React.FC<{
 
     const containerElementRef = useRef<HTMLDivElement>(null);
     const textContainerElementRef = useRef<HTMLDivElement>(null);
+    const textIframeContainerElementWrapRef = useRef<HTMLDivElement>(null);
     const textIframeContainerElementRef = useRef<HTMLIFrameElement>(null);
     const [textContainerContent, setTextContainerContent] = useState('');
 
@@ -146,19 +147,21 @@ export const OcrResult: React.FC<{
             const baseY = selectRect.min_y * transformScale;
 
             const textContainerElement = textContainerElementRef.current;
-            const textIframeContainerElement = textIframeContainerElementRef.current;
-            if (!textContainerElement || !textIframeContainerElement) {
+            const textIframeContainerWrapElement = textIframeContainerElementWrapRef.current;
+            if (!textContainerElement || !textIframeContainerWrapElement) {
                 return;
             }
 
             textContainerElement.innerHTML = '';
 
-            textContainerElement.style.left = textIframeContainerElement.style.left = `${baseX}px`;
-            textContainerElement.style.top = textIframeContainerElement.style.top = `${baseY}px`;
+            textContainerElement.style.left =
+                textIframeContainerWrapElement.style.left = `${baseX}px`;
+            textContainerElement.style.top =
+                textIframeContainerWrapElement.style.top = `${baseY}px`;
             textContainerElement.style.width =
-                textIframeContainerElement.style.width = `${(selectRect.max_x - selectRect.min_x) * transformScale}px`;
+                textIframeContainerWrapElement.style.width = `${(selectRect.max_x - selectRect.min_x) * transformScale}px`;
             textContainerElement.style.height =
-                textIframeContainerElement.style.height = `${(selectRect.max_y - selectRect.min_y) * transformScale}px`;
+                textIframeContainerWrapElement.style.height = `${(selectRect.max_y - selectRect.min_y) * transformScale}px`;
 
             await Promise.all(
                 ocrResult.text_blocks.map(async (block) => {
@@ -282,11 +285,12 @@ export const OcrResult: React.FC<{
         [token.colorBgContainer, token.colorText],
     );
     const setScale = useCallback((scale: number) => {
-        if (!textContainerElementRef.current) {
+        if (!textContainerElementRef.current || !textIframeContainerElementWrapRef.current) {
             return;
         }
 
         textContainerElementRef.current.style.transform = `scale(${scale / 100})`;
+        textIframeContainerElementWrapRef.current.style.transform = `scale(${scale / 100})`;
     }, []);
 
     /** 请求 ID，避免 OCR 检测中切换工具后任然触发 OCR 结果 */
@@ -615,34 +619,36 @@ export const OcrResult: React.FC<{
                     style={{
                         transformOrigin: 'top left',
                         position: 'absolute',
-                        top: 0,
-                        left: 0,
                         opacity: 0,
+                        pointerEvents: 'none',
                     }}
                     onDoubleClick={onDoubleClick}
                     className="ocr-result-text-container"
                 ></div>
-                <iframe
-                    ref={textIframeContainerElementRef}
+                <div
                     style={{
                         transformOrigin: 'top left',
                         position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: textContainerContent ? undefined : 0,
-                        height: textContainerContent ? undefined : 0,
-                        opacity: 1,
                         backdropFilter: textContainerContent ? 'blur(2.4px)' : 'none',
+                        opacity: textContainerContent ? 1 : 0,
                         userSelect: 'none',
                         pointerEvents:
                             isElementDragging || disabled || !textContainerContent
                                 ? 'none'
                                 : 'auto',
                     }}
-                    className="ocr-result-text-iframe"
-                    srcDoc={
-                        textContainerContent
-                            ? `${textContainerContent}
+                    ref={textIframeContainerElementWrapRef}
+                >
+                    <iframe
+                        ref={textIframeContainerElementRef}
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                        }}
+                        className="ocr-result-text-iframe"
+                        srcDoc={
+                            textContainerContent
+                                ? `${textContainerContent}
                         <style>
                             html {
                                 height: 100%;
@@ -763,9 +769,10 @@ export const OcrResult: React.FC<{
                             };
                         </script>
                     `
-                            : undefined
-                    }
-                />
+                                : undefined
+                        }
+                    />
+                </div>
 
                 <style jsx>{`
                     .ocr-result-text-iframe {

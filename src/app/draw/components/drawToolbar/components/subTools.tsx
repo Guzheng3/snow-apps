@@ -41,6 +41,8 @@ export const SubTools: React.FC<{
     }, [selectLayerActionRef]);
     const {
         update: updateDrawToolbarStyleCore,
+        resetDrag,
+        resetConfig,
         onMouseDown,
         onMouseMove,
         onMouseUp,
@@ -93,13 +95,15 @@ export const SubTools: React.FC<{
     }, [intl]);
 
     useEffect(() => {
+        resetConfig();
+        resetDrag();
         updateDrawToolbarStyleRender();
         requestAnimationFrame(() => {
             if (subToolsRef.current) {
                 subToolsRef.current.style.opacity = '1';
             }
         });
-    }, [updateDrawToolbarStyleRender]);
+    }, [updateDrawToolbarStyleRender, resetConfig, resetDrag]);
 
     useEffect(() => {
         document.addEventListener('mousemove', handleMouseMove);
