@@ -649,7 +649,8 @@ export const OcrResult: React.FC<{
                         className="ocr-result-text-iframe"
                         srcDoc={
                             textContainerContent
-                                ? `${textContainerContent}
+                                ? `<head><meta name="color-scheme" content="light dark"></meta></head>
+                                <body>${textContainerContent}</body>
                         <style>
                             html {
                                 height: 100%;
