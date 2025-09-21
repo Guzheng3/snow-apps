@@ -646,7 +646,6 @@ export const OcrResult: React.FC<{
                             height: '100%',
                             backgroundColor: 'transparent',
                         }}
-                        allowTransparency
                         className="ocr-result-text-iframe"
                         srcDoc={
                             textContainerContent
