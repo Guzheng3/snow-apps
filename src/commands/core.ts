@@ -150,3 +150,11 @@ export const writeBitmapImageToClipboard = async (image: ArrayBuffer) => {
     const result = await invoke<void>('write_bitmap_image_to_clipboard', image);
     return result;
 };
+
+export const retainDirFiles = async (dirPath: string, fileNames: string[]) => {
+    const result = await invoke<void>('retain_dir_files', {
+        dirPath,
+        fileNames,
+    });
+    return result;
+};

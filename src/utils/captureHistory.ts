@@ -14,6 +14,7 @@ import {
     removeFile,
     writeFile,
 } from '@/commands/file';
+import { retainDirFiles } from '@/commands/core';
 
 const captureHistoryImagesDir = 'captureHistoryImages';
 
@@ -179,6 +180,18 @@ export class CaptureHistory {
                 }
             }),
         );
+
+        // 读取有效的图片文件名，比较文件夹里的文件名，删除文件夹里不存在的文件
+        const validImageFileNames = await this.store.entries().then((entries) => {
+            return entries.map(([, item]) => {
+                return item.file_name;
+            });
+        });
+        try {
+            await retainDirFiles(await getCaptureHistoryImageAbsPath(''), validImageFileNames);
+        } catch (error) {
+            appWarn('[CaptureHistory] retain captureHistoryImagesDir failed', error);
+        }
     }
 
     async clearAll() {

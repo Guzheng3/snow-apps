@@ -205,6 +205,7 @@ pub fn run() {
             core::auto_start_disable,
             core::restart_with_admin,
             core::write_bitmap_image_to_clipboard,
+            core::retain_dir_files,
             scroll_screenshot::scroll_screenshot_get_image_data,
             scroll_screenshot::scroll_screenshot_init,
             scroll_screenshot::scroll_screenshot_capture,

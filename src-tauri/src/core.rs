@@ -1,5 +1,6 @@
 use snow_shot_app_shared::{ElementRect, EnigoManager};
 use snow_shot_tauri_commands_core::MonitorsBoundingBox;
+use std::path::PathBuf;
 use tauri::{Manager, command, ipc::Response};
 use tauri_plugin_autostart::ManagerExt;
 use tokio::sync::Mutex;
@@ -253,4 +254,9 @@ pub async fn write_bitmap_image_to_clipboard(
     request: tauri::ipc::Request<'_>,
 ) -> Result<(), String> {
     snow_shot_tauri_commands_core::write_bitmap_image_to_clipboard(request).await
+}
+
+#[command]
+pub async fn retain_dir_files(dir_path: PathBuf, file_names: Vec<String>) -> Result<(), String> {
+    snow_shot_tauri_commands_core::retain_dir_files(dir_path, file_names).await
 }

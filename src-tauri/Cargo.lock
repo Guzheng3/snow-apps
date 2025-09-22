@@ -6227,6 +6227,7 @@ version = "0.1.0"
 dependencies = [
  "clipboard-win",
  "enigo 0.6.1",
+ "futures",
  "get-selected-text",
  "image",
  "log",

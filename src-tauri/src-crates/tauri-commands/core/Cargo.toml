@@ -13,6 +13,7 @@ enigo = { workspace = true }
 serde = { workspace = true }
 tauri = { workspace = true }
 tokio = { workspace = true }
+futures = { workspace = true }
 log = { workspace = true }
 
 get-selected-text = "^0.1"

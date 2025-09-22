@@ -1,4 +1,5 @@
 use enigo::{Axis, Mouse};
+use futures::stream::StreamExt;
 use serde::Serialize;
 use std::{
     path::PathBuf,
@@ -6,7 +7,7 @@ use std::{
 };
 use tauri::Emitter;
 use tauri::Manager;
-use tokio::{sync::Mutex, time::Duration};
+use tokio::{fs, sync::Mutex, time};
 
 use snow_shot_app_os::notification;
 use snow_shot_app_services::free_drag_window_service::FreeDragWindowService;
@@ -55,7 +56,7 @@ pub async fn scroll_through(
         ));
     }
 
-    tokio::time::sleep(Duration::from_millis(1)).await;
+    time::sleep(time::Duration::from_millis(1)).await;
 
     {
         match enigo.scroll(length, Axis::Vertical) {
@@ -66,7 +67,7 @@ pub async fn scroll_through(
         }
     }
 
-    tokio::time::sleep(Duration::from_millis(128)).await;
+    time::sleep(time::Duration::from_millis(128)).await;
     let _ = window.set_ignore_cursor_events(false);
 
     Ok(())
@@ -79,7 +80,7 @@ pub async fn click_through(window: tauri::Window) -> Result<(), ()> {
         return Ok(());
     }
 
-    tokio::time::sleep(Duration::from_millis(128)).await;
+    time::sleep(time::Duration::from_millis(128)).await;
     match window.set_ignore_cursor_events(false) {
         Ok(_) => (),
         Err(_) => (),
@@ -499,7 +500,7 @@ pub async fn close_window_after_delay(window: tauri::Window, delay: u64) {
     // 用另一个进程运行，tauri 执行完命令后会发送消息给原窗口，一定时间后窗口可能已经提前销毁了
     // 发送消息给已经销毁的窗口会报错
     tokio::spawn(async move {
-        tokio::time::sleep(Duration::from_millis(delay)).await;
+        time::sleep(time::Duration::from_millis(delay)).await;
         match window.close() {
             Ok(_) => (),
             Err(_) => log::info!("[close_window_after_delay] The window has been released"),
@@ -647,4 +648,99 @@ pub async fn write_bitmap_image_to_clipboard(
 
         Ok(())
     }
+}
+
+/// 保留目录中指定的文件，删除其他所有文件
+pub async fn retain_dir_files(dir_path: PathBuf, file_names: Vec<String>) -> Result<(), String> {
+    // 检查目录是否存在和是否是目录
+    if !dir_path.exists() {
+        return Err(format!(
+            "[retain_dir_files] Directory does not exist: {:?}",
+            dir_path
+        ));
+    }
+
+    if !dir_path.is_dir() {
+        return Err(format!(
+            "[retain_dir_files] Path is not a directory: {:?}",
+            dir_path
+        ));
+    }
+
+    // 将要保留的文件名转换为 HashSet 以提高查找效率
+    let file_names_set: std::collections::HashSet<String> = file_names.into_iter().collect();
+
+    // 读取目录内容并筛选需要删除的文件
+    let mut entries = fs::read_dir(&dir_path)
+        .await
+        .map_err(|e| format!("[retain_dir_files] Failed to read directory: {}", e))?;
+
+    let mut files_to_delete = Vec::new();
+
+    // 同步遍历目录条目，避免复杂的异步嵌套
+    while let Some(entry) = entries.next_entry().await
+        .map_err(|e| format!("[retain_dir_files] Failed to read directory entry: {}", e))?
+    {
+        let path = entry.path();
+
+        // 只处理文件，跳过目录和其他类型
+        if !path.is_file() {
+            continue;
+        }
+
+        // 获取文件名进行比较
+        if let Some(file_name) = path.file_name()
+            .and_then(|name| name.to_str())
+            .map(|s| s.to_string())
+        {
+            // 如果文件名不在保留列表中，加入删除列表
+            if !file_names_set.contains(&file_name) {
+                files_to_delete.push(path);
+            }
+        }
+    }
+
+    // 限制删除数量，防止意外大量删除
+    let max_delete_count = 100;
+    let actual_delete_count = files_to_delete.len().min(max_delete_count);
+
+    if files_to_delete.len() > max_delete_count {
+        log::warn!(
+            "[retain_dir_files] Too many files to delete ({}), limiting to {}",
+            files_to_delete.len(),
+            max_delete_count
+        );
+    }
+
+    // 并发删除文件，收集删除结果
+    let delete_results = futures::stream::iter(
+        files_to_delete.into_iter().take(actual_delete_count).map(|path| async move {
+            match fs::remove_file(&path).await {
+                Ok(()) => Ok(path),
+                Err(e) => {
+                    log::warn!("[retain_dir_files] Failed to remove file {:?}: {}", path, e);
+                    Err((path, e))
+                }
+            }
+        })
+    )
+    .buffer_unordered(8) // 减少并发数量，提高稳定性
+    .collect::<Vec<_>>()
+    .await;
+
+    // 统计删除结果
+    let (success_count, error_count) = delete_results.iter().fold((0, 0), |(success, error), result| {
+        match result {
+            Ok(_) => (success + 1, error),
+            Err(_) => (success, error + 1),
+        }
+    });
+
+    log::info!(
+        "[retain_dir_files] Deletion completed: {} successful, {} failed",
+        success_count,
+        error_count
+    );
+
+    Ok(())
 }
