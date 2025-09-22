@@ -195,5 +195,5 @@ export const zhHant = {
     'about.contact.github': 'GitHub Issue',
     'about.contact.bilibili': 'B站 3N0W',
     'about.contact.email': '郵件: chao@mgchao.top',
-    'about.contact.qqGroup': 'QQ 交流群：',
+    'about.contact.qqGroup': 'QQ 交流群: 974311403',
 };

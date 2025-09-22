@@ -2,7 +2,7 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'r
 import { Spin, theme, Typography } from 'antd';
 import { DrawContext } from '@/app/draw/types';
 import { zIndexs } from '@/utils/zIndex';
-import QrScanner from 'qr-scanner';
+import * as QrCodeScanner from 'qr-scanner-wechat';
 import { AntdContext } from '@/components/globalLayoutExtra';
 import { useIntl } from 'react-intl';
 import { useHotkeysApp } from '@/hooks/useHotkeysApp';
@@ -56,20 +56,25 @@ const ScanQrcodeToolCore: React.FC<{}> = ({}) => {
 
         tempCtx.putImageData(imageData, 0, 0);
 
-        QrScanner.scanImage(tempCanvas, {
-            qrEngine: QrScanner.createQrEngine(),
-        })
-            .then((result) => {
-                setQrCode(result.data);
-            })
-            .catch(() => {
-                setQrCode('');
+        try {
+            await QrCodeScanner.ready();
+            const result = await QrCodeScanner.scan(tempCanvas);
+            setQrCode(result.text ?? '');
+            if (!result.text) {
                 message.warning(
                     intl.formatMessage({
                         id: 'draw.extraTool.scanQrcode.error',
                     }),
                 );
-            });
+            }
+        } catch (error) {
+            console.error(error);
+            message.warning(
+                intl.formatMessage({
+                    id: 'draw.extraTool.scanQrcode.error',
+                }),
+            );
+        }
     }, [selectLayerActionRef, drawLayerActionRef, message, intl]);
 
     const inited = useRef(false);

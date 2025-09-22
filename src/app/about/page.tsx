@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Divider, Tag, Typography, Space, Button, theme, Badge } from 'antd';
-import { GithubOutlined, MessageOutlined, MailOutlined } from '@ant-design/icons';
+import { GithubOutlined, MessageOutlined, MailOutlined, QqOutlined } from '@ant-design/icons';
 import { getVersion } from '@tauri-apps/api/app';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useIntl } from 'react-intl';
@@ -52,12 +52,7 @@ const About = () => {
             <div style={{ textAlign: 'center', marginBottom: token.marginLG }}>
                 <div>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                        src={'/images/app-icon.png'}
-                        alt="Snow Shot"
-                        width={83}
-                        height={83}
-                    />
+                    <img src={'/images/app-icon.png'} alt="Snow Shot" width={83} height={83} />
                 </div>
 
                 <Title level={2} style={{ marginTop: token.marginSM }}>
@@ -150,10 +145,13 @@ const About = () => {
                     >
                         {intl.formatMessage({ id: 'about.contact.email' })}
                     </Button>
-                    <Text style={{ textAlign: 'center', display: 'block' }}>
+                    <Button
+                        icon={<QqOutlined />}
+                        onClick={() => openUrl('https://qm.qq.com/q/w9B2gLdoYg')}
+                        block
+                    >
                         {intl.formatMessage({ id: 'about.contact.qqGroup' })}
-                        <Text copyable>974311403</Text>
-                    </Text>
+                    </Button>
                 </Space>
             </div>
         </div>
