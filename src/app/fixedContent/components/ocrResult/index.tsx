@@ -210,9 +210,11 @@ export const OcrResult: React.FC<{
                     textElement.innerText = block.text;
                     textElement.style.color = token.colorText;
                     textElement.style.display = 'inline-block';
+                    textElement.className = 'ocr-result-text-element';
 
                     const textWrapElement = document.createElement('div');
                     const textBackgroundElement = document.createElement('div');
+                    textBackgroundElement.className = 'ocr-result-text-background-element';
                     textBackgroundElement.style.position = textWrapElement.style.position =
                         'absolute';
                     textBackgroundElement.style.width = textWrapElement.style.width = `${width}px`;
@@ -268,10 +270,12 @@ export const OcrResult: React.FC<{
                             const leftWidth = Math.max(0, width - textWidth * scale); // 文本的宽度可能小于 OCR 识别的宽度
                             let letterSpaceWidth = 0;
                             if (textElement.innerText.length > 1) {
-                                letterSpaceWidth =
-                                    leftWidth / (textElement.innerText.length - 1) / scale;
+                                // letterSpace 对于每个字符都生效，行首也要加一个间距，所以 +1
+                                const letterSpaceCount = textElement.innerText.length + 1;
+                                letterSpaceWidth = leftWidth / letterSpaceCount / scale;
                             }
                             textElement.style.letterSpacing = `${letterSpaceWidth}px`;
+                            textElement.style.textIndent = `${letterSpaceWidth}px`;
                             textBackgroundElement.style.transform =
                                 textWrapElement.style.transform = `translate(${centerX - width * 0.5}px, ${centerY - height * 0.5}px) rotate(${rotationDeg}deg)`;
 
@@ -621,7 +625,6 @@ export const OcrResult: React.FC<{
                     style={{
                         transformOrigin: 'top left',
                         position: 'absolute',
-                        opacity: 0,
                         pointerEvents: 'none',
                     }}
                     onDoubleClick={onDoubleClick}
@@ -631,7 +634,6 @@ export const OcrResult: React.FC<{
                     style={{
                         transformOrigin: 'top left',
                         position: 'absolute',
-                        backdropFilter: textContainerContent ? 'blur(2.4px)' : 'none',
                         opacity: textContainerContent ? 1 : 0,
                         userSelect: 'none',
                         pointerEvents:
@@ -659,6 +661,15 @@ export const OcrResult: React.FC<{
                                 width: 100%;
                                 background-color: transparent;
                             }
+
+                            .ocr-result-text-background-element {
+                                opacity: 0;
+                            }
+
+                            .ocr-result-text-element {
+                                opacity: 1;
+                            }
+
                             body {
                                 height: 100%;
                                 width: 100%;
@@ -785,6 +796,14 @@ export const OcrResult: React.FC<{
                         padding: 0;
                         margin: 0;
                         border: none;
+                    }
+
+                    :global(.ocr-result-text-background-element) {
+                        backdrop-filter: blur(2.4px);
+                    }
+
+                    :global(.ocr-result-text-element) {
+                        opacity: 0;
                     }
                 `}</style>
             </div>
