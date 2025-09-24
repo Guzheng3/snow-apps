@@ -779,7 +779,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
             updateMonitorRectRenderCallback(rect);
         },
-        [updateMonitorRectRenderCallback, drawCanvasSelectRect, getAppSettings],
+        [getSelectRect, updateMonitorRectRenderCallback, drawCanvasSelectRect, getAppSettings],
     );
 
     const previousDrawStateRef = useRef<DrawState | undefined>(undefined);
