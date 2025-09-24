@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FixedContentCore, FixedContentActionType } from './components/fixedContentCore';
 import extraClipboard from 'tauri-plugin-clipboard-api';
-import * as clipboard from '@tauri-apps/plugin-clipboard-manager';
 import { setWindowRect, showWindow } from '@/utils/window';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { setDrawWindowStyle } from '@/commands/screenshot';
