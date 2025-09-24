@@ -58,7 +58,11 @@ export const initPreviewCanvasAction = async (
 
             renderWorker.addEventListener('message', handleMessage);
 
-            renderWorker.postMessage(InitPreviewCanvasData, transfer);
+            if (transfer) {
+                renderWorker.postMessage(InitPreviewCanvasData, transfer);
+            } else {
+                renderWorker.postMessage(InitPreviewCanvasData);
+            }
         } else {
             renderInitPreviewCanvasAction(
                 previewCanvasRef,
