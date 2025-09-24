@@ -5,7 +5,7 @@ import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { PhysicalSize, PhysicalPosition } from '@tauri-apps/api/dpi';
 import { Menu, MenuItemOptions, Submenu } from '@tauri-apps/api/menu';
 import { getCurrentWindow, Window as AppWindow } from '@tauri-apps/api/window';
-import { Button, theme } from 'antd';
+import { Button, Descriptions, theme, Typography } from 'antd';
 import {
     useCallback,
     useContext,
@@ -63,6 +63,7 @@ import {
     fixedContentFocusModeShowAllWindow,
 } from '@/functions/fixedContent';
 import { HandleFocusMode } from './components/handleFocusMode';
+import Color from 'color';
 
 export type FixedContentInitDrawParams = {
     captureBoundingBoxInfo: CaptureBoundingBoxInfo;
@@ -339,24 +340,60 @@ export const FixedContentCore: React.FC<{
         [setFixedContentType, token.colorBgContainer, token.padding],
     );
 
-    const [textContent, setTextContent, textContentRef] = useStateRef<string | undefined>(
-        undefined,
-    );
+    const [textContent, setTextContent, textContentRef] = useStateRef<
+        | {
+              content: string;
+              colorText:
+                  | {
+                        color: string;
+                        rgb: string;
+                        hex: string;
+                        hsl: string;
+                    }
+                  | undefined;
+          }
+        | undefined
+    >(undefined);
     const textContentContainerRef = useRef<HTMLDivElement>(null);
     const initText = useCallback(
         (textContent: string) => {
             setFixedContentType(FixedContentType.Text);
 
-            setTextContent(textContent);
+            let colorText;
+            try {
+                const color = Color(textContent);
+
+                const rgbColor = color.rgb();
+                const hexColor = color.hex();
+                const hslColor = color.hsl();
+
+                colorText = {
+                    color: color.string(),
+                    rgb: `${rgbColor.red()}, ${rgbColor.green()}, ${rgbColor.blue()}`,
+                    hex: hexColor.toString(),
+                    hsl: `${hslColor.hue().toFixed(1)}, ${hslColor.saturationl().toFixed(1)}, ${hslColor.lightness().toFixed(1)}`,
+                };
+            } catch {
+                colorText = undefined;
+            }
+
+            setTextContent({
+                content: textContent,
+                colorText,
+            });
             setTimeout(() => {
                 let timeout = 0;
-                if (
-                    textContentContainerRef.current &&
-                    textContentContainerRef.current.clientWidth > 800 * window.devicePixelRatio
-                ) {
-                    textContentContainerRef.current.style.width = '800px';
-                    textContentContainerRef.current.style.whiteSpace = 'normal';
-                    timeout = 17;
+                if (colorText) {
+                    textContentContainerRef.current!.style.width = '280px';
+                } else {
+                    if (
+                        textContentContainerRef.current &&
+                        textContentContainerRef.current.clientWidth > 800 * window.devicePixelRatio
+                    ) {
+                        textContentContainerRef.current.style.width = '800px';
+                        textContentContainerRef.current.style.whiteSpace = 'normal';
+                        timeout = 17;
+                    }
                 }
 
                 setTimeout(() => {
@@ -489,7 +526,7 @@ export const FixedContentCore: React.FC<{
             fixedContentTypeRef.current === FixedContentType.Text &&
             textContentRef.current
         ) {
-            await writeTextToClipboard(textContentRef.current);
+            await writeTextToClipboard(textContentRef.current.content);
         } else if (fixedContentTypeRef.current === FixedContentType.Image) {
             const canvasBlob = await renderToBlob(true);
             if (!canvasBlob) {
@@ -1554,6 +1591,9 @@ export const FixedContentCore: React.FC<{
 
     const onDragRegionMouseDown = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
+            e.stopPropagation();
+            e.preventDefault();
+
             if (enableDrawRef.current) {
                 return;
             }
@@ -1571,6 +1611,9 @@ export const FixedContentCore: React.FC<{
     );
     const onDragRegionMouseMove = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
+            e.stopPropagation();
+            e.preventDefault();
+
             if (!dragRegionMouseDownMousePositionRef.current) {
                 return;
             }
@@ -1589,7 +1632,10 @@ export const FixedContentCore: React.FC<{
         },
         [isThumbnailRef, message],
     );
-    const onDragRegionMouseUp = useCallback(() => {
+    const onDragRegionMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        e.stopPropagation();
+        e.preventDefault();
+
         dragRegionMouseDownMousePositionRef.current = undefined;
     }, []);
 
@@ -1746,9 +1792,65 @@ export const FixedContentCore: React.FC<{
                         }}
                     >
                         <div ref={textContentContainerRef} className="fixed-text-content">
-                            <div style={{ userSelect: 'text', display: 'inline-block' }}>
-                                {textContent}
-                            </div>
+                            {!textContent?.colorText && (
+                                <div style={{ userSelect: 'text', display: 'inline-block' }}>
+                                    {textContent?.content}
+                                </div>
+                            )}
+                            {textContent?.colorText && (
+                                <div
+                                    onMouseDown={
+                                        !enableSelectText ? onDragRegionMouseDown : undefined
+                                    }
+                                    onMouseMove={
+                                        !enableSelectText ? onDragRegionMouseMove : undefined
+                                    }
+                                    onMouseUp={!enableSelectText ? onDragRegionMouseUp : undefined}
+                                    className={!enableSelectText ? 'fixed-text-content-drag' : ''}
+                                >
+                                    <Descriptions>
+                                        <Descriptions.Item
+                                            label={<FormattedMessage id="draw.color" />}
+                                            span={1}
+                                        >
+                                            <div
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    height: '100%',
+                                                }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        backgroundColor:
+                                                            textContent.colorText.color,
+                                                        width: '16px',
+                                                        height: '16px',
+                                                        borderRadius: '2px',
+                                                        boxShadow: token.boxShadowTertiary,
+                                                    }}
+                                                />
+                                            </div>
+                                        </Descriptions.Item>
+                                        <Descriptions.Item label="HEX" span={1}>
+                                            <Typography.Text copyable>
+                                                {textContent.colorText.hex}
+                                            </Typography.Text>
+                                        </Descriptions.Item>
+                                        <Descriptions.Item label="RGB" span={1}>
+                                            <Typography.Text copyable>
+                                                {textContent?.colorText.rgb}
+                                            </Typography.Text>
+                                        </Descriptions.Item>
+
+                                        <Descriptions.Item label="HSL" span={1}>
+                                            <Typography.Text copyable>
+                                                {textContent.colorText.hsl}
+                                            </Typography.Text>
+                                        </Descriptions.Item>
+                                    </Descriptions>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -1784,6 +1886,7 @@ export const FixedContentCore: React.FC<{
                         zIndex: zIndexs.FixedToScreen_CloseButton,
                         // iframe 无法点击 close 按钮
                         display: isThumbnail || enableDraw || enableSelectText ? 'none' : 'block',
+                        pointerEvents: 'auto',
                     }}
                     onClick={() => {
                         closeWindowComplete();
@@ -1832,7 +1935,9 @@ export const FixedContentCore: React.FC<{
                     left: 0;
                     cursor: grab;
                     box-sizing: border-box;
-                    pointer-events: ${enableSelectText ? 'none' : 'auto'};
+                    pointer-events: ${(enableSelectText || textContent?.colorText) && !isThumbnail
+                        ? 'none'
+                        : 'auto'};
                 }
 
                 .fixed-image-container-inner-border {
@@ -1850,6 +1955,14 @@ export const FixedContentCore: React.FC<{
                 }
 
                 .fixed-image-container-inner:active {
+                    cursor: grabbing;
+                }
+
+                .fixed-text-content-drag {
+                    cursor: grab;
+                }
+
+                .fixed-text-content-drag:active {
                     cursor: grabbing;
                 }
 
@@ -1874,6 +1987,10 @@ export const FixedContentCore: React.FC<{
                     color: ${token.colorText};
                     padding: ${token.padding}px;
                     box-sizing: border-box;
+                }
+
+                .fixed-text-content :global(.ant-typography-copy) {
+                    z-index: ${zIndexs.FixedToScreen_CloseButton};
                 }
 
                 .fixed-html-content > :global(div):first-child {
