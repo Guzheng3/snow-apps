@@ -753,6 +753,17 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
     const setSelectRect = useCallback(
         (rect: ElementRect, ignoreAnimation: boolean = false, forceUpdate: boolean = false) => {
+            const currentRect = getSelectRect();
+            if (
+                currentRect &&
+                currentRect.min_x === rect.min_x &&
+                currentRect.min_y === rect.min_y &&
+                currentRect.max_x === rect.max_x &&
+                currentRect.max_y === rect.max_y
+            ) {
+                return;
+            }
+
             if (forceUpdate) {
                 if (captureBoundingBoxInfoRef.current) {
                     drawCanvasSelectRect(rect, captureBoundingBoxInfoRef.current);
