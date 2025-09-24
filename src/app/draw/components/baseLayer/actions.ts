@@ -65,7 +65,11 @@ export const initCanvasAction = async (
                 },
             };
 
-            renderWorker.postMessage(InitData, transfer);
+            if (transfer) {
+                renderWorker.postMessage(InitData, transfer);
+            } else {
+                renderWorker.postMessage(InitData);
+            }
         } else {
             renderInitCanvasAction(canvasAppRef, appOptions).then((canvas) => {
                 resolve(canvas);
