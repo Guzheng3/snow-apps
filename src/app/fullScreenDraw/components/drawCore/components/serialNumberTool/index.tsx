@@ -472,15 +472,23 @@ export const SerialNumberTool: React.FC = () => {
         const toolLocked = lockTool();
 
         if (disableArrowRef.current) {
-            getAction()?.setActiveTool({
-                type: 'ellipse',
-                locked: toolLocked,
-            });
+            getAction()?.setActiveTool(
+                {
+                    type: 'ellipse',
+                    locked: toolLocked,
+                },
+                undefined,
+                DrawState.SerialNumber,
+            );
         } else {
-            getAction()?.setActiveTool({
-                type: 'arrow',
-                locked: toolLocked,
-            });
+            getAction()?.setActiveTool(
+                {
+                    type: 'arrow',
+                    locked: toolLocked,
+                },
+                undefined,
+                DrawState.SerialNumber,
+            );
         }
     }, [enableRef, lockTool, disableArrowRef, getAction]);
     useEffect(() => {
