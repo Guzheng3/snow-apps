@@ -755,6 +755,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         (rect: ElementRect, ignoreAnimation: boolean = false, forceUpdate: boolean = false) => {
             const currentRect = getSelectRect();
             if (
+                !forceUpdate &&
                 currentRect &&
                 currentRect.min_x === rect.min_x &&
                 currentRect.min_y === rect.min_y &&
