@@ -1,9 +1,8 @@
 import dayjs from 'dayjs';
 import * as dialog from '@tauri-apps/plugin-dialog';
 import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
-import { homeDir, join as joinPath } from '@tauri-apps/api/path';
+import { join as joinPath, pictureDir, videoDir } from '@tauri-apps/api/path';
 import { createDir } from '@/commands/file';
-import { platform } from '@tauri-apps/plugin-os';
 
 const parseTemplate = (template: string): string => {
     const regex = /\{\{([^}]+)\}\}/g;
@@ -85,14 +84,7 @@ export const getImageSaveDirectory = async (appSettings: AppSettingsData) => {
     let savePath = appSettings[AppSettingsGroup.FunctionScreenshot].saveFileDirectory;
 
     if (!savePath) {
-        const currentPlatform = platform();
-        if (currentPlatform === 'windows') {
-            savePath = await joinPath(await homeDir(), 'Pictures', 'Snow Shot');
-        } else if (currentPlatform === 'macos') {
-            savePath = await joinPath(await homeDir(), 'Pictures', 'Snow Shot');
-        } else if (currentPlatform === 'linux') {
-            savePath = await joinPath(await homeDir(), 'Pictures', 'Snow Shot');
-        }
+        savePath = await joinPath(await pictureDir(), 'Snow Shot');
     }
 
     return savePath;
@@ -221,14 +213,7 @@ export const getVideoRecordSaveDirectory = async (appSettings: AppSettingsData) 
     let savePath = appSettings[AppSettingsGroup.FunctionVideoRecord].saveDirectory;
 
     if (!savePath) {
-        const currentPlatform = platform();
-        if (currentPlatform === 'windows') {
-            savePath = await joinPath(await homeDir(), 'Videos', 'Snow Shot');
-        } else if (currentPlatform === 'macos') {
-            savePath = await joinPath(await homeDir(), 'Movies', 'Snow Shot');
-        } else if (currentPlatform === 'linux') {
-            savePath = await joinPath(await homeDir(), 'Videos', 'Snow Shot');
-        }
+        savePath = await joinPath(await videoDir(), 'Snow Shot');
     }
 
     return savePath;
