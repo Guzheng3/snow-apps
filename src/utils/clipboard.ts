@@ -2,6 +2,14 @@ import * as clipboard from '@tauri-apps/plugin-clipboard-manager';
 import extraClipboard from 'tauri-plugin-clipboard-api';
 import { appWarn } from './log';
 
+const supportClipboardApi = () => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && window.ClipboardItem) {
+        return true;
+    } else {
+        return false;
+    }
+};
+
 export const writeTextToClipboard = async (text: string) => {
     let isSuccess = false;
     try {
@@ -16,7 +24,11 @@ export const writeTextToClipboard = async (text: string) => {
         return;
     }
 
-    await navigator.clipboard.write([new ClipboardItem({ 'text/plain': text })]);
+    if (supportClipboardApi()) {
+        await navigator.clipboard.write([new ClipboardItem({ 'text/plain': text })]);
+    } else {
+        appWarn('[clipboard] Modern Clipboard API not supported, text copy failed');
+    }
 };
 
 export const writeImageToClipboard = async (image: Blob | ArrayBuffer, format = 'image/png') => {
@@ -32,9 +44,13 @@ export const writeImageToClipboard = async (image: Blob | ArrayBuffer, format = 
         return;
     }
 
-    await navigator.clipboard.write([
-        new ClipboardItem({ [format]: image instanceof Blob ? image : new Blob([image]) }),
-    ]);
+    if (supportClipboardApi()) {
+        await navigator.clipboard.write([
+            new ClipboardItem({ [format]: image instanceof Blob ? image : new Blob([image]) }),
+        ]);
+    } else {
+        appWarn('[clipboard] Modern Clipboard API not supported, image copy failed');
+    }
 };
 
 export const writeHtmlToClipboard = async (html: string) => {
@@ -50,5 +66,10 @@ export const writeHtmlToClipboard = async (html: string) => {
     if (isSuccess) {
         return;
     }
-    await navigator.clipboard.write([new ClipboardItem({ 'text/html': html })]);
+
+    if (supportClipboardApi()) {
+        await navigator.clipboard.write([new ClipboardItem({ 'text/html': html })]);
+    } else {
+        appWarn('[clipboard] Modern Clipboard API not supported, HTML copy failed');
+    }
 };

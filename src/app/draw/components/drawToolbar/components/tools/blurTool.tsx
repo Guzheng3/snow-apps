@@ -70,9 +70,9 @@ const BlurToolCore: React.FC = () => {
                 return;
             }
 
-            blurSpriteMapRef.current.values().forEach(({ props }) => {
+            for (const { props } of blurSpriteMapRef.current.values()) {
                 props.valid = false;
-            });
+            }
 
             let needRender = false;
 

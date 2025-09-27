@@ -157,13 +157,10 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                 // 是否启用锁定绘制工具
                 setEnableLockDrawTool(settings[AppSettingsGroup.Cache].enableLockDrawTool);
 
-                const toolHiddenMap = Array.from(CanHiddenToolSet.values()).reduce(
-                    (acc, drawState) => {
-                        acc[drawState] = false;
-                        return acc;
-                    },
-                    {} as Partial<Record<DrawState, boolean>>,
-                );
+                const toolHiddenMap: Partial<Record<DrawState, boolean>> = {};
+                for (const drawState of CanHiddenToolSet.values()) {
+                    toolHiddenMap[drawState] = false;
+                }
                 setCustomToolbarToolHiddenMap(
                     settings[AppSettingsGroup.Screenshot].toolbarHiddenToolList.reduce(
                         (acc, drawState) => {
