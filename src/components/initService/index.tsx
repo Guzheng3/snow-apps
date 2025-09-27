@@ -16,12 +16,17 @@ export const InitService = () => {
         await captureHistory.clearExpired(appSettings);
     }, []);
 
+    const hasClearedCaptureHistory = useRef(false);
     useAppSettingsLoad(
         useCallback(
             (appSettings) => {
                 ocrInit(appSettings[AppSettingsGroup.SystemScreenshot].ocrModel);
 
-                clearCaptureHistory(appSettings);
+                if (!hasClearedCaptureHistory.current) {
+                    hasClearedCaptureHistory.current = true;
+
+                    clearCaptureHistory(appSettings);
+                }
             },
             [clearCaptureHistory],
         ),

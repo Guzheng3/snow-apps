@@ -57,7 +57,6 @@ import { getImageFormat, getImagePathFromSettings, showImageDialog } from '@/uti
 import { scrollScreenshotSaveToFile } from '@/commands/scrollScreenshot';
 import { AppSettingsActionContext, AppSettingsGroup } from '../contextWrap';
 import { AppSettingsPublisher } from '../contextWrap';
-import {} from './components/drawToolbar/components/tools/extraTool';
 import {
     closeWindowAfterDelay,
     createFixedContentWindow,

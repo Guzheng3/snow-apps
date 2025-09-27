@@ -82,15 +82,18 @@ impl MonitorList {
     fn get_monitors(region: Option<ElementRect>) -> MonitorList {
         let monitors = Monitor::all().unwrap_or_default();
 
-        let region = region.unwrap_or(ElementRect {
-            min_x: i32::MIN,
-            min_y: i32::MIN,
-            max_x: i32::MAX,
-            max_y: i32::MAX,
-        });
+        let region = match region {
+            Some(region) => region,
+            None => ElementRect {
+                min_x: i32::MIN,
+                min_y: i32::MIN,
+                max_x: i32::MAX,
+                max_y: i32::MAX,
+            },
+        };
 
         let monitor_info_list = monitors
-            .par_iter()
+            .iter()
             .map(|monitor| MonitorInfo::new(monitor))
             .filter(|monitor| monitor.rect.overlaps(&region))
             .collect::<Vec<MonitorInfo>>();
@@ -171,8 +174,7 @@ impl MonitorList {
             );
 
             // 有些捕获失败的显示器，返回一个空图像，这里需要特殊处理
-            if capture_image.is_some() {
-                let capture_image = capture_image.as_ref().unwrap();
+            if let Some(capture_image) = capture_image.as_ref() {
                 if capture_image.width() == 1 && capture_image.height() == 1 {
                     return Ok(image::DynamicImage::new_rgb8(
                         (first_monitor.rect.max_x - first_monitor.rect.min_x) as u32,
@@ -252,12 +254,8 @@ impl MonitorList {
         };
 
         const RGB_CHANNEL_COUNT: usize = 3;
-        let mut capture_image_pixels: Vec<u8> = unsafe {
-            let mut vec =
-                Vec::with_capacity(capture_image_width * capture_image_height * RGB_CHANNEL_COUNT);
-            vec.set_len(capture_image_width * capture_image_height * RGB_CHANNEL_COUNT);
-            vec
-        };
+        let mut capture_image_pixels: Vec<u8> =
+            vec![0; capture_image_width * capture_image_height * RGB_CHANNEL_COUNT];
 
         let capture_image_pixels_ptr = capture_image_pixels.as_mut_ptr() as usize;
 
@@ -266,21 +264,27 @@ impl MonitorList {
                 let monitor = &monitors[index];
 
                 // 计算显示器在合并图像中的位置
-                let offset_x: i64;
-                let offset_y: i64;
+                let offset_x: i32;
+                let offset_y: i32;
 
                 if let Some(monitor_crop_region) = monitor_crop_region {
                     let crop_region = crop_region.unwrap();
 
                     // 将单个显示器的坐标转为整个显示器的坐标
                     // 得到图像相对整个显示器的坐标后，再减去裁剪区域的坐标，得到图像相对裁剪区域的坐标
-                    offset_x =
-                        (monitor_crop_region.min_x + monitor.rect.min_x - crop_region.min_x) as i64;
-                    offset_y =
-                        (monitor_crop_region.min_y + monitor.rect.min_y - crop_region.min_y) as i64;
+                    offset_x = monitor_crop_region.min_x + monitor.rect.min_x - crop_region.min_x;
+                    offset_y = monitor_crop_region.min_y + monitor.rect.min_y - crop_region.min_y;
                 } else {
-                    offset_x = (monitor.rect.min_x - monitors_bounding_box.min_x) as i64;
-                    offset_y = (monitor.rect.min_y - monitors_bounding_box.min_y) as i64;
+                    offset_x = monitor.rect.min_x - monitors_bounding_box.min_x;
+                    offset_y = monitor.rect.min_y - monitors_bounding_box.min_y;
+                }
+
+                if offset_x < 0 || offset_y < 0 {
+                    log::error!(
+                        "[MonitorInfoList::capture] offset_x or offset_y is less than 0, offset_x: {:?}, offset_y: {:?}",
+                        offset_x,
+                        offset_y
+                    );
                 }
 
                 // 将显示器图像绘制到合并图像上
