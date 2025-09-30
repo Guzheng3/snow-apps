@@ -1,7 +1,7 @@
 import { FormattedMessage } from 'react-intl';
 import { ExcalidrawPropsCustomOptions } from '@mg-chao/excalidraw/types';
 import { InputNumber } from 'antd';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
     isSerialNumberElement,
     isSerialNumberTextElement,
@@ -21,7 +21,7 @@ const getSelectedElementSerialNumber = (textElement: ExcalidrawTextElement | und
 
 const SerialNumberEditor: NonNullable<
     NonNullable<ExcalidrawPropsCustomOptions['pickerRenders']>['SerialNumberEditor']
-> = ({ appState, targetElements }) => {
+> = ({ appState, targetElements, isSerialNumberTool }) => {
     const {
         serialNumber,
         setSerialNumber,
@@ -35,14 +35,26 @@ const SerialNumberEditor: NonNullable<
         ExcalidrawTextElement | undefined
     >();
 
+    const enableEditor = useMemo(() => {
+        if (
+            appState.activeTool.type !== 'ellipse' &&
+            appState.activeTool.type !== 'arrow' &&
+            appState.activeTool.type !== 'selection'
+        ) {
+            return false;
+        }
+
+        if (!(isSerialNumberTool || isSerialNumberElement(targetElements[0]))) {
+            return false;
+        }
+
+        return true;
+    }, [appState.activeTool.type, isSerialNumberTool, targetElements]);
+
     const getSelectedSerialNumberTextElement = useCallback(():
         | ExcalidrawTextElement
         | undefined => {
-        if (appState.activeTool.type !== 'ellipse' && appState.activeTool.type !== 'arrow') {
-            return;
-        }
-
-        if (!isSerialNumberElement(targetElements[0])) {
+        if (!enableEditor) {
             return;
         }
 
@@ -53,7 +65,7 @@ const SerialNumberEditor: NonNullable<
         }
 
         return textElement;
-    }, [appState.activeTool.type, targetElements]);
+    }, [enableEditor, targetElements]);
     useEffect(() => {
         const textElement = getSelectedSerialNumberTextElement();
         setSelectedSerialNumber(getSelectedElementSerialNumber(textElement));
@@ -118,6 +130,10 @@ const SerialNumberEditor: NonNullable<
         },
         [setSerialNumber, selectedSerialNumber, setSelectedSerialNumber],
     );
+
+    if (!enableEditor) {
+        return <></>;
+    }
 
     return (
         <fieldset>
