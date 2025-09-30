@@ -343,6 +343,43 @@ export default function SystemSettings() {
         ];
     }, [intl]);
 
+    const disableQuickSelectElementToolListOptions = useMemo(() => {
+        return [
+            {
+                label: <FormattedMessage id="draw.rectTool" />,
+                value: DrawState.Rect,
+            },
+            {
+                label: <FormattedMessage id="draw.diamondTool" />,
+                value: DrawState.Diamond,
+            },
+            {
+                label: <FormattedMessage id="draw.ellipseTool" />,
+                value: DrawState.Ellipse,
+            },
+            {
+                label: <FormattedMessage id="draw.arrowTool" />,
+                value: DrawState.Arrow,
+            },
+            {
+                label: <FormattedMessage id="draw.lineTool" />,
+                value: DrawState.Line,
+            },
+            {
+                label: <FormattedMessage id="draw.penTool" />,
+                value: DrawState.Pen,
+            },
+            {
+                label: <FormattedMessage id="draw.serialNumberTool" />,
+                value: DrawState.SerialNumber,
+            },
+            {
+                label: <FormattedMessage id="draw.blurTool" />,
+                value: DrawState.Blur,
+            },
+        ];
+    }, []);
+
     return (
         <ContentWrap>
             <GroupTitle
@@ -618,6 +655,26 @@ export default function SystemSettings() {
                                         }
                                     />
                                 }
+                            />
+                        </Col>
+                    </Row>
+
+                    <Row gutter={token.marginLG}>
+                        <Col span={24}>
+                            <ProFormSelect
+                                name="disableQuickSelectElementToolList"
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.functionSettings.drawSettings.disableQuickSelectElementToolList" />
+                                        }
+                                        tooltipTitle={
+                                            <FormattedMessage id="settings.functionSettings.drawSettings.disableQuickSelectElementToolList.tip" />
+                                        }
+                                    />
+                                }
+                                mode="multiple"
+                                options={disableQuickSelectElementToolListOptions}
                             />
                         </Col>
                     </Row>

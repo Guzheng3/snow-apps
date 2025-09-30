@@ -75,6 +75,11 @@ export const settings = {
     'settings.chatSettings.thinkingBudgetTokens': '思考预算 Token 数',
     'settings.chatSettings.thinkingBudgetTokens.tip':
         '对于如 Claude 模型的推理模式，思考预算决定其内部推理过程的最大 Token 数。注意，思考预算 Token 数不能小于\"最大 Token 数\"，所以如果该值有效，\"最大 Token 数\"可能由服务器决定',
+    'settings.functionSettings.drawSettings': '绘制',
+    'settings.functionSettings.drawSettings.disableQuickSelectElementToolList':
+        '禁用选择相同类型的元素',
+    'settings.functionSettings.drawSettings.disableQuickSelectElementToolList.tip':
+        '在绘制时激活了当前设置中选定的工具时，将不可以通过鼠标左键选择相同类型的元素',
     'settings.functionSettings.translationSettings': '翻译',
     'settings.functionSettings.translationSettings.chatPrompt': '翻译提示词',
     'settings.functionSettings.translationSettings.chatPrompt.tip': '目前仅对自定义 API 的模型生效',

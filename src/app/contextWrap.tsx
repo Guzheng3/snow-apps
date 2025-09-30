@@ -156,6 +156,8 @@ export type AppSettingsData = {
         enableSliderChangeWidth: boolean;
         /** 独立的工具样式 */
         toolIndependentStyle: boolean;
+        /** 禁用快速选择元素 */
+        disableQuickSelectElementToolList: DrawState[];
     };
     [AppSettingsGroup.Cache]: {
         menuCollapsed: boolean;
@@ -367,6 +369,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         lockDrawTool: true,
         enableSliderChangeWidth: false,
         toolIndependentStyle: true,
+        disableQuickSelectElementToolList: [],
     },
     [AppSettingsGroup.Cache]: {
         menuCollapsed: false,
@@ -533,7 +536,9 @@ export const clearAllConfig = async () => {
  * @param error 错误对象，可以是 Error、string、object 等
  * @returns 包含格式化字符串和详细信息的对象
  */
-const formatErrorDetails = (error: unknown): { message: string; details: Record<string, unknown> } => {
+const formatErrorDetails = (
+    error: unknown,
+): { message: string; details: Record<string, unknown> } => {
     const details: Record<string, unknown> = {};
 
     if (!error) {
@@ -563,7 +568,8 @@ const formatErrorDetails = (error: unknown): { message: string; details: Record<
         }
         if ('message' in errorObj && typeof errorObj.message === 'string') {
             details.message = errorObj.message;
-            const name = 'name' in errorObj && typeof errorObj.name === 'string' ? errorObj.name : 'Error';
+            const name =
+                'name' in errorObj && typeof errorObj.name === 'string' ? errorObj.name : 'Error';
             return { message: `${name}: ${errorObj.message}`, details };
         }
 
@@ -580,7 +586,6 @@ const formatErrorDetails = (error: unknown): { message: string; details: Record<
     // 对于其他类型，转换为字符串
     return { message: String(error), details };
 };
-
 
 const getFilePath = async (group: AppSettingsGroup) => {
     const configDirPath = await getConfigDirPath();
@@ -930,6 +935,12 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? newSettings.lockDrawTool
                             : (prevSettings?.lockDrawTool ??
                               defaultAppSettingsData[group].lockDrawTool),
+                    disableQuickSelectElementToolList: Array.isArray(
+                        newSettings?.disableQuickSelectElementToolList,
+                    )
+                        ? newSettings.disableQuickSelectElementToolList
+                        : (prevSettings?.disableQuickSelectElementToolList ??
+                          defaultAppSettingsData[group].disableQuickSelectElementToolList),
                     enableSliderChangeWidth:
                         typeof newSettings?.enableSliderChangeWidth === 'boolean'
                             ? newSettings.enableSliderChangeWidth
@@ -1661,7 +1672,7 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                 timestamp: new Date().toISOString(),
                 userAgent: navigator.userAgent,
                 url: location.href,
-                ...errorDetails // 合并错误对象的详细信息
+                ...errorDetails, // 合并错误对象的详细信息
             };
 
             appError(`Unhandled Promise Rejection: ${errorMessage}`, fullDetails);
@@ -1680,7 +1691,7 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                 timestamp: new Date().toISOString(),
                 userAgent: navigator.userAgent,
                 url: location.href,
-                ...errorDetails // 合并错误对象的详细信息
+                ...errorDetails, // 合并错误对象的详细信息
             };
 
             appError(`Global Error: ${errorMessage}`, fullDetails);

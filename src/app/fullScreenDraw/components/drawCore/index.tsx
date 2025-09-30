@@ -229,6 +229,7 @@ const DrawCoreComponent: React.FC<{
     const [enableSliderChangeWidth, setEnableSliderChangeWidth, enableSliderChangeWidthRef] =
         useStateRef(false);
     const toolIndependentStyleRef = useRef(false);
+    const disableQuickSelectElementToolListRef = useRef<Set<DrawState>>(new Set());
     useAppSettingsLoad(
         useCallback(
             (appSettings) => {
@@ -237,6 +238,9 @@ const DrawCoreComponent: React.FC<{
                 );
                 toolIndependentStyleRef.current =
                     appSettings[AppSettingsGroup.FunctionDraw].toolIndependentStyle;
+                disableQuickSelectElementToolListRef.current = new Set(
+                    appSettings[AppSettingsGroup.FunctionDraw].disableQuickSelectElementToolList,
+                );
             },
             [setEnableSliderChangeWidth],
         ),
@@ -690,6 +694,7 @@ const DrawCoreComponent: React.FC<{
     const excalidrawOnChange = useCallback<NonNullable<ExcalidrawProps['onChange']>>(
         (elements, appState, files) => {
             saveAppStateDebounce(appState, getDrawState());
+            console.log('onChange', elements, appState, files);
             setExcalidrawEvent({
                 event: 'onChange',
                 params: {
@@ -724,20 +729,24 @@ const DrawCoreComponent: React.FC<{
                     elements,
                 });
             },
+            canSelectType: () => {
+                return !disableQuickSelectElementToolListRef.current.has(getDrawState());
+            },
             ...excalidrawCustomOptionsProp,
         };
     }, [
-        enableSliderChangeWidth,
-        excalidrawCustomOptionsProp,
-        getExtraTools,
         handleWheel,
         handleContainerWheel,
-        onHistoryChange,
-        setExcalidrawOnHandleEraserEvent,
-        shouldMaintainAspectRatio,
         shouldResizeFromCenter,
-        shouldRotateWithDiscreteAngle,
+        shouldMaintainAspectRatio,
         shouldSnapping,
+        getExtraTools,
+        shouldRotateWithDiscreteAngle,
+        enableSliderChangeWidth,
+        onHistoryChange,
+        excalidrawCustomOptionsProp,
+        setExcalidrawOnHandleEraserEvent,
+        getDrawState,
     ]);
 
     const excalidrawLangCode = useMemo(() => convertLocalToLocalCode(intl.locale), [intl.locale]);
