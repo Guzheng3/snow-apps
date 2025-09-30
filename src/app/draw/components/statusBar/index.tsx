@@ -1,3 +1,5 @@
+'use client';
+
 import { Descriptions, Space, theme } from 'antd';
 import { CaptureStep, DrawContext } from '../../types';
 import Color from 'color';

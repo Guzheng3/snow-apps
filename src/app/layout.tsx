@@ -10,6 +10,7 @@ import { App as AntdApp } from 'antd';
 import React, { useEffect } from 'react';
 import { AntdContextWrap, FetchErrorHandler } from '@/components/globalLayoutExtra';
 import { HotkeysProvider } from 'react-hotkeys-hook';
+import { TextScaleFactorProvider } from '@/hooks/useTextScaleFactor';
 
 export default function RootLayout({
     children,
@@ -56,13 +57,15 @@ export default function RootLayout({
                     <StyledJsxRegistry>
                         <AntdRegistry>
                             <ContextWrap>
-                                <AntdContextWrap>
-                                    <FetchErrorHandler>
-                                        <HotkeysProvider>
-                                            <MenuLayout>{children}</MenuLayout>
-                                        </HotkeysProvider>
-                                    </FetchErrorHandler>
-                                </AntdContextWrap>
+                                <TextScaleFactorProvider>
+                                    <AntdContextWrap>
+                                        <FetchErrorHandler>
+                                            <HotkeysProvider>
+                                                <MenuLayout>{children}</MenuLayout>
+                                            </HotkeysProvider>
+                                        </FetchErrorHandler>
+                                    </AntdContextWrap>
+                                </TextScaleFactorProvider>
                             </ContextWrap>
                         </AntdRegistry>
                     </StyledJsxRegistry>
