@@ -54,13 +54,19 @@ const getNextValueInList = <T,>(currentValue: T, valueList: T[], isIncrease: boo
     const currentIndex = valueList.indexOf(currentValue);
     if (currentIndex !== -1) {
         if (isIncrease) {
-            // 选择下一个值（循环到开头）
-            const nextIndex = (currentIndex + 1) % valueList.length;
-            return valueList[nextIndex];
+            // 选择下一个值（不循环，达到最大值后保持不变）
+            if (currentIndex < valueList.length - 1) {
+                return valueList[currentIndex + 1];
+            } else {
+                return currentValue;
+            }
         } else {
-            // 选择上一个值（循环到结尾）
-            const prevIndex = (currentIndex - 1 + valueList.length) % valueList.length;
-            return valueList[prevIndex];
+            // 选择上一个值（不循环，达到最小值后保持不变）
+            if (currentIndex > 0) {
+                return valueList[currentIndex - 1];
+            } else {
+                return currentValue;
+            }
         }
     } else {
         // 如果当前值不在列表中
