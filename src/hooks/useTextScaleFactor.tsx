@@ -35,6 +35,8 @@ const TextScaleFactorContext = createContext<{
     devicePixelRatio: 1,
 });
 
+let useTextScaleFactorDataCache_textScaleFactor = 1;
+let useTextScaleFactorDataCache_devicePixelRatio = 1;
 export const TextScaleFactorProvider: React.FC<{
     children: React.ReactNode;
 }> = ({ children }) => {
@@ -69,9 +71,6 @@ export const TextScaleFactorProvider: React.FC<{
         </TextScaleFactorContext.Provider>
     );
 };
-
-let useTextScaleFactorDataCache_textScaleFactor = 1;
-let useTextScaleFactorDataCache_devicePixelRatio = 1;
 
 /**
  * 获取文本缩放比例
