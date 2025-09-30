@@ -248,12 +248,23 @@ const DrawCoreComponent: React.FC<{
             event: WheelEvent | React.WheelEvent<HTMLDivElement | HTMLCanvasElement>,
             zoomAction?: () => void,
         ) => {
+            if ((event.metaKey || event.ctrlKey) && zoomAction) {
+                zoomAction();
+                return;
+            }
+        },
+        [],
+    );
+
+    const handleContainerWheel = useCallback<
+        NonNullable<ExcalidrawPropsCustomOptions['onContainerWheel']>
+    >(
+        (event) => {
             if (!excalidrawAPIRef.current) {
                 return;
             }
 
-            if ((event.metaKey || event.ctrlKey) && zoomAction) {
-                zoomAction();
+            if (event.metaKey || event.ctrlKey) {
                 return;
             }
 
@@ -697,6 +708,7 @@ const DrawCoreComponent: React.FC<{
             disableKeyEvents: true,
             hideFooter: false,
             onWheel: handleWheel,
+            onContainerWheel: handleContainerWheel,
             hideMainToolbar: true,
             hideContextMenu: true,
             shouldResizeFromCenter,
@@ -719,6 +731,7 @@ const DrawCoreComponent: React.FC<{
         excalidrawCustomOptionsProp,
         getExtraTools,
         handleWheel,
+        handleContainerWheel,
         onHistoryChange,
         setExcalidrawOnHandleEraserEvent,
         shouldMaintainAspectRatio,

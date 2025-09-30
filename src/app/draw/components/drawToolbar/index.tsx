@@ -597,6 +597,16 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
         e.stopPropagation();
         e.preventDefault();
     }, []);
+    const handleMouseEnter = useCallback(() => {
+        setDrawToolbarState({ ...getDrawToolbarState(), mouseHover: true });
+    }, [getDrawToolbarState, setDrawToolbarState]);
+    const handleMouseLeave = useCallback(() => {
+        setDrawToolbarState({ ...getDrawToolbarState(), mouseHover: false });
+    }, [getDrawToolbarState, setDrawToolbarState]);
+    const handleDoubleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        e.stopPropagation();
+        e.preventDefault();
+    }, []);
 
     return (
         <div
@@ -608,17 +618,10 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
             <DrawToolbarContext.Provider value={drawToolbarContextValue}>
                 <div ref={drawToolbarOpacityWrapRef}>
                     <div
-                        onMouseEnter={() => {
-                            setDrawToolbarState({ ...getDrawToolbarState(), mouseHover: true });
-                        }}
-                        onMouseLeave={() => {
-                            setDrawToolbarState({ ...getDrawToolbarState(), mouseHover: false });
-                        }}
+                        onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}
                         className="draw-toolbar"
-                        onDoubleClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                        }}
+                        onDoubleClick={handleDoubleClick}
                         ref={drawToolbarRef}
                     >
                         <Flex align="center" gap={token.paddingXS}>

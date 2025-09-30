@@ -33,7 +33,9 @@ export const useChangeFontSizeProps = (
             const elements = getAction()?.getExcalidrawAPI()?.getSceneElements();
             const selectedElements =
                 elements && selectedElementIds
-                    ? elements.filter((item) => selectedElementIds?.[item.id])
+                    ? elements.filter(
+                          (item) => selectedElementIds?.[item.id] && isSerialNumberElement(item),
+                      )
                     : [];
 
             if (!selectedElements || selectedElements.length === 0) {
@@ -53,9 +55,6 @@ export const useChangeFontSizeProps = (
                     ...item,
                     fontSize: value as unknown as number,
                 };
-                if (!isSerialNumberElement(item)) {
-                    return;
-                }
 
                 changedElementsMap.set(item.id, changedElement);
 
@@ -217,12 +216,12 @@ export const RadioSelection = (
                         >
                             <div
                                 className="radio-button-icon"
-                                onClick={(event) =>
-                                    props.onClick(
+                                onClick={(event) => {
+                                    return props.onClick(
                                         option.value,
                                         event as unknown as React.MouseEvent<HTMLButtonElement>,
-                                    )
-                                }
+                                    );
+                                }}
                             >
                                 {option.icon}
                             </div>
