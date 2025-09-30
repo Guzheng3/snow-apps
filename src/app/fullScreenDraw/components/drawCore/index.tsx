@@ -843,6 +843,8 @@ const DrawCoreComponent: React.FC<{
                             height: 100%;
                             display: flex;
                             align-items: center;
+                            justify-content: center;
+                            font-size: var(--default-icon-size);
                         }
 
                         .draw-core-layer :global(.excalidraw .subtool-radio-button-icon) {
