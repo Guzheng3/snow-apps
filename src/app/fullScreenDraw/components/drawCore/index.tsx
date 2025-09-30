@@ -694,7 +694,6 @@ const DrawCoreComponent: React.FC<{
     const excalidrawOnChange = useCallback<NonNullable<ExcalidrawProps['onChange']>>(
         (elements, appState, files) => {
             saveAppStateDebounce(appState, getDrawState());
-            console.log('onChange', elements, appState, files);
             setExcalidrawEvent({
                 event: 'onChange',
                 params: {
