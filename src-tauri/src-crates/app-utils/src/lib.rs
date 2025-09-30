@@ -376,8 +376,8 @@ pub fn capture_target_monitor(
             } else {
                 Some(scap::capturer::Area {
                     origin: scap::capturer::Point {
-                        x: monitor.x().unwrap_or(0) as f64,
-                        y: monitor.y().unwrap_or(0) as f64,
+                        x: 0.0,
+                        y: 0.0,
                     },
                     size: scap::capturer::Size {
                         width: monitor.width().unwrap_or(0) as f64,

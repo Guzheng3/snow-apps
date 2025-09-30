@@ -504,15 +504,29 @@ mod tests {
     async fn test_capture_multi_monitor() {
         let instance = std::time::Instant::now();
 
-        let crop_region = ElementRect {
-            min_x: -3840,
-            min_y: 0,
-            max_x: 3840,
-            max_y: 2160,
-        };
+        let crop_region: ElementRect;
+        #[cfg(target_os = "windows")]
+        {
+            crop_region = ElementRect {
+                min_x: -3840,
+                min_y: 0,
+                max_x: 3840,
+                max_y: 2160,
+            };
+        }
+        #[cfg(target_os = "macos")]
+        {
+            crop_region = ElementRect {
+                min_x: 0,
+                min_y: 0,
+                max_x: 7680,
+                max_y: 2160,
+            };
+        }
 
         let monitors = MonitorList::get_by_region(crop_region);
-        let image = monitors.capture_region(crop_region, None).await.unwrap();
+
+        let image = monitors.capture(None).await.unwrap();
 
         println!("current_dir: {:?}", env::current_dir().unwrap());
 
