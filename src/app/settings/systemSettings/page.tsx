@@ -260,6 +260,21 @@ export default function SystemSettings() {
                                 <Switch />
                             </ProForm.Item>
                         </Col>
+                        <Col span={12}>
+                            <ProForm.Item
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.systemSettings.commonSettings.runLog" />
+                                        }
+                                    />
+                                }
+                                name="runLog"
+                                valuePropName="checked"
+                            >
+                                <Switch />
+                            </ProForm.Item>
+                        </Col>
                         {currentPlatform === 'windows' && (
                             <>
                                 <Col span={12}>

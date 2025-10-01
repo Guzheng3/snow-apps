@@ -163,3 +163,10 @@ export const isAdmin = async () => {
     const result = await invoke<boolean>('is_admin');
     return result;
 };
+
+export const setRunLog = async (enable: boolean) => {
+    const result = await invoke<void>('set_run_log', {
+        enable,
+    });
+    return result;
+};

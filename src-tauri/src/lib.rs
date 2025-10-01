@@ -50,6 +50,26 @@ pub fn run() {
 
     let file_cache_service = Arc::new(file_cache_service::FileCacheService::new());
 
+    let enable_run_log = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let enable_run_log_clone = enable_run_log.clone();
+
+    use tauri_plugin_log::{Target, TargetKind};
+
+    // let current_date = chrono::Local::now().format("%Y-%m-%d").to_string();
+
+    // log 文件可能因为某些异常情况不断输出，造成日志文件过大
+    // 先在 release 下屏蔽日志输出
+    // 注意不要移除 log 插件的初始化,避免前端调用 log 时保存再次报错,持续循环报错
+    let log_targets: Vec<Target> = if cfg!(debug_assertions) {
+        vec![
+            Target::new(TargetKind::Stdout),
+            Target::new(TargetKind::LogDir { file_name: None }),
+            Target::new(TargetKind::Webview),
+        ]
+    } else {
+        vec![Target::new(TargetKind::Stdout)]
+    };
+
     tauri::Builder::default()
         .plugin(
             tauri_plugin_window_state::Builder::new()
@@ -83,33 +103,26 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(
+            tauri_plugin_log::Builder::default()
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
+                .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
+                .targets(log_targets)
+                .level(log::LevelFilter::Info)
+                .filter(move |_| {
+                    #[cfg(debug_assertions)]
+                    {
+                        return true;
+                    }
+
+                    #[cfg(not(debug_assertions))]
+                    {
+                        return enable_run_log.load(std::sync::atomic::Ordering::Relaxed);
+                    }
+                })
+                .build(),
+        )
         .setup(|app| {
-            use tauri_plugin_log::{Target, TargetKind};
-
-            // let current_date = chrono::Local::now().format("%Y-%m-%d").to_string();
-
-            // log 文件可能因为某些异常情况不断输出，造成日志文件过大
-            // 先在 release 下屏蔽日志输出
-            // 注意不要移除 log 插件的初始化,避免前端调用 log 时保存再次报错,持续循环报错
-            let log_targets: Vec<Target> = if cfg!(debug_assertions) {
-                vec![
-                    Target::new(TargetKind::Stdout),
-                    Target::new(TargetKind::LogDir { file_name: None }),
-                    Target::new(TargetKind::Webview),
-                ]
-            } else {
-                vec![Target::new(TargetKind::Stdout)]
-            };
-
-            app.handle().plugin(
-                tauri_plugin_log::Builder::default()
-                    .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
-                    .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
-                    .targets(log_targets)
-                    .level(log::LevelFilter::Info)
-                    .build(),
-            )?;
-
             let main_window = app
                 .get_webview_window("main")
                 .expect("[lib::setup] no main window");
@@ -162,6 +175,7 @@ pub fn run() {
         .manage(free_drag_window_service)
         .manage(listen_key_service)
         .manage(file_cache_service)
+        .manage(enable_run_log_clone)
         .invoke_handler(tauri::generate_handler![
             screenshot::capture_current_monitor,
             screenshot::capture_all_monitors,
@@ -207,6 +221,7 @@ pub fn run() {
             core::write_bitmap_image_to_clipboard,
             core::retain_dir_files,
             core::is_admin,
+            core::set_run_log,
             scroll_screenshot::scroll_screenshot_get_image_data,
             scroll_screenshot::scroll_screenshot_init,
             scroll_screenshot::scroll_screenshot_capture,

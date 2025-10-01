@@ -67,6 +67,8 @@ export const settings = {
         '应用具有管理员权限的话，全局快捷键能在更多的应用响应，如果开启了“开机自动启动”则当应用自动启动时将使用管理员权限启动',
     'settings.systemSettings.commonSettings.useAdminAutoStart.enable': '重新启动',
     'settings.systemSettings.commonSettings.autoCheckVersion': '自动检查更新',
+    'settings.systemSettings.commonSettings.runLog': '运行日志',
+    'settings.systemSettings.commonSettings.runLog.tip': '将日志输出到日志文件中，用于问题反馈',
     'settings.hotKeySettings.translation': '翻译',
     'settings.hotKeySettings.chat': 'AI 对话',
     'settings.hotKeySettings.keyEventTooltip': '{message}（{key}）',

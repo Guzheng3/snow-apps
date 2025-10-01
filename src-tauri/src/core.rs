@@ -265,3 +265,13 @@ pub async fn retain_dir_files(dir_path: PathBuf, file_names: Vec<String>) -> Res
 pub async fn is_admin() -> Result<bool, String> {
     snow_shot_tauri_commands_core::is_admin().await
 }
+
+#[command]
+pub async fn set_run_log(
+    enable_run_log: tauri::State<'_, std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    enable: bool,
+) -> Result<(), String> {
+    enable_run_log.store(enable, std::sync::atomic::Ordering::Relaxed);
+
+    Ok(())
+}

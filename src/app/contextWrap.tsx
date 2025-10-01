@@ -201,6 +201,7 @@ export type AppSettingsData = {
     [AppSettingsGroup.SystemCommon]: {
         autoStart: boolean;
         autoCheckVersion: boolean;
+        runLog: boolean;
     };
     [AppSettingsGroup.SystemChat]: {
         maxTokens: number;
@@ -406,6 +407,7 @@ export const defaultAppSettingsData: AppSettingsData = {
     [AppSettingsGroup.SystemCommon]: {
         autoStart: true,
         autoCheckVersion: true,
+        runLog: false,
     },
     [AppSettingsGroup.SystemChat]: {
         maxTokens: 4096,
@@ -1129,6 +1131,10 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? newSettings.autoCheckVersion
                             : (prevSettings?.autoCheckVersion ??
                               defaultAppSettingsData[group].autoCheckVersion),
+                    runLog:
+                        typeof newSettings?.runLog === 'boolean'
+                            ? newSettings.runLog
+                            : (prevSettings?.runLog ?? defaultAppSettingsData[group].runLog),
                 };
             } else if (group === AppSettingsGroup.SystemChat) {
                 newSettings = newSettings as AppSettingsData[typeof group];
