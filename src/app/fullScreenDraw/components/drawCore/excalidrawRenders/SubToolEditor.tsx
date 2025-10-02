@@ -4,14 +4,7 @@ import { useCallback, useContext, useEffect, useMemo } from 'react';
 import { DrawState, ExcalidrawEventPublisher } from '../extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { Input, Radio } from 'antd';
-import {
-    ArrowIcon,
-    DiamondIcon,
-    LineIcon,
-    MosaicIcon,
-    PenIcon,
-    RectIcon,
-} from '@/components/icons';
+import { ArrowIcon, DiamondIcon, LineIcon, PenIcon, RectIcon } from '@/components/icons';
 import { DrawContext } from '@/app/fullScreenDraw/extra';
 import { debounce } from 'es-toolkit';
 import { useStateRef } from '@/hooks/useStateRef';

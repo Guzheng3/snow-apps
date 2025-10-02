@@ -17,6 +17,7 @@ import { last } from 'es-toolkit';
 import { ExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { useIntl } from 'react-intl';
+import { useGetPopupContainer } from '.';
 
 export const useChangeFontSizeProps = (
     isSlider: boolean,
@@ -324,6 +325,8 @@ export const FilterTypeRadioSelection = (
         ];
     }, [intl]);
 
+    const getPopupContainer = useGetPopupContainer();
+
     if (props.type !== 'button') {
         return <></>;
     }
@@ -333,6 +336,7 @@ export const FilterTypeRadioSelection = (
             style={{ width: '100%' }}
             options={options}
             value={props.value}
+            getPopupContainer={getPopupContainer}
             onChange={(value) => {
                 props.onClick(
                     value as unknown as number,
