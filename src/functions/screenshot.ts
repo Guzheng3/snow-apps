@@ -15,15 +15,18 @@ export enum ScreenshotType {
     TopWindow = 'top-window',
     Copy = 'copy',
     VideoRecord = 'video-record',
+    SwitchCaptureHistory = 'switch-capture-history',
 }
 
 export const executeScreenshot = async (
     type: ScreenshotType = ScreenshotType.Default,
     windowLabel?: string,
+    captureHistoryId?: string,
 ) => {
     await emit('execute-screenshot', {
         type,
         windowLabel,
+        captureHistoryId,
     });
 };
 
@@ -52,4 +55,8 @@ export const releaseDrawPage = async (force: boolean = false) => {
     await emit('release-draw-page', {
         force,
     });
+};
+
+export const onCaptureHistoryChange = async () => {
+    await emit('on-capture-history-change');
 };

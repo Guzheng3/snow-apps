@@ -45,10 +45,13 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
      * 初始化截图
      */
     const onCaptureReady = useCallback<BaseLayerEventActionType['onCaptureReady']>(
-        async (imageSrc: string): Promise<void> => {
+        async (imageSrc: string | undefined): Promise<void> => {
             // 底图作为单独的层级显示
             currentCaptureImageSrcRef.current = imageSrc;
-            await addImageToContainer(INIT_CONTAINER_KEY, imageSrc);
+            // 可能是切换截图历史，这种情况下不存在截图数据
+            if (imageSrc) {
+                await addImageToContainer(INIT_CONTAINER_KEY, imageSrc);
+            }
 
             // 水印层
             watermarkContainerKeyRef.current = await createNewCanvasContainer(
@@ -70,13 +73,6 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
 
     const switchCaptureHistory = useCallback(
         async (item: CaptureHistoryItem | undefined) => {
-            // 移除当前显示的已有内容
-            await Promise.all([
-                clearContainer(DRAW_LAYER_BLUR_CONTAINER_KEY),
-                clearContainer(DRAW_LAYER_WATERMARK_CONTAINER_KEY),
-                clearContainer(INIT_CONTAINER_KEY),
-            ]);
-
             if (!item) {
                 if (currentCaptureImageSrcRef.current) {
                     await addImageToContainer(
@@ -88,6 +84,12 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
                 const fileUri = convertFileSrc(await getCaptureHistoryImageAbsPath(item.file_name));
                 await addImageToContainer(INIT_CONTAINER_KEY, fileUri);
             }
+
+            // 移除之前显示的已有内容
+            await Promise.all([
+                clearContainer(DRAW_LAYER_BLUR_CONTAINER_KEY),
+                clearContainer(DRAW_LAYER_WATERMARK_CONTAINER_KEY),
+            ]);
 
             await canvasRender();
         },

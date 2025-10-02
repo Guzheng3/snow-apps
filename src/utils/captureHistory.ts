@@ -22,8 +22,17 @@ const getCaptureImageFilePath = (fileName: string) => {
     return `${captureHistoryImagesDir}/${fileName}`;
 };
 
+const getCaptureHistoryImageAbsPathCache = new Map<string, string>();
 export const getCaptureHistoryImageAbsPath = async (fileName: string) => {
-    return joinPath(await getAppConfigBaseDir(), getCaptureImageFilePath(fileName));
+    const cachePath = getCaptureHistoryImageAbsPathCache.get(fileName);
+    if (cachePath !== undefined) {
+        return cachePath;
+    }
+
+    const path = await joinPath(await getAppConfigBaseDir(), getCaptureImageFilePath(fileName));
+    getCaptureHistoryImageAbsPathCache.set(fileName, path);
+
+    return path;
 };
 
 const dayDuration = 24 * 60 * 60 * 1000;

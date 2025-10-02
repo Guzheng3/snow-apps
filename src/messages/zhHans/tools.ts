@@ -70,4 +70,12 @@ export const tools = {
     'tools.chat.workflowStep.environmentVariable.userInput': '用户输入：',
     'tools.translation.googleWeb.tooManyRequests': 'Google 翻译请求过于频繁，请稍后再试',
     'tools.translation.googleWeb.failed': 'Google 翻译失败',
+    'tools.captureHistory': '截图历史',
+    'tools.captureHistory.count': '已记录截图数量',
+    'tools.captureHistory.date': '日期',
+    'tools.captureHistory.position': '位置',
+    'tools.captureHistory.size': '大小',
+    'tools.captureHistory.drawElements': '绘制元素',
+    'tools.captureHistory.switch': '切换到截图',
+    'tools.captureHistory.copy': '复制图片',
 };

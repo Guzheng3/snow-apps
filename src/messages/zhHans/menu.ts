@@ -9,5 +9,6 @@ export const menu = {
     'menu.tools': '工具箱',
     'menu.tools.translation': '翻译',
     'menu.tools.chat': 'AI 对话',
+    'menu.tools.captureHistory': '截图历史',
     'menu.about': '关于',
 };

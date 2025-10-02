@@ -158,7 +158,9 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         }
 
         return (
-            tabFindChildrenElementsRef.current && getScreenshotType() !== ScreenshotType.TopWindow
+            tabFindChildrenElementsRef.current &&
+            getScreenshotType()?.type !== ScreenshotType.TopWindow &&
+            getScreenshotType()?.type !== ScreenshotType.SwitchCaptureHistory
         );
     }, [findChildrenElements, getScreenshotType, tabFindChildrenElementsRef]);
 
@@ -320,7 +322,10 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
     const initSelectWindowElement = useCallback(async () => {
         selectWindowElementLoadingRef.current = true;
 
-        const windowElementsPromise = getWindowElements();
+        const windowElementsPromise =
+            getScreenshotType()?.type === ScreenshotType.SwitchCaptureHistory
+                ? Promise.resolve([])
+                : getWindowElements();
 
         const rectList: ElementRect[] = [];
         const initUiElementsCachePromise = initUiElementsCache();
@@ -340,15 +345,18 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             });
         }
 
-        const rTree = new Flatbush(windowElements.length);
-        windowElements.forEach((windowElement, index) => {
-            const rect = windowElement.element_rect;
-            rectList.push(rect);
+        let rTree: Flatbush | undefined = undefined;
+        if (windowElements.length > 0) {
+            rTree = new Flatbush(windowElements.length);
+            windowElements.forEach((windowElement, index) => {
+                const rect = windowElement.element_rect;
+                rectList.push(rect);
 
-            rTree.add(rect.min_x, rect.min_y, rect.max_x, rect.max_y);
-            map.set(index, windowElement.window_id);
-        });
-        rTree.finish();
+                rTree!.add(rect.min_x, rect.min_y, rect.max_x, rect.max_y);
+                map.set(index, windowElement.window_id);
+            });
+            rTree.finish();
+        }
         elementsListRTreeRef.current = rTree;
         elementsListRef.current = rectList;
         selectedWindowIdRef.current = undefined;
@@ -356,7 +364,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
         await initUiElementsCachePromise;
         selectWindowElementLoadingRef.current = false;
-    }, []);
+    }, [getScreenshotType]);
 
     /**
      * 通过鼠标坐标获取候选框
@@ -452,7 +460,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 selectLayerCanvasContextRef.current!,
                 currentTheme === AppSettingsTheme.Dark,
                 window.devicePixelRatio * contentScaleRef.current,
-                getScreenshotType() === ScreenshotType.TopWindow ||
+                getScreenshotType()?.type === ScreenshotType.TopWindow ||
                     selectStateRef.current === SelectState.Auto,
                 drawElementMask,
                 enableScrollScreenshot,
@@ -662,7 +670,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
             if (!elementRectList || elementRectList.length === 0) {
                 elementRectList =
-                    getScreenshotType() === ScreenshotType.TopWindow
+                    getScreenshotType()?.type === ScreenshotType.TopWindow
                         ? [{ min_x: 0, min_y: 0, max_x: 0, max_y: 0 }]
                         : [
                               captureBoundingBoxInfo.getActiveMonitorRect({
@@ -859,7 +867,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             } else {
                 setSelectRect(
                     currentSelectRect,
-                    ignoreAnimation || getScreenshotType() === ScreenshotType.TopWindow,
+                    ignoreAnimation || getScreenshotType()?.type === ScreenshotType.TopWindow,
                 );
             }
         },
@@ -969,7 +977,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             if (selectStateRef.current === SelectState.Auto) {
                 if (
                     mouseDownPositionRef.current &&
-                    getScreenshotType() !== ScreenshotType.TopWindow
+                    getScreenshotType()?.type !== ScreenshotType.TopWindow
                 ) {
                     // 检测拖动距离是否启用手动选择
                     const maxSide = mouseDownPositionRef.current.getMaxSide(mousePosition);
@@ -1313,8 +1321,9 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             switchCaptureHistory: (captureHistory: CaptureHistoryItem | undefined) => {
                 // 截图 OCR 和复制到剪贴板等如果固定了选区，会触发对应操作，所以保持状态不变
                 if (
-                    getScreenshotType() !== ScreenshotType.Default &&
-                    selectStateRef.current === SelectState.Auto
+                    getScreenshotType()?.type !== ScreenshotType.Default &&
+                    selectStateRef.current === SelectState.Auto &&
+                    getScreenshotType()?.type !== ScreenshotType.SwitchCaptureHistory
                 ) {
                     return;
                 }

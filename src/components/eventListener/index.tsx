@@ -96,12 +96,14 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
         isFullScreenDrawSwitchMouseThrough,
         isVideoRecordPage,
         isVideoRecordToolbarPage,
+        isCaptureHistoryPage,
     } = useMemo(() => {
         let isDrawPage = false;
         let isFullScreenDraw = false;
         let isFullScreenDrawSwitchMouseThrough = false;
         let isVideoRecordPage = false;
         let isVideoRecordToolbarPage = false;
+        let isCaptureHistoryPage = false;
         if (pathname === '/draw') {
             isDrawPage = true;
         } else if (pathname === '/fullScreenDraw') {
@@ -112,6 +114,8 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
             isVideoRecordPage = true;
         } else if (pathname === '/videoRecord/toolbar') {
             isVideoRecordToolbarPage = true;
+        } else if (pathname === '/tools/captureHistory') {
+            isCaptureHistoryPage = true;
         }
         return {
             isDrawPage,
@@ -119,6 +123,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
             isFullScreenDrawSwitchMouseThrough,
             isVideoRecordPage,
             isVideoRecordToolbarPage,
+            isCaptureHistoryPage,
         };
     }, [pathname]);
 
@@ -258,6 +263,13 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
                 event: 'on-hide-main-window',
                 callback: async () => {},
             });
+
+            if (isCaptureHistoryPage) {
+                defaultListener.push({
+                    event: 'on-capture-history-change',
+                    callback: async () => {},
+                });
+            }
         } else {
             defaultListener.push({
                 event: FIXED_CONTENT_FOCUS_MODE_SHOW_ALL_WINDOW,
@@ -386,6 +398,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
         isFullScreenDrawSwitchMouseThrough,
         isVideoRecordPage,
         isVideoRecordToolbarPage,
+        isCaptureHistoryPage,
         message,
         releaseOcrSessionAction,
     ]);

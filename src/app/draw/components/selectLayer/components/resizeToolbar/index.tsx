@@ -136,7 +136,7 @@ export const ResizeToolbar: React.FC<{
             return;
         }
 
-        if (getScreenshotType() === ScreenshotType.TopWindow) {
+        if (getScreenshotType()?.type === ScreenshotType.TopWindow) {
             setEnable(false);
             return;
         }

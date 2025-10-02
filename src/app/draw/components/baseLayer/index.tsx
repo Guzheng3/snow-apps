@@ -126,8 +126,8 @@ export type BaseLayerEventActionType = {
      * 截图准备
      */
     onCaptureReady: (
-        imageSrc: string,
-        imageBuffer: ImageBuffer,
+        imageSrc: string | undefined,
+        imageBuffer: ImageBuffer | undefined,
         captureBoundingBoxInfo: CaptureBoundingBoxInfo,
     ) => Promise<void>;
     /**
@@ -140,8 +140,8 @@ export type BaseLayerEventActionType = {
      * 截图加载完成
      */
     onCaptureLoad: (
-        imageSrc: string,
-        imageBuffer: ImageBuffer,
+        imageSrc: string | undefined,
+        imageBuffer: ImageBuffer | undefined,
         captureBoundingBoxInfo: CaptureBoundingBoxInfo,
     ) => Promise<void>;
     /**

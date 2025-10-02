@@ -513,7 +513,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
             dragButtonActionRef.current?.setEnable(enable);
 
             if (canHandleScreenshotTypeRef.current) {
-                switch (getScreenshotType()) {
+                switch (getScreenshotType()?.type) {
                     case ScreenshotType.Fixed:
                         onFixed();
                         break;

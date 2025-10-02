@@ -282,9 +282,10 @@ const ColorPickerCore: React.FC<{
         },
         [updateOpacity],
     );
+
     const updateEnable = useCallback(() => {
         const enable =
-            getScreenshotType() !== ScreenshotType.TopWindow &&
+            getScreenshotType()?.type !== ScreenshotType.TopWindow &&
             isEnableColorPicker(
                 getCaptureStep(),
                 getDrawState(),
@@ -598,7 +599,10 @@ const ColorPickerCore: React.FC<{
                 if (captureEvent?.event === CaptureEvent.onCaptureFinish) {
                     imageDataReadyRef.current = false;
                 } else if (captureEvent?.event === CaptureEvent.onCaptureImageBufferReady) {
-                    onCaptureImageBufferReady(captureEvent.params.imageBuffer);
+                    // 可能是切换截图历史，这种情况下不存在截图数据
+                    if (captureEvent.params.imageBuffer) {
+                        onCaptureImageBufferReady(captureEvent.params.imageBuffer);
+                    }
                 }
             },
             [onCaptureImageBufferReady],
@@ -688,6 +692,7 @@ const ColorPickerCore: React.FC<{
                 captureHistoryImageDataRef,
                 fileUri,
             );
+            imageDataReadyRef.current = true;
             refreshMouseMove();
         },
         [renderWorker, refreshMouseMove],

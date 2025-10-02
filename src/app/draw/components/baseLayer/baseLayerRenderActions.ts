@@ -150,6 +150,7 @@ export const renderAddImageToContainerAction = async (
         parser: 'texture',
     });
     const image = new PIXI.Sprite(texture);
+    container.removeChildren();
     container.addChild(image);
     currentImageTextureRef.current = texture;
 };
@@ -306,7 +307,7 @@ export const renderUpdateBlurSpriteAction = (
             .fill();
     }
 
-    blurSprite.sprite.alpha = blurProps.eraserAlpha ?? blurProps.opacity / 100;
+    blurSprite.spriteContainer.alpha = blurProps.eraserAlpha ?? blurProps.opacity / 100;
 
     if (updateFilter) {
         if (blurProps.filterType === 'pixelate') {

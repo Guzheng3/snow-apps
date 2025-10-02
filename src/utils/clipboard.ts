@@ -73,3 +73,17 @@ export const writeHtmlToClipboard = async (html: string) => {
         appWarn('[clipboard] Modern Clipboard API not supported, HTML copy failed');
     }
 };
+
+export const writeFilePathToClipboard = async (filePath: string) => {
+    let isSuccess = false;
+    try {
+        await extraClipboard.writeFiles([filePath]);
+        isSuccess = true;
+    } catch (error) {
+        appWarn('[clipboard] writeFilePathToClipboard error', error);
+    }
+
+    if (isSuccess) {
+        return;
+    }
+};

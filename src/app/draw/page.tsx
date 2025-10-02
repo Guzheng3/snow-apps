@@ -163,8 +163,8 @@ const DrawPageCore: React.FC<{
     const [getCaptureEvent, setCaptureEvent] = useStateSubscriber(CaptureEventPublisher, undefined);
     const onCaptureLoad = useCallback<BaseLayerEventActionType['onCaptureLoad']>(
         async (
-            imageSrc: string,
-            imageBuffer: ImageBuffer,
+            imageSrc: string | undefined,
+            imageBuffer: ImageBuffer | undefined,
             captureBoundingBoxInfo: CaptureBoundingBoxInfo,
         ) => {
             await Promise.all([
@@ -179,8 +179,14 @@ const DrawPageCore: React.FC<{
                 event: CaptureEvent.onCaptureLoad,
                 params: [imageSrc, imageBuffer, captureBoundingBoxInfo],
             });
+
+            if (getScreenshotType()?.type === ScreenshotType.SwitchCaptureHistory) {
+                await captureHistoryActionRef.current?.switch(
+                    getScreenshotType().params.captureHistoryId!,
+                );
+            }
         },
-        [setCaptureEvent],
+        [getScreenshotType, setCaptureEvent],
     );
     const capturingRef = useRef(false);
     const circleCursorRef = useRef<HTMLDivElement>(null);
@@ -235,7 +241,10 @@ const DrawPageCore: React.FC<{
 
     /** 截图准备 */
     const readyCapture = useCallback(
-        async (imageBuffer: ImageBuffer, captureBoundingBoxInfo: CaptureBoundingBoxInfo) => {
+        async (
+            imageBuffer: ImageBuffer | undefined,
+            captureBoundingBoxInfo: CaptureBoundingBoxInfo,
+        ) => {
             setCaptureLoading(true);
 
             if (imageBlobUrlRef.current) {
@@ -246,7 +255,9 @@ const DrawPageCore: React.FC<{
                 }, 0);
             }
 
-            imageBlobUrlRef.current = URL.createObjectURL(new Blob([imageBuffer.data]));
+            imageBlobUrlRef.current = imageBuffer
+                ? URL.createObjectURL(new Blob([imageBuffer.data]))
+                : undefined;
 
             setCaptureEvent({
                 event: CaptureEvent.onCaptureImageBufferReady,
@@ -300,7 +311,7 @@ const DrawPageCore: React.FC<{
             await showCurrentWindow();
             if (
                 process.env.NODE_ENV === 'development' &&
-                getScreenshotType() !== ScreenshotType.TopWindow
+                getScreenshotType()?.type !== ScreenshotType.TopWindow
             ) {
                 await appWindow.setAlwaysOnTop(false);
             }
@@ -342,6 +353,7 @@ const DrawPageCore: React.FC<{
 
     const finishCapture = useCallback<DrawContextType['finishCapture']>(
         async (clearScrollScreenshot: boolean = true) => {
+            console.log('finishCapture');
             // 停止监听键盘
             listenKeyStop().catch((error) => {
                 appError('[DrawPageCore] listenKeyStop error', error);
@@ -418,7 +430,7 @@ const DrawPageCore: React.FC<{
         );
 
         await Promise.all([
-            getScreenshotType() === ScreenshotType.Delay
+            getScreenshotType()?.type === ScreenshotType.Delay
                 ? Promise.resolve()
                 : showWindow(captureBoundingBoxInfoRef.current.rect),
             selectLayerActionRef.current?.onCaptureBoundingBoxInfoReady(
@@ -432,6 +444,10 @@ const DrawPageCore: React.FC<{
 
     const captureAllMonitorsAction = useCallback(
         async (excuteScreenshotType: ScreenshotType) => {
+            if (excuteScreenshotType === ScreenshotType.SwitchCaptureHistory) {
+                return undefined;
+            }
+
             if (excuteScreenshotType === ScreenshotType.Delay) {
                 await new Promise((resolve) => {
                     setTimeout(() => {
@@ -461,14 +477,20 @@ const DrawPageCore: React.FC<{
 
     /** 执行截图 */
     const excuteScreenshot = useCallback(
-        async (excuteScreenshotType: ScreenshotType) => {
+        async (
+            excuteScreenshotType: ScreenshotType,
+            params: { windowId?: string; captureHistoryId?: string },
+        ) => {
             capturingRef.current = true;
             drawToolbarActionRef.current?.setEnable(false);
 
             const initCaptureBoundingBoxInfoPromise = initCaptureBoundingBoxInfoAndShowWindow();
             const captureAllMonitorsPromise = captureAllMonitorsAction(excuteScreenshotType);
 
-            setScreenshotType(excuteScreenshotType);
+            setScreenshotType({
+                type: excuteScreenshotType,
+                params,
+            });
             const layerOnExecuteScreenshotPromise = Promise.all([
                 drawLayerActionRef.current?.onExecuteScreenshot(),
                 selectLayerActionRef.current?.onExecuteScreenshot(),
@@ -486,7 +508,8 @@ const DrawPageCore: React.FC<{
             await initCaptureBoundingBoxInfoPromise;
 
             // 如果截图失败了，等窗口显示后，结束截图
-            if (!imageBuffer) {
+            // 切换截图历史时，不进行截图，只进行显示
+            if (!imageBuffer && excuteScreenshotType !== ScreenshotType.SwitchCaptureHistory) {
                 sendErrorMessage(intl.formatMessage({ id: 'draw.captureError' }));
 
                 finishCapture();
@@ -812,8 +835,15 @@ const DrawPageCore: React.FC<{
     useEffect(() => {
         // 监听截图命令
         const listenerId = addListener('execute-screenshot', (args) => {
-            const payload = (args as { payload: { type: ScreenshotType; windowLabel?: string } })
-                .payload;
+            const payload = (
+                args as {
+                    payload: {
+                        type: ScreenshotType;
+                        windowLabel?: string;
+                        captureHistoryId?: string;
+                    };
+                }
+            ).payload;
 
             // 防止循环调用
             if (payload.windowLabel === appWindowRef.current?.label) {
@@ -844,7 +874,7 @@ const DrawPageCore: React.FC<{
                 drawPageStateRef.current = DrawPageState.Active;
             }
 
-            excuteScreenshot(payload.type);
+            excuteScreenshot(payload.type, payload);
         });
 
         const finishListenerId = addListener('finish-screenshot', () => {

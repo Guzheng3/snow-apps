@@ -23,10 +23,11 @@ import { AntdContext } from '@/components/globalLayoutExtra';
 import { FormattedMessage } from 'react-intl';
 import { appError } from '@/utils/log';
 import { ImageBuffer } from '@/commands';
-import { ScreenshotType } from '@/functions/screenshot';
+import { onCaptureHistoryChange, ScreenshotType } from '@/functions/screenshot';
 
 export type CaptureHistoryActionType = {
     saveCurrentCapture: (imageBuffer: ImageBuffer | undefined) => Promise<void>;
+    switch: (captureHistoryId: string) => Promise<void>;
 };
 
 const CaptureHistoryControllerCore: React.FC<{
@@ -81,17 +82,14 @@ const CaptureHistoryControllerCore: React.FC<{
         CaptureEventPublisher,
         useCallback(
             (captureEvent: CaptureEventParams | undefined) => {
-                if (captureEvent?.event === CaptureEvent.onExecuteScreenshot) {
-                    isImageLoadingRef.current = true;
-                } else if (captureEvent?.event === CaptureEvent.onCaptureReady) {
-                    reloadCaptureHistoryList();
-                } else if (captureEvent?.event === CaptureEvent.onCaptureLoad) {
-                    isImageLoadingRef.current = false;
+                if (captureEvent?.event === CaptureEvent.onCaptureFinish) {
+                    resetCurrentIndex();
                 }
             },
-            [reloadCaptureHistoryList],
+            [resetCurrentIndex],
         ),
     );
+
     useStateSubscriber(
         DrawStatePublisher,
         useCallback(
@@ -117,8 +115,8 @@ const CaptureHistoryControllerCore: React.FC<{
     const currentCaptureExcalidrawElementsRef =
         useRef<readonly Ordered<NonDeletedExcalidrawElement>[]>(undefined);
     const changeCurrentIndex = useCallback(
-        async (delta: number) => {
-            if (getScreenshotType() === ScreenshotType.TopWindow) {
+        async (delta: number | string) => {
+            if (getScreenshotType()?.type === ScreenshotType.TopWindow) {
                 return;
             }
 
@@ -130,10 +128,20 @@ const CaptureHistoryControllerCore: React.FC<{
                 return;
             }
 
-            const newIndex = Math.max(
-                0,
-                Math.min(currentIndexRef.current + delta, captureHistoryListRef.current.length),
-            );
+            let newIndex = currentIndexRef.current;
+            if (typeof delta === 'number') {
+                newIndex = Math.max(
+                    0,
+                    Math.min(
+                        currentIndexRef.current + delta,
+                        getScreenshotType()?.type === ScreenshotType.SwitchCaptureHistory
+                            ? Math.max(0, captureHistoryListRef.current.length - 1) // 切换截图历史时，不允许切换回截图
+                            : captureHistoryListRef.current.length,
+                    ),
+                );
+            } else {
+                newIndex = captureHistoryListRef.current.findIndex((item) => item.id === delta);
+            }
 
             if (newIndex === currentIndexRef.current) {
                 return;
@@ -224,11 +232,20 @@ const CaptureHistoryControllerCore: React.FC<{
 
     const saveCurrentCapture = useCallback(
         async (imageBuffer: ImageBuffer | undefined) => {
-            if (!captureHistoryRef.current || !imageBuffer) {
+            if (!captureHistoryRef.current) {
                 appError('[CaptureHistoryController] saveCurrentCapture error, invalid state', {
                     captureHistoryRef: captureHistoryRef.current,
-                    imageBuffer: imageBuffer,
                 });
+                return;
+            }
+
+            if (!imageBuffer && getScreenshotType()?.type !== ScreenshotType.SwitchCaptureHistory) {
+                appError(
+                    '[CaptureHistoryController] saveCurrentCapture error, invalid imageBuffer',
+                    {
+                        imageBuffer: imageBuffer,
+                    },
+                );
                 return;
             }
 
@@ -245,21 +262,25 @@ const CaptureHistoryControllerCore: React.FC<{
 
             const excalidrawApi = drawCacheLayerActionRef.current?.getExcalidrawAPI();
 
-            await captureHistoryRef.current.save(
+            const captureHistoryItem = await captureHistoryRef.current.save(
                 captureHistoryListRef.current[currentIndexRef.current] ?? imageBuffer,
                 excalidrawApi?.getSceneElements(),
                 excalidrawApi?.getAppState(),
                 selectRect,
             );
+            captureHistoryListRef.current.push(captureHistoryItem);
+            resetCurrentIndex();
+            onCaptureHistoryChange();
         },
-        [drawCacheLayerActionRef, selectLayerActionRef],
+        [drawCacheLayerActionRef, getScreenshotType, resetCurrentIndex, selectLayerActionRef],
     );
 
     useImperativeHandle(actionRef, () => {
         return {
             saveCurrentCapture,
+            switch: changeCurrentIndex,
         };
-    }, [saveCurrentCapture]);
+    }, [saveCurrentCapture, changeCurrentIndex]);
 
     return (
         <>

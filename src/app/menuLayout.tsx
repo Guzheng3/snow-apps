@@ -444,6 +444,18 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
                 tabs: [],
                 children: [
                     {
+                        key: '/tools/translation',
+                        path: '/tools/translation',
+                        label: intl.formatMessage({ id: 'menu.tools.translation' }),
+                        hideTabs: true,
+                        tabs: [
+                            {
+                                key: 'translation',
+                                label: intl.formatMessage({ id: 'menu.tools.translation' }),
+                            },
+                        ],
+                    },
+                    {
                         key: '/tools/chat',
                         path: '/tools/chat',
                         label: intl.formatMessage({ id: 'menu.tools.chat' }),
@@ -456,14 +468,14 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
                         ],
                     },
                     {
-                        key: '/tools/translation',
-                        path: '/tools/translation',
-                        label: intl.formatMessage({ id: 'menu.tools.translation' }),
+                        key: '/tools/captureHistory',
+                        path: '/tools/captureHistory',
+                        label: intl.formatMessage({ id: 'menu.tools.captureHistory' }),
                         hideTabs: true,
                         tabs: [
                             {
-                                key: 'translation',
-                                label: intl.formatMessage({ id: 'menu.tools.translation' }),
+                                key: 'captureHistory',
+                                label: intl.formatMessage({ id: 'menu.tools.captureHistory' }),
                             },
                         ],
                     },

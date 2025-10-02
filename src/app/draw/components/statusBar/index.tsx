@@ -162,7 +162,7 @@ const StatusBar: React.FC = () => {
 
     const [getScreenshotType] = useStateSubscriber(ScreenshotTypePublisher, undefined);
     const updateDescriptionsItems = useCallback(() => {
-        if (getScreenshotType() === ScreenshotType.TopWindow) {
+        if (getScreenshotType()?.type === ScreenshotType.TopWindow) {
             setDescriptionsItems([]);
             return;
         }
