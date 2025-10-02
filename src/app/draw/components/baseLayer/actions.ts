@@ -411,6 +411,7 @@ export const updateBlurSpriteAction = async (
     blurElementId: string,
     blurProps: BlurSpriteProps,
     updateFilter: boolean,
+    windowDevicePixelRatio: number,
 ): Promise<undefined> => {
     return new Promise((resolve) => {
         if (renderWorker) {
@@ -420,6 +421,7 @@ export const updateBlurSpriteAction = async (
                     blurElementId: blurElementId,
                     blurProps: blurProps,
                     updateFilter: updateFilter,
+                    windowDevicePixelRatio: windowDevicePixelRatio,
                 },
             };
             const handleMessage = (event: MessageEvent<RenderResult>) => {
@@ -434,7 +436,13 @@ export const updateBlurSpriteAction = async (
 
             renderWorker.postMessage(UpdateBlurSpriteData);
         } else {
-            renderUpdateBlurSpriteAction(blurSpriteMapRef, blurElementId, blurProps, updateFilter);
+            renderUpdateBlurSpriteAction(
+                blurSpriteMapRef,
+                blurElementId,
+                blurProps,
+                updateFilter,
+                windowDevicePixelRatio,
+            );
             resolve(undefined);
         }
     });

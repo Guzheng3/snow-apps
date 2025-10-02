@@ -132,6 +132,7 @@ const handleUpdateBlurSprite = (data: BaseLayerRenderUpdateBlurSpriteData) => {
         data.payload.blurElementId,
         data.payload.blurProps,
         data.payload.updateFilter,
+        data.payload.windowDevicePixelRatio,
     );
 };
 

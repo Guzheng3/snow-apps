@@ -12,11 +12,25 @@ import {
 } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { DRAW_LAYER_BLUR_CONTAINER_KEY } from '../../../drawLayer';
 import { BlurSpriteProps } from '../../../baseLayer/baseLayerRenderActions';
+import { last } from 'es-toolkit';
 
 const isEqualBlurSpriteProps = (
     a: Omit<BlurSpriteProps, 'valid'>,
     b: Omit<BlurSpriteProps, 'valid'>,
 ) => {
+    if (a.points?.length !== b.points?.length) {
+        return false;
+    } else if (a.points && b.points && a.points.length > 0) {
+        if (a.points[0][0] !== b.points[0][0] || a.points[0][1] !== b.points[0][1]) {
+            return false;
+        } else if (
+            last(a.points)![0] !== last(b.points)![0] ||
+            last(a.points)![1] !== last(b.points)![1]
+        ) {
+            return false;
+        }
+    }
+
     return (
         a.blur === b.blur &&
         a.x === b.x &&
@@ -25,7 +39,8 @@ const isEqualBlurSpriteProps = (
         a.height === b.height &&
         a.angle === b.angle &&
         a.zoom === b.zoom &&
-        a.opacity === b.opacity
+        a.opacity === b.opacity &&
+        a.strokeWidth === b.strokeWidth
     );
 };
 
@@ -77,7 +92,10 @@ const BlurToolCore: React.FC = () => {
             let needRender = false;
 
             for (const element of params.elements) {
-                if (element.type !== 'blur' || element.isDeleted) {
+                if (
+                    (element.type !== 'blur' && element.type !== 'blur_freedraw') ||
+                    element.isDeleted
+                ) {
                     continue;
                 }
 
@@ -103,6 +121,8 @@ const BlurToolCore: React.FC = () => {
                     zoom: zoom.value,
                     valid: true,
                     eraserAlpha: undefined,
+                    points: element.type === 'blur_freedraw' ? element.points : undefined,
+                    strokeWidth: element.type === 'blur_freedraw' ? element.strokeWidth : undefined,
                 };
 
                 let blurSprite = blurSpriteMapRef.current.get(element.id);

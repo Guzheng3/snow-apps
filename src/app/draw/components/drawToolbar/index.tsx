@@ -101,6 +101,7 @@ const isDrawTool = (drawState: DrawState) => {
         case DrawState.Text:
         case DrawState.SerialNumber:
         case DrawState.Blur:
+        case DrawState.BlurFreeDraw:
         case DrawState.Watermark:
             return true;
         default:
@@ -369,6 +370,16 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     drawCacheLayerActionRef.current?.setActiveTool(
                         {
                             type: 'blur',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
+                    break;
+                case DrawState.BlurFreeDraw:
+                    drawCacheLayerActionRef.current?.setActiveTool(
+                        {
+                            type: 'blur_freedraw',
                             locked: toolLocked,
                         },
                         undefined,
@@ -746,6 +757,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                             <ToolButton
                                 hidden={customToolbarToolHiddenMap?.[DrawState.Blur]}
                                 componentKey={KeyEventKey.BlurTool}
+                                extraDrawState={[DrawState.BlurFreeDraw]}
                                 icon={<MosaicIcon />}
                                 drawState={DrawState.Blur}
                                 disable={disableNormalScreenshotTool}

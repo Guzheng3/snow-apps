@@ -101,6 +101,7 @@ export type BaseLayerRenderUpdateBlurSpriteData = {
         blurElementId: string;
         blurProps: BlurSpriteProps;
         updateFilter: boolean;
+        windowDevicePixelRatio: number;
     };
 };
 

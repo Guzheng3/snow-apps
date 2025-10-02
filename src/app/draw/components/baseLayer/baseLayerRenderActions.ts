@@ -4,6 +4,7 @@ import { RefWrap } from './workers/renderWorkerTypes';
 import { RefObject } from 'react';
 import { ElementRect } from '@/commands';
 import { SelectRectParams } from '../selectLayer';
+import * as PIXIFilters from 'pixi-filters';
 
 export type RefType<T> = RefWrap<T> | RefObject<T>;
 
@@ -167,7 +168,7 @@ export const renderClearContainerAction = (
 
 export type BlurSprite = {
     sprite: PIXI.Sprite;
-    spriteBlurFliter: PIXI.BlurFilter;
+    spriteBlurFliter: PIXI.Filter;
     spriteMask: PIXI.Graphics;
 };
 
@@ -220,7 +221,9 @@ export type BlurSpriteProps = {
     angle: number;
     opacity: number;
     zoom: number;
+    strokeWidth: number | undefined;
     eraserAlpha: undefined | number;
+    points?: readonly [x: number, y: number][];
 };
 
 export const renderUpdateBlurSpriteAction = (
@@ -228,26 +231,77 @@ export const renderUpdateBlurSpriteAction = (
     blurElementId: string,
     blurProps: BlurSpriteProps,
     updateFilter: boolean,
+    windowDevicePixelRatio: number,
 ) => {
     const blurSprite = blurSpriteMapRef.current.get(blurElementId);
     if (!blurSprite) {
         return;
     }
 
-    blurSprite.spriteMask
-        .clear()
-        .rotateTransform(blurProps.angle)
-        .translateTransform(
-            blurProps.x + blurProps.width * 0.5,
-            blurProps.y + blurProps.height * 0.5,
-        )
-        .scaleTransform(blurProps.zoom, blurProps.zoom)
-        .rect(-blurProps.width * 0.5, -blurProps.height * 0.5, blurProps.width, blurProps.height)
-        .fill();
+    if (blurProps.points) {
+        // 计算points的边界框中心，用于旋转中心
+        let minX = 0;
+        let minY = 0;
+
+        for (const point of blurProps.points) {
+            minX = Math.min(minX, point[0]);
+            minY = Math.min(minY, point[1]);
+        }
+
+        minX *= windowDevicePixelRatio;
+        minY *= windowDevicePixelRatio;
+
+        const rectMinX = 0 + minX + blurProps.x;
+        const rectMinY = 0 + minY + blurProps.y;
+
+        blurSprite.spriteMask
+            .clear()
+            .rotateTransform(blurProps.angle)
+            .translateTransform(rectMinX + blurProps.width * 0.5, rectMinY + blurProps.height * 0.5)
+            .scaleTransform(blurProps.zoom, blurProps.zoom);
+        const baseX = -(blurProps.width * 0.5 + minX);
+        const baseY = -(blurProps.height * 0.5 + minY);
+        blurSprite.spriteMask.moveTo(
+            blurProps.points[0][0] * windowDevicePixelRatio + baseX,
+            blurProps.points[0][1] * windowDevicePixelRatio + baseY,
+        );
+        for (const point of blurProps.points) {
+            blurSprite.spriteMask.lineTo(
+                point[0] * windowDevicePixelRatio + baseX,
+                point[1] * windowDevicePixelRatio + baseY,
+            );
+        }
+        blurSprite.spriteMask.stroke({
+            width: blurProps.strokeWidth! * 9 * windowDevicePixelRatio * blurProps.zoom,
+            join: 'round',
+            color: 'red',
+        });
+    } else {
+        blurSprite.spriteMask
+            .clear()
+            .rotateTransform(blurProps.angle)
+            .translateTransform(
+                blurProps.x + blurProps.width * 0.5,
+                blurProps.y + blurProps.height * 0.5,
+            )
+            .scaleTransform(blurProps.zoom, blurProps.zoom)
+            .rect(
+                -blurProps.width * 0.5,
+                -blurProps.height * 0.5,
+                blurProps.width,
+                blurProps.height,
+            )
+            .fill();
+    }
+
     blurSprite.sprite.alpha = blurProps.eraserAlpha ?? blurProps.opacity / 100;
 
     if (updateFilter) {
-        blurSprite.spriteBlurFliter.strength = Math.max(0, (blurProps.blur / 100) * 32);
+        if (blurSprite.spriteBlurFliter instanceof PIXIFilters.PixelateFilter) {
+            blurSprite.spriteBlurFliter.size = Math.max(1, (blurProps.blur / 100) * 32);
+        } else if (blurSprite.spriteBlurFliter instanceof PIXI.BlurFilter) {
+            blurSprite.spriteBlurFliter.strength = Math.max(1, (blurProps.blur / 100) * 42);
+        }
     }
 };
 

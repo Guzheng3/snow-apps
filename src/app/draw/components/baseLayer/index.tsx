@@ -463,6 +463,7 @@ export const BaseLayerCore: React.FC<
                 blurElementId,
                 blurProps,
                 updateFilter,
+                window.devicePixelRatio,
             );
         },
         [rendererWorker],

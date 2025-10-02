@@ -4,7 +4,14 @@ import { useCallback, useContext, useEffect, useMemo } from 'react';
 import { DrawState, ExcalidrawEventPublisher } from '../extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { Input, Radio } from 'antd';
-import { ArrowIcon, DiamondIcon, LineIcon, RectIcon } from '@/components/icons';
+import {
+    ArrowIcon,
+    DiamondIcon,
+    LineIcon,
+    MosaicIcon,
+    PenIcon,
+    RectIcon,
+} from '@/components/icons';
 import { DrawContext } from '@/app/fullScreenDraw/extra';
 import { debounce } from 'es-toolkit';
 import { useStateRef } from '@/hooks/useStateRef';
@@ -74,6 +81,12 @@ const SubToolEditor: NonNullable<
             case 'line':
                 drawState = DrawState.Line;
                 break;
+            case 'blur':
+                drawState = DrawState.Blur;
+                break;
+            case 'blur_freedraw':
+                drawState = DrawState.BlurFreeDraw;
+                break;
         }
 
         if (drawState === DrawState.Rect || drawState === DrawState.Diamond) {
@@ -124,6 +137,33 @@ const SubToolEditor: NonNullable<
                             }}
                         >
                             <LineIcon style={{ fontSize: '1.16em' }} />
+                        </div>
+                    </Radio.Button>
+                </Radio.Group>
+            );
+        }
+
+        if (drawState === DrawState.Blur || drawState === DrawState.BlurFreeDraw) {
+            return (
+                <Radio.Group value={drawState} style={{ display: 'flex' }}>
+                    <Radio.Button value={DrawState.Blur}>
+                        <div
+                            className="subtool-radio-button-icon"
+                            onClick={() => {
+                                setTool(DrawState.Blur);
+                            }}
+                        >
+                            <RectIcon style={{ fontSize: '1em' }} />
+                        </div>
+                    </Radio.Button>
+                    <Radio.Button value={DrawState.BlurFreeDraw}>
+                        <div
+                            className="subtool-radio-button-icon"
+                            onClick={() => {
+                                setTool(DrawState.BlurFreeDraw);
+                            }}
+                        >
+                            <PenIcon style={{ fontSize: '1.1em' }} />
                         </div>
                     </Radio.Button>
                 </Radio.Group>
