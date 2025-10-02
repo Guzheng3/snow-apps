@@ -167,7 +167,9 @@ export const renderClearContainerAction = (
 };
 
 export type BlurSprite = {
+    spriteContainer: PIXI.Container;
     sprite: PIXI.Sprite;
+    spriteBackground: PIXI.Sprite;
     spriteBlurFliter: PIXI.Filter;
     spriteMask: PIXI.Graphics;
 };
@@ -190,30 +192,40 @@ export const renderCreateBlurSpriteAction = (
     }
 
     const blurSprite: BlurSprite = {
+        spriteContainer: new PIXI.Container(),
         sprite: new PIXI.Sprite(imageTexture),
+        spriteBackground: new PIXI.Sprite(PIXI.Texture.WHITE),
         spriteBlurFliter: new PIXI.BlurFilter(),
         spriteMask: new PIXI.Graphics(),
     };
+
     blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
-    blurSprite.sprite.x = 0;
-    blurSprite.sprite.y = 0;
+    blurSprite.sprite.x = blurSprite.spriteBackground.x = 0;
+    blurSprite.sprite.y = blurSprite.spriteBackground.y = 0;
     blurSprite.sprite.width = imageTexture.width;
     blurSprite.sprite.height = imageTexture.height;
-    blurSprite.sprite.setMask({
+    blurSprite.spriteBackground.setSize({
+        width: imageTexture.width,
+        height: imageTexture.height,
+    });
+    blurSprite.spriteContainer.setMask({
         mask: blurSprite.spriteMask,
     });
     blurSprite.spriteMask.setFillStyle({
         color: 'white',
         alpha: 1,
     });
-    container.addChild(blurSprite.sprite);
-    container.addChild(blurSprite.spriteMask);
+    blurSprite.spriteContainer.addChild(blurSprite.spriteBackground);
+    blurSprite.spriteContainer.addChild(blurSprite.sprite);
+    blurSprite.spriteContainer.addChild(blurSprite.spriteMask);
+    container.addChild(blurSprite.spriteContainer);
 
     blurSpriteMapRef.current.set(blurElementId, blurSprite);
 };
 
 export type BlurSpriteProps = {
     blur: number;
+    filterType: string;
     x: number;
     y: number;
     width: number;
@@ -297,10 +309,117 @@ export const renderUpdateBlurSpriteAction = (
     blurSprite.sprite.alpha = blurProps.eraserAlpha ?? blurProps.opacity / 100;
 
     if (updateFilter) {
-        if (blurSprite.spriteBlurFliter instanceof PIXIFilters.PixelateFilter) {
-            blurSprite.spriteBlurFliter.size = Math.max(1, (blurProps.blur / 100) * 32);
-        } else if (blurSprite.spriteBlurFliter instanceof PIXI.BlurFilter) {
-            blurSprite.spriteBlurFliter.strength = Math.max(1, (blurProps.blur / 100) * 42);
+        if (blurProps.filterType === 'pixelate') {
+            const size = Math.max(1, (blurProps.blur / 100) * 12);
+            if (!(blurSprite.spriteBlurFliter instanceof PIXIFilters.PixelateFilter)) {
+                blurSprite.spriteBlurFliter = new PIXIFilters.PixelateFilter(size);
+                blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
+            } else {
+                blurSprite.spriteBlurFliter.size = size;
+            }
+        } else if (blurProps.filterType === 'ascii') {
+            const size = Math.max(2, (blurProps.blur / 100) * 20);
+            if (!(blurSprite.spriteBlurFliter instanceof PIXIFilters.AsciiFilter)) {
+                blurSprite.spriteBlurFliter = new PIXIFilters.AsciiFilter({
+                    size,
+                });
+
+                blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
+            } else {
+                blurSprite.spriteBlurFliter.size = size;
+            }
+        } else if (blurProps.filterType === 'crossHatch') {
+            if (!(blurSprite.spriteBlurFliter instanceof PIXIFilters.CrossHatchFilter)) {
+                blurSprite.spriteBlurFliter = new PIXIFilters.CrossHatchFilter();
+                blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
+            }
+        } else if (blurProps.filterType === 'crt') {
+            const lineWidth = Math.max(1, (blurProps.blur / 100) * 5);
+            if (!(blurSprite.spriteBlurFliter instanceof PIXIFilters.CRTFilter)) {
+                blurSprite.spriteBlurFliter = new PIXIFilters.CRTFilter({
+                    lineWidth,
+                });
+                blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
+            } else {
+                blurSprite.spriteBlurFliter.lineWidth = lineWidth;
+            }
+        } else if (blurProps.filterType === 'dot') {
+            const scale = Math.max(0.1, blurProps.blur / 100);
+            if (!(blurSprite.spriteBlurFliter instanceof PIXIFilters.DotFilter)) {
+                blurSprite.spriteBlurFliter = new PIXIFilters.DotFilter({
+                    scale,
+                });
+                blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
+            } else {
+                blurSprite.spriteBlurFliter.scale = scale;
+            }
+        } else if (blurProps.filterType === 'emboss') {
+            const strength = Math.max(1, (blurProps.blur / 100) * 20);
+            if (!(blurSprite.spriteBlurFliter instanceof PIXIFilters.EmbossFilter)) {
+                blurSprite.spriteBlurFliter = new PIXIFilters.EmbossFilter(strength);
+                blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
+            } else {
+                blurSprite.spriteBlurFliter.strength = strength;
+            }
+        } else if (blurProps.filterType === 'grayscale') {
+            if (!(blurSprite.spriteBlurFliter instanceof PIXIFilters.GrayscaleFilter)) {
+                blurSprite.spriteBlurFliter = new PIXIFilters.GrayscaleFilter();
+                blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
+            }
+        } else if (blurProps.filterType === 'kawaseBlur') {
+            const strength = Math.max(1, (blurProps.blur / 100) * 32);
+            if (!(blurSprite.spriteBlurFliter instanceof PIXIFilters.KawaseBlurFilter)) {
+                blurSprite.spriteBlurFliter = new PIXIFilters.KawaseBlurFilter({ strength });
+                blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
+            } else {
+                blurSprite.spriteBlurFliter.strength = strength;
+            }
+        } else if (blurProps.filterType === 'motionBlur') {
+            const kernelSize = Math.max(1, (blurProps.blur / 100) * 25);
+            if (!(blurSprite.spriteBlurFliter instanceof PIXIFilters.MotionBlurFilter)) {
+                blurSprite.spriteBlurFliter = new PIXIFilters.MotionBlurFilter({
+                    kernelSize,
+                    velocity: {
+                        x: 42,
+                        y: 42,
+                    },
+                });
+                blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
+            } else {
+                blurSprite.spriteBlurFliter.kernelSize = kernelSize;
+            }
+        } else if (blurProps.filterType === 'rgbSplit') {
+            const offset = (blurProps.blur / 100) * 12;
+            if (!(blurSprite.spriteBlurFliter instanceof PIXIFilters.RGBSplitFilter)) {
+                blurSprite.spriteBlurFliter = new PIXIFilters.RGBSplitFilter({
+                    red: { x: offset, y: offset },
+                    green: { x: 0, y: 0 },
+                    blue: { x: -offset, y: -offset },
+                });
+                blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
+            } else {
+                blurSprite.spriteBlurFliter.red = { x: offset, y: offset };
+                blurSprite.spriteBlurFliter.green = { x: 0, y: 0 };
+                blurSprite.spriteBlurFliter.blue = { x: -offset, y: -offset };
+            }
+        } else if (blurProps.filterType === 'noise') {
+            const noise = blurProps.blur / 100;
+            if (!(blurSprite.spriteBlurFliter instanceof PIXI.NoiseFilter)) {
+                blurSprite.spriteBlurFliter = new PIXI.NoiseFilter({ noise });
+                blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
+            } else {
+                blurSprite.spriteBlurFliter.noise = noise;
+            }
+        } else {
+            const strength = Math.max(1, (blurProps.blur / 100) * 42);
+            if (!(blurSprite.spriteBlurFliter instanceof PIXI.BlurFilter)) {
+                blurSprite.spriteBlurFliter = new PIXI.BlurFilter({
+                    strength,
+                });
+                blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
+            } else {
+                blurSprite.spriteBlurFliter.strength = strength;
+            }
         }
     }
 };
@@ -315,6 +434,8 @@ export const renderDeleteBlurSpriteAction = (
     }
 
     blurSprite.sprite.destroy();
+    blurSprite.spriteBackground.destroy();
+    blurSprite.spriteContainer.destroy();
     blurSprite.spriteBlurFliter.destroy();
     blurSprite.spriteMask.destroy();
     blurSpriteMapRef.current.delete(blurElementId);

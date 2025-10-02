@@ -5,7 +5,7 @@ import {
     ExcalidrawEventCallbackType,
 } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { ExcalidrawPropsCustomOptions } from '@mg-chao/excalidraw/types';
-import { Radio, Space } from 'antd';
+import { Radio, Select, Space } from 'antd';
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import {
     convertSerialNumberElementIdToEllipseElementId,
@@ -16,6 +16,7 @@ import {
 import { last } from 'es-toolkit';
 import { ExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
+import { useIntl } from 'react-intl';
 
 export const useChangeFontSizeProps = (
     isSlider: boolean,
@@ -258,5 +259,86 @@ export const RadioSelection = (
                 </Radio.Button>
             ))}
         </Radio.Group>
+    );
+};
+
+export const FilterTypeRadioSelection = (
+    props: React.ComponentProps<
+        NonNullable<
+            NonNullable<ExcalidrawPropsCustomOptions['pickerRenders']>['FilterTypeRadioSelection']
+        >
+    >,
+) => {
+    const intl = useIntl();
+
+    const options = useMemo(() => {
+        return [
+            {
+                label: intl.formatMessage({ id: `draw.filterType.blur` }),
+                value: 'blur',
+            },
+            {
+                label: intl.formatMessage({ id: `draw.filterType.pixelate` }),
+                value: 'pixelate',
+            },
+            {
+                label: intl.formatMessage({ id: `draw.filterType.ascii` }),
+                value: 'ascii',
+            },
+            {
+                label: intl.formatMessage({ id: `draw.filterType.crossHatch` }),
+                value: 'crossHatch',
+            },
+            {
+                label: intl.formatMessage({ id: `draw.filterType.crt` }),
+                value: 'crt',
+            },
+            {
+                label: intl.formatMessage({ id: `draw.filterType.dot` }),
+                value: 'dot',
+            },
+            {
+                label: intl.formatMessage({ id: `draw.filterType.emboss` }),
+                value: 'emboss',
+            },
+            {
+                label: intl.formatMessage({ id: `draw.filterType.grayscale` }),
+                value: 'grayscale',
+            },
+            {
+                label: intl.formatMessage({ id: `draw.filterType.kawaseBlur` }),
+                value: 'kawaseBlur',
+            },
+            {
+                label: intl.formatMessage({ id: `draw.filterType.motionBlur` }),
+                value: 'motionBlur',
+            },
+            {
+                label: intl.formatMessage({ id: `draw.filterType.rgbSplit` }),
+                value: 'rgbSplit',
+            },
+            {
+                label: intl.formatMessage({ id: `draw.filterType.noise` }),
+                value: 'noise',
+            },
+        ];
+    }, [intl]);
+
+    if (props.type !== 'button') {
+        return <></>;
+    }
+
+    return (
+        <Select
+            style={{ width: '100%' }}
+            options={options}
+            value={props.value}
+            onChange={(value) => {
+                props.onClick(
+                    value as unknown as number,
+                    {} as unknown as React.MouseEvent<HTMLButtonElement>,
+                );
+            }}
+        />
     );
 };

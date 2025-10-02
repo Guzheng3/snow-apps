@@ -40,7 +40,8 @@ const isEqualBlurSpriteProps = (
         a.angle === b.angle &&
         a.zoom === b.zoom &&
         a.opacity === b.opacity &&
-        a.strokeWidth === b.strokeWidth
+        a.strokeWidth === b.strokeWidth &&
+        a.filterType === b.filterType
     );
 };
 
@@ -123,6 +124,7 @@ const BlurToolCore: React.FC = () => {
                     eraserAlpha: undefined,
                     points: element.type === 'blur_freedraw' ? element.points : undefined,
                     strokeWidth: element.type === 'blur_freedraw' ? element.strokeWidth : undefined,
+                    filterType: element.filterType,
                 };
 
                 let blurSprite = blurSpriteMapRef.current.get(element.id);
@@ -152,7 +154,8 @@ const BlurToolCore: React.FC = () => {
                 await drawLayerActionRef.current.updateBlurSprite(
                     element.id,
                     blurProps,
-                    blurSprite.props.blur !== blurProps.blur,
+                    blurSprite.props.blur !== blurProps.blur ||
+                        blurSprite.props.filterType !== blurProps.filterType,
                 );
 
                 blurSprite.props = blurProps;

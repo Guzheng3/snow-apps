@@ -15,8 +15,8 @@ import {
     CircleIcon,
     EraserIcon,
     FastSaveIcon,
+    FilterIcon,
     FixedIcon,
-    MosaicIcon,
     OcrDetectIcon,
     OcrTranslateIcon,
     PenIcon,
@@ -758,7 +758,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                                 hidden={customToolbarToolHiddenMap?.[DrawState.Blur]}
                                 componentKey={KeyEventKey.BlurTool}
                                 extraDrawState={[DrawState.BlurFreeDraw]}
-                                icon={<MosaicIcon />}
+                                icon={<FilterIcon />}
                                 drawState={DrawState.Blur}
                                 disable={disableNormalScreenshotTool}
                                 onClick={() => {
