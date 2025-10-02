@@ -1121,7 +1121,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 return;
             }
 
-            const deltaLevel = e.deltaY > 0 ? 1 : -1;
+            const deltaLevel = e.deltaY > 0 ? -1 : 1;
             selectWindowFromMousePositionLevelRef.current = Math.max(
                 selectWindowFromMousePositionLevelRef.current + deltaLevel,
                 0,
