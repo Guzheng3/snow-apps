@@ -1,3 +1,4 @@
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use tokio::fs;
@@ -524,7 +525,7 @@ pub fn overlay_image_ptr(
     // 多线程提升较小
     // 先保留
     (0..target_image_height)
-        .into_iter()
+        .into_par_iter()
         .for_each(|y| unsafe {
             let image_row_ptr = (image_pixels_ptr as *mut u8)
                 .add(image_base_index + y * image_width * channel_count);
