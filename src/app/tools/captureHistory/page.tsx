@@ -121,13 +121,13 @@ const CaptureHistoryPage = () => {
 
                     const data = await Promise.all(
                         dataSourceRef.current
-                            .slice(startIndex, startIndex + pageSize)
                             .filter((item) => {
                                 if (startTs && endTs) {
                                     return item.create_ts >= startTs && item.create_ts <= endTs;
                                 }
                                 return true;
                             })
+                            .slice(startIndex, startIndex + pageSize)
                             .map(async (item) => {
                                 const file_path = await getCaptureHistoryImageAbsPath(
                                     item.file_name,
@@ -161,10 +161,18 @@ const CaptureHistoryPage = () => {
                         title: <FormattedMessage id="tools.captureHistory.date" />,
                         render: (_, item) => {
                             return (
-                                <>
+                                <div
+                                    onClick={() => {
+                                        executeScreenshot(
+                                            ScreenshotType.SwitchCaptureHistory,
+                                            undefined,
+                                            item.id,
+                                        );
+                                    }}
+                                >
                                     <FormattedMessage id="tools.captureHistory.date" />
                                     {`: ${dayjs(item.create_ts).format('YYYY-MM-DD HH:mm:ss')}`}
-                                </>
+                                </div>
                             );
                         },
                         search: true,
