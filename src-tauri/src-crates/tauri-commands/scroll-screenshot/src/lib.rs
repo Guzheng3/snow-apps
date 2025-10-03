@@ -23,7 +23,7 @@ pub async fn scroll_screenshot_init(
     descriptor_patch_size: usize,
     min_size_delta: i32,
     try_rollback: bool,
-) -> Result<(), ()> {
+) -> Result<(), String> {
     let mut scroll_screenshot_service = scroll_screenshot_service.lock().await;
 
     scroll_screenshot_service.init(
@@ -74,12 +74,15 @@ pub async fn scroll_screenshot_capture(
             max_x: max_x.round() as i32,
             max_y: max_y.round() as i32,
         };
-        let mut monitor_list_service = scroll_screenshot_capture_service.lock().await;
-        monitor_list_service.init(crop_region);
+        let monitor_list = {
+            let mut monitor_list_service = scroll_screenshot_capture_service.lock().await;
+            monitor_list_service.init(crop_region);
+            monitor_list_service.get()
+        };
 
-        let monitor_list = monitor_list_service.get();
-
-        monitor_list.capture_region(crop_region, Some(&window)).await?
+        monitor_list
+            .capture_region(crop_region, Some(&window))
+            .await?
     };
 
     scroll_screenshot_image_service
@@ -245,7 +248,7 @@ pub async fn scroll_screenshot_clear(
     scroll_screenshot_service: tauri::State<'_, Mutex<ScrollScreenshotService>>,
     scroll_screenshot_image_service: tauri::State<'_, Mutex<ScrollScreenshotImageService>>,
     scroll_screenshot_capture_service: tauri::State<'_, Mutex<ScrollScreenshotCaptureService>>,
-) -> Result<(), ()> {
+) -> Result<(), String> {
     let mut scroll_screenshot_service = scroll_screenshot_service.lock().await;
     let mut scroll_screenshot_image_service = scroll_screenshot_image_service.lock().await;
     let mut scroll_screenshot_capture_service = scroll_screenshot_capture_service.lock().await;
@@ -259,24 +262,34 @@ pub async fn scroll_screenshot_clear(
 
 pub async fn scroll_screenshot_get_image_data(
     scroll_screenshot_service: tauri::State<'_, Mutex<ScrollScreenshotService>>,
-) -> Result<Response, ()> {
+) -> Result<Response, String> {
     let mut scroll_screenshot_service = scroll_screenshot_service.lock().await;
 
     let image = scroll_screenshot_service.export();
     let image_data = match image {
         Some(image) => image,
-        None => return Err(()),
+        None => {
+            return Err(format!(
+                "[scroll_screenshot_get_image_data] Failed to export image",
+            ));
+        }
     };
 
     let mut buf = Vec::with_capacity((image_data.height() * image_data.width() * 3 / 8) as usize);
 
-    image_data
-        .write_with_encoder(PngEncoder::new_with_quality(
-            &mut buf,
-            CompressionType::Fast,
-            png::FilterType::Adaptive,
-        ))
-        .unwrap();
+    match image_data.write_with_encoder(PngEncoder::new_with_quality(
+        &mut buf,
+        CompressionType::Fast,
+        png::FilterType::Paeth,
+    )) {
+        Ok(_) => (),
+        Err(e) => {
+            return Err(format!(
+                "[scroll_screenshot_get_image_data] Failed to write image: {}",
+                e
+            ));
+        }
+    }
 
     Ok(Response::new(buf))
 }

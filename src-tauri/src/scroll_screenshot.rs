@@ -20,7 +20,7 @@ pub async fn scroll_screenshot_init(
     descriptor_patch_size: usize,
     min_size_delta: i32,
     try_rollback: bool,
-) -> Result<(), ()> {
+) -> Result<(), String> {
     snow_shot_tauri_commands_scroll_screenshot::scroll_screenshot_init(
         scroll_screenshot_service,
         direction,
@@ -125,7 +125,7 @@ pub async fn scroll_screenshot_clear(
     scroll_screenshot_service: tauri::State<'_, Mutex<ScrollScreenshotService>>,
     scroll_screenshot_image_service: tauri::State<'_, Mutex<ScrollScreenshotImageService>>,
     scroll_screenshot_capture_service: tauri::State<'_, Mutex<ScrollScreenshotCaptureService>>,
-) -> Result<(), ()> {
+) -> Result<(), String> {
     snow_shot_tauri_commands_scroll_screenshot::scroll_screenshot_clear(
         scroll_screenshot_service,
         scroll_screenshot_image_service,
@@ -137,7 +137,7 @@ pub async fn scroll_screenshot_clear(
 #[command]
 pub async fn scroll_screenshot_get_image_data(
     scroll_screenshot_service: tauri::State<'_, Mutex<ScrollScreenshotService>>,
-) -> Result<Response, ()> {
+) -> Result<Response, String> {
     snow_shot_tauri_commands_scroll_screenshot::scroll_screenshot_get_image_data(
         scroll_screenshot_service,
     )

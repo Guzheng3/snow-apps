@@ -7,6 +7,7 @@ pub mod scroll_screenshot;
 pub mod video_record;
 
 use std::sync::Arc;
+use snow_shot_app_services::listen_mouse_service;
 use tauri::Emitter;
 use tokio::sync::Mutex;
 
@@ -47,6 +48,7 @@ pub fn run() {
         Mutex::new(free_drag_window_service::FreeDragWindowService::new());
 
     let listen_key_service = Mutex::new(listen_key_service::ListenKeyService::new());
+    let listen_mouse_service = Mutex::new(listen_mouse_service::ListenMouseService::new());
 
     let file_cache_service = Arc::new(file_cache_service::FileCacheService::new());
 
@@ -174,6 +176,7 @@ pub fn run() {
         .manage(video_record_service)
         .manage(free_drag_window_service)
         .manage(listen_key_service)
+        .manage(listen_mouse_service)
         .manage(file_cache_service)
         .manage(enable_run_log_clone)
         .invoke_handler(tauri::generate_handler![
@@ -207,6 +210,7 @@ pub fn run() {
             core::get_selected_text,
             core::set_enable_proxy,
             core::scroll_through,
+            core::auto_scroll_through,
             core::click_through,
             core::create_fixed_content_window,
             core::read_image_from_clipboard,
@@ -241,6 +245,9 @@ pub fn run() {
             listen_key::listen_key_start,
             listen_key::listen_key_stop,
             listen_key::listen_key_stop_by_window_label,
+            listen_key::listen_mouse_start,
+            listen_key::listen_mouse_stop,
+            listen_key::listen_mouse_stop_by_window_label,
             file::text_file_read,
             file::text_file_write,
             file::text_file_clear,
@@ -252,11 +259,20 @@ pub fn run() {
                 // 用 tokio 异步进程实现清除有异步所有权问题，通知前端清理，简单处理
                 match window
                     .app_handle()
-                    .emit("listen-key-service:stop", window_label)
+                    .emit("listen-key-service:stop", window_label.clone())
                 {
                     Ok(_) => (),
                     Err(e) => {
                         log::error!("[listen_key_service:stop] Failed to emit event: {}", e);
+                    }
+                }
+                match window
+                    .app_handle()
+                    .emit("listen-mouse-service:stop", window_label.clone())
+                {
+                    Ok(_) => (),
+                    Err(e) => {
+                        log::error!("[listen_mouse_service:stop] Failed to emit event: {}", e);
                     }
                 }
             }

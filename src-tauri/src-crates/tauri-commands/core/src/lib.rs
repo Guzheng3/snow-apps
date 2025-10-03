@@ -56,7 +56,7 @@ pub async fn scroll_through(
         ));
     }
 
-    time::sleep(time::Duration::from_millis(1)).await;
+    time::sleep(time::Duration::from_millis(10)).await;
 
     {
         match enigo.scroll(length, Axis::Vertical) {
@@ -73,6 +73,25 @@ pub async fn scroll_through(
     Ok(())
 }
 
+pub async fn auto_scroll_through(
+    enigo_manager: tauri::State<'_, Mutex<EnigoManager>>,
+    length: i32,
+) -> Result<(), String> {
+    let mut enigo = enigo_manager.lock().await;
+    let enigo = enigo.get_enigo()?;
+
+    {
+        match enigo.scroll(length, Axis::Vertical) {
+            Ok(_) => (),
+            Err(e) => {
+                log::error!("[auto_scroll_through] scroll error: {}", e);
+            }
+        }
+    }
+
+    Ok(())
+}
+
 /// 鼠标滚轮穿透
 pub async fn click_through(window: tauri::Window) -> Result<(), ()> {
     let result = window.set_ignore_cursor_events(true);
@@ -80,7 +99,7 @@ pub async fn click_through(window: tauri::Window) -> Result<(), ()> {
         return Ok(());
     }
 
-    time::sleep(time::Duration::from_millis(128)).await;
+    time::sleep(time::Duration::from_millis(300)).await;
     match window.set_ignore_cursor_events(false) {
         Ok(_) => (),
         Err(_) => (),

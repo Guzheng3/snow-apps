@@ -48,6 +48,13 @@ impl DeviceEventHandlerService {
         Ok(self.get_device_event_handler()?.on_mouse_move(callback))
     }
 
+    pub fn on_mouse_down<Callback: Fn(&MouseButton) + Sync + Send + 'static>(
+        &mut self,
+        callback: Callback,
+    ) -> Result<CallbackGuard<Callback>, String> {
+        Ok(self.get_device_event_handler()?.on_mouse_down(callback))
+    }
+
     pub fn on_mouse_up<Callback: Fn(&MouseButton) + Sync + Send + 'static>(
         &mut self,
         callback: Callback,

@@ -27,6 +27,13 @@ export const clickThrough = async () => {
     return result;
 };
 
+export const autoScrollThrough = async (length: number) => {
+    const result = await invoke<void>('auto_scroll_through', {
+        length,
+    });
+    return result;
+};
+
 export const createFixedContentWindow = async (scrollScreenshot?: boolean) => {
     const result = await invoke<void>('create_fixed_content_window', {
         scrollScreenshot: scrollScreenshot ?? false,

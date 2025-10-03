@@ -544,7 +544,7 @@ export const clearAllConfig = async () => {
  * @param error 错误对象，可以是 Error、string、object 等
  * @returns 包含格式化字符串和详细信息的对象
  */
-const formatErrorDetails = (
+export const formatErrorDetails = (
     error: unknown,
 ): { message: string; details: Record<string, unknown> } => {
     const details: Record<string, unknown> = {};

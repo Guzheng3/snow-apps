@@ -324,6 +324,7 @@ const DrawPageCore: React.FC<{
             });
 
             setDrawWindowStyle();
+            appWindow.setFocus();
         },
         [getScreenshotType],
     );

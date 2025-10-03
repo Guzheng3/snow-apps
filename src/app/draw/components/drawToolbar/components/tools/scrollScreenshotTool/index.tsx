@@ -1,7 +1,7 @@
 import { DrawEvent, DrawEventPublisher } from '@/app/draw/extra';
 import { DrawContext } from '@/app/draw/types';
 import { ElementRect } from '@/commands';
-import { clickThrough, scrollThrough } from '@/commands/core';
+import { autoScrollThrough, clickThrough, scrollThrough } from '@/commands/core';
 import {
     SCROLL_SCREENSHOT_CAPTURE_RESULT_EXTRA_DATA_SIZE,
     ScrollImageList,
@@ -37,6 +37,13 @@ import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/ext
 import { MessageType } from 'antd/es/message/interface';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { appError } from '@/utils/log';
+import { useMonitorRect } from '@/app/draw/components/statusBar';
+import { EventListenerContext } from '@/components/eventListener';
+import {
+    LISTEN_KEY_SERVICE_MOUSE_DOWN_EMIT_KEY,
+    listenMouseStart,
+    listenMouseStop,
+} from '@/commands/listenKey';
 
 const THUMBNAIL_WIDTH = 128;
 
@@ -55,6 +62,14 @@ export const ScrollScreenshot: React.FC<{
     const { message } = useContext(AntdContext);
     const intl = useIntl();
     const { token } = theme.useToken();
+
+    const {
+        contentScale: [contentScale],
+    } = useMonitorRect(false);
+
+    const monitorThumbnailWidth = useMemo(() => {
+        return THUMBNAIL_WIDTH * contentScale;
+    }, [contentScale]);
 
     const [, setDrawEvent] = useStateSubscriber(DrawEventPublisher, undefined);
 
@@ -87,7 +102,7 @@ export const ScrollScreenshot: React.FC<{
         return releaseImageUrlList;
     }, [releaseImageUrlList]);
 
-    const [captuerEdgePosition, setCaptuerEdgePosition] = useState<number | undefined>(undefined);
+    const [captuerEdgePosition, setCaptuerEdgePosition] = useState<'top' | 'bottom'>('top');
 
     const [scrollDirection, setScrollDirection, scrollDirectionRef] = useStateRef<ScrollDirection>(
         ScrollDirection.Vertical,
@@ -125,30 +140,31 @@ export const ScrollScreenshot: React.FC<{
             let positionScale: number;
             if (scrollDirectionRef.current === ScrollDirection.Horizontal) {
                 positionScale =
-                    THUMBNAIL_WIDTH /
+                    monitorThumbnailWidth /
                     ((positionRectRef.current!.max_y - positionRectRef.current!.min_y) *
                         window.devicePixelRatio);
             } else {
                 positionScale =
-                    THUMBNAIL_WIDTH /
+                    monitorThumbnailWidth /
                     ((positionRectRef.current!.max_x - positionRectRef.current!.min_x) *
                         window.devicePixelRatio);
             }
             const thumbnailHeight =
                 scrollDirectionRef.current === ScrollDirection.Horizontal
-                    ? (THUMBNAIL_WIDTH *
+                    ? (monitorThumbnailWidth *
                           (positionRectRef.current!.max_x - positionRectRef.current!.min_x)) /
                       (positionRectRef.current!.max_y - positionRectRef.current!.min_y)
-                    : (THUMBNAIL_WIDTH *
+                    : (monitorThumbnailWidth *
                           (positionRectRef.current!.max_y - positionRectRef.current!.min_y)) /
                       (positionRectRef.current!.max_x - positionRectRef.current!.min_x);
 
-            let captuerEdge = (currentScrollSize.top_image_size + edgePosition) * positionScale;
+            let captuerEdge = currentScrollSize.top_image_size + edgePosition;
             if (edgePosition > 0) {
-                captuerEdge -= thumbnailHeight;
+                captuerEdge -= thumbnailHeight / positionScale;
             }
 
-            setCaptuerEdgePosition(captuerEdge);
+            // 用百分比计算，避免误差
+            setCaptuerEdgePosition(edgePosition > 0 ? 'bottom' : 'top');
 
             if (
                 captureResult.thumbnail_buffer.byteLength <=
@@ -177,10 +193,40 @@ export const ScrollScreenshot: React.FC<{
                 }, 100);
             }
         },
-        [positionRectRef, scrollDirectionRef, scrollTo, setBottomImageUrlList, setTopImageUrlList],
+        [
+            monitorThumbnailWidth,
+            positionRectRef,
+            scrollDirectionRef,
+            scrollTo,
+            setBottomImageUrlList,
+            setTopImageUrlList,
+        ],
     );
 
     const lastCaptureMissHideRef = useRef<MessageType | undefined>(undefined);
+
+    const pendingEnableAutoScrollThroughClickRef = useRef<boolean>(false);
+    const setPendingEnableAutoScrollThroughClickRef = useRef<NodeJS.Timeout | undefined>(undefined);
+    const autoScrollThroughIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+    const stopAutoScrollThrough = useCallback((clearDelay: number = 300) => {
+        if (autoScrollThroughIntervalRef.current) {
+            clearInterval(autoScrollThroughIntervalRef.current);
+            if (clearDelay > 0) {
+                autoScrollThroughIntervalRef.current = setTimeout(() => {
+                    autoScrollThroughIntervalRef.current = undefined;
+                    pendingEnableAutoScrollThroughClickRef.current = false;
+                }, clearDelay);
+            } else {
+                autoScrollThroughIntervalRef.current = undefined;
+                pendingEnableAutoScrollThroughClickRef.current = false;
+            }
+
+            listenMouseStop();
+            return true;
+        }
+        return false;
+    }, []);
 
     const showCaptureMissMessage = useMemo(() => {
         return throttle(
@@ -190,6 +236,11 @@ export const ScrollScreenshot: React.FC<{
                         lastCaptureMissHideRef.current();
                     } catch {}
                 }
+
+                if (autoScrollThroughIntervalRef.current) {
+                    return;
+                }
+
                 lastCaptureMissHideRef.current = message.warning(
                     intl.formatMessage({ id: 'draw.scrollScreenshot.captureMiss' }),
                 );
@@ -199,6 +250,12 @@ export const ScrollScreenshot: React.FC<{
         );
     }, [intl, message]);
 
+    const setLoadingDebounce = useMemo(() => {
+        return debounce(setLoading, 256);
+    }, [setLoading]);
+
+    // 判断是否连续多次没有变化
+    const noChangeCount = useRef(0);
     /**
      * @returns 是否需要继续处理
      */
@@ -210,7 +267,7 @@ export const ScrollScreenshot: React.FC<{
 
         try {
             captureResult = await scrollScreenshotHandleImage(
-                Math.round(THUMBNAIL_WIDTH * window.devicePixelRatio),
+                Math.round(monitorThumbnailWidth * window.devicePixelRatio),
             );
         } catch (error) {
             appError('[handleCaptureImage] scrollScreenshotHandleImage error', error);
@@ -220,7 +277,7 @@ export const ScrollScreenshot: React.FC<{
 
         needContinue = captureResult.type !== 'no_image';
 
-        setLoading(false);
+        setLoadingDebounce(false);
 
         if (captureResult.type === 'no_image') {
             return needContinue;
@@ -228,16 +285,30 @@ export const ScrollScreenshot: React.FC<{
             captureResult.edge_position === 0 &&
             captureResult.thumbnail_buffer === undefined
         ) {
+            noChangeCount.current++;
+            if (noChangeCount.current > 3) {
+                noChangeCount.current = 0;
+                stopAutoScrollThrough();
+            }
             return needContinue;
         } else if (captureResult.edge_position === undefined) {
             showCaptureMissMessage();
             return needContinue;
         }
 
+        noChangeCount.current = 0;
         updateImageUrlList(captureResult);
 
         return needContinue;
-    }, [setLoading, updateImageUrlList, message, intl, showCaptureMissMessage]);
+    }, [
+        setLoadingDebounce,
+        updateImageUrlList,
+        monitorThumbnailWidth,
+        message,
+        intl,
+        stopAutoScrollThrough,
+        showCaptureMissMessage,
+    ]);
 
     const pendingCaptureImageListRef = useRef<boolean>(false);
     const handleCaptureImageList = useCallback(async () => {
@@ -260,19 +331,14 @@ export const ScrollScreenshot: React.FC<{
     }, [handleCaptureImage]);
 
     const handleCaptureImageListDebounce = useMemo(() => {
-        return debounce(handleCaptureImageList, 128);
+        return debounce(handleCaptureImageList, 100);
     }, [handleCaptureImageList]);
 
-    const pendingCaptureRef = useRef<boolean>(false);
     const captureImageCore = useCallback(
         async (scrollImageList: ScrollImageList) => {
             const rect = captureBoundingBoxInfoRef.current!.transformWindowRect(
                 selectLayerActionRef.current!.getSelectRect()!,
             );
-
-            if (pendingCaptureRef.current) {
-                return;
-            }
 
             setDrawEvent({
                 event: DrawEvent.ScrollScreenshot,
@@ -283,8 +349,6 @@ export const ScrollScreenshot: React.FC<{
             // 等待 1 帧，确保取色器、工具栏隐藏
             await new Promise((resolve) => setTimeout(resolve, 17));
 
-            pendingCaptureRef.current = true;
-
             await scrollScreenshotCapture(
                 scrollImageList,
                 rect.min_x,
@@ -292,8 +356,6 @@ export const ScrollScreenshot: React.FC<{
                 rect.max_x,
                 rect.max_y,
             );
-
-            pendingCaptureRef.current = false;
 
             handleCaptureImageListDebounce();
         },
@@ -306,16 +368,18 @@ export const ScrollScreenshot: React.FC<{
     );
 
     const captureImageDebounce = useMemo(() => {
-        return debounce(captureImageCore, 128);
+        return debounce(captureImageCore, 256);
     }, [captureImageCore]);
-
-    const captureImage = useCallback(
-        async (scrollImageList: ScrollImageList) => {
-            await captureImageCore(scrollImageList);
-            captureImageDebounce(scrollImageList);
-        },
-        [captureImageCore, captureImageDebounce],
-    );
+    const captureImage = useMemo(() => {
+        return throttle(
+            (scrollImageList: ScrollImageList) => {
+                captureImageCore(scrollImageList);
+                captureImageDebounce(scrollImageList);
+            },
+            32,
+            { edges: ['leading', 'trailing'] },
+        );
+    }, [captureImageCore, captureImageDebounce]);
 
     const [showTip, setShowTip] = useState(false);
     const init = useCallback(
@@ -333,6 +397,7 @@ export const ScrollScreenshot: React.FC<{
             const maxSide = Math.max(scrollSettings.maxSide, scrollSettings.minSide);
 
             try {
+                await scrollScreenshotClear();
                 await scrollScreenshotInit(
                     direction,
                     rect.max_x - rect.min_x,
@@ -375,6 +440,10 @@ export const ScrollScreenshot: React.FC<{
 
     const onWheel = useCallback<WheelEventHandler<HTMLDivElement>>(
         (event) => {
+            if (autoScrollThroughIntervalRef.current) {
+                return;
+            }
+
             if (!enableScrollThroughRef.current) {
                 return;
             }
@@ -405,19 +474,67 @@ export const ScrollScreenshot: React.FC<{
         [captureImage, enableCursorEventsDebounce, message, scrollDirectionRef],
     );
 
+    const tryEnableAutoScrollThroughCore = useCallback(() => {
+        if (pendingEnableAutoScrollThroughClickRef.current) {
+            listenMouseStop();
+            pendingEnableAutoScrollThroughClickRef.current = false;
+        } else {
+            listenMouseStart();
+            if (setPendingEnableAutoScrollThroughClickRef.current) {
+                clearTimeout(setPendingEnableAutoScrollThroughClickRef.current);
+            }
+            pendingEnableAutoScrollThroughClickRef.current = true;
+            setPendingEnableAutoScrollThroughClickRef.current = setTimeout(async () => {
+                if (pendingEnableAutoScrollThroughClickRef.current) {
+                    if (autoScrollThroughIntervalRef.current) {
+                        clearInterval(autoScrollThroughIntervalRef.current);
+                    }
+                    await getCurrentWindow().setIgnoreCursorEvents(true);
+                    pendingEnableAutoScrollThroughClickRef.current = false;
+                    autoScrollThroughIntervalRef.current = setInterval(async () => {
+                        await getCurrentWindow().setIgnoreCursorEvents(true);
+                        await autoScrollThrough(1);
+                        enableCursorEventsDebounce();
+                        captureImageCore(ScrollImageList.Bottom);
+                    }, 150);
+                }
+                setPendingEnableAutoScrollThroughClickRef.current = undefined;
+            }, 300);
+        }
+    }, [captureImageCore, enableCursorEventsDebounce]);
+
+    const { addListener, removeListener } = useContext(EventListenerContext);
+    useEffect(() => {
+        const listenerId = addListener(LISTEN_KEY_SERVICE_MOUSE_DOWN_EMIT_KEY, () => {
+            if (pendingEnableAutoScrollThroughClickRef.current) {
+                tryEnableAutoScrollThroughCore();
+            } else {
+                stopAutoScrollThrough(300);
+            }
+        });
+        return () => {
+            removeListener(listenerId);
+        };
+    }, [addListener, removeListener, stopAutoScrollThrough, tryEnableAutoScrollThroughCore]);
+
     const enableIgnoreCursorEventsRef = useRef(false);
     const onClick = useCallback(async () => {
+        if (stopAutoScrollThrough()) {
+            return;
+        }
+
         if (enableIgnoreCursorEventsRef.current) {
             return;
         }
 
+        tryEnableAutoScrollThroughCore();
+
         enableIgnoreCursorEventsRef.current = true;
         await clickThrough();
         enableIgnoreCursorEventsRef.current = false;
-    }, []);
+    }, [stopAutoScrollThrough, tryEnableAutoScrollThroughCore]);
 
-    const startCapture = useCallback(() => {
-        setCaptuerEdgePosition(undefined);
+    const startCapture = useCallback(async () => {
         enableScrollThroughRef.current = false;
         releaseImageUrlList();
         setPositionRect(undefined);
@@ -428,27 +545,43 @@ export const ScrollScreenshot: React.FC<{
         }
 
         init(selectRect, scrollDirectionRef.current);
+        if (process.env.NODE_ENV === 'development') {
+            getCurrentWindow().setAlwaysOnTop(true);
+        }
     }, [releaseImageUrlList, selectLayerActionRef, init, scrollDirectionRef, setPositionRect]);
+
+    const clearContext = useCallback(() => {
+        if (autoScrollThroughIntervalRef.current) {
+            clearInterval(autoScrollThroughIntervalRef.current);
+        }
+        if (setPendingEnableAutoScrollThroughClickRef.current) {
+            clearTimeout(setPendingEnableAutoScrollThroughClickRef.current);
+        }
+        listenMouseStop();
+    }, []);
+
     useStateSubscriber(
         DrawStatePublisher,
         useCallback(
             (drawState: DrawState) => {
                 if (drawState !== DrawState.ScrollScreenshot) {
                     setPositionRect(undefined);
+                    clearContext();
                     return;
                 }
 
                 startCapture();
             },
-            [setPositionRect, startCapture],
+            [setPositionRect, startCapture, clearContext],
         ),
     );
 
     useEffect(() => {
         return () => {
             scrollScreenshotClear();
+            clearContext();
         };
-    }, []);
+    }, [clearContext]);
 
     const subToolsActionRef = useRef<SubToolsActionType>(undefined);
     useImperativeHandle(
@@ -467,14 +600,14 @@ export const ScrollScreenshot: React.FC<{
 
     const thumbnailHeight =
         scrollDirection === ScrollDirection.Horizontal
-            ? (THUMBNAIL_WIDTH * (positionRect.max_x - positionRect.min_x)) /
+            ? (monitorThumbnailWidth * (positionRect.max_x - positionRect.min_x)) /
               (positionRect.max_y - positionRect.min_y)
-            : (THUMBNAIL_WIDTH * (positionRect.max_y - positionRect.min_y)) /
+            : (monitorThumbnailWidth * (positionRect.max_y - positionRect.min_y)) /
               (positionRect.max_x - positionRect.min_x);
 
     const thumbnailListTransform =
         scrollDirection === ScrollDirection.Horizontal
-            ? `translate(${positionRect.min_x}px, ${positionRect.min_y - token.marginXXS - THUMBNAIL_WIDTH}px) rotateX(180deg)`
+            ? `translate(${positionRect.min_x}px, ${positionRect.min_y - token.marginXXS - monitorThumbnailWidth}px) rotateX(180deg)`
             : `translate(${positionRect.max_x + token.marginXXS}px, ${positionRect.min_y}px)`;
 
     return (
@@ -543,10 +676,10 @@ export const ScrollScreenshot: React.FC<{
                         scrollDirection === ScrollDirection.Horizontal
                             ? {
                                   width: positionRect.max_x - positionRect.min_x,
-                                  height: THUMBNAIL_WIDTH,
+                                  height: monitorThumbnailWidth,
                               }
                             : {
-                                  width: THUMBNAIL_WIDTH,
+                                  width: monitorThumbnailWidth,
                                   height: positionRect.max_y - positionRect.min_y,
                               }
                     }
@@ -566,10 +699,16 @@ export const ScrollScreenshot: React.FC<{
                                         scrollDirection === ScrollDirection.Horizontal
                                             ? {
                                                   height: '100%',
-                                                  width: captuerEdgePosition,
+                                                  width:
+                                                      captuerEdgePosition === 'bottom'
+                                                          ? `calc(${100}% - ${thumbnailHeight}px)`
+                                                          : '0%',
                                               }
                                             : {
-                                                  height: captuerEdgePosition,
+                                                  height:
+                                                      captuerEdgePosition === 'bottom'
+                                                          ? `calc(${100}% - ${thumbnailHeight}px)`
+                                                          : '0%',
                                                   width: '100%',
                                               }
                                     }
@@ -587,7 +726,26 @@ export const ScrollScreenshot: React.FC<{
                                               }
                                     }
                                 />
-                                <div className="captuer-edge-mask-bottom" />
+                                <div
+                                    className="captuer-edge-mask-bottom"
+                                    style={
+                                        scrollDirection === ScrollDirection.Horizontal
+                                            ? {
+                                                  height: '100%',
+                                                  width:
+                                                      captuerEdgePosition === 'bottom'
+                                                          ? '0%'
+                                                          : `calc(${100}% - ${thumbnailHeight}px)`,
+                                              }
+                                            : {
+                                                  height:
+                                                      captuerEdgePosition === 'bottom'
+                                                          ? '0%'
+                                                          : `calc(${100}% - ${thumbnailHeight}px)`,
+                                                  width: '100%',
+                                              }
+                                    }
+                                />
                             </div>
                         )}
                         {topImageUrlList.map((imageUrl, index) => (
@@ -655,10 +813,10 @@ export const ScrollScreenshot: React.FC<{
                             scrollDirection === ScrollDirection.Horizontal
                                 ? {
                                       width: positionRect.max_x - positionRect.min_x,
-                                      height: THUMBNAIL_WIDTH,
+                                      height: monitorThumbnailWidth,
                                   }
                                 : {
-                                      width: THUMBNAIL_WIDTH,
+                                      width: monitorThumbnailWidth,
                                       height: positionRect.max_y - positionRect.min_y,
                                   }
                         }
@@ -684,7 +842,7 @@ export const ScrollScreenshot: React.FC<{
                     color: white;
                     text-align: center;
                     width: 100%;
-                    transform: translateY(-100%);
+                    transform: translateY(calc(-100% - ${token.marginXXS}px)) scale(${contentScale});
                     opacity: 0.83;
                     pointer-events: none;
                 }
@@ -692,9 +850,9 @@ export const ScrollScreenshot: React.FC<{
                 .thumbnail-list {
                     width: ${scrollDirection === ScrollDirection.Horizontal
                         ? 'unset'
-                        : `${THUMBNAIL_WIDTH + 5}px`};
+                        : `${monitorThumbnailWidth + 5}px`};
                     height: ${scrollDirection === ScrollDirection.Horizontal
-                        ? `${THUMBNAIL_WIDTH + 5}px`
+                        ? `${monitorThumbnailWidth + 5}px`
                         : 'unset'};
                     position: fixed;
                     left: 0px;
@@ -731,9 +889,9 @@ export const ScrollScreenshot: React.FC<{
                 .thumbnail-list .thumbnail {
                     width: ${scrollDirection === ScrollDirection.Horizontal
                         ? 'unset'
-                        : `${THUMBNAIL_WIDTH}px`};
+                        : `${monitorThumbnailWidth}px`};
                     height: ${scrollDirection === ScrollDirection.Horizontal
-                        ? `${THUMBNAIL_WIDTH}px`
+                        ? `${monitorThumbnailWidth}px`
                         : 'unset'};
                 }
 
@@ -778,8 +936,7 @@ export const ScrollScreenshot: React.FC<{
                 .captuer-edge-mask-bottom {
                     display: block;
                     background: rgba(0, 0, 0, 0.32);
-                    width: ${scrollDirection === ScrollDirection.Horizontal ? 'unset' : '100%'};
-                    flex: 1;
+                    width: 100%;
                 }
             `}</style>
         </>

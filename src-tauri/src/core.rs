@@ -35,6 +35,15 @@ pub async fn scroll_through(
 
 /// 鼠标滚轮穿透
 #[command]
+pub async fn auto_scroll_through(
+    enigo_manager: tauri::State<'_, Mutex<EnigoManager>>,
+    length: i32,
+) -> Result<(), String> {
+    snow_shot_tauri_commands_core::auto_scroll_through(enigo_manager, length).await
+}
+
+/// 鼠标滚轮穿透
+#[command]
 pub async fn click_through(window: tauri::Window) -> Result<(), ()> {
     snow_shot_tauri_commands_core::click_through(window).await
 }

@@ -225,7 +225,8 @@ const DrawCacheLayerCore: React.FC<{
                     drawState === DrawState.OcrDetect ||
                     drawState === DrawState.ScanQrcode ||
                     drawState === DrawState.ExtraTools ||
-                    drawState === DrawState.VideoRecord
+                    drawState === DrawState.VideoRecord ||
+                    drawState === DrawState.ScrollScreenshot
                 ) {
                     drawCoreElement.style.pointerEvents = 'none';
                 } else {

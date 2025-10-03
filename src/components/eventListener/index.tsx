@@ -11,12 +11,16 @@ import { AppSettingsActionContext } from '@/app/contextWrap';
 import {
     LISTEN_KEY_SERVICE_KEY_DOWN_EMIT_KEY,
     LISTEN_KEY_SERVICE_KEY_UP_EMIT_KEY,
+    LISTEN_KEY_SERVICE_MOUSE_DOWN_EMIT_KEY,
+    LISTEN_KEY_SERVICE_MOUSE_STOP_EMIT_KEY,
+    LISTEN_KEY_SERVICE_MOUSE_UP_EMIT_KEY,
     LISTEN_KEY_SERVICE_STOP_EMIT_KEY,
     ListenKeyCode,
     ListenKeyDownEvent,
     listenKeyStop,
     listenKeyStopByWindowLabel,
     ListenKeyUpEvent,
+    listenMouseStopByWindowLabel,
 } from '@/commands/listenKey';
 import { showWindow } from '@/utils/window';
 import { AntdContext } from '../globalLayoutExtra';
@@ -307,6 +311,20 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
                 defaultListener.push({
                     event: 'release-draw-page',
                     callback: async () => {},
+                });
+                defaultListener.push({
+                    event: LISTEN_KEY_SERVICE_MOUSE_DOWN_EMIT_KEY,
+                    callback: async () => {},
+                });
+                defaultListener.push({
+                    event: LISTEN_KEY_SERVICE_MOUSE_UP_EMIT_KEY,
+                    callback: async () => {},
+                });
+                defaultListener.push({
+                    event: LISTEN_KEY_SERVICE_MOUSE_STOP_EMIT_KEY,
+                    callback: async ({ payload }: { payload: string }) => {
+                        listenMouseStopByWindowLabel(payload);
+                    },
                 });
             }
 

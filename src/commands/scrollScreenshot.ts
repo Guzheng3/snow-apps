@@ -1,3 +1,4 @@
+import { formatErrorDetails } from '@/app/contextWrap';
 import { appError } from '@/utils/log';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -182,7 +183,7 @@ export const scrollScreenshotGetImageData = async (): Promise<Blob | undefined> 
     try {
         result = await invoke<ArrayBuffer>('scroll_screenshot_get_image_data');
     } catch (error) {
-        appError('[scrollScreenshotGetImageData] error', error);
+        appError('[scrollScreenshotGetImageData] error', formatErrorDetails(error));
         return undefined;
     }
 
