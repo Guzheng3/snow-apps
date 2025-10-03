@@ -67,7 +67,7 @@ pub fn run() {
             Target::new(TargetKind::Webview),
         ]
     } else {
-        vec![Target::new(TargetKind::Stdout)]
+        vec![Target::new(TargetKind::LogDir { file_name: None })]
     };
 
     tauri::Builder::default()
