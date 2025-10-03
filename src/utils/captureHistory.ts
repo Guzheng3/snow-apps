@@ -61,13 +61,15 @@ export class CaptureHistory {
     }
 
     static generateCaptureHistoryItem(
-        imageBuffer: ImageBuffer | CaptureHistoryItem,
+        imageBuffer: ImageBuffer | CaptureHistoryItem | 'full-screen',
         excalidrawElements: readonly Ordered<NonDeletedExcalidrawElement>[] | undefined,
         excalidrawAppState: Readonly<AppState> | undefined,
-        selectedRect: ElementRect,
+        selectedRect: ElementRect | undefined,
     ): CaptureHistoryItem {
         let fileExtension = '.webp';
-        if ('encoder' in imageBuffer) {
+        if (imageBuffer === 'full-screen') {
+            fileExtension = '.png';
+        } else if ('encoder' in imageBuffer) {
             switch (imageBuffer.encoder) {
                 case ImageEncoder.WebP:
                     fileExtension = '.webp';
@@ -85,7 +87,12 @@ export class CaptureHistory {
 
         return {
             id: timestamp.toString(),
-            selected_rect: selectedRect,
+            selected_rect: selectedRect ?? {
+                min_x: 0,
+                min_y: 0,
+                max_x: 0,
+                max_y: 0,
+            },
             file_name: fileName,
             create_ts: timestamp,
             excalidraw_elements: excalidrawElements,
@@ -100,17 +107,26 @@ export class CaptureHistory {
     }
 
     async save(
-        imageData: ImageBuffer | CaptureHistoryItem,
+        imageData:
+            | ImageBuffer
+            | CaptureHistoryItem
+            | {
+                  type: 'full-screen';
+                  captureHistoryItem: CaptureHistoryItem;
+              },
         excalidrawElements: readonly Ordered<NonDeletedExcalidrawElement>[] | undefined,
         excalidrawAppState: Readonly<AppState> | undefined,
         selectedRect: ElementRect,
     ): Promise<CaptureHistoryItem> {
-        const captureHistoryItem = CaptureHistory.generateCaptureHistoryItem(
-            imageData,
-            excalidrawElements,
-            excalidrawAppState,
-            selectedRect,
-        );
+        const captureHistoryItem =
+            'type' in imageData
+                ? imageData.captureHistoryItem
+                : CaptureHistory.generateCaptureHistoryItem(
+                      imageData,
+                      excalidrawElements,
+                      excalidrawAppState,
+                      selectedRect,
+                  );
 
         try {
             await createDir(await getCaptureHistoryImageAbsPath(''));
@@ -120,6 +136,7 @@ export class CaptureHistory {
                     await getCaptureHistoryImageAbsPath(captureHistoryItem.file_name),
                     new Uint8Array(imageData.buffer),
                 );
+            } else if ('type' in imageData) {
             } else {
                 await copyFile(
                     await getCaptureHistoryImageAbsPath(imageData.file_name),

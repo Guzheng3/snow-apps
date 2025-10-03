@@ -1,7 +1,7 @@
 import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
 import { captureFocusedWindow } from '@/commands/screenshot';
 import { getImagePathFromSettings } from '@/utils/file';
-import { playSound } from '@/utils/audio';
+import { playCameraShutterSound } from '@/utils/audio';
 import { emit } from '@tauri-apps/api/event';
 import * as tauriLog from '@tauri-apps/plugin-log';
 import { FOCUS_WINDOW_APP_NAME_ENV_VARIABLE } from '@/app/settings/functionSettings/extra';
@@ -16,6 +16,7 @@ export enum ScreenshotType {
     Copy = 'copy',
     VideoRecord = 'video-record',
     SwitchCaptureHistory = 'switch-capture-history',
+    CaptureFullScreen = 'capture-full-screen',
 }
 
 export const executeScreenshot = async (
@@ -44,7 +45,7 @@ export const executeScreenshotFocusedWindow = async (appSettings: AppSettingsDat
         FOCUS_WINDOW_APP_NAME_ENV_VARIABLE,
     );
     // 播放相机快门音效
-    playSound('/audios/camera_shutter.mp3');
+    playCameraShutterSound();
 };
 
 export const finishScreenshot = async () => {

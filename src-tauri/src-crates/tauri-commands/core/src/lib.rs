@@ -525,129 +525,18 @@ pub async fn is_admin() -> Result<bool, String> {
 }
 
 pub async fn write_bitmap_image_to_clipboard(
-    #[allow(unused_variables)] request: tauri::ipc::Request<'_>,
+    request: tauri::ipc::Request<'_>,
 ) -> Result<(), String> {
-    #[cfg(not(target_os = "windows"))]
-    {
-        return Err(String::from(
-            "[write_bitmap_image_to_clipboard] Not supported on this platform",
-        ));
-    }
-
-    // 如果是 Windows 系统则尝试使用 DIB 格式写入到剪贴板
-    // Windows 下使用 DIB 格式写入到剪贴板，比 BMP 文件格式更标准
-    #[cfg(target_os = "windows")]
-    {
-        let image_data = match request.body() {
-            tauri::ipc::InvokeBody::Raw(data) => data,
-            _ => {
-                return Err(String::from(
-                    "[write_bitmap_image_to_clipboard] Invalid request body",
-                ));
-            }
-        };
-
-        use clipboard_win::{Setter, formats, types::BITMAPINFOHEADER};
-        use image::ImageDecoder;
-        use rayon::prelude::*;
-        use std::mem;
-
-        let decoder = match image::codecs::png::PngDecoder::new(std::io::Cursor::new(image_data)) {
-            Ok(decoder) => decoder,
-            Err(_) => {
-                return Err(String::from(
-                    "[write_bitmap_image_to_clipboard] Failed to create PNG decoder",
-                ));
-            }
-        };
-        let (image_width, image_height) = decoder.dimensions();
-        let image_width = image_width as usize;
-        let image_height = image_height as usize;
-        let image_total_bytes = decoder.total_bytes() as usize;
-        let mut rgba_image = Vec::with_capacity(image_total_bytes);
-        unsafe {
-            rgba_image.set_len(image_total_bytes);
+    let image_data = match request.body() {
+        tauri::ipc::InvokeBody::Raw(data) => data,
+        _ => {
+            return Err(String::from(
+                "[write_bitmap_image_to_clipboard] Invalid request body",
+            ));
         }
-        decoder.read_image(&mut rgba_image).unwrap();
+    };
 
-        // 计算 DIB 数据大小：BITMAPINFOHEADER + 像素数据
-        let header_size = mem::size_of::<BITMAPINFOHEADER>();
-        let row_size = ((image_width * 3 + 3) / 4) * 4; // 4字节对齐
-        let pixel_data_size = row_size * image_height;
-        let total_size = header_size + pixel_data_size;
-
-        let mut dib_data = Vec::with_capacity(total_size);
-        unsafe {
-            dib_data.set_len(total_size);
-        }
-
-        // 构建 BITMAPINFOHEADER
-        let bmi_header = BITMAPINFOHEADER {
-            biSize: header_size as u32,
-            biWidth: image_width as i32,
-            biHeight: image_height as i32, // 底部向上
-            biPlanes: 1,
-            biBitCount: 24,   // RGB
-            biCompression: 0, // BI_RGB
-            biSizeImage: pixel_data_size as u32,
-            biXPelsPerMeter: 0,
-            biYPelsPerMeter: 0,
-            biClrUsed: 0,
-            biClrImportant: 0,
-        };
-
-        // 将 header 写入为字节
-        let header_bytes = unsafe {
-            std::slice::from_raw_parts(
-                &bmi_header as *const BITMAPINFOHEADER as *const u8,
-                header_size,
-            )
-        };
-        let dib_data_ptr = dib_data.as_mut_ptr();
-        unsafe {
-            std::ptr::copy_nonoverlapping(header_bytes.as_ptr(), dib_data_ptr, header_bytes.len());
-        }
-
-        let dib_data_ptr = unsafe { dib_data_ptr.offset(header_bytes.len() as isize) } as usize;
-        let rgba_image_ptr = rgba_image.as_ptr() as usize;
-        (0..image_height).into_par_iter().rev().for_each(|y| {
-            let rgba_index_start = y * image_width * 4;
-            let dib_index_start = (image_height - y - 1) * row_size;
-            (0..image_width).into_par_iter().for_each(|x| {
-                let dib_data_ptr = dib_data_ptr as *mut u8;
-                let rgba_image_ptr = rgba_image_ptr as *const u8;
-
-                let rgba_base_index = rgba_index_start + x * 4;
-                let dib_base_index = dib_index_start + x * 3;
-                unsafe {
-                    dib_data_ptr
-                        .add(dib_base_index)
-                        .write(rgba_image_ptr.add(rgba_base_index + 2).read());
-                    dib_data_ptr
-                        .add(dib_base_index + 1)
-                        .write(rgba_image_ptr.add(rgba_base_index + 1).read());
-                    dib_data_ptr
-                        .add(dib_base_index + 2)
-                        .write(rgba_image_ptr.add(rgba_base_index).read());
-                }
-            });
-        });
-
-        let _clip = clipboard_win::Clipboard::new().unwrap();
-
-        formats::RawData(formats::CF_DIB)
-            .write_clipboard(&dib_data)
-            .map_err(|e| {
-                format!(
-                    "[write_bitmap_image_to_clipboard] Write CF_DIB to clipboard: {}",
-                    e
-                )
-            })?;
-
-        drop(_clip);
-
-        Ok(())
-    }
+    snow_shot_app_utils::write_bitmap_image_to_clipboard(image_data).await
 }
 
 /// 保留目录中指定的文件，删除其他所有文件
@@ -678,7 +567,9 @@ pub async fn retain_dir_files(dir_path: PathBuf, file_names: Vec<String>) -> Res
     let mut files_to_delete = Vec::new();
 
     // 同步遍历目录条目，避免复杂的异步嵌套
-    while let Some(entry) = entries.next_entry().await
+    while let Some(entry) = entries
+        .next_entry()
+        .await
         .map_err(|e| format!("[retain_dir_files] Failed to read directory entry: {}", e))?
     {
         let path = entry.path();
@@ -689,7 +580,8 @@ pub async fn retain_dir_files(dir_path: PathBuf, file_names: Vec<String>) -> Res
         }
 
         // 获取文件名进行比较
-        if let Some(file_name) = path.file_name()
+        if let Some(file_name) = path
+            .file_name()
             .and_then(|name| name.to_str())
             .map(|s| s.to_string())
         {
@@ -713,28 +605,30 @@ pub async fn retain_dir_files(dir_path: PathBuf, file_names: Vec<String>) -> Res
     }
 
     // 并发删除文件，收集删除结果
-    let delete_results = futures::stream::iter(
-        files_to_delete.into_iter().take(actual_delete_count).map(|path| async move {
-            match fs::remove_file(&path).await {
-                Ok(()) => Ok(path),
-                Err(e) => {
-                    log::warn!("[retain_dir_files] Failed to remove file {:?}: {}", path, e);
-                    Err((path, e))
+    let delete_results =
+        futures::stream::iter(files_to_delete.into_iter().take(actual_delete_count).map(
+            |path| async move {
+                match fs::remove_file(&path).await {
+                    Ok(()) => Ok(path),
+                    Err(e) => {
+                        log::warn!("[retain_dir_files] Failed to remove file {:?}: {}", path, e);
+                        Err((path, e))
+                    }
                 }
-            }
-        })
-    )
-    .buffer_unordered(8) // 减少并发数量，提高稳定性
-    .collect::<Vec<_>>()
-    .await;
+            },
+        ))
+        .buffer_unordered(8) // 减少并发数量，提高稳定性
+        .collect::<Vec<_>>()
+        .await;
 
     // 统计删除结果
-    let (success_count, error_count) = delete_results.iter().fold((0, 0), |(success, error), result| {
-        match result {
-            Ok(_) => (success + 1, error),
-            Err(_) => (success, error + 1),
-        }
-    });
+    let (success_count, error_count) =
+        delete_results
+            .iter()
+            .fold((0, 0), |(success, error), result| match result {
+                Ok(_) => (success + 1, error),
+                Err(_) => (success, error + 1),
+            });
 
     log::info!(
         "[retain_dir_files] Deletion completed: {} successful, {} failed",

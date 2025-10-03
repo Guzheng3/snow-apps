@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { ImageBuffer, ImageEncoder } from '.';
+import { ElementRect, ImageBuffer, ImageEncoder } from '.';
 
 export const switchAlwaysOnTop = async (windowId: number) => {
     const result = await invoke<string>('switch_always_on_top', {
@@ -47,4 +47,23 @@ export const captureAllMonitors = async (
         data: new Blob([result]),
         buffer: result,
     };
+};
+
+export type CaptureFullScreenResult = {
+    monitor_rect: ElementRect;
+};
+
+export const captureFullScreen = async (
+    enableMultipleMonitor: boolean,
+    filePath: string,
+    copyToClipboard: boolean,
+    captureHistoryFilePath: string,
+): Promise<CaptureFullScreenResult> => {
+    const result = await invoke<CaptureFullScreenResult>('capture_full_screen', {
+        enableMultipleMonitor,
+        filePath,
+        copyToClipboard,
+        captureHistoryFilePath,
+    });
+    return result;
 };

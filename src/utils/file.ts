@@ -92,7 +92,7 @@ export const getImageSaveDirectory = async (appSettings: AppSettingsData) => {
 
 export const getImagePathFromSettings = async (
     appSettings: AppSettingsData | undefined,
-    method: 'auto' | 'fast' | 'focused-window',
+    method: 'auto' | 'fast' | 'focused-window' | 'full-screen',
 ): Promise<ImagePath | undefined> => {
     if (!appSettings) {
         return undefined;
@@ -115,6 +115,9 @@ export const getImagePathFromSettings = async (
             break;
         case 'focused-window':
             fileName = generateImageFileName(outputSettings.focusedWindowFileNameFormat);
+            break;
+        case 'full-screen':
+            fileName = generateImageFileName(outputSettings.fullScreenFileNameFormat);
             break;
     }
 

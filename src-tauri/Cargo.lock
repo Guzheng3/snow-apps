@@ -6196,6 +6196,7 @@ dependencies = [
 name = "snow-shot-app-utils"
 version = "0.1.0"
 dependencies = [
+ "clipboard-win",
  "core-graphics-helmer-fork",
  "device_query",
  "image",
@@ -6218,15 +6219,12 @@ dependencies = [
 name = "snow-shot-tauri-commands-core"
 version = "0.1.0"
 dependencies = [
- "clipboard-win",
  "enigo 0.6.1",
  "futures",
  "get-selected-text",
- "image",
  "log",
  "objc2 0.6.2",
  "objc2-app-kit",
- "rayon",
  "serde",
  "snow-shot-app-os",
  "snow-shot-app-services",
@@ -6267,6 +6265,7 @@ version = "0.1.0"
 dependencies = [
  "image",
  "log",
+ "rayon",
  "serde",
  "snow-shot-app-os",
  "snow-shot-app-shared",

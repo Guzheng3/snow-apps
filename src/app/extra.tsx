@@ -9,6 +9,8 @@ export enum AppFunction {
     ScreenshotDelay = 'screenshotDelay',
     /** 截图当前具有焦点的窗口 */
     ScreenshotFocusedWindow = 'screenshotFocusedWindow',
+    /** 截图全屏 */
+    ScreenshotFullScreen = 'screenshotFullScreen',
     /** 截图复制到剪贴板 */
     ScreenshotCopy = 'screenshotCopy',
     /** 截图翻译 */
@@ -65,11 +67,15 @@ export const defaultAppFunctionConfigs: Record<AppFunction, AppFunctionConfig> =
         shortcutKey: '',
         group: AppFunctionGroup.Screenshot,
     },
-    [AppFunction.ScreenshotFocusedWindow]: {
+    [AppFunction.ScreenshotCopy]: {
         shortcutKey: '',
         group: AppFunctionGroup.Screenshot,
     },
-    [AppFunction.ScreenshotCopy]: {
+    [AppFunction.ScreenshotFullScreen]: {
+        shortcutKey: '',
+        group: AppFunctionGroup.Screenshot,
+    },
+    [AppFunction.ScreenshotFocusedWindow]: {
         shortcutKey: '',
         group: AppFunctionGroup.Screenshot,
     },

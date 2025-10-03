@@ -1296,7 +1296,9 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             ) {
                 setSelectState(SelectState.Drag);
                 setSelectRect(actualPrevSelectRect);
-                setSelectState(SelectState.Selected);
+                setTimeout(() => {
+                    setSelectState(SelectState.Selected);
+                }, 17 * 2);
             }
         },
         [setSelectRect, setSelectState],

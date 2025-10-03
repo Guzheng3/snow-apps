@@ -1,10 +1,11 @@
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Serialize;
 use snow_shot_app_os::ui_automation::UIElements;
 use snow_shot_app_shared::ElementRect;
+use snow_shot_app_utils::monitor_info::MonitorList;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::Manager;
 use tauri::ipc::Response;
 use tokio::sync::Mutex;
 use xcap::Window;
@@ -38,21 +39,62 @@ pub async fn capture_current_monitor(
 }
 
 pub async fn capture_all_monitors(
+    app_handle: tauri::AppHandle,
     window: tauri::Window,
     enable_multiple_monitor: bool,
 ) -> Result<Response, String> {
-    let image = snow_shot_app_utils::get_capture_monitor_list(
-        &window.app_handle(),
-        None,
-        enable_multiple_monitor,
-    )?
-    .capture(Some(&window))
-    .await?;
+    let image =
+        snow_shot_app_utils::get_capture_monitor_list(&app_handle, None, enable_multiple_monitor)?
+            .capture(Some(&window))
+            .await?;
 
     let image_buffer =
         snow_shot_app_utils::encode_image(&image, snow_shot_app_utils::ImageEncoder::Png);
 
     Ok(Response::new(image_buffer))
+}
+
+pub async fn save_and_copy_image<F>(
+    write_image_to_clipboard: F,
+    image: image::DynamicImage,
+    file_path: PathBuf,
+    copy_to_clipboard: bool,
+) -> Result<(), String>
+where
+    F: Fn(&image::DynamicImage) -> Result<(), String> + Send + 'static,
+{
+    let image = Arc::new(image);
+    // 并行执行保存文件和写入剪贴板
+    let save_file_future =
+        snow_shot_app_utils::save_image_to_file(&image, PathBuf::from(file_path));
+    let clipboard_future = if copy_to_clipboard {
+        let image_clone = Arc::clone(&image);
+        Some(tokio::task::spawn_blocking(
+            move || match write_image_to_clipboard(&image_clone) {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    log::error!(
+                        "[capture_focused_window] Failed to write image to clipboard: {}",
+                        e
+                    );
+
+                    Err(e)
+                }
+            },
+        ))
+    } else {
+        None
+    };
+
+    if let Some(clipboard_handle) = clipboard_future {
+        let (save_result, clipboard_result) = tokio::join!(save_file_future, clipboard_handle);
+        save_result?;
+        clipboard_result.unwrap()?;
+    } else {
+        save_file_future.await?;
+    }
+
+    Ok(())
 }
 
 pub async fn capture_focused_window<F>(
@@ -166,39 +208,13 @@ where
         &focused_window_app_name,
     ));
 
-    let image = Arc::new(image::DynamicImage::ImageRgba8(image));
-
-    // 并行执行保存文件和写入剪贴板
-    let save_file_future =
-        snow_shot_app_utils::save_image_to_file(&image, PathBuf::from(file_path));
-    let clipboard_future = if copy_to_clipboard {
-        let image_clone = Arc::clone(&image);
-        Some(tokio::task::spawn_blocking(
-            move || match write_image_to_clipboard(&image_clone) {
-                Ok(_) => Ok(()),
-                Err(e) => {
-                    log::error!(
-                        "[capture_focused_window] Failed to write image to clipboard: {}",
-                        e
-                    );
-
-                    Err(e)
-                }
-            },
-        ))
-    } else {
-        None
-    };
-
-    if let Some(clipboard_handle) = clipboard_future {
-        let (save_result, clipboard_result) = tokio::join!(save_file_future, clipboard_handle);
-        save_result?;
-        clipboard_result.unwrap()?;
-    } else {
-        save_file_future.await?;
-    }
-
-    Ok(())
+    save_and_copy_image(
+        write_image_to_clipboard,
+        image::DynamicImage::ImageRgba8(image),
+        file_path,
+        copy_to_clipboard,
+    )
+    .await
 }
 
 pub async fn init_ui_elements(ui_elements: tauri::State<'_, Mutex<UIElements>>) -> Result<(), ()> {
@@ -450,4 +466,120 @@ pub async fn create_draw_window(app: tauri::AppHandle) {
 
 pub async fn set_draw_window_style(window: tauri::Window) {
     snow_shot_app_os::utils::set_draw_window_style(window);
+}
+
+#[derive(Serialize, Clone)]
+pub struct CaptureFullScreenResult {
+    monitor_rect: ElementRect,
+}
+
+/**
+ * 捕获全屏
+ */
+pub async fn capture_full_screen<F>(
+    app_handle: tauri::AppHandle,
+    write_image_to_clipboard: F,
+    enable_multiple_monitor: bool,
+    file_path: String,
+    copy_to_clipboard: bool,
+    capture_history_file_path: String,
+) -> Result<CaptureFullScreenResult, String>
+where
+    F: Fn(&image::DynamicImage) -> Result<(), String> + Send + 'static,
+{
+    // 激活的显示器
+    let (mouse_x, mouse_y) = snow_shot_app_utils::get_mouse_position(&app_handle)?;
+    let active_monitor = MonitorList::get_by_region(ElementRect {
+        min_x: mouse_x,
+        min_y: mouse_y,
+        max_x: mouse_x,
+        max_y: mouse_y,
+    });
+    // 所有显示器
+    let monitor_list =
+        snow_shot_app_utils::get_capture_monitor_list(&app_handle, None, enable_multiple_monitor)?;
+
+    // 截取所有显示器的截图
+    let all_monitors_image = monitor_list.capture(None).await?;
+    // 所有显示器的最小矩形
+    let all_monitors_bounding_box = monitor_list.get_monitors_bounding_box();
+    // 获取激活的显示器相对所有显示器的位置
+    let active_monitor_rect = active_monitor.get_monitors_bounding_box();
+    let active_monitor_crop_region = ElementRect {
+        min_x: active_monitor_rect.min_x - all_monitors_bounding_box.min_x,
+        min_y: active_monitor_rect.min_y - all_monitors_bounding_box.min_y,
+        max_x: active_monitor_rect.max_x - all_monitors_bounding_box.min_x,
+        max_y: active_monitor_rect.max_y - all_monitors_bounding_box.min_y,
+    };
+
+    let active_monitor_crop_region_x = active_monitor_crop_region.min_x as usize;
+    let active_monitor_crop_region_y = active_monitor_crop_region.min_y as usize;
+    let active_monitor_crop_region_width =
+        (active_monitor_crop_region.max_x - active_monitor_crop_region.min_x) as usize;
+    let active_monitor_crop_region_height =
+        (active_monitor_crop_region.max_y - active_monitor_crop_region.min_y) as usize;
+
+    let mut active_monitor_image_bytes = unsafe {
+        let mut bytes = Vec::with_capacity(active_monitor_crop_region_width * active_monitor_crop_region_height * 3);
+        bytes.set_len(active_monitor_crop_region_width * active_monitor_crop_region_height * 3);
+        bytes
+    };
+
+    let all_monitor_image_width = all_monitors_image.width() as usize;
+    let base_index =
+        (active_monitor_crop_region_y * all_monitor_image_width + active_monitor_crop_region_x) * 3;
+
+    let active_monitor_image_bytes_ptr = active_monitor_image_bytes.as_mut_ptr() as usize;
+    let all_monitor_image_bytes_ptr = all_monitors_image.as_bytes().as_ptr() as usize;
+    (0..active_monitor_crop_region_height)
+        .into_par_iter()
+        .for_each(|y| unsafe {
+            let active_monitor_image_row_ptr =
+                (active_monitor_image_bytes_ptr as *mut u8).add(y * active_monitor_crop_region_width * 3);
+            let all_monitor_image_row_ptr = (all_monitor_image_bytes_ptr as *mut u8)
+                .add(base_index + y * all_monitor_image_width * 3);
+
+            std::ptr::copy_nonoverlapping(
+                all_monitor_image_row_ptr,
+                active_monitor_image_row_ptr,
+                active_monitor_crop_region_width * 3,
+            );
+        });
+
+    let active_monitor_image = match image::RgbImage::from_raw(
+        active_monitor_crop_region_width as u32,
+        active_monitor_crop_region_height as u32,
+        active_monitor_image_bytes,
+    ) {
+        Some(image) => image::DynamicImage::ImageRgb8(image),
+        None => {
+            return Err(String::from(
+                "[capture_full_screen] failed to create active monitor image",
+            ));
+        }
+    };
+
+    save_and_copy_image(
+        write_image_to_clipboard,
+        active_monitor_image,
+        PathBuf::from(file_path),
+        copy_to_clipboard,
+    )
+    .await?;
+
+    // 写入到截图历史
+    let capture_history_file_path = PathBuf::from(capture_history_file_path);
+    match all_monitors_image.save(&capture_history_file_path) {
+        Ok(_) => (),
+        Err(e) => {
+            return Err(format!(
+                "[capture_full_screen] failed to save capture history image: {}",
+                e
+            ));
+        }
+    }
+
+    Ok(CaptureFullScreenResult {
+        monitor_rect: active_monitor_crop_region,
+    })
 }

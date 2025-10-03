@@ -188,6 +188,7 @@ pub fn run() {
             screenshot::create_draw_window,
             screenshot::switch_always_on_top,
             screenshot::set_draw_window_style,
+            screenshot::capture_full_screen,
             file::save_file,
             file::write_file,
             file::copy_file,

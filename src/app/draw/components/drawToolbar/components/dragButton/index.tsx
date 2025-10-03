@@ -282,8 +282,7 @@ const DragButtonCore: React.FC<{
     const enableSubToolbarRef = useRef(false);
 
     const { selectLayerActionRef } = useContext(DrawContext);
-    const { drawToolbarRef, setDragging, draggingRef, drawToolarContainerRef } =
-        useContext(DrawToolbarContext);
+    const { drawToolbarRef, setDragging, draggingRef } = useContext(DrawToolbarContext);
     const { token } = theme.useToken();
 
     const {
@@ -412,7 +411,6 @@ const DragButtonCore: React.FC<{
             enableRef.current = enable;
 
             if (enable) {
-                drawToolarContainerRef.current!.style.opacity = '1';
                 drawToolbarRef.current!.style.opacity = '1';
                 drawToolbarRef.current!.style.pointerEvents = 'auto';
 
@@ -420,14 +418,12 @@ const DragButtonCore: React.FC<{
                 resetDrag();
                 updateDrawToolbarStyle();
             } else {
-                // drawToolbarRef 设置 opacity 会有过渡效果，这里直接把 container 设置为 0 避免过渡效果
-                drawToolarContainerRef.current!.style.opacity = '0';
                 drawToolbarRef.current!.style.opacity = '0';
                 drawToolbarRef.current!.style.pointerEvents = 'none';
                 resetDrag();
             }
         },
-        [drawToolarContainerRef, drawToolbarRef, resetDrag, updateDrawToolbarStyle],
+        [drawToolbarRef, resetDrag, updateDrawToolbarStyle],
     );
 
     const setEnable = useCallback(

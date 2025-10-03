@@ -145,6 +145,8 @@ export const settings = {
     'settings.functionSettings.screenshotSettings.ocrCopyText': 'OCR 复制时复制文本',
     'settings.functionSettings.screenshotSettings.focusedWindowCopyToClipboard':
         '截图当前具有焦点的窗口时复制到剪贴板',
+    'settings.functionSettings.screenshotSettings.fullScreenCopyToClipboard':
+        '截取全屏时复制到剪贴板',
     'settings.functionSettings.screenshotSettings.autoSaveFileMode': '保存文件增强',
     'settings.functionSettings.screenshotSettings.autoSaveFileMode.saveMode': '保存方式',
     'settings.functionSettings.screenshotSettings.autoSaveFileMode.autoSave': '复制后自动保存',
@@ -168,8 +170,12 @@ export const settings = {
     'settings.functionSettings.outputSettings.fastSaveFileNameFormatPreview': '快速保存文件名预览',
     'settings.functionSettings.outputSettings.focusedWindowFileNameFormat':
         '截图当前具有焦点的窗口文件名格式',
+    'settings.functionSettings.outputSettings.fullScreenFileNameFormat':
+        '截取全屏文件名格式',
     'settings.functionSettings.outputSettings.focusedWindowFileNameFormatPreview':
         '截图当前具有焦点的窗口文件名预览',
+    'settings.functionSettings.outputSettings.fullScreenFileNameFormatPreview':
+        '截取全屏文件名预览',
     'settings.functionSettings.outputSettings.videoRecordFileNameFormat': '视频录制文件名格式',
     'settings.functionSettings.outputSettings.videoRecordFileNameFormatPreview':
         '视频录制文件名预览',

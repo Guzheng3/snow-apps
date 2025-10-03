@@ -16,3 +16,7 @@ export const playSound = (soundPath: string, volume: number = 1) => {
         appWarn(`[audio][playSound] Failed to create audio object (${soundPath}):`, error);
     }
 };
+
+export const playCameraShutterSound = () => {
+    playSound('/audios/camera_shutter.mp3');
+};

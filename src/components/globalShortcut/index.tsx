@@ -8,6 +8,7 @@ import {
     FixedIcon,
     FocusedWindowIcon,
     FullScreenDrawIcon,
+    FullScreenIcon,
     OcrDetectIcon,
     OcrTranslateIcon,
     ScreenshotIcon,
@@ -129,6 +130,13 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
                         buttonTitle = <FormattedMessage id="draw.ocrTranslateTool" />;
                         buttonIcon = <OcrTranslateIcon style={{ fontSize: '1.1em' }} />;
                         buttonOnClick = () => executeScreenshot(ScreenshotType.OcrTranslate);
+                        break;
+                    case AppFunction.ScreenshotFullScreen:
+                        buttonTitle = (
+                            <FormattedMessage id="home.screenshotFunction.screenshotFullScreen" />
+                        );
+                        buttonIcon = <FullScreenIcon />;
+                        buttonOnClick = () => executeScreenshot(ScreenshotType.CaptureFullScreen);
                         break;
                     case AppFunction.ScreenshotFocusedWindow:
                         buttonTitle = (

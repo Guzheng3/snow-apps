@@ -8,8 +8,6 @@ use image::codecs::jpeg::JpegEncoder;
 use image::codecs::png::{CompressionType, FilterType, PngEncoder};
 use image::codecs::webp::WebPEncoder;
 use image::{DynamicImage, GenericImageView};
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::ParallelIterator;
 use snow_shot_app_shared::ElementRect;
 use tauri::AppHandle;
 use xcap::Monitor;
@@ -375,10 +373,7 @@ pub fn capture_target_monitor(
                 })
             } else {
                 Some(scap::capturer::Area {
-                    origin: scap::capturer::Point {
-                        x: 0.0,
-                        y: 0.0,
-                    },
+                    origin: scap::capturer::Point { x: 0.0, y: 0.0 },
                     size: scap::capturer::Size {
                         width: monitor.width().unwrap_or(0) as f64,
                         height: monitor.height().unwrap_or(0) as f64,
@@ -529,7 +524,7 @@ pub fn overlay_image_ptr(
     // 多线程提升较小
     // 先保留
     (0..target_image_height)
-        .into_par_iter()
+        .into_iter()
         .for_each(|y| unsafe {
             let image_row_ptr = (image_pixels_ptr as *mut u8)
                 .add(image_base_index + y * image_width * channel_count);
@@ -560,4 +555,121 @@ pub fn overlay_image(
         offset_y,
         channel_count,
     );
+}
+
+pub async fn write_bitmap_image_to_clipboard(
+    #[allow(unused_variables)] image_data: &Vec<u8>,
+) -> Result<(), String> {
+    #[cfg(not(target_os = "windows"))]
+    {
+        return Err(String::from(
+            "[write_bitmap_image_to_clipboard] Not supported on this platform",
+        ));
+    }
+
+    // 如果是 Windows 系统则尝试使用 DIB 格式写入到剪贴板
+    // Windows 下使用 DIB 格式写入到剪贴板，比 BMP 文件格式更标准
+    #[cfg(target_os = "windows")]
+    {
+        use clipboard_win::{Setter, formats, types::BITMAPINFOHEADER};
+        use image::ImageDecoder;
+        use rayon::prelude::*;
+        use std::mem;
+
+        let decoder = match image::codecs::png::PngDecoder::new(std::io::Cursor::new(image_data)) {
+            Ok(decoder) => decoder,
+            Err(_) => {
+                return Err(String::from(
+                    "[write_bitmap_image_to_clipboard] Failed to create PNG decoder",
+                ));
+            }
+        };
+        let (image_width, image_height) = decoder.dimensions();
+        let image_width = image_width as usize;
+        let image_height = image_height as usize;
+        let image_total_bytes = decoder.total_bytes() as usize;
+        let mut rgba_image = Vec::with_capacity(image_total_bytes);
+        unsafe {
+            rgba_image.set_len(image_total_bytes);
+        }
+        decoder.read_image(&mut rgba_image).unwrap();
+
+        // 计算 DIB 数据大小：BITMAPINFOHEADER + 像素数据
+        let header_size = mem::size_of::<BITMAPINFOHEADER>();
+        let row_size = ((image_width * 3 + 3) / 4) * 4; // 4字节对齐
+        let pixel_data_size = row_size * image_height;
+        let total_size = header_size + pixel_data_size;
+
+        let mut dib_data = Vec::with_capacity(total_size);
+        unsafe {
+            dib_data.set_len(total_size);
+        }
+
+        // 构建 BITMAPINFOHEADER
+        let bmi_header = BITMAPINFOHEADER {
+            biSize: header_size as u32,
+            biWidth: image_width as i32,
+            biHeight: image_height as i32, // 底部向上
+            biPlanes: 1,
+            biBitCount: 24,   // RGB
+            biCompression: 0, // BI_RGB
+            biSizeImage: pixel_data_size as u32,
+            biXPelsPerMeter: 0,
+            biYPelsPerMeter: 0,
+            biClrUsed: 0,
+            biClrImportant: 0,
+        };
+
+        // 将 header 写入为字节
+        let header_bytes = unsafe {
+            std::slice::from_raw_parts(
+                &bmi_header as *const BITMAPINFOHEADER as *const u8,
+                header_size,
+            )
+        };
+        let dib_data_ptr = dib_data.as_mut_ptr();
+        unsafe {
+            std::ptr::copy_nonoverlapping(header_bytes.as_ptr(), dib_data_ptr, header_bytes.len());
+        }
+
+        let dib_data_ptr = unsafe { dib_data_ptr.offset(header_bytes.len() as isize) } as usize;
+        let rgba_image_ptr = rgba_image.as_ptr() as usize;
+        (0..image_height).into_par_iter().rev().for_each(|y| {
+            let rgba_index_start = y * image_width * 4;
+            let dib_index_start = (image_height - y - 1) * row_size;
+            (0..image_width).into_par_iter().for_each(|x| {
+                let dib_data_ptr = dib_data_ptr as *mut u8;
+                let rgba_image_ptr = rgba_image_ptr as *const u8;
+
+                let rgba_base_index = rgba_index_start + x * 4;
+                let dib_base_index = dib_index_start + x * 3;
+                unsafe {
+                    dib_data_ptr
+                        .add(dib_base_index)
+                        .write(rgba_image_ptr.add(rgba_base_index + 2).read());
+                    dib_data_ptr
+                        .add(dib_base_index + 1)
+                        .write(rgba_image_ptr.add(rgba_base_index + 1).read());
+                    dib_data_ptr
+                        .add(dib_base_index + 2)
+                        .write(rgba_image_ptr.add(rgba_base_index).read());
+                }
+            });
+        });
+
+        let _clip = clipboard_win::Clipboard::new().unwrap();
+
+        formats::RawData(formats::CF_DIB)
+            .write_clipboard(&dib_data)
+            .map_err(|e| {
+                format!(
+                    "[write_bitmap_image_to_clipboard] Write CF_DIB to clipboard: {}",
+                    e
+                )
+            })?;
+
+        drop(_clip);
+
+        Ok(())
+    }
 }

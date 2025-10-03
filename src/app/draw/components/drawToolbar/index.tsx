@@ -948,7 +948,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     z-index: ${zIndexs.Draw_Toolbar};
                     top: 0;
                     left: 0;
-                    opacity: 0;
                 }
 
                 .draw-toolbar-container:hover {

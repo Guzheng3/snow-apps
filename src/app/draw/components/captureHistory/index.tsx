@@ -1,8 +1,8 @@
 import { useCallback, useContext, useImperativeHandle, useRef } from 'react';
 import { DrawContext } from '../../types';
-import { CaptureHistory } from '@/utils/captureHistory';
+import { CaptureHistory, getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
 import { CaptureHistoryItem } from '@/utils/appStore';
-import { AppSettingsData, AppSettingsPublisher } from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { KeyEventWrap } from '../drawToolbar/components/keyEventWrap';
 import { KeyEventKey } from '../drawToolbar/components/keyEventWrap/extra';
@@ -24,10 +24,14 @@ import { FormattedMessage } from 'react-intl';
 import { appError } from '@/utils/log';
 import { ImageBuffer } from '@/commands';
 import { onCaptureHistoryChange, ScreenshotType } from '@/functions/screenshot';
+import { captureFullScreen, CaptureFullScreenResult } from '@/commands/screenshot';
+import { getImagePathFromSettings } from '@/utils/file';
+import { playCameraShutterSound } from '@/utils/audio';
 
 export type CaptureHistoryActionType = {
     saveCurrentCapture: (imageBuffer: ImageBuffer | undefined) => Promise<void>;
     switch: (captureHistoryId: string) => Promise<void>;
+    captureFullScreen: () => Promise<void>;
 };
 
 const CaptureHistoryControllerCore: React.FC<{
@@ -231,7 +235,7 @@ const CaptureHistoryControllerCore: React.FC<{
     );
 
     const saveCurrentCapture = useCallback(
-        async (imageBuffer: ImageBuffer | undefined) => {
+        async (imageBuffer: ImageBuffer | CaptureFullScreenResult | undefined) => {
             if (!captureHistoryRef.current) {
                 appError('[CaptureHistoryController] saveCurrentCapture error, invalid state', {
                     captureHistoryRef: captureHistoryRef.current,
@@ -275,12 +279,65 @@ const CaptureHistoryControllerCore: React.FC<{
         [drawCacheLayerActionRef, getScreenshotType, resetCurrentIndex, selectLayerActionRef],
     );
 
+    const captureFullScreenAction = useCallback(async () => {
+        if (!captureHistoryRef.current) {
+            appError('[CaptureHistoryController] captureFullScreenAction error, invalid state', {
+                captureHistoryRef: captureHistoryRef.current,
+            });
+            return;
+        }
+
+        const appSettings = getAppSettings();
+        const captureHistoryParams = CaptureHistory.generateCaptureHistoryItem(
+            'full-screen',
+            undefined,
+            undefined,
+            undefined,
+        );
+
+        const imagePath = await getImagePathFromSettings(appSettings, 'full-screen');
+        if (!imagePath) {
+            return;
+        }
+
+        let captureFullScreenResult: CaptureFullScreenResult;
+        try {
+            const captureFullScreenResultPromise = captureFullScreen(
+                appSettings[AppSettingsGroup.SystemScreenshot].enableMultipleMonitor,
+                imagePath.filePath,
+                appSettings[AppSettingsGroup.FunctionScreenshot].fullScreenCopyToClipboard,
+                await getCaptureHistoryImageAbsPath(captureHistoryParams.file_name),
+            );
+            playCameraShutterSound();
+            captureFullScreenResult = await captureFullScreenResultPromise;
+        } catch (error) {
+            appError('[CaptureHistoryController] captureFullScreenAction error', error);
+            return;
+        }
+
+        captureHistoryParams.selected_rect = captureFullScreenResult.monitor_rect;
+        const captureHistoryItemPromise = captureHistoryRef.current.save(
+            {
+                type: 'full-screen',
+                captureHistoryItem: captureHistoryParams,
+            },
+            undefined,
+            undefined,
+            captureFullScreenResult.monitor_rect,
+        );
+        const captureHistoryItem = await captureHistoryItemPromise;
+        captureHistoryListRef.current.push(captureHistoryItem);
+        resetCurrentIndex();
+        onCaptureHistoryChange();
+    }, [getAppSettings, resetCurrentIndex]);
+
     useImperativeHandle(actionRef, () => {
         return {
             saveCurrentCapture,
             switch: changeCurrentIndex,
+            captureFullScreen: captureFullScreenAction,
         };
-    }, [saveCurrentCapture, changeCurrentIndex]);
+    }, [saveCurrentCapture, changeCurrentIndex, captureFullScreenAction]);
 
     return (
         <>

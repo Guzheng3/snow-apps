@@ -5,7 +5,7 @@ use tokio::sync::Mutex;
 
 use snow_shot_app_os::ui_automation::UIElements;
 use snow_shot_app_shared::ElementRect;
-use snow_shot_tauri_commands_screenshot::WindowElement;
+use snow_shot_tauri_commands_screenshot::{CaptureFullScreenResult, WindowElement};
 
 #[command]
 pub async fn capture_current_monitor(
@@ -17,10 +17,12 @@ pub async fn capture_current_monitor(
 
 #[command]
 pub async fn capture_all_monitors(
+    app: tauri::AppHandle,
     window: tauri::Window,
     enable_multiple_monitor: bool,
 ) -> Result<Response, String> {
-    snow_shot_tauri_commands_screenshot::capture_all_monitors(window, enable_multiple_monitor).await
+    snow_shot_tauri_commands_screenshot::capture_all_monitors(app, window, enable_multiple_monitor)
+        .await
 }
 
 /**
@@ -97,4 +99,33 @@ pub async fn create_draw_window(app: tauri::AppHandle) {
 #[command]
 pub async fn set_draw_window_style(window: tauri::Window) {
     snow_shot_tauri_commands_screenshot::set_draw_window_style(window).await
+}
+
+#[command]
+pub async fn capture_full_screen(
+    app: tauri::AppHandle,
+    enable_multiple_monitor: bool,
+    file_path: String,
+    copy_to_clipboard: bool,
+    capture_history_file_path: String,
+) -> Result<CaptureFullScreenResult, String> {
+    snow_shot_tauri_commands_screenshot::capture_full_screen(
+        app.clone(),
+        move |image| match app.clipboard().write_image(&tauri::image::Image::new(
+            image.to_rgba8().as_raw(),
+            image.width(),
+            image.height(),
+        )) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!(
+                "[capture_full_screen] Failed to write image to clipboard: {}",
+                e
+            )),
+        },
+        enable_multiple_monitor,
+        file_path,
+        copy_to_clipboard,
+        capture_history_file_path,
+    )
+    .await
 }

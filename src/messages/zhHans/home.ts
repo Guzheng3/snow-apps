@@ -3,6 +3,7 @@ export const home = {
     'home.showMainWindow': '显示主界面',
     'home.screenshotFunction': '截图',
     'home.screenshotFunction.screenshotFocusedWindow': '当前具有焦点的窗口',
+    'home.screenshotFunction.screenshotFullScreen': '截取全屏',
     'home.screenshotFunction.screenshotDelay': '延迟 {seconds} 后执行',
     'home.screenshotFunction.screenshotDelay.seconds': '{seconds}s',
     'home.screenshotFunction.screenshotDelay.tip':

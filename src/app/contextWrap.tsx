@@ -230,6 +230,8 @@ export type AppSettingsData = {
         autoSaveOnCopy: boolean;
         /** 截图当前具有焦点的窗口时复制到剪贴板 */
         focusedWindowCopyToClipboard: boolean;
+        /** 截取全屏时复制到剪贴板 */
+        fullScreenCopyToClipboard: boolean;
         /** 快速保存文件 */
         fastSave: boolean;
         /** 保存文件路径 */
@@ -250,6 +252,8 @@ export type AppSettingsData = {
         fastSaveFileNameFormat: string;
         /** 截图当前具有焦点的窗口文件名格式 */
         focusedWindowFileNameFormat: string;
+        /** 截取全屏文件名格式 */
+        fullScreenFileNameFormat: string;
         /** 视频录制文件名格式 */
         videoRecordFileNameFormat: string;
     };
@@ -432,6 +436,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         shortcutCanleTip: true,
         autoSaveOnCopy: false,
         focusedWindowCopyToClipboard: true,
+        fullScreenCopyToClipboard: true,
         fastSave: false,
         saveFileDirectory: '',
         saveFileFormat: ImageFormat.PNG,
@@ -457,6 +462,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         autoSaveFileNameFormat: `SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
         fastSaveFileNameFormat: `SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
         focusedWindowFileNameFormat: `${FOCUS_WINDOW_APP_NAME_ENV_VARIABLE}/SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
+        fullScreenFileNameFormat: `SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
         videoRecordFileNameFormat: `SnowShot_Video_{{YYYY-MM-DD_HH-mm-ss}}`,
     },
     [AppSettingsGroup.FunctionFullScreenDraw]: {
@@ -1271,6 +1277,10 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.focusedWindowCopyToClipboard === 'boolean'
                             ? newSettings.focusedWindowCopyToClipboard
                             : (prevSettings?.focusedWindowCopyToClipboard ?? true),
+                    fullScreenCopyToClipboard:
+                        typeof newSettings?.fullScreenCopyToClipboard === 'boolean'
+                            ? newSettings.fullScreenCopyToClipboard
+                            : (prevSettings?.fullScreenCopyToClipboard ?? true),
                 };
             } else if (group === AppSettingsGroup.FunctionOutput) {
                 newSettings = newSettings as AppSettingsData[typeof group];
@@ -1299,6 +1309,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? newSettings.focusedWindowFileNameFormat
                             : (prevSettings?.focusedWindowFileNameFormat ??
                               defaultAppSettingsData[group].focusedWindowFileNameFormat),
+                    fullScreenFileNameFormat:
+                        typeof newSettings?.fullScreenFileNameFormat === 'string'
+                            ? newSettings.fullScreenFileNameFormat
+                            : (prevSettings?.fullScreenFileNameFormat ??
+                              defaultAppSettingsData[group].fullScreenFileNameFormat),
                     videoRecordFileNameFormat:
                         typeof newSettings?.videoRecordFileNameFormat === 'string'
                             ? newSettings.videoRecordFileNameFormat

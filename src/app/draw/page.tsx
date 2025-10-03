@@ -854,6 +854,11 @@ const DrawPageCore: React.FC<{
                 return;
             }
 
+            if (payload.type === ScreenshotType.CaptureFullScreen) {
+                captureHistoryActionRef.current?.captureFullScreen();
+                return;
+            }
+
             if (drawPageStateRef.current === DrawPageState.Init) {
                 return;
             } else if (drawPageStateRef.current === DrawPageState.Release) {

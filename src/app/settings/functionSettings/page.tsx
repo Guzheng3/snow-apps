@@ -487,12 +487,22 @@ export default function SystemSettings() {
                     </Row>
 
                     <Row gutter={token.marginLG}>
-                        <Col span={24}>
+                        <Col span={12}>
                             <ProFormSwitch
                                 name="focusedWindowCopyToClipboard"
                                 layout="horizontal"
                                 label={
                                     <FormattedMessage id="settings.functionSettings.screenshotSettings.focusedWindowCopyToClipboard" />
+                                }
+                            />
+                        </Col>
+
+                        <Col span={12}>
+                            <ProFormSwitch
+                                name="fullScreenCopyToClipboard"
+                                layout="horizontal"
+                                label={
+                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.fullScreenCopyToClipboard" />
                                 }
                             />
                         </Col>
@@ -1765,6 +1775,38 @@ export default function SystemSettings() {
                                             readonly
                                             label={
                                                 <FormattedMessage id="settings.functionSettings.outputSettings.focusedWindowFileNameFormatPreview" />
+                                            }
+                                            fieldProps={{
+                                                value: text,
+                                            }}
+                                        />
+                                    </Col>
+                                );
+                            }}
+                        </ProFormDependency>
+
+                        <Col span={24}>
+                            <ProFormText
+                                name="fullScreenFileNameFormat"
+                                layout="horizontal"
+                                label={
+                                    <FormattedMessage id="settings.functionSettings.outputSettings.fullScreenFileNameFormat" />
+                                }
+                            />
+                        </Col>
+
+                        <ProFormDependency<{ fullScreenFileNameFormat: string }>
+                            name={['fullScreenFileNameFormat']}
+                        >
+                            {({ fullScreenFileNameFormat }) => {
+                                const text = generateImageFileName(fullScreenFileNameFormat);
+                                return (
+                                    <Col span={24}>
+                                        <ProFormText
+                                            layout="horizontal"
+                                            readonly
+                                            label={
+                                                <FormattedMessage id="settings.functionSettings.outputSettings.fullScreenFileNameFormatPreview" />
                                             }
                                             fieldProps={{
                                                 value: text,
