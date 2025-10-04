@@ -185,7 +185,9 @@ export default function GeneralSettings() {
             {
                 label: (
                     <Space>
-                        <FormattedMessage id="settings.commonSettings.trayIconSettings.defaultIcons.default" />
+                        {intl.formatMessage({
+                            id: 'settings.commonSettings.trayIconSettings.defaultIcons.default',
+                        })}
                         <Image
                             src={defaultIconPath.web_path}
                             width={iconSize}
@@ -202,7 +204,9 @@ export default function GeneralSettings() {
             {
                 label: (
                     <Space>
-                        <FormattedMessage id="settings.commonSettings.trayIconSettings.defaultIcons.light" />
+                        {intl.formatMessage({
+                            id: 'settings.commonSettings.trayIconSettings.defaultIcons.light',
+                        })}
                         <Image
                             src={lightIconPath.web_path}
                             width={iconSize}
@@ -219,7 +223,9 @@ export default function GeneralSettings() {
             {
                 label: (
                     <Space>
-                        <FormattedMessage id="settings.commonSettings.trayIconSettings.defaultIcons.dark" />
+                        {intl.formatMessage({
+                            id: 'settings.commonSettings.trayIconSettings.defaultIcons.dark',
+                        })}
                         <Image
                             src={darkIconPath.web_path}
                             width={iconSize}
@@ -236,7 +242,9 @@ export default function GeneralSettings() {
             {
                 label: (
                     <Space>
-                        <FormattedMessage id="settings.commonSettings.trayIconSettings.defaultIcons.snowDefault" />
+                        {intl.formatMessage({
+                            id: 'settings.commonSettings.trayIconSettings.defaultIcons.snowDefault',
+                        })}
                         <Image
                             src={snowDefaultIconPath.web_path}
                             width={iconSize}
@@ -254,7 +262,9 @@ export default function GeneralSettings() {
             {
                 label: (
                     <Space>
-                        <FormattedMessage id="settings.commonSettings.trayIconSettings.defaultIcons.snowLight" />
+                        {intl.formatMessage({
+                            id: 'settings.commonSettings.trayIconSettings.defaultIcons.snowLight',
+                        })}
                         <Image
                             src={snowLightIconPath.web_path}
                             width={iconSize}
@@ -271,7 +281,9 @@ export default function GeneralSettings() {
             {
                 label: (
                     <Space>
-                        <FormattedMessage id="settings.commonSettings.trayIconSettings.defaultIcons.snowDark" />
+                        {intl.formatMessage({
+                            id: 'settings.commonSettings.trayIconSettings.defaultIcons.snowDark',
+                        })}
                         <Image
                             src={snowDarkIconPath.web_path}
                             width={iconSize}

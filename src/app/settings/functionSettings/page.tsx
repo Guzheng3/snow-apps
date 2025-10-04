@@ -346,39 +346,164 @@ export default function SystemSettings() {
     const disableQuickSelectElementToolListOptions = useMemo(() => {
         return [
             {
-                label: <FormattedMessage id="draw.rectTool" />,
+                label: intl.formatMessage({
+                    id: 'draw.rectTool',
+                }),
                 value: DrawState.Rect,
             },
             {
-                label: <FormattedMessage id="draw.diamondTool" />,
+                label: intl.formatMessage({
+                    id: 'draw.diamondTool',
+                }),
                 value: DrawState.Diamond,
             },
             {
-                label: <FormattedMessage id="draw.ellipseTool" />,
+                label: intl.formatMessage({
+                    id: 'draw.ellipseTool',
+                }),
                 value: DrawState.Ellipse,
             },
             {
-                label: <FormattedMessage id="draw.arrowTool" />,
+                label: intl.formatMessage({
+                    id: 'draw.arrowTool',
+                }),
                 value: DrawState.Arrow,
             },
             {
-                label: <FormattedMessage id="draw.lineTool" />,
+                label: intl.formatMessage({
+                    id: 'draw.lineTool',
+                }),
                 value: DrawState.Line,
             },
             {
-                label: <FormattedMessage id="draw.penTool" />,
+                label: intl.formatMessage({
+                    id: 'draw.penTool',
+                }),
                 value: DrawState.Pen,
             },
             {
-                label: <FormattedMessage id="draw.serialNumberTool" />,
+                label: intl.formatMessage({
+                    id: 'draw.serialNumberTool',
+                }),
                 value: DrawState.SerialNumber,
             },
             {
-                label: <FormattedMessage id="draw.blurTool" />,
+                label: intl.formatMessage({
+                    id: 'draw.blurTool',
+                }),
                 value: DrawState.Blur,
             },
         ];
-    }, []);
+    }, [intl]);
+
+    const ocrAfterActionOptions = useMemo(() => {
+        return [
+            {
+                label: intl.formatMessage({
+                    id: 'settings.functionSettings.screenshotSettings.ocrAfterAction.none',
+                }),
+                value: OcrDetectAfterAction.None,
+            },
+            {
+                label: intl.formatMessage({
+                    id: 'settings.functionSettings.screenshotSettings.ocrAfterAction.copyText',
+                }),
+                value: OcrDetectAfterAction.CopyText,
+            },
+            {
+                label: intl.formatMessage({
+                    id: 'settings.functionSettings.screenshotSettings.ocrAfterAction.copyTextAndCloseWindow',
+                }),
+                value: OcrDetectAfterAction.CopyTextAndCloseWindow,
+            },
+        ];
+    }, [intl]);
+
+    const initialPositionOptions = useMemo(() => {
+        return [
+            {
+                label: intl.formatMessage({
+                    id: 'settings.functionSettings.fixedContentSettings.initialPosition.monitorCenter',
+                }),
+                value: AppSettingsFixedContentInitialPosition.MonitorCenter,
+            },
+            {
+                label: intl.formatMessage({
+                    id: 'settings.functionSettings.fixedContentSettings.initialPosition.mousePosition',
+                }),
+                value: AppSettingsFixedContentInitialPosition.MousePosition,
+            },
+        ];
+    }, [intl]);
+
+    const fullScreenDrawDefaultToolOptions = useMemo(() => {
+        return [
+            {
+                label: intl.formatMessage({
+                    id: 'draw.selectTool',
+                }),
+                value: DrawState.Select,
+            },
+            {
+                label: intl.formatMessage({
+                    id: 'draw.penTool',
+                }),
+                value: DrawState.Pen,
+            },
+            {
+                label: intl.formatMessage({
+                    id: 'draw.laserPointerTool',
+                }),
+                value: DrawState.LaserPointer,
+            },
+        ];
+    }, [intl]);
+
+    const translationApiTypeOptions = useMemo(() => {
+        return [
+            {
+                label: intl.formatMessage({
+                    id: 'settings.functionSettings.translationSettings.apiConfig.apiType.deepL',
+                }),
+                value: TranslationApiType.DeepL,
+            },
+        ];
+    }, [intl]);
+
+    const encoderPresetOptions = useMemo(() => {
+        return [
+            {
+                label: intl.formatMessage({
+                    id: 'settings.functionSettings.videoRecordSettings.encoderPreset.ultrafast',
+                }),
+                value: 'ultrafast',
+            },
+            {
+                label: intl.formatMessage({
+                    id: 'settings.functionSettings.videoRecordSettings.encoderPreset.veryfast',
+                }),
+                value: 'veryfast',
+            },
+            {
+                label: intl.formatMessage({
+                    id: 'settings.functionSettings.videoRecordSettings.encoderPreset.medium',
+                }),
+                value: 'medium',
+            },
+            {
+                label: intl.formatMessage({
+                    id: 'settings.functionSettings.videoRecordSettings.encoderPreset.slower',
+                }),
+                value: 'slower',
+            },
+            {
+                label: intl.formatMessage({
+                    id: 'settings.functionSettings.videoRecordSettings.encoderPreset.placebo',
+                }),
+                value: 'placebo',
+            },
+        ];
+    }, [intl]);
 
     return (
         <ContentWrap>
@@ -452,26 +577,7 @@ export default function SystemSettings() {
                                 label={
                                     <FormattedMessage id="settings.functionSettings.screenshotSettings.ocrAfterAction" />
                                 }
-                                options={[
-                                    {
-                                        label: (
-                                            <FormattedMessage id="settings.functionSettings.screenshotSettings.ocrAfterAction.none" />
-                                        ),
-                                        value: OcrDetectAfterAction.None,
-                                    },
-                                    {
-                                        label: (
-                                            <FormattedMessage id="settings.functionSettings.screenshotSettings.ocrAfterAction.copyText" />
-                                        ),
-                                        value: OcrDetectAfterAction.CopyText,
-                                    },
-                                    {
-                                        label: (
-                                            <FormattedMessage id="settings.functionSettings.screenshotSettings.ocrAfterAction.copyTextAndCloseWindow" />
-                                        ),
-                                        value: OcrDetectAfterAction.CopyTextAndCloseWindow,
-                                    },
-                                ]}
+                                options={ocrAfterActionOptions}
                             />
                         </Col>
 
@@ -742,20 +848,7 @@ export default function SystemSettings() {
                                 label={
                                     <FormattedMessage id="settings.functionSettings.fixedContentSettings.initialPosition" />
                                 }
-                                options={[
-                                    {
-                                        label: (
-                                            <FormattedMessage id="settings.functionSettings.fixedContentSettings.initialPosition.monitorCenter" />
-                                        ),
-                                        value: AppSettingsFixedContentInitialPosition.MonitorCenter,
-                                    },
-                                    {
-                                        label: (
-                                            <FormattedMessage id="settings.functionSettings.fixedContentSettings.initialPosition.mousePosition" />
-                                        ),
-                                        value: AppSettingsFixedContentInitialPosition.MousePosition,
-                                    },
-                                ]}
+                                options={initialPositionOptions}
                             />
                         </Col>
 
@@ -855,14 +948,7 @@ export default function SystemSettings() {
                                         />
                                     }
                                     allowClear={false}
-                                    options={[
-                                        {
-                                            label: (
-                                                <FormattedMessage id="settings.functionSettings.translationSettings.apiConfig.apiType.deepL" />
-                                            ),
-                                            value: TranslationApiType.DeepL,
-                                        },
-                                    ]}
+                                    options={translationApiTypeOptions}
                                 />
                             </Col>
                             <Col span={12}>
@@ -1270,20 +1356,7 @@ export default function SystemSettings() {
                                 label={
                                     <FormattedMessage id="settings.functionSettings.fullScreenDrawSettings.defaultTool" />
                                 }
-                                options={[
-                                    {
-                                        label: <FormattedMessage id="draw.selectTool" />,
-                                        value: DrawState.Select,
-                                    },
-                                    {
-                                        label: <FormattedMessage id="draw.penTool" />,
-                                        value: DrawState.Pen,
-                                    },
-                                    {
-                                        label: <FormattedMessage id="draw.laserPointerTool" />,
-                                        value: DrawState.LaserPointer,
-                                    },
-                                ]}
+                                options={fullScreenDrawDefaultToolOptions}
                             />
                         </Col>
                     </Row>
@@ -1493,38 +1566,7 @@ export default function SystemSettings() {
                                         }
                                     />
                                 }
-                                options={[
-                                    {
-                                        label: intl.formatMessage({
-                                            id: 'settings.functionSettings.videoRecordSettings.encoderPreset.ultrafast',
-                                        }),
-                                        value: 'ultrafast',
-                                    },
-                                    {
-                                        label: intl.formatMessage({
-                                            id: 'settings.functionSettings.videoRecordSettings.encoderPreset.veryfast',
-                                        }),
-                                        value: 'veryfast',
-                                    },
-                                    {
-                                        label: intl.formatMessage({
-                                            id: 'settings.functionSettings.videoRecordSettings.encoderPreset.medium',
-                                        }),
-                                        value: 'medium',
-                                    },
-                                    {
-                                        label: intl.formatMessage({
-                                            id: 'settings.functionSettings.videoRecordSettings.encoderPreset.slower',
-                                        }),
-                                        value: 'slower',
-                                    },
-                                    {
-                                        label: intl.formatMessage({
-                                            id: 'settings.functionSettings.videoRecordSettings.encoderPreset.placebo',
-                                        }),
-                                        value: 'placebo',
-                                    },
-                                ]}
+                                options={encoderPresetOptions}
                             />
                         </Col>
 
