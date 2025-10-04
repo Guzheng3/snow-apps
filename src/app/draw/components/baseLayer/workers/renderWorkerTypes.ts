@@ -30,6 +30,7 @@ export enum BaseLayerRenderMessageType {
     UpdateHighlightProps = 'updateHighlightProps',
     UpdateHighlightElement = 'updateHighlightElement',
     UpdateHighlight = 'updateHighlight',
+    ClearContext = 'clearContext',
 }
 
 export type BaseLayerRenderInitData = {
@@ -147,6 +148,11 @@ export type BaseLayerRenderUpdateHighlightData = {
     };
 };
 
+export type BaseLayerRenderClearContextData = {
+    type: BaseLayerRenderMessageType.ClearContext;
+    payload: {};
+};
+
 export type BaseLayerRenderData =
     | BaseLayerRenderInitData
     | BaseLayerRenderDisposeData
@@ -164,7 +170,8 @@ export type BaseLayerRenderData =
     | BaseLayerRenderUpdateHighlightElementData
     | BaseLayerRenderDeleteBlurSpriteData
     | BaseLayerRenderUpdateHighlightElementData
-    | BaseLayerRenderUpdateHighlightData;
+    | BaseLayerRenderUpdateHighlightData
+    | BaseLayerRenderClearContextData;
 
 export type RenderInitResult = {
     type: BaseLayerRenderMessageType.Init;
@@ -252,13 +259,19 @@ export type RenderUpdateHighlightResult = {
     payload: undefined;
 };
 
+export type RenderClearContextResult = {
+    type: BaseLayerRenderMessageType.ClearContext;
+    payload: undefined;
+};
+
 export type RenderBlurSpriteResult =
     | RenderCreateBlurSpriteResult
     | RenderUpdateBlurSpriteResult
     | RenderUpdateWatermarkSpriteResult
     | RenderDeleteBlurSpriteResult
     | RenderUpdateHighlightElementResult
-    | RenderUpdateHighlightResult;
+    | RenderUpdateHighlightResult
+    | RenderClearContextResult;
 
 export type RenderResult =
     | RenderInitResult

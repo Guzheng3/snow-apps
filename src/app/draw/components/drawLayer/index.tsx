@@ -39,6 +39,7 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
         deleteBlurSprite,
         updateHighlightElement,
         updateHighlight,
+        clearContext,
     } = useContext(BaseLayerContext);
 
     const currentCaptureImageSrcRef = useRef<string | undefined>(undefined);
@@ -63,11 +64,11 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
             );
             // 模糊层
             blurContainerKeyRef.current = await createNewCanvasContainer(
-                DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY,
-            );
-            // 模糊层
-            blurContainerKeyRef.current = await createNewCanvasContainer(
                 DRAW_LAYER_BLUR_CONTAINER_KEY,
+            );
+            // 高亮层
+            highlightContainerKeyRef.current = await createNewCanvasContainer(
+                DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY,
             );
 
             await canvasRender();
@@ -95,14 +96,15 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
 
             // 移除之前显示的已有内容
             await Promise.all([
-                clearContainer(DRAW_LAYER_BLUR_CONTAINER_KEY),
+                clearContext(),
                 clearContainer(DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY),
+                clearContainer(DRAW_LAYER_BLUR_CONTAINER_KEY),
                 clearContainer(DRAW_LAYER_WATERMARK_CONTAINER_KEY),
             ]);
 
             await canvasRender();
         },
-        [addImageToContainer, canvasRender, clearContainer],
+        [addImageToContainer, canvasRender, clearContainer, clearContext],
     );
 
     useImperativeHandle(
@@ -119,6 +121,7 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
             canvasRender,
             updateHighlightElement,
             updateHighlight,
+            clearContext,
         }),
         [
             onCaptureFinish,
@@ -131,6 +134,7 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
             canvasRender,
             updateHighlightElement,
             updateHighlight,
+            clearContext,
         ],
     );
 

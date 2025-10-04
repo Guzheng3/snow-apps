@@ -20,9 +20,9 @@ import {
     renderUpdateWatermarkSpriteAction,
     WatermarkProps,
     renderUpdateHighlightElementPropsAction,
-    HighlightElementProps,
     renderUpdateHighlightAction,
     HighlightElement,
+    renderClearContextAction,
 } from '../baseLayerRenderActions';
 import {
     BaseLayerRenderAddImageToContainerData,
@@ -178,6 +178,10 @@ const handleUpdateWatermarkSprite = (data: BaseLayerRenderUpdateWatermarkSpriteD
     );
 };
 
+const handleClearContext = () => {
+    renderClearContextAction(blurSpriteMapRef, highlightElementMapRef, lastWatermarkPropsRef);
+};
+
 self.onmessage = async ({ data }: MessageEvent<BaseLayerRenderData>) => {
     let message: RenderResult;
     switch (data.type) {
@@ -290,6 +294,13 @@ self.onmessage = async ({ data }: MessageEvent<BaseLayerRenderData>) => {
             handleUpdateHighlight(data);
             message = {
                 type: BaseLayerRenderMessageType.UpdateHighlight,
+                payload: undefined,
+            };
+            break;
+        case BaseLayerRenderMessageType.ClearContext:
+            handleClearContext();
+            message = {
+                type: BaseLayerRenderMessageType.ClearContext,
                 payload: undefined,
             };
             break;

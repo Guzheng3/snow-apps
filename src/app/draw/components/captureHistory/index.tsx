@@ -15,6 +15,8 @@ import {
     CaptureEvent,
     CaptureEventParams,
     CaptureEventPublisher,
+    DrawEvent,
+    DrawEventPublisher,
     ScreenshotTypePublisher,
 } from '../../extra';
 import { Ordered } from '@mg-chao/excalidraw/element/types';
@@ -116,6 +118,8 @@ const CaptureHistoryControllerCore: React.FC<{
 
     const { message } = useContext(AntdContext);
 
+    const [, setDrawEvent] = useStateSubscriber(DrawEventPublisher, undefined);
+
     const currentCaptureExcalidrawElementsRef =
         useRef<readonly Ordered<NonDeletedExcalidrawElement>[]>(undefined);
     const changeCurrentIndex = useCallback(
@@ -159,6 +163,10 @@ const CaptureHistoryControllerCore: React.FC<{
                 content: <FormattedMessage id="draw.loadingCaptureHistory" />,
             });
 
+            setDrawEvent({
+                event: DrawEvent.ClearContext,
+                params: undefined,
+            });
             if (currentIndexRef.current === captureHistoryListRef.current.length) {
                 const switchCaptureHistoryPromise = Promise.all([
                     drawLayerActionRef.current?.switchCaptureHistory(undefined).then(() => {
@@ -231,6 +239,7 @@ const CaptureHistoryControllerCore: React.FC<{
             getScreenshotType,
             message,
             selectLayerActionRef,
+            setDrawEvent,
         ],
     );
 

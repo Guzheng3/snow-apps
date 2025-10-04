@@ -99,6 +99,8 @@ export enum DrawEvent {
     SelectRectParamsAnimationChange = 4,
     /** ColorPicker 颜色发生变化 */
     ColorPickerColorChange = 5,
+    /** 清除上下文 */
+    ClearContext = 6,
 }
 
 export type DrawEventParams =
@@ -136,6 +138,10 @@ export type DrawEventParams =
           params: {
               color: ColorInstance;
           };
+      }
+    | {
+          event: DrawEvent.ClearContext;
+          params: undefined;
       }
     | undefined;
 

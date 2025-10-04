@@ -23,6 +23,7 @@ import {
     HighlightProps,
     renderUpdateHighlightAction,
     HighlightElement,
+    renderClearContextAction,
 } from './baseLayerRenderActions';
 import {
     BaseLayerRenderDisposeData,
@@ -43,6 +44,7 @@ import {
     BaseLayerRenderUpdateWatermarkSpriteData,
     BaseLayerRenderUpdateHighlightElementData,
     BaseLayerRenderUpdateHighlightData,
+    BaseLayerRenderClearContextData,
 } from './workers/renderWorkerTypes';
 import { ElementRect } from '@/commands';
 
@@ -608,6 +610,40 @@ export const updateHighlightAction = async (
                 highlightElementMapRef,
                 highlightContainerKey,
                 highlightProps,
+            );
+            resolve(undefined);
+        }
+    });
+};
+
+export const clearContextAction = async (
+    renderWorker: Worker | undefined,
+    blurSpriteMapRef: RefObject<Map<string, BlurSprite>>,
+    highlightElementMapRef: RefObject<Map<string, HighlightElement>>,
+    lastWatermarkPropsRef: RefObject<WatermarkProps>,
+): Promise<undefined> => {
+    return new Promise((resolve) => {
+        if (renderWorker) {
+            const ClearContextData: BaseLayerRenderClearContextData = {
+                type: BaseLayerRenderMessageType.ClearContext,
+                payload: {},
+            };
+            const handleMessage = (event: MessageEvent<RenderResult>) => {
+                const { type, payload } = event.data;
+                if (type === BaseLayerRenderMessageType.ClearContext) {
+                    resolve(payload);
+                    renderWorker.removeEventListener('message', handleMessage);
+                }
+            };
+
+            renderWorker.addEventListener('message', handleMessage);
+
+            renderWorker.postMessage(ClearContextData);
+        } else {
+            renderClearContextAction(
+                blurSpriteMapRef,
+                highlightElementMapRef,
+                lastWatermarkPropsRef,
             );
             resolve(undefined);
         }

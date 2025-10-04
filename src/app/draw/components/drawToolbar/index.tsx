@@ -519,6 +519,17 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
         [showDrawToolbarContainer],
     );
 
+    const [, setDrawEvent] = useStateSubscriber(DrawEventPublisher, undefined);
+    const publishSelectRectAnimationParams = useCallback(() => {
+        setDrawEvent({
+            event: DrawEvent.SelectRectParamsAnimationChange,
+            params: {
+                selectRectParams: selectLayerActionRef.current!.getSelectRectParams()!,
+            },
+        });
+        setDrawEvent(undefined);
+    }, [setDrawEvent, selectLayerActionRef]);
+
     const onEnableChange = useCallback(
         (enable: boolean) => {
             enableRef.current = enable;
@@ -555,6 +566,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
             // 重置下工具栏样式，防止滚动截图时直接结束截图
             if (enable) {
                 showDrawToolbarContainerDebounce();
+                publishSelectRectAnimationParams();
             }
         },
         [
@@ -564,6 +576,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
             onToolClick,
             onTopWindow,
             showDrawToolbarContainerDebounce,
+            publishSelectRectAnimationParams,
         ],
     );
 

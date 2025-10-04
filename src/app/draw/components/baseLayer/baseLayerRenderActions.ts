@@ -471,6 +471,25 @@ export type HighlightElement = {
     backgroundMaskGraphics: PIXI.Graphics;
 };
 
+const drawShapeHighlightElementGraphicsAction = (
+    graphics: PIXI.Graphics,
+    highlightProps: HighlightElementProps,
+) => {
+    const halfWidth = highlightProps.width * 0.5;
+    const halfHeight = highlightProps.height * 0.5;
+    graphics
+        .rotateTransform(highlightProps.angle)
+        .translateTransform(highlightProps.x + halfWidth, highlightProps.y + halfHeight)
+        .scaleTransform(highlightProps.zoom, highlightProps.zoom);
+    if (highlightProps.shapeType === 'rect') {
+        graphics.rect(-halfWidth, -halfHeight, highlightProps.width, highlightProps.height);
+    } else {
+        const radiusX = highlightProps.width * 0.5;
+        const radiusY = highlightProps.height * 0.5;
+        graphics.ellipse(0, 0, radiusX, radiusY);
+    }
+};
+
 /**
  * 更新指定 highlight 元素的 props
  */
@@ -482,6 +501,19 @@ export const renderUpdateHighlightElementPropsAction = (
     highlightProps: HighlightElementProps | undefined,
     windowDevicePixelRatio: number,
 ) => {
+    let highlightElement = highlightElementMapRef.current.get(highlightElementId);
+    if (!highlightProps) {
+        highlightElementMapRef.current.delete(highlightElementId);
+
+        if (highlightElement) {
+            highlightElement.strokeGraphics.destroy();
+            highlightElement.backgroundGraphics.destroy();
+            highlightElement.backgroundMaskGraphics.destroy();
+        }
+
+        return;
+    }
+
     const container = canvasContainerMapRef.current.get(highlightContainerKey);
     if (!container) {
         return;
@@ -512,19 +544,6 @@ export const renderUpdateHighlightElementPropsAction = (
         container.addChild(highlightBackgroundMaskContainer);
     }
 
-    let highlightElement = highlightElementMapRef.current.get(highlightElementId);
-    if (!highlightProps) {
-        highlightElementMapRef.current.delete(highlightElementId);
-
-        if (highlightElement) {
-            highlightElement.strokeGraphics.destroy();
-            highlightElement.backgroundGraphics.destroy();
-            highlightElement.backgroundMaskGraphics.destroy();
-        }
-
-        return;
-    }
-
     if (!highlightElement) {
         highlightElement = {
             props: highlightProps,
@@ -543,61 +562,30 @@ export const renderUpdateHighlightElementPropsAction = (
     highlightElement.props = highlightProps;
     highlightElementMapRef.current.set(highlightElementId, highlightElement);
 
+    const alpha = highlightProps.eraserAlpha ?? highlightProps.opacity / 100;
+
     highlightElement.strokeGraphics.clear();
     highlightElement.backgroundGraphics.clear();
     highlightElement.backgroundMaskGraphics.clear();
 
-    if (highlightProps.shapeType === 'rect') {
-        if (highlightProps.borderType === 'solid') {
-            highlightElement.strokeGraphics
-                .rect(
-                    highlightProps.x,
-                    highlightProps.y,
-                    highlightProps.width,
-                    highlightProps.height,
-                )
-                .stroke({
-                    color: highlightProps.strokeColor,
-                    width: highlightProps.strokeWidth * 6 * windowDevicePixelRatio,
-                });
-        }
-        highlightElement.backgroundGraphics.rect(
-            highlightProps.x,
-            highlightProps.y,
-            highlightProps.width,
-            highlightProps.height,
-        );
-        highlightElement.backgroundMaskGraphics.rect(
-            highlightProps.x,
-            highlightProps.y,
-            highlightProps.width,
-            highlightProps.height,
-        );
-    } else if (highlightProps.shapeType === 'circle') {
-        const radiusX = highlightProps.width * 0.5;
-        const radiusY = highlightProps.height * 0.5;
-        const positionX = highlightProps.x + radiusX;
-        const positionY = highlightProps.y + radiusY;
-        if (highlightProps.borderType === 'solid') {
-            highlightElement.strokeGraphics.ellipse(positionX, positionY, radiusX, radiusY).stroke({
-                color: highlightProps.strokeColor,
-                width: highlightProps.strokeWidth * 6 * windowDevicePixelRatio,
-            });
-        }
-        highlightElement.backgroundGraphics.ellipse(positionX, positionY, radiusX, radiusY);
-        highlightElement.backgroundMaskGraphics.ellipse(positionX, positionY, radiusX, radiusY);
+    if (highlightProps.borderType === 'solid') {
+        drawShapeHighlightElementGraphicsAction(highlightElement.strokeGraphics, highlightProps);
+        highlightElement.strokeGraphics.stroke({
+            color: highlightProps.strokeColor,
+            width: highlightProps.strokeWidth * 6 * windowDevicePixelRatio,
+        });
+        highlightElement.strokeGraphics.alpha = alpha;
     }
-
-    const alpha = highlightProps.eraserAlpha ?? highlightProps.opacity / 100;
-    highlightElement.strokeGraphics.stroke({
-        color: highlightProps.strokeColor,
-        width: highlightProps.strokeWidth * 6 * windowDevicePixelRatio,
-    });
-    highlightElement.strokeGraphics.alpha = alpha;
+    drawShapeHighlightElementGraphicsAction(highlightElement.backgroundGraphics, highlightProps);
     highlightElement.backgroundGraphics.fill({
         color: highlightProps.backgroundColor,
     });
     highlightElement.backgroundGraphics.alpha = alpha;
+
+    drawShapeHighlightElementGraphicsAction(
+        highlightElement.backgroundMaskGraphics,
+        highlightProps,
+    );
     highlightElement.backgroundMaskGraphics.fill('black');
 };
 
@@ -781,4 +769,26 @@ export const renderUpdateWatermarkSpriteAction = (
 
     lastWatermarkPropsRef.current = watermarkProps;
     canvasApp.render();
+};
+
+export const renderClearContextAction = (
+    blurSpriteMapRef: RefType<Map<string, BlurSprite>>,
+    highlightElementMapRef: RefType<Map<string, HighlightElement>>,
+    lastWatermarkPropsRef: RefType<WatermarkProps>,
+) => {
+    blurSpriteMapRef.current.clear();
+    highlightElementMapRef.current.clear();
+    lastWatermarkPropsRef.current = {
+        fontSize: 0,
+        color: '#000000',
+        opacity: 0,
+        visible: false,
+        text: '',
+        selectRectParams: {
+            rect: { min_x: 0, min_y: 0, max_x: 0, max_y: 0 },
+            radius: 0,
+            shadowWidth: 0,
+            shadowColor: '#000000',
+        },
+    };
 };

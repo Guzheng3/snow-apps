@@ -336,6 +336,9 @@ export const WatermarkTool = () => {
                     };
                     drawLayerActionRef.current?.updateWatermarkSprite(watermarkPropsRef.current);
                 }
+                if (params?.event === DrawEvent.ClearContext) {
+                    watermarkPropsRef.current = defaultWatermarkProps;
+                }
             },
             [drawLayerActionRef],
         ),

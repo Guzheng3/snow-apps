@@ -32,6 +32,7 @@ import {
     updateWatermarkSpriteAction,
     updateHighlightElementAction,
     updateHighlightAction,
+    clearContextAction,
 } from './actions';
 import { supportOffscreenCanvas } from '@/utils';
 import {
@@ -110,6 +111,10 @@ export type BaseLayerContextType = {
         highlightContainerKey: string,
         highlightProps: HighlightProps,
     ) => Promise<void>;
+    /**
+     * 清除现有的状态
+     */
+    clearContext: () => Promise<void>;
 };
 
 export const BaseLayerContext = React.createContext<BaseLayerContextType>({
@@ -133,6 +138,7 @@ export const BaseLayerContext = React.createContext<BaseLayerContextType>({
     updateWatermarkSprite: () => Promise.resolve(),
     updateHighlightElement: () => Promise.resolve(),
     updateHighlight: () => Promise.resolve(),
+    clearContext: () => Promise.resolve(),
 });
 
 export type BaseLayerEventActionType = {
@@ -237,6 +243,10 @@ export type BaseLayerEventActionType = {
         highlightContainerKey: string,
         highlightProps: HighlightProps,
     ) => Promise<void>;
+    /**
+     * 清除现有的状态
+     */
+    clearContext: () => Promise<void>;
 };
 
 export type BaseLayerActionType = {
@@ -273,6 +283,7 @@ export const defaultBaseLayerActions: BaseLayerActionType = {
     updateWatermarkSprite: () => Promise.resolve(),
     updateHighlightElement: () => Promise.resolve(),
     updateHighlight: () => Promise.resolve(),
+    clearContext: () => Promise.resolve(),
 };
 
 type BaseLayerCoreActionType = {
@@ -336,6 +347,10 @@ type BaseLayerCoreActionType = {
         highlightContainerKey: string,
         highlightProps: HighlightProps,
     ) => Promise<void>;
+    /**
+     * 清除现有的状态
+     */
+    clearContext: () => Promise<void>;
 };
 
 export type BaseLayerProps = {
@@ -582,6 +597,15 @@ export const BaseLayerCore: React.FC<
         [rendererWorker],
     );
 
+    const clearContext = useCallback<BaseLayerActionType['clearContext']>(async () => {
+        await clearContextAction(
+            rendererWorker,
+            blurSpriteMapRef,
+            highlightElementMapRef,
+            lastWatermarkPropsRef,
+        );
+    }, [rendererWorker]);
+
     useEffect(() => {
         return () => {
             disposeCanvas();
@@ -608,6 +632,7 @@ export const BaseLayerCore: React.FC<
             updateWatermarkSprite,
             updateHighlightElement,
             updateHighlight,
+            clearContext,
         }),
         [
             resizeCanvas,
@@ -627,6 +652,7 @@ export const BaseLayerCore: React.FC<
             updateWatermarkSprite,
             updateHighlightElement,
             updateHighlight,
+            clearContext,
         ],
     );
 
@@ -656,6 +682,7 @@ export const BaseLayerCore: React.FC<
             updateWatermarkSprite,
             updateHighlightElement,
             updateHighlight,
+            clearContext,
         };
     }, [
         resizeCanvas,
@@ -673,6 +700,7 @@ export const BaseLayerCore: React.FC<
         updateWatermarkSprite,
         updateHighlightElement,
         updateHighlight,
+        clearContext,
     ]);
 
     return (

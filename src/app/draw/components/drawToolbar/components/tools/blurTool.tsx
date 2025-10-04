@@ -1,7 +1,6 @@
 import { useCallback, useContext, useRef } from 'react';
 import { DrawContext } from '@/app/draw/types';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { CaptureEvent, CaptureEventParams, CaptureEventPublisher } from '@/app/draw/extra';
 import { useCallbackRender } from '@/hooks/useCallbackRender';
 import {
     ExcalidrawEventOnChangeParams,
@@ -13,6 +12,7 @@ import {
 import { DRAW_LAYER_BLUR_CONTAINER_KEY } from '../../../drawLayer';
 import { BlurSpriteProps } from '../../../baseLayer/baseLayerRenderActions';
 import { last } from 'es-toolkit';
+import { DrawEvent, DrawEventParams, DrawEventPublisher } from '@/app/draw/extra';
 
 const isEqualBlurSpriteProps = (
     a: Omit<BlurSpriteProps, 'valid'>,
@@ -55,26 +55,6 @@ const BlurToolCore: React.FC = () => {
             }
         >
     >(new Map());
-    const clear = useCallback(() => {
-        blurSpriteMapRef.current.clear();
-    }, []);
-
-    useStateSubscriber(
-        CaptureEventPublisher,
-        useCallback(
-            (params: CaptureEventParams | undefined) => {
-                if (!params) {
-                    return;
-                }
-
-                if (params.event === CaptureEvent.onCaptureLoad) {
-                } else if (params.event === CaptureEvent.onCaptureFinish) {
-                    clear();
-                }
-            },
-            [clear],
-        ),
-    );
 
     const updateBlur = useCallback(
         async (params: ExcalidrawEventOnChangeParams['params'] | undefined) => {
@@ -217,6 +197,18 @@ const BlurToolCore: React.FC = () => {
         ),
     );
     useStateSubscriber(ExcalidrawOnHandleEraserPublisher, handleEraserRender);
+
+    useStateSubscriber(
+        DrawEventPublisher,
+        useCallback(
+            (params: DrawEventParams | undefined) => {
+                if (params?.event === DrawEvent.ClearContext) {
+                    blurSpriteMapRef.current.clear();
+                }
+            },
+            [blurSpriteMapRef],
+        ),
+    );
     return <></>;
 };
 

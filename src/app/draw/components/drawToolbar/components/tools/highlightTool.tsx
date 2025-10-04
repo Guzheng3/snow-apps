@@ -1,14 +1,7 @@
 import { useCallback, useContext, useRef } from 'react';
 import { DrawContext } from '@/app/draw/types';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import {
-    CaptureEvent,
-    CaptureEventParams,
-    CaptureEventPublisher,
-    DrawEvent,
-    DrawEventParams,
-    DrawEventPublisher,
-} from '@/app/draw/extra';
+import { DrawEvent, DrawEventParams, DrawEventPublisher } from '@/app/draw/extra';
 import { useCallbackRender } from '@/hooks/useCallbackRender';
 import {
     ExcalidrawEventOnChangeParams,
@@ -53,26 +46,6 @@ const HighlightToolCore: React.FC = () => {
             }
         >
     >(new Map());
-    const clear = useCallback(() => {
-        highlightSpriteMapRef.current.clear();
-    }, []);
-
-    useStateSubscriber(
-        CaptureEventPublisher,
-        useCallback(
-            (params: CaptureEventParams | undefined) => {
-                if (!params) {
-                    return;
-                }
-
-                if (params.event === CaptureEvent.onCaptureLoad) {
-                } else if (params.event === CaptureEvent.onCaptureFinish) {
-                    clear();
-                }
-            },
-            [clear],
-        ),
-    );
 
     const updateHighlight = useCallback(
         async (params: ExcalidrawEventOnChangeParams['params'] | undefined) => {
@@ -130,17 +103,18 @@ const HighlightToolCore: React.FC = () => {
                     highlightSprite = {
                         props: {
                             ...highlightProps,
+                            valid: true,
                         },
                     };
 
                     highlightSpriteMapRef.current.set(element.id, highlightSprite);
 
                     needRender = true;
-                }
-
-                highlightSprite.props.valid = true;
-                if (isEqualHighlightSpriteProps(highlightSprite.props, highlightProps)) {
-                    continue;
+                } else {
+                    highlightSprite.props.valid = true;
+                    if (isEqualHighlightSpriteProps(highlightSprite.props, highlightProps)) {
+                        continue;
+                    }
                 }
 
                 await drawLayerActionRef.current.updateHighlightElement(
@@ -236,6 +210,8 @@ const HighlightToolCore: React.FC = () => {
                         .then(() => {
                             drawLayerActionRef.current?.canvasRender();
                         });
+                } else if (params?.event === DrawEvent.ClearContext) {
+                    highlightSpriteMapRef.current.clear();
                 }
             },
             [drawLayerActionRef],
