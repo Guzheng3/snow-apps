@@ -37,9 +37,10 @@ pub async fn scroll_through(
 #[command]
 pub async fn auto_scroll_through(
     enigo_manager: tauri::State<'_, Mutex<EnigoManager>>,
+    direction: String,
     length: i32,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::auto_scroll_through(enigo_manager, length).await
+    snow_shot_tauri_commands_core::auto_scroll_through(enigo_manager, direction, length).await
 }
 
 /// 鼠标滚轮穿透

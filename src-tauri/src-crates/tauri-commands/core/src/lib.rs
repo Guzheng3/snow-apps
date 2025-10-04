@@ -75,13 +75,23 @@ pub async fn scroll_through(
 
 pub async fn auto_scroll_through(
     enigo_manager: tauri::State<'_, Mutex<EnigoManager>>,
+    direction: String,
     length: i32,
 ) -> Result<(), String> {
     let mut enigo = enigo_manager.lock().await;
     let enigo = enigo.get_enigo()?;
 
     {
-        match enigo.scroll(length, Axis::Vertical) {
+        match enigo.scroll(
+            length,
+            match direction.as_str() {
+                "vertical" => Axis::Vertical,
+                "horizontal" => Axis::Horizontal,
+                _ => {
+                    return Err(String::from("[auto_scroll_through] Invalid direction"));
+                }
+            },
+        ) {
             Ok(_) => (),
             Err(e) => {
                 log::error!("[auto_scroll_through] scroll error: {}", e);

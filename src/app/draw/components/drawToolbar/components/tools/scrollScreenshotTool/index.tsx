@@ -277,6 +277,15 @@ export const ScrollScreenshot: React.FC<{
 
         needContinue = captureResult.type !== 'no_image';
 
+        if (captureResult.type === 'no_change' || captureResult.type === 'no_data') {
+            noChangeCount.current++;
+        }
+
+        if (noChangeCount.current > 3) {
+            noChangeCount.current = 0;
+            stopAutoScrollThrough();
+        }
+
         setLoadingDebounce(false);
 
         if (captureResult.type === 'no_image') {
@@ -285,11 +294,6 @@ export const ScrollScreenshot: React.FC<{
             captureResult.edge_position === 0 &&
             captureResult.thumbnail_buffer === undefined
         ) {
-            noChangeCount.current++;
-            if (noChangeCount.current > 3) {
-                noChangeCount.current = 0;
-                stopAutoScrollThrough();
-            }
             return needContinue;
         } else if (captureResult.edge_position === undefined) {
             showCaptureMissMessage();
@@ -493,7 +497,12 @@ export const ScrollScreenshot: React.FC<{
                     pendingEnableAutoScrollThroughClickRef.current = false;
                     autoScrollThroughIntervalRef.current = setInterval(async () => {
                         await getCurrentWindow().setIgnoreCursorEvents(true);
-                        await autoScrollThrough(1);
+                        await autoScrollThrough(
+                            scrollDirectionRef.current === ScrollDirection.Horizontal
+                                ? 'horizontal'
+                                : 'vertical',
+                            1,
+                        );
                         enableCursorEventsDebounce();
                         captureImageCore(ScrollImageList.Bottom);
                     }, 150);
@@ -501,7 +510,7 @@ export const ScrollScreenshot: React.FC<{
                 setPendingEnableAutoScrollThroughClickRef.current = undefined;
             }, 300);
         }
-    }, [captureImageCore, enableCursorEventsDebounce]);
+    }, [captureImageCore, enableCursorEventsDebounce, scrollDirectionRef]);
 
     const { addListener, removeListener } = useContext(EventListenerContext);
     useEffect(() => {
@@ -546,7 +555,7 @@ export const ScrollScreenshot: React.FC<{
 
         init(selectRect, scrollDirectionRef.current);
         if (process.env.NODE_ENV === 'development') {
-            getCurrentWindow().setAlwaysOnTop(true);
+            getCurrentWindow().setAlwaysOnTop(false);
         }
     }, [releaseImageUrlList, selectLayerActionRef, init, scrollDirectionRef, setPositionRect]);
 
@@ -657,7 +666,12 @@ export const ScrollScreenshot: React.FC<{
                 >
                     {showTip && (
                         <div className="tip">
-                            <FormattedMessage id="draw.scrollScreenshot.tip" />
+                            <div>
+                                <FormattedMessage id="draw.scrollScreenshot.tip" />
+                            </div>
+                            <div>
+                                <FormattedMessage id="draw.scrollScreenshot.tip2" />
+                            </div>
                         </div>
                     )}
                 </div>
@@ -842,7 +856,8 @@ export const ScrollScreenshot: React.FC<{
                     color: white;
                     text-align: center;
                     width: 100%;
-                    transform: translateY(calc(-100% - ${token.marginXXS}px)) scale(${contentScale});
+                    transform: scale(${contentScale}) translateY(-100%);
+                    line-height: 1.2em;
                     opacity: 0.83;
                     pointer-events: none;
                 }
