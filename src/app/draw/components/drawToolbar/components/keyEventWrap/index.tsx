@@ -15,7 +15,6 @@ import { AntdContext, HotkeysScope } from '@/components/globalLayoutExtra';
 import { useHotkeysApp } from '@/hooks/useHotkeysApp';
 import { formatKey } from '@/utils/format';
 import { HotkeyCallback } from 'react-hotkeys-hook';
-import { HotkeysEvent } from 'react-hotkeys-hook/packages/react-hotkeys-hook/dist/types';
 
 const KeyEventHandleCore: React.FC<{
     keyEventValue: KeyEventValue;

@@ -294,6 +294,18 @@ const TrayIconLoaderComponent = () => {
                           ]
                         : []),
                     {
+                        id: `${appWindow.label}-screenshot-fullScreen`,
+                        text: intl.formatMessage({
+                            id: 'home.screenshotFunction.screenshotFullScreen',
+                        }),
+                        accelerator: disableShortcut
+                            ? undefined
+                            : formatKey(shortcutKeys[AppFunction.ScreenshotFullScreen].shortcutKey),
+                        action: async () => {
+                            executeScreenshot(ScreenshotType.CaptureFullScreen);
+                        },
+                    },
+                    {
                         item: 'Separator',
                     },
                     {
