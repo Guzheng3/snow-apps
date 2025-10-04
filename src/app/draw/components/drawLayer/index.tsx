@@ -24,6 +24,7 @@ export type DrawLayerProps = {
 };
 
 export const DRAW_LAYER_BLUR_CONTAINER_KEY = 'draw_layer_blur_container';
+export const DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY = 'draw_layer_highlight_container';
 export const DRAW_LAYER_WATERMARK_CONTAINER_KEY = 'draw_layer_watermark_container';
 
 const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
@@ -36,10 +37,13 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
         updateBlurSprite,
         updateWatermarkSprite,
         deleteBlurSprite,
+        updateHighlightElement,
+        updateHighlight,
     } = useContext(BaseLayerContext);
 
     const currentCaptureImageSrcRef = useRef<string | undefined>(undefined);
     const blurContainerKeyRef = useRef<string | undefined>(undefined);
+    const highlightContainerKeyRef = useRef<string | undefined>(undefined);
     const watermarkContainerKeyRef = useRef<string | undefined>(undefined);
     /*
      * 初始化截图
@@ -56,6 +60,10 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
             // 水印层
             watermarkContainerKeyRef.current = await createNewCanvasContainer(
                 DRAW_LAYER_WATERMARK_CONTAINER_KEY,
+            );
+            // 模糊层
+            blurContainerKeyRef.current = await createNewCanvasContainer(
+                DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY,
             );
             // 模糊层
             blurContainerKeyRef.current = await createNewCanvasContainer(
@@ -88,6 +96,7 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
             // 移除之前显示的已有内容
             await Promise.all([
                 clearContainer(DRAW_LAYER_BLUR_CONTAINER_KEY),
+                clearContainer(DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY),
                 clearContainer(DRAW_LAYER_WATERMARK_CONTAINER_KEY),
             ]);
 
@@ -108,6 +117,8 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
             updateWatermarkSprite,
             deleteBlurSprite,
             canvasRender,
+            updateHighlightElement,
+            updateHighlight,
         }),
         [
             onCaptureFinish,
@@ -118,6 +129,8 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
             updateWatermarkSprite,
             deleteBlurSprite,
             canvasRender,
+            updateHighlightElement,
+            updateHighlight,
         ],
     );
 

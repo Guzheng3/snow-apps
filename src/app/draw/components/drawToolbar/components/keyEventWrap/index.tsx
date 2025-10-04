@@ -14,11 +14,13 @@ import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
 import { AntdContext, HotkeysScope } from '@/components/globalLayoutExtra';
 import { useHotkeysApp } from '@/hooks/useHotkeysApp';
 import { formatKey } from '@/utils/format';
+import { HotkeyCallback } from 'react-hotkeys-hook';
+import { HotkeysEvent } from 'react-hotkeys-hook/packages/react-hotkeys-hook/dist/types';
 
 const KeyEventHandleCore: React.FC<{
     keyEventValue: KeyEventValue;
-    onKeyDownChildren: () => void;
-    onKeyUpChildren: () => void;
+    onKeyDownChildren: HotkeyCallback;
+    onKeyUpChildren: HotkeyCallback;
     componentKey: KeyEventKey;
     children: JSX.Element;
     hotkeyScope?: HotkeysScope;
@@ -38,7 +40,6 @@ const KeyEventHandleCore: React.FC<{
             () => ({
                 keydown: true,
                 keyup: false,
-                preventDefault: true,
                 scopes: hotkeyScope ?? HotkeysScope.DrawTool,
             }),
             [hotkeyScope],
@@ -51,7 +52,6 @@ const KeyEventHandleCore: React.FC<{
             () => ({
                 keydown: false,
                 keyup: true,
-                preventDefault: true,
                 scopes: hotkeyScope ?? HotkeysScope.DrawTool,
             }),
             [hotkeyScope],
@@ -110,17 +110,21 @@ const KeyEventWrapCore: React.FC<{
         enableRef.current = enable;
     }, [enable]);
 
-    const { modal } = useContext(AntdContext);
+    const { modal, isConfirmingRef } = useContext(AntdContext);
 
     const [keyEventValue, setKeyEventValue] = useState<KeyEventValue | undefined>(undefined);
-    const [getEnableKeyEvent] = useStateSubscriber(EnableKeyEventPublisher, () => {});
+    const [getEnableKeyEvent] = useStateSubscriber(EnableKeyEventPublisher, undefined);
     const isEnable = useCallback(() => {
         if (enableRef.current !== undefined) {
             return enableRef.current;
         }
 
+        if (isConfirmingRef.current) {
+            return false;
+        }
+
         return getEnableKeyEvent();
-    }, [getEnableKeyEvent]);
+    }, [getEnableKeyEvent, isConfirmingRef]);
     useAppSettingsLoad(
         useCallback(
             (appSettings: AppSettingsData) => {
@@ -134,7 +138,6 @@ const KeyEventWrapCore: React.FC<{
         true,
     );
 
-    const confirming = useRef(false);
     const keyEvent = useCallback(
         async (
             element: JSX.Element,
@@ -155,18 +158,12 @@ const KeyEventWrapCore: React.FC<{
             }
 
             if (confirmTip) {
-                if (confirming.current) {
-                    return;
-                }
-
-                confirming.current = true;
-                const confirm = await modal.confirm({
+                const confirmResult = await modal.confirmWithStatus({
                     content: confirmTip,
                     centered: true,
                 });
-                confirming.current = false;
 
-                if (!confirm) {
+                if (!confirmResult) {
                     return;
                 }
             }
@@ -175,20 +172,30 @@ const KeyEventWrapCore: React.FC<{
         },
         [confirmTip, modal],
     );
-    const onKeyDownChildren = useCallback(() => {
-        if (!isEnable()) {
-            return;
-        }
+    const onKeyDownChildren = useCallback(
+        (keyboardEvent: KeyboardEvent) => {
+            if (!isEnable()) {
+                return;
+            }
 
-        keyEvent(children, onKeyDownEventPropName, onKeyDown);
-    }, [children, isEnable, keyEvent, onKeyDown, onKeyDownEventPropName]);
-    const onKeyUpChildren = useCallback(() => {
-        if (!isEnable()) {
-            return;
-        }
+            keyboardEvent.preventDefault();
 
-        keyEvent(children, onKeyUpEventPropName, onKeyUp);
-    }, [children, isEnable, keyEvent, onKeyUp, onKeyUpEventPropName]);
+            keyEvent(children, onKeyDownEventPropName, onKeyDown);
+        },
+        [children, isEnable, keyEvent, onKeyDown, onKeyDownEventPropName],
+    );
+    const onKeyUpChildren = useCallback(
+        (keyboardEvent: KeyboardEvent) => {
+            if (!isEnable()) {
+                return;
+            }
+
+            keyboardEvent.preventDefault();
+
+            keyEvent(children, onKeyUpEventPropName, onKeyUp);
+        },
+        [children, isEnable, keyEvent, onKeyUp, onKeyUpEventPropName],
+    );
 
     if (!keyEventValue) {
         return null;

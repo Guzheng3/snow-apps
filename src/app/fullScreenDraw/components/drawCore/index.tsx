@@ -96,8 +96,12 @@ export const convertToolTypeToDrawState = (toolType: ToolType): DrawState | unde
             return DrawState.Text;
         case 'blur':
             return DrawState.Blur;
+        case 'blur_freedraw':
+            return DrawState.BlurFreeDraw;
         case 'watermark':
             return DrawState.Watermark;
+        case 'highlight':
+            return DrawState.Highlight;
         case 'eraser':
             return DrawState.Eraser;
     }
@@ -450,7 +454,9 @@ const DrawCoreComponent: React.FC<{
             case DrawState.Text:
             case DrawState.SerialNumber:
             case DrawState.Blur:
+            case DrawState.BlurFreeDraw:
             case DrawState.Watermark:
+            case DrawState.Highlight:
                 return true;
             default:
                 return false;

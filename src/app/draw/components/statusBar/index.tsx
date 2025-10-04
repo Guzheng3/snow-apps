@@ -322,7 +322,9 @@ const StatusBar: React.FC = () => {
             drawState === DrawState.Pen ||
             drawState === DrawState.Text ||
             drawState === DrawState.SerialNumber ||
-            drawState === DrawState.Blur
+            drawState === DrawState.Blur ||
+            drawState === DrawState.BlurFreeDraw ||
+            drawState === DrawState.Highlight
         ) {
             items.push({
                 key: 'selectSameTypeElement',

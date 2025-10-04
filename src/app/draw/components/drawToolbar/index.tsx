@@ -68,6 +68,7 @@ import { useStateRef } from '@/hooks/useStateRef';
 import { getExcalidrawCanvas } from '@/utils/excalidraw';
 import { ExtraTool } from './components/tools/extraTool';
 import { DrawExtraTool } from './components/tools/drawExtraTool';
+import { HighlightTool } from './components/tools/highlightTool';
 
 export type DrawToolbarProps = {
     actionRef: React.RefObject<DrawToolbarActionType | undefined>;
@@ -103,6 +104,7 @@ const isDrawTool = (drawState: DrawState) => {
         case DrawState.Blur:
         case DrawState.BlurFreeDraw:
         case DrawState.Watermark:
+        case DrawState.Highlight:
             return true;
         default:
             return false;
@@ -390,6 +392,16 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     drawCacheLayerActionRef.current?.setActiveTool(
                         {
                             type: 'watermark',
+                            locked: toolLocked,
+                        },
+                        undefined,
+                        next,
+                    );
+                    break;
+                case DrawState.Highlight:
+                    drawCacheLayerActionRef.current?.setActiveTool(
+                        {
+                            type: 'highlight',
                             locked: toolLocked,
                         },
                         undefined,
@@ -938,6 +950,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                 </div>
 
                 <BlurTool />
+                <HighlightTool />
                 <ScrollScreenshot actionRef={scrollScreenshotToolActionRef} />
             </DrawToolbarContext.Provider>
             <style jsx>{`

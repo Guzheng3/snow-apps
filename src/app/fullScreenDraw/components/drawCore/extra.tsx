@@ -179,8 +179,8 @@ export enum DrawState {
     DrawExtraTools = 13,
     // 水印
     Watermark = 14,
-    // 聚光灯
-    Spotlight = 15,
+    // 高亮
+    Highlight = 15,
     // 自由绘制模糊
     BlurFreeDraw = 16,
     // 撤销

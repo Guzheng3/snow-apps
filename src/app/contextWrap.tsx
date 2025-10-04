@@ -327,6 +327,8 @@ export const CanHiddenToolSet: Set<DrawState> = new Set([
     DrawState.SerialNumber,
     DrawState.Blur,
     DrawState.BlurFreeDraw,
+    DrawState.Watermark,
+    DrawState.Highlight,
     DrawState.Eraser,
     DrawState.Redo,
     DrawState.Fixed,

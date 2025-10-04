@@ -1,0 +1,248 @@
+import { useCallback, useContext, useRef } from 'react';
+import { DrawContext } from '@/app/draw/types';
+import { useStateSubscriber } from '@/hooks/useStateSubscriber';
+import {
+    CaptureEvent,
+    CaptureEventParams,
+    CaptureEventPublisher,
+    DrawEvent,
+    DrawEventParams,
+    DrawEventPublisher,
+} from '@/app/draw/extra';
+import { useCallbackRender } from '@/hooks/useCallbackRender';
+import {
+    ExcalidrawEventOnChangeParams,
+    ExcalidrawEventParams,
+    ExcalidrawEventPublisher,
+    ExcalidrawOnHandleEraserParams,
+    ExcalidrawOnHandleEraserPublisher,
+} from '@/app/fullScreenDraw/components/drawCore/extra';
+import { HighlightElementProps } from '../../../baseLayer/baseLayerRenderActions';
+import { DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY } from '../../../drawLayer';
+
+const isEqualHighlightSpriteProps = (
+    a: Omit<HighlightElementProps, 'valid'>,
+    b: Omit<HighlightElementProps, 'valid'>,
+) => {
+    return (
+        a.x === b.x &&
+        a.y === b.y &&
+        a.width === b.width &&
+        a.height === b.height &&
+        a.angle === b.angle &&
+        a.zoom === b.zoom &&
+        a.opacity === b.opacity &&
+        a.strokeColor === b.strokeColor &&
+        a.strokeWidth === b.strokeWidth &&
+        a.backgroundColor === b.backgroundColor &&
+        a.maskColor === b.maskColor &&
+        a.maskOpacity === b.maskOpacity &&
+        a.borderType === b.borderType &&
+        a.shapeType === b.shapeType
+    );
+};
+
+const HighlightToolCore: React.FC = () => {
+    const { drawLayerActionRef, drawCacheLayerActionRef, selectLayerActionRef } =
+        useContext(DrawContext);
+    const highlightSpriteMapRef = useRef<
+        Map<
+            string,
+            {
+                props: HighlightElementProps & { valid: boolean };
+            }
+        >
+    >(new Map());
+    const clear = useCallback(() => {
+        highlightSpriteMapRef.current.clear();
+    }, []);
+
+    useStateSubscriber(
+        CaptureEventPublisher,
+        useCallback(
+            (params: CaptureEventParams | undefined) => {
+                if (!params) {
+                    return;
+                }
+
+                if (params.event === CaptureEvent.onCaptureLoad) {
+                } else if (params.event === CaptureEvent.onCaptureFinish) {
+                    clear();
+                }
+            },
+            [clear],
+        ),
+    );
+
+    const updateHighlight = useCallback(
+        async (params: ExcalidrawEventOnChangeParams['params'] | undefined) => {
+            if (!params) {
+                return;
+            }
+
+            if (!drawLayerActionRef.current) {
+                return;
+            }
+
+            for (const { props } of highlightSpriteMapRef.current.values()) {
+                props.valid = false;
+            }
+
+            let needRender = false;
+
+            for (const element of params.elements) {
+                if (element.type !== 'highlight' || element.isDeleted) {
+                    continue;
+                }
+
+                const appState = drawCacheLayerActionRef.current?.getAppState();
+                if (!appState) {
+                    return;
+                }
+
+                const { scrollY, scrollX, zoom } = appState;
+
+                const highlightProps = {
+                    x:
+                        Math.round(element.x * window.devicePixelRatio) +
+                        scrollX * window.devicePixelRatio,
+                    y:
+                        Math.round(element.y * window.devicePixelRatio) +
+                        scrollY * window.devicePixelRatio,
+                    width: Math.round(element.width * window.devicePixelRatio),
+                    height: Math.round(element.height * window.devicePixelRatio),
+                    angle: element.angle,
+                    opacity: element.opacity,
+                    zoom: zoom.value,
+                    valid: true,
+                    strokeColor: element.strokeColor,
+                    backgroundColor: element.backgroundColor,
+                    strokeWidth: element.strokeWidth,
+                    maskColor: element.maskColor,
+                    maskOpacity: element.maskOpacity,
+                    borderType: element.borderType,
+                    shapeType: element.shapeType,
+                    eraserAlpha: undefined,
+                };
+
+                let highlightSprite = highlightSpriteMapRef.current.get(element.id);
+                if (!highlightSprite) {
+                    highlightSprite = {
+                        props: {
+                            ...highlightProps,
+                        },
+                    };
+
+                    highlightSpriteMapRef.current.set(element.id, highlightSprite);
+
+                    needRender = true;
+                }
+
+                highlightSprite.props.valid = true;
+                if (isEqualHighlightSpriteProps(highlightSprite.props, highlightProps)) {
+                    continue;
+                }
+
+                await drawLayerActionRef.current.updateHighlightElement(
+                    DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY,
+                    element.id,
+                    highlightProps,
+                );
+
+                highlightSprite.props = highlightProps;
+                needRender = true;
+            }
+
+            const highlightSprites = Array.from(highlightSpriteMapRef.current.entries()).filter(
+                ([, highlightSprite]) => !highlightSprite.props.valid,
+            );
+            for (const [id] of highlightSprites) {
+                highlightSpriteMapRef.current.delete(id);
+                await drawLayerActionRef.current.updateHighlightElement(
+                    DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY,
+                    id,
+                    undefined,
+                );
+
+                needRender = true;
+            }
+
+            const selectRectParams = selectLayerActionRef.current?.getSelectRectParams();
+            if (needRender && selectRectParams) {
+                await drawLayerActionRef.current.updateHighlight(
+                    DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY,
+                    {
+                        selectRectParams,
+                    },
+                );
+                drawLayerActionRef.current.canvasRender();
+            }
+        },
+        [drawCacheLayerActionRef, drawLayerActionRef, selectLayerActionRef],
+    );
+    const updateHighlightRender = useCallbackRender(updateHighlight);
+
+    const handleEraser = useCallback(
+        (params: ExcalidrawOnHandleEraserParams | undefined) => {
+            if (!params) {
+                return;
+            }
+
+            params.elements.forEach(async (id) => {
+                const highlightSprite = highlightSpriteMapRef.current.get(id);
+                if (!highlightSprite) {
+                    return;
+                }
+
+                const targetOpacity = (highlightSprite.props.opacity / 100) * 0.42;
+                if (targetOpacity === highlightSprite.props.eraserAlpha) {
+                    return;
+                }
+                highlightSprite.props.eraserAlpha = targetOpacity;
+                await drawLayerActionRef.current?.updateHighlightElement(
+                    DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY,
+                    id,
+                    highlightSprite.props,
+                );
+                drawLayerActionRef.current?.canvasRender();
+            });
+        },
+        [drawLayerActionRef],
+    );
+    const handleEraserRender = useCallbackRender(handleEraser);
+
+    useStateSubscriber(
+        ExcalidrawEventPublisher,
+        useCallback(
+            (params: ExcalidrawEventParams | undefined) => {
+                if (params?.event === 'onChange') {
+                    updateHighlightRender(params.params);
+                }
+            },
+            [updateHighlightRender],
+        ),
+    );
+    useStateSubscriber(ExcalidrawOnHandleEraserPublisher, handleEraserRender);
+
+    useStateSubscriber(
+        DrawEventPublisher,
+        useCallback(
+            (params: DrawEventParams | undefined) => {
+                if (params?.event === DrawEvent.SelectRectParamsAnimationChange) {
+                    drawLayerActionRef.current
+                        ?.updateHighlight(DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY, {
+                            selectRectParams: params.params.selectRectParams,
+                        })
+                        .then(() => {
+                            drawLayerActionRef.current?.canvasRender();
+                        });
+                }
+            },
+            [drawLayerActionRef],
+        ),
+    );
+
+    return <></>;
+};
+
+export const HighlightTool = HighlightToolCore;

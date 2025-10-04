@@ -1305,3 +1305,41 @@ export const FullScreenIconSvg = () => (
 export const FullScreenIcon = (props: IconComponentProps) => (
     <Icon component={FullScreenIconSvg} {...props} />
 );
+
+export const HighlightSVG = () => (
+    <svg
+        viewBox="0 0 1024 1024"
+        version="1.1"
+        xmlns="http://www.w3.org/2000/svg"
+        width="1em"
+        height="1em"
+        fill="currentColor"
+    >
+        <path
+            d="M192.661333 725.333333a386.133333 386.133333 0 0 0 77.952 85.333334H512v85.333333c212.074667 0 384-171.925333 384-384S724.074667 128 512 128v85.333333H270.613333a386.133333 386.133333 0 0 0-77.952 85.333334H512v85.333333H149.845333a381.76 381.76 0 0 0-19.498666 85.333333H512v85.333334H130.346667c3.264 29.589333 9.898667 58.154667 19.498666 85.333333H512v85.333333H192.661333zM512 981.333333C252.8 981.333333 42.666667 771.2 42.666667 512S252.8 42.666667 512 42.666667s469.333333 210.133333 469.333333 469.333333-210.133333 469.333333-469.333333 469.333333z"
+            p-id="17326"
+        ></path>
+    </svg>
+);
+
+export const HighlightIcon = (props: IconComponentProps) => (
+    <Icon component={HighlightSVG} {...props} />
+);
+
+const NoneSvg = () => (
+    <svg
+        viewBox="0 0 1024 1024"
+        version="1.1"
+        xmlns="http://www.w3.org/2000/svg"
+        width="1em"
+        height="1em"
+        fill="currentColor"
+    >
+        <path
+            d="M512 85.333333c235.648 0 426.666667 191.018667 426.666667 426.666667s-191.018667 426.666667-426.666667 426.666667S85.333333 747.648 85.333333 512 276.352 85.333333 512 85.333333z m278.058667 193.834667L279.168 790.058667A362.666667 362.666667 0 0 0 790.058667 279.168zM512 149.333333a362.666667 362.666667 0 0 0-278.058667 595.498667L744.832 233.941333A361.216 361.216 0 0 0 512 149.333333z"
+            p-id="4640"
+        ></path>
+    </svg>
+);
+
+export const NoneIcon = (props: IconComponentProps) => <Icon component={NoneSvg} {...props} />;

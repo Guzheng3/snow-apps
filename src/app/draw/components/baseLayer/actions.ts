@@ -18,6 +18,11 @@ import {
     renderRenderToCanvasAction,
     WatermarkProps,
     renderUpdateWatermarkSpriteAction,
+    HighlightElementProps,
+    renderUpdateHighlightElementPropsAction,
+    HighlightProps,
+    renderUpdateHighlightAction,
+    HighlightElement,
 } from './baseLayerRenderActions';
 import {
     BaseLayerRenderDisposeData,
@@ -36,6 +41,8 @@ import {
     BaseLayerRenderDeleteBlurSpriteData,
     BaseLayerRenderRenderToCanvasData,
     BaseLayerRenderUpdateWatermarkSpriteData,
+    BaseLayerRenderUpdateHighlightElementData,
+    BaseLayerRenderUpdateHighlightData,
 } from './workers/renderWorkerTypes';
 import { ElementRect } from '@/commands';
 
@@ -517,6 +524,90 @@ export const updateWatermarkSpriteAction = async (
                 lastWatermarkPropsRef,
                 watermarkProps,
                 textResolution,
+            );
+            resolve(undefined);
+        }
+    });
+};
+
+export const updateHighlightElementAction = async (
+    renderWorker: Worker | undefined,
+    canvasContainerMapRef: RefObject<Map<string, Container>>,
+    highlightElementMapRef: RefObject<Map<string, HighlightElement>>,
+    highlightContainerKey: string,
+    highlightElementId: string,
+    highlightElementProps: HighlightElementProps | undefined,
+    windowDevicePixelRatio: number,
+): Promise<undefined> => {
+    return new Promise((resolve) => {
+        if (renderWorker) {
+            const UpdateHighlightElementData: BaseLayerRenderUpdateHighlightElementData = {
+                type: BaseLayerRenderMessageType.UpdateHighlightElement,
+                payload: {
+                    highlightContainerKey: highlightContainerKey,
+                    highlightElementId: highlightElementId,
+                    highlightElementProps: highlightElementProps,
+                    windowDevicePixelRatio: windowDevicePixelRatio,
+                },
+            };
+            const handleMessage = (event: MessageEvent<RenderResult>) => {
+                const { type, payload } = event.data;
+                if (type === BaseLayerRenderMessageType.UpdateHighlightElement) {
+                    resolve(payload);
+                    renderWorker.removeEventListener('message', handleMessage);
+                }
+            };
+
+            renderWorker.addEventListener('message', handleMessage);
+
+            renderWorker.postMessage(UpdateHighlightElementData);
+        } else {
+            renderUpdateHighlightElementPropsAction(
+                canvasContainerMapRef,
+                highlightElementMapRef,
+                highlightContainerKey,
+                highlightElementId,
+                highlightElementProps,
+                windowDevicePixelRatio,
+            );
+            resolve(undefined);
+        }
+    });
+};
+
+export const updateHighlightAction = async (
+    renderWorker: Worker | undefined,
+    canvasContainerMapRef: RefObject<Map<string, Container>>,
+    highlightElementMapRef: RefObject<Map<string, HighlightElement>>,
+    highlightContainerKey: string,
+    highlightProps: HighlightProps,
+): Promise<undefined> => {
+    return new Promise((resolve) => {
+        if (renderWorker) {
+            const UpdateHighlightData: BaseLayerRenderUpdateHighlightData = {
+                type: BaseLayerRenderMessageType.UpdateHighlight,
+                payload: {
+                    highlightContainerKey: highlightContainerKey,
+                    highlightProps: highlightProps,
+                },
+            };
+            const handleMessage = (event: MessageEvent<RenderResult>) => {
+                const { type, payload } = event.data;
+                if (type === BaseLayerRenderMessageType.UpdateHighlight) {
+                    resolve(payload);
+                    renderWorker.removeEventListener('message', handleMessage);
+                }
+            };
+
+            renderWorker.addEventListener('message', handleMessage);
+
+            renderWorker.postMessage(UpdateHighlightData);
+        } else {
+            renderUpdateHighlightAction(
+                canvasContainerMapRef,
+                highlightElementMapRef,
+                highlightContainerKey,
+                highlightProps,
             );
             resolve(undefined);
         }

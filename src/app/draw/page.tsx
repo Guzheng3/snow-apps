@@ -354,7 +354,6 @@ const DrawPageCore: React.FC<{
 
     const finishCapture = useCallback<DrawContextType['finishCapture']>(
         async (clearScrollScreenshot: boolean = true) => {
-            console.log('finishCapture');
             // 停止监听键盘
             listenKeyStop().catch((error) => {
                 appError('[DrawPageCore] listenKeyStop error', error);
@@ -1071,7 +1070,7 @@ const DrawPageCore: React.FC<{
     );
 
     useEffect(() => {
-        drawLayerActionRef.current?.initCanvas(false).then(() => {
+        drawLayerActionRef.current?.initCanvas(true).then(() => {
             drawPageStateRef.current = DrawPageState.Active;
             releaseDrawPage();
         });

@@ -18,6 +18,7 @@ import { ExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { useIntl } from 'react-intl';
 import { useGetPopupContainer } from '.';
+import { CircleIcon, RectIcon } from '@/components/icons';
 
 export const useChangeFontSizeProps = (
     isSlider: boolean,
@@ -344,5 +345,99 @@ export const FilterTypeRadioSelection = (
                 );
             }}
         />
+    );
+};
+
+export const MaskShapeTypeRadioSelection = (
+    props: React.ComponentProps<
+        NonNullable<
+            NonNullable<ExcalidrawPropsCustomOptions['pickerRenders']>['ShapeTypeRadioSelection']
+        >
+    >,
+) => {
+    const intl = useIntl();
+    const options = useMemo(() => {
+        return [
+            {
+                text: intl.formatMessage({ id: `draw.maskShapeType.rect` }),
+                value: 'rect',
+                icon: <RectIcon />,
+            },
+            {
+                text: intl.formatMessage({ id: `draw.maskShapeType.circle` }),
+                value: 'circle',
+                icon: <CircleIcon />,
+            },
+        ];
+    }, [intl]);
+
+    if (props.type !== 'button') {
+        return <></>;
+    }
+
+    return (
+        <Space>
+            <Radio.Group value={props.value}>
+                {options.map((option) => (
+                    <Radio.Button
+                        key={option.text}
+                        title={option.text}
+                        value={option.value}
+                        checked={props.value === option.value}
+                    >
+                        <div
+                            className="radio-button-icon"
+                            onClick={(event) => {
+                                return props.onClick(
+                                    option.value,
+                                    event as unknown as React.MouseEvent<HTMLButtonElement>,
+                                );
+                            }}
+                        >
+                            {option.icon}
+                        </div>
+                    </Radio.Button>
+                ))}
+            </Radio.Group>
+        </Space>
+    );
+};
+
+export const MaskBorderTypeRadioSelection = (
+    props: React.ComponentProps<
+        NonNullable<
+            NonNullable<ExcalidrawPropsCustomOptions['pickerRenders']>['BorderTypeRadioSelection']
+        >
+    >,
+) => {
+    if (props.type !== 'button') {
+        return <></>;
+    }
+
+    return (
+        <Space>
+            <Radio.Group value={props.value}>
+                {props.options.map((option) => (
+                    <Radio.Button
+                        key={option.text}
+                        title={option.text}
+                        value={option.value}
+                        checked={option.active ?? props.value === option.value}
+                    >
+                        <div
+                            className="radio-button-icon"
+                            onClick={(event) => {
+                                return props.onClick(
+                                    option.value,
+                                    event as unknown as React.MouseEvent<HTMLButtonElement>,
+                                );
+                            }}
+                        >
+                            {option.icon}
+                        </div>
+                    </Radio.Button>
+                ))}
+            </Radio.Group>
+        </Space>
     );
 };

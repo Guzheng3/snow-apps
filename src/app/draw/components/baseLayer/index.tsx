@@ -30,9 +30,18 @@ import {
     deleteBlurSpriteAction,
     renderToCanvasAction,
     updateWatermarkSpriteAction,
+    updateHighlightElementAction,
+    updateHighlightAction,
 } from './actions';
 import { supportOffscreenCanvas } from '@/utils';
-import { BlurSprite, BlurSpriteProps, WatermarkProps } from './baseLayerRenderActions';
+import {
+    BlurSprite,
+    BlurSpriteProps,
+    HighlightElement,
+    HighlightElementProps,
+    HighlightProps,
+    WatermarkProps,
+} from './baseLayerRenderActions';
 import { appError } from '@/utils/log';
 import { DRAW_LAYER_WATERMARK_CONTAINER_KEY } from '../drawLayer';
 import { defaultWatermarkProps } from '../drawToolbar/components/tools/drawExtraTool/components/watermarkTool';
@@ -86,6 +95,21 @@ export type BaseLayerContextType = {
      * 更新水印效果
      */
     updateWatermarkSprite: (watermarkProps: WatermarkProps) => Promise<void>;
+    /**
+     * 更新 highlight 元素
+     */
+    updateHighlightElement: (
+        highlightContainerKey: string,
+        highlightElementId: string,
+        highlightElementProps: HighlightElementProps | undefined,
+    ) => Promise<void>;
+    /**
+     * 重新渲染 highlight
+     */
+    updateHighlight: (
+        highlightContainerKey: string,
+        highlightProps: HighlightProps,
+    ) => Promise<void>;
 };
 
 export const BaseLayerContext = React.createContext<BaseLayerContextType>({
@@ -107,6 +131,8 @@ export const BaseLayerContext = React.createContext<BaseLayerContextType>({
     updateBlurSprite: () => Promise.resolve(),
     deleteBlurSprite: () => Promise.resolve(),
     updateWatermarkSprite: () => Promise.resolve(),
+    updateHighlightElement: () => Promise.resolve(),
+    updateHighlight: () => Promise.resolve(),
 });
 
 export type BaseLayerEventActionType = {
@@ -196,6 +222,21 @@ export type BaseLayerEventActionType = {
      * 删除模糊效果
      */
     deleteBlurSprite: (blurElementId: string) => Promise<void>;
+    /**
+     * 更新 highlight 元素
+     */
+    updateHighlightElement: (
+        highlightContainerKey: string,
+        highlightElementId: string,
+        highlightElementProps: HighlightElementProps | undefined,
+    ) => Promise<void>;
+    /**
+     * 重新渲染 highlight
+     */
+    updateHighlight: (
+        highlightContainerKey: string,
+        highlightProps: HighlightProps,
+    ) => Promise<void>;
 };
 
 export type BaseLayerActionType = {
@@ -230,6 +271,8 @@ export const defaultBaseLayerActions: BaseLayerActionType = {
     updateBlurSprite: () => Promise.resolve(),
     deleteBlurSprite: () => Promise.resolve(),
     updateWatermarkSprite: () => Promise.resolve(),
+    updateHighlightElement: () => Promise.resolve(),
+    updateHighlight: () => Promise.resolve(),
 };
 
 type BaseLayerCoreActionType = {
@@ -278,6 +321,21 @@ type BaseLayerCoreActionType = {
      * 删除模糊效果
      */
     deleteBlurSprite: (blurElementId: string) => Promise<void>;
+    /**
+     * 更新 highlight 元素
+     */
+    updateHighlightElement: (
+        highlightContainerKey: string,
+        highlightElementId: string,
+        highlightElementProps: HighlightElementProps | undefined,
+    ) => Promise<void>;
+    /**
+     * 重新渲染 highlight
+     */
+    updateHighlight: (
+        highlightContainerKey: string,
+        highlightProps: HighlightProps,
+    ) => Promise<void>;
 };
 
 export type BaseLayerProps = {
@@ -298,6 +356,7 @@ export const BaseLayerCore: React.FC<
     const canvasContainerChildCountRef = useRef<number>(0);
     const currentImageTextureRef = useRef<PIXI.Texture | undefined>(undefined);
     const blurSpriteMapRef = useRef<Map<string, BlurSprite>>(new Map());
+    const highlightElementMapRef = useRef<Map<string, HighlightElement>>(new Map());
     const lastWatermarkPropsRef = useRef<WatermarkProps>(defaultWatermarkProps);
     const rendererWorker = useMemo(() => {
         if (supportOffscreenCanvas()) {
@@ -491,6 +550,38 @@ export const BaseLayerCore: React.FC<
         [rendererWorker],
     );
 
+    const updateHighlightElement = useCallback<BaseLayerActionType['updateHighlightElement']>(
+        async (
+            highlightContainerKey: string,
+            highlightElementId: string,
+            highlightElementProps: HighlightElementProps | undefined,
+        ) => {
+            await updateHighlightElementAction(
+                rendererWorker,
+                canvasContainerMapRef,
+                highlightElementMapRef,
+                highlightContainerKey,
+                highlightElementId,
+                highlightElementProps,
+                window.devicePixelRatio,
+            );
+        },
+        [rendererWorker],
+    );
+
+    const updateHighlight = useCallback<BaseLayerActionType['updateHighlight']>(
+        async (highlightContainerKey: string, highlightProps: HighlightProps) => {
+            await updateHighlightAction(
+                rendererWorker,
+                canvasContainerMapRef,
+                highlightElementMapRef,
+                highlightContainerKey,
+                highlightProps,
+            );
+        },
+        [rendererWorker],
+    );
+
     useEffect(() => {
         return () => {
             disposeCanvas();
@@ -515,6 +606,8 @@ export const BaseLayerCore: React.FC<
             updateBlurSprite,
             deleteBlurSprite,
             updateWatermarkSprite,
+            updateHighlightElement,
+            updateHighlight,
         }),
         [
             resizeCanvas,
@@ -532,6 +625,8 @@ export const BaseLayerCore: React.FC<
             updateBlurSprite,
             deleteBlurSprite,
             updateWatermarkSprite,
+            updateHighlightElement,
+            updateHighlight,
         ],
     );
 
@@ -559,6 +654,8 @@ export const BaseLayerCore: React.FC<
             updateBlurSprite,
             deleteBlurSprite,
             updateWatermarkSprite,
+            updateHighlightElement,
+            updateHighlight,
         };
     }, [
         resizeCanvas,
@@ -574,6 +671,8 @@ export const BaseLayerCore: React.FC<
         updateBlurSprite,
         deleteBlurSprite,
         updateWatermarkSprite,
+        updateHighlightElement,
+        updateHighlight,
     ]);
 
     return (

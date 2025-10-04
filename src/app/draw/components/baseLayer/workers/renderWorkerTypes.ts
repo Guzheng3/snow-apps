@@ -1,6 +1,11 @@
 import { ElementRect } from '@/commands';
 import { ApplicationOptions } from 'pixi.js';
-import { BlurSpriteProps, WatermarkProps } from '../baseLayerRenderActions';
+import {
+    BlurSpriteProps,
+    HighlightElementProps,
+    HighlightProps,
+    WatermarkProps,
+} from '../baseLayerRenderActions';
 import * as PIXI from 'pixi.js';
 
 export type RefWrap<T> = {
@@ -22,6 +27,9 @@ export enum BaseLayerRenderMessageType {
     UpdateBlurSprite = 'updateBlurSprite',
     UpdateWatermarkSprite = 'updateWatermarkSprite',
     DeleteBlurSprite = 'deleteBlurSprite',
+    UpdateHighlightProps = 'updateHighlightProps',
+    UpdateHighlightElement = 'updateHighlightElement',
+    UpdateHighlight = 'updateHighlight',
 }
 
 export type BaseLayerRenderInitData = {
@@ -121,6 +129,24 @@ export type BaseLayerRenderDeleteBlurSpriteData = {
     };
 };
 
+export type BaseLayerRenderUpdateHighlightElementData = {
+    type: BaseLayerRenderMessageType.UpdateHighlightElement;
+    payload: {
+        highlightContainerKey: string;
+        highlightElementId: string;
+        highlightElementProps: HighlightElementProps | undefined;
+        windowDevicePixelRatio: number;
+    };
+};
+
+export type BaseLayerRenderUpdateHighlightData = {
+    type: BaseLayerRenderMessageType.UpdateHighlight;
+    payload: {
+        highlightContainerKey: string;
+        highlightProps: HighlightProps;
+    };
+};
+
 export type BaseLayerRenderData =
     | BaseLayerRenderInitData
     | BaseLayerRenderDisposeData
@@ -135,7 +161,10 @@ export type BaseLayerRenderData =
     | BaseLayerRenderCreateBlurSpriteData
     | BaseLayerRenderUpdateBlurSpriteData
     | BaseLayerRenderUpdateWatermarkSpriteData
-    | BaseLayerRenderDeleteBlurSpriteData;
+    | BaseLayerRenderUpdateHighlightElementData
+    | BaseLayerRenderDeleteBlurSpriteData
+    | BaseLayerRenderUpdateHighlightElementData
+    | BaseLayerRenderUpdateHighlightData;
 
 export type RenderInitResult = {
     type: BaseLayerRenderMessageType.Init;
@@ -213,11 +242,23 @@ export type RenderDeleteBlurSpriteResult = {
     payload: undefined;
 };
 
+export type RenderUpdateHighlightElementResult = {
+    type: BaseLayerRenderMessageType.UpdateHighlightElement;
+    payload: undefined;
+};
+
+export type RenderUpdateHighlightResult = {
+    type: BaseLayerRenderMessageType.UpdateHighlight;
+    payload: undefined;
+};
+
 export type RenderBlurSpriteResult =
     | RenderCreateBlurSpriteResult
     | RenderUpdateBlurSpriteResult
     | RenderUpdateWatermarkSpriteResult
-    | RenderDeleteBlurSpriteResult;
+    | RenderDeleteBlurSpriteResult
+    | RenderUpdateHighlightElementResult
+    | RenderUpdateHighlightResult;
 
 export type RenderResult =
     | RenderInitResult
@@ -232,4 +273,6 @@ export type RenderResult =
     | RenderClearContainerResult
     | RenderBlurSpriteResult
     | RenderClearContainerResult
-    | RenderUpdateWatermarkSpriteResult;
+    | RenderUpdateWatermarkSpriteResult
+    | RenderUpdateHighlightElementResult
+    | RenderUpdateHighlightResult;

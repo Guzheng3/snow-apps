@@ -136,6 +136,10 @@ export default function GeneralSettings() {
                 value: DrawState.Watermark,
             },
             {
+                label: intl.formatMessage({ id: 'draw.highlightTool' }),
+                value: DrawState.Highlight,
+            },
+            {
                 label: intl.formatMessage({ id: 'draw.redoUndoTool' }),
                 value: DrawState.Redo,
             },

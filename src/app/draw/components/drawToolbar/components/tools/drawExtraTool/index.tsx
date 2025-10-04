@@ -7,7 +7,7 @@ import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/ext
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { DrawState } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { getButtonTypeByState } from '../../../extra';
-import { WatermarkIcon } from '@/components/icons';
+import { HighlightIcon, WatermarkIcon } from '@/components/icons';
 import {
     AppSettingsActionContext,
     AppSettingsData,
@@ -26,7 +26,7 @@ export const DrawExtraTool: React.FC<{
 
     const { updateAppSettings } = useContext(AppSettingsActionContext);
 
-    const [lastDrawExtraTool, setLastDrawExtraTool] = useState<DrawState>(DrawState.Idle);
+    const [lastDrawExtraTool, setLastDrawExtraTool] = useState<DrawState>(DrawState.Watermark);
     useStateSubscriber(
         AppSettingsPublisher,
         useCallback(
@@ -77,13 +77,32 @@ export const DrawExtraTool: React.FC<{
         );
     }, [drawState, intl, onToolClickAction, updateLastDrawExtraTool]);
 
-    let mainToolbarButton = watermarkButton;
+    const highlightButton = useMemo(() => {
+        return (
+            <Button
+                icon={<HighlightIcon />}
+                title={intl.formatMessage({ id: 'draw.highlightTool' })}
+                type={getButtonTypeByState(drawState === DrawState.Highlight)}
+                key="highlight"
+                onClick={() => {
+                    onToolClickAction(DrawState.Highlight);
+                    updateLastDrawExtraTool(DrawState.Highlight);
+                }}
+            />
+        );
+    }, [drawState, intl, onToolClickAction, updateLastDrawExtraTool]);
 
+    let mainToolbarButton = watermarkButton;
     if (lastDrawExtraTool === DrawState.Watermark) {
         mainToolbarButton = watermarkButton;
+    } else if (lastDrawExtraTool === DrawState.Highlight) {
+        mainToolbarButton = highlightButton;
     }
 
-    if (customToolbarToolHiddenMap?.[DrawState.Watermark]) {
+    if (
+        customToolbarToolHiddenMap?.[DrawState.Watermark] &&
+        customToolbarToolHiddenMap?.[DrawState.Highlight]
+    ) {
         return null;
     }
 
@@ -93,7 +112,8 @@ export const DrawExtraTool: React.FC<{
                 trigger="hover"
                 content={
                     <Flex align="center" gap={token.paddingXS} className="popover-toolbar">
-                        {watermarkButton}
+                        {!customToolbarToolHiddenMap?.[DrawState.Watermark] && watermarkButton}
+                        {!customToolbarToolHiddenMap?.[DrawState.Highlight] && highlightButton}
                     </Flex>
                 }
             >

@@ -7,7 +7,12 @@ import { buttonIconSelectRadioRender } from './buttonIconSelectRadioRender';
 import { rangeRender } from './rangeRender';
 import { layerButtonRender } from './layerButtonRender';
 import { ButtonList } from './buttonList';
-import { FilterTypeRadioSelection, RadioSelection } from './radioSelection';
+import {
+    FilterTypeRadioSelection,
+    MaskBorderTypeRadioSelection,
+    MaskShapeTypeRadioSelection,
+    RadioSelection,
+} from './radioSelection';
 import SerialNumberEditor from './serialNumberEditor';
 import SubToolEditor from './SubToolEditor';
 import { useCallback, useEffect, useRef } from 'react';
@@ -39,6 +44,12 @@ export const generatePickerRenders: (
         FilterTypeRadioSelection: FilterTypeRadioSelection as unknown as NonNullable<
             ExcalidrawPropsCustomOptions['pickerRenders']
         >['FilterTypeRadioSelection'],
+        ShapeTypeRadioSelection: MaskShapeTypeRadioSelection as unknown as NonNullable<
+            ExcalidrawPropsCustomOptions['pickerRenders']
+        >['ShapeTypeRadioSelection'],
+        BorderTypeRadioSelection: MaskBorderTypeRadioSelection as unknown as NonNullable<
+            ExcalidrawPropsCustomOptions['pickerRenders']
+        >['BorderTypeRadioSelection'],
         layerButtonRender,
         elementStrokeColors: ['#1e1e1e', '#f5222d', '#52c41a', '#1677ff', '#faad14'],
         elementBackgroundColors: ['transparent', '#ffccc7', '#d9f7be', '#bae0ff', '#fff1b8'],

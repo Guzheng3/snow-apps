@@ -160,4 +160,10 @@ export const draw = {
     'draw.filterType.rgbSplit': '故障色',
     'draw.filterType.zoomBlur': '缩放模糊',
     'draw.filterType.noise': '噪点',
+    'draw.maskShapeType.rect': '矩形',
+    'draw.maskShapeType.circle': '圆形',
+    'draw.maskBorderType.none': '无',
+    'draw.maskBorderType.solid': '实线',
+    'draw.maskBorderType.dashed': '虚线',
+    'draw.maskBorderType.dotted': '点线',
 };

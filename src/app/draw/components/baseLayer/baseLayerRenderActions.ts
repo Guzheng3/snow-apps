@@ -442,6 +442,206 @@ export const renderDeleteBlurSpriteAction = (
     blurSpriteMapRef.current.delete(blurElementId);
 };
 
+export type HighlightProps = {
+    selectRectParams: SelectRectParams;
+};
+
+export type HighlightElementProps = {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    angle: number;
+    opacity: number;
+    zoom: number;
+    strokeColor: string;
+    strokeWidth: number;
+    backgroundColor: string;
+    maskColor: string;
+    maskOpacity: number;
+    borderType: string;
+    shapeType: string;
+    eraserAlpha: number | undefined;
+};
+
+export type HighlightElement = {
+    props: HighlightElementProps;
+    strokeGraphics: PIXI.Graphics;
+    backgroundGraphics: PIXI.Graphics;
+    backgroundMaskGraphics: PIXI.Graphics;
+};
+
+/**
+ * 更新指定 highlight 元素的 props
+ */
+export const renderUpdateHighlightElementPropsAction = (
+    canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
+    highlightElementMapRef: RefType<Map<string, HighlightElement>>,
+    highlightContainerKey: string,
+    highlightElementId: string,
+    highlightProps: HighlightElementProps | undefined,
+    windowDevicePixelRatio: number,
+) => {
+    const container = canvasContainerMapRef.current.get(highlightContainerKey);
+    if (!container) {
+        return;
+    }
+
+    // 判断是否创建 highlight 的 graphics
+    let highlightContainer = container.children[0] as PIXI.Container | undefined; // 渲染 highlight 的背景
+    let highlightBackgroundGraphics = container.children[1]?.children?.[0] as PIXI.Graphics; // 渲染 highlight 的背景遮罩
+    let highlightStrokeContainer = container.children[1]?.children?.[1] as PIXI.Container; // 渲染 highlight 的描边
+    let highlightBackgroundMaskContainer = container.children[2] as PIXI.Container; // 渲染 highlight 的背景遮罩
+    if (!highlightContainer) {
+        highlightContainer = new PIXI.Container();
+
+        const highlightMaskContentContainer = new PIXI.Container();
+        highlightBackgroundGraphics = new PIXI.Graphics();
+        highlightStrokeContainer = new PIXI.Container();
+        highlightMaskContentContainer.addChild(highlightBackgroundGraphics);
+        highlightMaskContentContainer.addChild(highlightStrokeContainer);
+
+        highlightBackgroundMaskContainer = new PIXI.Container();
+
+        highlightMaskContentContainer.setMask({
+            mask: highlightBackgroundMaskContainer,
+            inverse: true,
+        });
+        container.addChild(highlightContainer);
+        container.addChild(highlightMaskContentContainer);
+        container.addChild(highlightBackgroundMaskContainer);
+    }
+
+    let highlightElement = highlightElementMapRef.current.get(highlightElementId);
+    if (!highlightProps) {
+        highlightElementMapRef.current.delete(highlightElementId);
+
+        if (highlightElement) {
+            highlightElement.strokeGraphics.destroy();
+            highlightElement.backgroundGraphics.destroy();
+            highlightElement.backgroundMaskGraphics.destroy();
+        }
+
+        return;
+    }
+
+    if (!highlightElement) {
+        highlightElement = {
+            props: highlightProps,
+            strokeGraphics: new PIXI.Graphics(),
+            backgroundGraphics: new PIXI.Graphics(),
+            backgroundMaskGraphics: new PIXI.Graphics(),
+        };
+
+        highlightElement.backgroundGraphics.blendMode = 'multiply';
+
+        highlightContainer.addChild(highlightElement.backgroundGraphics);
+        highlightStrokeContainer.addChild(highlightElement.strokeGraphics);
+        highlightBackgroundMaskContainer.addChild(highlightElement.backgroundMaskGraphics);
+    }
+
+    highlightElement.props = highlightProps;
+    highlightElementMapRef.current.set(highlightElementId, highlightElement);
+
+    highlightElement.strokeGraphics.clear();
+    highlightElement.backgroundGraphics.clear();
+    highlightElement.backgroundMaskGraphics.clear();
+
+    if (highlightProps.shapeType === 'rect') {
+        if (highlightProps.borderType === 'solid') {
+            highlightElement.strokeGraphics
+                .rect(
+                    highlightProps.x,
+                    highlightProps.y,
+                    highlightProps.width,
+                    highlightProps.height,
+                )
+                .stroke({
+                    color: highlightProps.strokeColor,
+                    width: highlightProps.strokeWidth * 6 * windowDevicePixelRatio,
+                });
+        }
+        highlightElement.backgroundGraphics.rect(
+            highlightProps.x,
+            highlightProps.y,
+            highlightProps.width,
+            highlightProps.height,
+        );
+        highlightElement.backgroundMaskGraphics.rect(
+            highlightProps.x,
+            highlightProps.y,
+            highlightProps.width,
+            highlightProps.height,
+        );
+    } else if (highlightProps.shapeType === 'circle') {
+        const radiusX = highlightProps.width * 0.5;
+        const radiusY = highlightProps.height * 0.5;
+        const positionX = highlightProps.x + radiusX;
+        const positionY = highlightProps.y + radiusY;
+        if (highlightProps.borderType === 'solid') {
+            highlightElement.strokeGraphics.ellipse(positionX, positionY, radiusX, radiusY).stroke({
+                color: highlightProps.strokeColor,
+                width: highlightProps.strokeWidth * 6 * windowDevicePixelRatio,
+            });
+        }
+        highlightElement.backgroundGraphics.ellipse(positionX, positionY, radiusX, radiusY);
+        highlightElement.backgroundMaskGraphics.ellipse(positionX, positionY, radiusX, radiusY);
+    }
+
+    const alpha = highlightProps.eraserAlpha ?? highlightProps.opacity / 100;
+    highlightElement.strokeGraphics.stroke({
+        color: highlightProps.strokeColor,
+        width: highlightProps.strokeWidth * 6 * windowDevicePixelRatio,
+    });
+    highlightElement.strokeGraphics.alpha = alpha;
+    highlightElement.backgroundGraphics.fill({
+        color: highlightProps.backgroundColor,
+    });
+    highlightElement.backgroundGraphics.alpha = alpha;
+    highlightElement.backgroundMaskGraphics.fill('black');
+};
+
+/**
+ * 重新渲染 highlight
+ */
+export const renderUpdateHighlightAction = (
+    canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
+    highlightElementMapRef: RefType<Map<string, HighlightElement>>,
+    highlightContainerKey: string,
+    highlightProps: HighlightProps,
+) => {
+    const container = canvasContainerMapRef.current.get(highlightContainerKey);
+    if (!container) {
+        return;
+    }
+
+    const highlightBackgroundGraphics = container.children[1]?.children?.[0] as
+        | PIXI.Graphics
+        | undefined; // 渲染 highlight 的背景遮罩
+    if (!highlightBackgroundGraphics) {
+        return;
+    }
+
+    highlightBackgroundGraphics.clear();
+    if (highlightElementMapRef.current.size === 0) {
+        return;
+    }
+
+    const firstHighlightElement = highlightElementMapRef.current.values().next().value!;
+    highlightBackgroundGraphics
+        .roundRect(
+            highlightProps.selectRectParams.rect.min_x,
+            highlightProps.selectRectParams.rect.min_y,
+            highlightProps.selectRectParams.rect.max_x - highlightProps.selectRectParams.rect.min_x,
+            highlightProps.selectRectParams.rect.max_y - highlightProps.selectRectParams.rect.min_y,
+            highlightProps.selectRectParams.radius,
+        )
+        .fill({
+            color: firstHighlightElement.props.maskColor,
+        });
+    highlightBackgroundGraphics.alpha = firstHighlightElement.props.maskOpacity / 100;
+};
+
 export type WatermarkProps = {
     selectRectParams: SelectRectParams;
     fontSize: number;

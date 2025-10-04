@@ -19,6 +19,10 @@ import {
     renderRenderToCanvasAction,
     renderUpdateWatermarkSpriteAction,
     WatermarkProps,
+    renderUpdateHighlightElementPropsAction,
+    HighlightElementProps,
+    renderUpdateHighlightAction,
+    HighlightElement,
 } from '../baseLayerRenderActions';
 import {
     BaseLayerRenderAddImageToContainerData,
@@ -36,6 +40,8 @@ import {
     BaseLayerRenderDeleteBlurSpriteData,
     BaseLayerRenderRenderToCanvasData,
     BaseLayerRenderUpdateWatermarkSpriteData,
+    BaseLayerRenderUpdateHighlightElementData,
+    BaseLayerRenderUpdateHighlightData,
 } from './renderWorkerTypes';
 
 const canvasAppRef: RefWrap<Application | undefined> = { current: undefined };
@@ -64,6 +70,7 @@ const lastWatermarkPropsRef: RefWrap<WatermarkProps> = {
 const canvasContainerChildCountRef: RefWrap<number> = { current: 0 };
 const currentImageTextureRef: RefWrap<Texture | undefined> = { current: undefined };
 const blurSpriteMapRef: RefWrap<Map<string, BlurSprite>> = { current: new Map() };
+const highlightElementMapRef: RefWrap<Map<string, HighlightElement>> = { current: new Map() };
 
 const handleInit = async (data: BaseLayerRenderInitData) => {
     await renderInitCanvasAction(canvasAppRef, data.payload.appOptions);
@@ -138,6 +145,26 @@ const handleUpdateBlurSprite = (data: BaseLayerRenderUpdateBlurSpriteData) => {
 
 const handleDeleteBlurSprite = (data: BaseLayerRenderDeleteBlurSpriteData) => {
     renderDeleteBlurSpriteAction(blurSpriteMapRef, data.payload.blurElementId);
+};
+
+const handleUpdateHighlightElement = (data: BaseLayerRenderUpdateHighlightElementData) => {
+    renderUpdateHighlightElementPropsAction(
+        canvasContainerMapRef,
+        highlightElementMapRef,
+        data.payload.highlightContainerKey,
+        data.payload.highlightElementId,
+        data.payload.highlightElementProps,
+        data.payload.windowDevicePixelRatio,
+    );
+};
+
+const handleUpdateHighlight = (data: BaseLayerRenderUpdateHighlightData) => {
+    renderUpdateHighlightAction(
+        canvasContainerMapRef,
+        highlightElementMapRef,
+        data.payload.highlightContainerKey,
+        data.payload.highlightProps,
+    );
 };
 
 const handleUpdateWatermarkSprite = (data: BaseLayerRenderUpdateWatermarkSpriteData) => {
@@ -249,6 +276,20 @@ self.onmessage = async ({ data }: MessageEvent<BaseLayerRenderData>) => {
             handleUpdateWatermarkSprite(data);
             message = {
                 type: BaseLayerRenderMessageType.UpdateWatermarkSprite,
+                payload: undefined,
+            };
+            break;
+        case BaseLayerRenderMessageType.UpdateHighlightElement:
+            handleUpdateHighlightElement(data);
+            message = {
+                type: BaseLayerRenderMessageType.UpdateHighlightElement,
+                payload: undefined,
+            };
+            break;
+        case BaseLayerRenderMessageType.UpdateHighlight:
+            handleUpdateHighlight(data);
+            message = {
+                type: BaseLayerRenderMessageType.UpdateHighlight,
                 payload: undefined,
             };
             break;
