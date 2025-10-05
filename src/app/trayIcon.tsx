@@ -40,6 +40,7 @@ import { join, resourceDir } from '@tauri-apps/api/path';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { appError } from '@/utils/log';
 import { formatKey } from '@/utils/format';
+import { startOrCopyVideo } from '@/functions/videoRecord';
 
 export const TrayIconStatePublisher = createPublisher<{
     disableShortcut: boolean;
@@ -370,16 +371,6 @@ const TrayIconLoaderComponent = () => {
                         item: 'Separator',
                     },
                     {
-                        id: `${appWindow.label}-screenshot-fixedContent`,
-                        text: intl.formatMessage({ id: 'home.fixedContent' }),
-                        accelerator: disableShortcut
-                            ? undefined
-                            : formatKey(shortcutKeys[AppFunction.FixedContent].shortcutKey),
-                        action: async () => {
-                            createFixedContentWindow();
-                        },
-                    },
-                    {
                         id: `${appWindow.label}-screenshot-videoRecord`,
                         text: intl.formatMessage({ id: 'draw.extraTool.videoRecord' }),
                         accelerator: disableShortcut
@@ -387,6 +378,26 @@ const TrayIconLoaderComponent = () => {
                             : formatKey(shortcutKeys[AppFunction.VideoRecord].shortcutKey),
                         action: async () => {
                             executeScreenshot(ScreenshotType.VideoRecord);
+                        },
+                    },
+                    {
+                        id: `${appWindow.label}-screenshot-videoRecord-copy`,
+                        text: intl.formatMessage({ id: 'home.videoRecordFunction.copyVideo' }),
+                        action: async () => {
+                            startOrCopyVideo();
+                        },
+                    },
+                    {
+                        item: 'Separator',
+                    },
+                    {
+                        id: `${appWindow.label}-screenshot-fixedContent`,
+                        text: intl.formatMessage({ id: 'home.fixedContent' }),
+                        accelerator: disableShortcut
+                            ? undefined
+                            : formatKey(shortcutKeys[AppFunction.FixedContent].shortcutKey),
+                        action: async () => {
+                            createFixedContentWindow();
                         },
                     },
                     ...getPlatformValue(

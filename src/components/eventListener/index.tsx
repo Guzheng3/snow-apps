@@ -347,6 +347,10 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
                     event: 'reload-video-record',
                     callback: async () => {},
                 });
+                defaultListener.push({
+                    event: 'start-or-copy-video',
+                    callback: async () => {},
+                });
             }
 
             if (isVideoRecordPage) {

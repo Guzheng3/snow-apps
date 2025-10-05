@@ -139,6 +139,25 @@ export default function Home() {
                             </GroupTitle>
                         );
                         break;
+                    case AppFunctionGroup.VideoRecord:
+                        groupTitle = (
+                            <GroupTitle
+                                id="videoRecordFunction"
+                                extra={
+                                    <ResetSettingsButton
+                                        title={<FormattedMessage id="home.videoRecordFunction" />}
+                                        appSettingsGroup={AppSettingsGroup.AppFunction}
+                                        filter={resetFliter(AppFunctionGroup.VideoRecord)}
+                                    />
+                                }
+                            >
+                                <FormattedMessage
+                                    id="home.videoRecordFunction"
+                                    key="videoRecordFunction"
+                                />
+                            </GroupTitle>
+                        );
+                        break;
                 }
 
                 let speicalKeys: string[] | undefined;

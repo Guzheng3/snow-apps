@@ -358,6 +358,13 @@ struct VideoRecordWindowInfo {
     select_rect_max_y: i32,
 }
 
+pub async fn has_video_record_window(app: tauri::AppHandle) -> Result<bool, String> {
+    let window_label = "video-recording";
+    let window = app.get_webview_window(window_label);
+
+    Ok(window.is_some())
+}
+
 /// 创建屏幕录制窗口
 pub async fn create_video_record_window(
     app: tauri::AppHandle,

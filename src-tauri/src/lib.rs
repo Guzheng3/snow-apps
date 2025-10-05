@@ -219,6 +219,7 @@ pub fn run() {
             core::get_monitors_bounding_box,
             core::send_new_version_notification,
             core::create_video_record_window,
+            core::has_video_record_window,
             core::set_current_window_always_on_top,
             core::auto_start_enable,
             core::auto_start_disable,

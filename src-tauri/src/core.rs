@@ -116,6 +116,11 @@ pub async fn create_video_record_window(
 }
 
 #[command]
+pub async fn has_video_record_window(app: tauri::AppHandle) -> Result<bool, String> {
+    snow_shot_tauri_commands_core::has_video_record_window(app).await
+}
+
+#[command]
 pub async fn start_free_drag(
     window: tauri::Window,
     free_drag_window_service: tauri::State<

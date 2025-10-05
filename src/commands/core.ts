@@ -105,6 +105,11 @@ export const createVideoRecordWindow = async (
     return result;
 };
 
+export const hasVideoRecordWindow = async () => {
+    const result = await invoke<boolean>('has_video_record_window');
+    return result;
+};
+
 /**
  * 设置当前窗口置顶
  * @param allowInputMethodOverlay 是否允许输入法覆盖

@@ -36,7 +36,11 @@ import {
     executeTranslate,
     executeTranslateSelectedText,
 } from '@/functions/tools';
-import { createFixedContentWindow, createFullScreenDrawWindow } from '@/commands/core';
+import {
+    createFixedContentWindow,
+    createFullScreenDrawWindow,
+    hasVideoRecordWindow,
+} from '@/commands/core';
 import { IconLabel } from '@/components/iconLable';
 import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
 import { TrayIconStatePublisher } from '@/app/trayIcon';
@@ -51,6 +55,8 @@ import {
 import { FieldTimeOutlined } from '@ant-design/icons';
 import { ChangeDelaySeconds } from './components/changeDelaySeconds';
 import { Tooltip } from 'antd';
+import { getAllWebviewWindows } from '@tauri-apps/api/webviewWindow';
+import { startOrCopyVideo } from '@/functions/videoRecord';
 
 export type GlobalShortcutContextType = {
     disableShortcutKeyRef: React.RefObject<boolean>;
@@ -128,7 +134,7 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
                         break;
                     case AppFunction.ScreenshotOcrTranslate:
                         buttonTitle = <FormattedMessage id="draw.ocrTranslateTool" />;
-                        buttonIcon = <OcrTranslateIcon style={{ fontSize: '1.1em' }} />;
+                        buttonIcon = <OcrTranslateIcon style={{ fontSize: '1.2em' }} />;
                         buttonOnClick = () => executeScreenshot(ScreenshotType.OcrTranslate);
                         break;
                     case AppFunction.ScreenshotFullScreen:
@@ -155,7 +161,7 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
                         buttonTitle = (
                             <FormattedMessage id="home.screenshotFunction.screenshotCopy" />
                         );
-                        buttonIcon = <ClipboardIcon />;
+                        buttonIcon = <ClipboardIcon style={{ fontSize: '1.1em' }} />;
                         buttonOnClick = () => executeScreenshot(ScreenshotType.Copy);
                         break;
                     case AppFunction.TranslationSelectText:
@@ -202,9 +208,18 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
                         buttonOnClick = () => createFullScreenDrawWindow();
                         break;
                     case AppFunction.VideoRecord:
-                        buttonTitle = <FormattedMessage id="draw.extraTool.videoRecord" />;
+                        buttonTitle = (
+                            <FormattedMessage id="home.videoRecordFunction.videoRecord" />
+                        );
                         buttonIcon = <VideoRecordIcon style={{ fontSize: '1.1em' }} />;
                         buttonOnClick = () => executeScreenshot(ScreenshotType.VideoRecord);
+                        break;
+                    case AppFunction.VideoRecordCopy:
+                        buttonTitle = <FormattedMessage id="home.videoRecordFunction.copyVideo" />;
+                        buttonIcon = <ClipboardIcon style={{ fontSize: '1.1em' }} />;
+                        buttonOnClick = () => {
+                            startOrCopyVideo();
+                        };
                         break;
                     case AppFunction.Screenshot:
                     default:

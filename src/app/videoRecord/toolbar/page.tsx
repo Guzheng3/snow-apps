@@ -184,37 +184,6 @@ export default function VideoRecordToolbar() {
         [initWindowRect, videoRecordStateRef],
     );
 
-    useEffect(() => {
-        const { selectRect } = getVideoRecordParams();
-
-        init(selectRect);
-
-        const listenerId = addListener('reload-video-record', (params) => {
-            const windowInfo = (params as { payload: VideoRecordWindowInfo }).payload;
-
-            init({
-                min_x: windowInfo.select_rect_min_x,
-                min_y: windowInfo.select_rect_min_y,
-                max_x: windowInfo.select_rect_max_x,
-                max_y: windowInfo.select_rect_max_y,
-            });
-        });
-
-        videoRecordKill();
-
-        const killVideoRecord = () => {
-            videoRecordKill();
-        };
-
-        window.addEventListener('beforeunload', killVideoRecord);
-
-        return () => {
-            videoRecordKill();
-            window.removeEventListener('beforeunload', killVideoRecord);
-            removeListener(listenerId);
-        };
-    }, [addListener, init, removeListener]);
-
     const dragTitle = useMemo(() => {
         return intl.formatMessage({ id: 'draw.drag' });
     }, [intl]);
@@ -326,6 +295,111 @@ export default function VideoRecordToolbar() {
         e.preventDefault();
     }, []);
 
+    const startRecord = useCallback(async () => {
+        setStartRecordLoading(true);
+
+        const appSettings = getAppSettings();
+
+        const { width: videoMaxWidth, height: videoMaxHeight } =
+            convertVideoMaxSizeToWidthAndHeight(
+                appSettings[AppSettingsGroup.FunctionVideoRecord].videoMaxSize,
+            );
+
+        videoRecordStart(
+            selectRectRef.current?.min_x ?? 0,
+            selectRectRef.current?.min_y ?? 0,
+            selectRectRef.current?.max_x ?? 0,
+            selectRectRef.current?.max_y ?? 0,
+            await joinPath(
+                await getVideoRecordSaveDirectory(appSettings),
+                generateImageFileName(
+                    appSettings[AppSettingsGroup.FunctionOutput].videoRecordFileNameFormat,
+                ),
+            ),
+            VideoFormat.Mp4,
+            appSettings[AppSettingsGroup.FunctionVideoRecord].frameRate,
+            enableMicrophone,
+            false,
+            appSettings[AppSettingsGroup.FunctionVideoRecord].microphoneDeviceName,
+            appSettings[AppSettingsGroup.FunctionVideoRecord].hwaccel,
+            appSettings[AppSettingsGroup.FunctionVideoRecord].encoder,
+            appSettings[AppSettingsGroup.FunctionVideoRecord].encoderPreset,
+            videoMaxWidth,
+            videoMaxHeight,
+        )
+            .then(() => {
+                setVideoRecordState(VideoRecordState.Recording);
+
+                stopDurationTimer();
+
+                durationRef.current = 0;
+                updateDurationFormat();
+
+                startDurationTimer();
+            })
+            .finally(() => {
+                setStartRecordLoading(false);
+            });
+    }, [
+        setVideoRecordState,
+        enableMicrophone,
+        getAppSettings,
+        stopDurationTimer,
+        updateDurationFormat,
+        startDurationTimer,
+    ]);
+
+    const copyVideo = useCallback(
+        async (convertToGif: boolean) => {
+            stopRecord(convertToGif).then((outputFile) => {
+                if (outputFile) {
+                    clipboard.writeFiles([outputFile]);
+                }
+            });
+        },
+        [stopRecord],
+    );
+
+    useEffect(() => {
+        const { selectRect } = getVideoRecordParams();
+
+        init(selectRect);
+
+        const listenerId = addListener('reload-video-record', (params) => {
+            const windowInfo = (params as { payload: VideoRecordWindowInfo }).payload;
+
+            init({
+                min_x: windowInfo.select_rect_min_x,
+                min_y: windowInfo.select_rect_min_y,
+                max_x: windowInfo.select_rect_max_x,
+                max_y: windowInfo.select_rect_max_y,
+            });
+        });
+
+        const startOrCopyVideoListenerId = addListener('start-or-copy-video', () => {
+            if (videoRecordStateRef.current === VideoRecordState.Idle) {
+                startRecord();
+            } else {
+                copyVideo(false);
+            }
+        });
+
+        videoRecordKill();
+
+        const killVideoRecord = () => {
+            videoRecordKill();
+        };
+
+        window.addEventListener('beforeunload', killVideoRecord);
+
+        return () => {
+            videoRecordKill();
+            window.removeEventListener('beforeunload', killVideoRecord);
+            removeListener(listenerId);
+            removeListener(startOrCopyVideoListenerId);
+        };
+    }, [addListener, init, removeListener, copyVideo, startRecord, videoRecordStateRef]);
+
     return (
         <div className="video-record-toolbar-container" onContextMenu={onContextMenu}>
             <div data-tauri-drag-region className="toolbar-drag-region before" />
@@ -342,56 +416,7 @@ export default function VideoRecordToolbar() {
                             <Button
                                 loading={startRecordLoading}
                                 disabled={videoRecordState !== VideoRecordState.Idle}
-                                onClick={async () => {
-                                    setStartRecordLoading(true);
-
-                                    const appSettings = getAppSettings();
-
-                                    const { width: videoMaxWidth, height: videoMaxHeight } =
-                                        convertVideoMaxSizeToWidthAndHeight(
-                                            appSettings[AppSettingsGroup.FunctionVideoRecord]
-                                                .videoMaxSize,
-                                        );
-
-                                    videoRecordStart(
-                                        selectRectRef.current?.min_x ?? 0,
-                                        selectRectRef.current?.min_y ?? 0,
-                                        selectRectRef.current?.max_x ?? 0,
-                                        selectRectRef.current?.max_y ?? 0,
-                                        await joinPath(
-                                            await getVideoRecordSaveDirectory(appSettings),
-                                            generateImageFileName(
-                                                appSettings[AppSettingsGroup.FunctionOutput]
-                                                    .videoRecordFileNameFormat,
-                                            ),
-                                        ),
-                                        VideoFormat.Mp4,
-                                        appSettings[AppSettingsGroup.FunctionVideoRecord].frameRate,
-                                        enableMicrophone,
-                                        false,
-                                        appSettings[AppSettingsGroup.FunctionVideoRecord]
-                                            .microphoneDeviceName,
-                                        appSettings[AppSettingsGroup.FunctionVideoRecord].hwaccel,
-                                        appSettings[AppSettingsGroup.FunctionVideoRecord].encoder,
-                                        appSettings[AppSettingsGroup.FunctionVideoRecord]
-                                            .encoderPreset,
-                                        videoMaxWidth,
-                                        videoMaxHeight,
-                                    )
-                                        .then(() => {
-                                            setVideoRecordState(VideoRecordState.Recording);
-
-                                            stopDurationTimer();
-
-                                            durationRef.current = 0;
-                                            updateDurationFormat();
-
-                                            startDurationTimer();
-                                        })
-                                        .finally(() => {
-                                            setStartRecordLoading(false);
-                                        });
-                                }}
+                                onClick={startRecord}
                                 icon={
                                     <StartRecordIcon
                                         style={{
@@ -579,11 +604,7 @@ export default function VideoRecordToolbar() {
 
                         <Button
                             onClick={() => {
-                                stopRecord(true).then((outputFile) => {
-                                    if (outputFile) {
-                                        clipboard.writeFiles([outputFile]);
-                                    }
-                                });
+                                copyVideo(true);
                             }}
                             icon={
                                 <GifOutlined
@@ -601,11 +622,7 @@ export default function VideoRecordToolbar() {
 
                         <Button
                             onClick={() => {
-                                stopRecord(false).then((outputFile) => {
-                                    if (outputFile) {
-                                        clipboard.writeFiles([outputFile]);
-                                    }
-                                });
+                                copyVideo(false);
                             }}
                             icon={
                                 <CopyOutlined
