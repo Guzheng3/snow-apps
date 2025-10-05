@@ -47,6 +47,7 @@ import {
 } from '@/commands/file';
 import { releaseDrawPage } from '@/functions/screenshot';
 import { ExtraToolList } from './draw/components/drawToolbar/components/tools/extraTool';
+import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
 
 export enum AppSettingsGroup {
     Common = 'common',
@@ -549,52 +550,58 @@ export const clearAllConfig = async () => {
 export const formatErrorDetails = (
     error: unknown,
 ): { message: string; details: Record<string, unknown> } => {
-    const details: Record<string, unknown> = {};
+    try {
+        const details: Record<string, unknown> = {};
 
-    if (!error) {
-        return { message: 'Unknown error', details };
-    }
-
-    if (error instanceof Error) {
-        details.stack = error.stack;
-        details.name = error.name;
-        details.message = error.message;
-        return { message: `${error.name}: ${error.message}`, details };
-    }
-
-    if (typeof error === 'string') {
-        return { message: error, details };
-    }
-
-    if (typeof error === 'object') {
-        const errorObj = error as Record<string, unknown>;
-
-        // 提取可能的错误属性
-        if ('stack' in errorObj) {
-            details.stack = errorObj.stack;
-        }
-        if ('name' in errorObj) {
-            details.name = errorObj.name;
-        }
-        if ('message' in errorObj && typeof errorObj.message === 'string') {
-            details.message = errorObj.message;
-            const name =
-                'name' in errorObj && typeof errorObj.name === 'string' ? errorObj.name : 'Error';
-            return { message: `${name}: ${errorObj.message}`, details };
+        if (!error) {
+            return { message: 'Unknown error', details };
         }
 
-        // 尝试 JSON 序列化以获取完整信息
-        try {
-            details.fullObject = JSON.stringify(error, Object.getOwnPropertyNames(error));
-            return { message: `Object: ${details.fullObject}`, details };
-        } catch {
-            details.type = error.constructor?.name || 'unknown';
-            return { message: `Object (${details.type})`, details };
+        if (error instanceof Error) {
+            details.stack = error.stack;
+            details.name = error.name;
+            details.message = error.message;
+            return { message: `${error.name}: ${error.message}`, details };
         }
-    }
 
-    // 对于其他类型，转换为字符串
-    return { message: String(error), details };
+        if (typeof error === 'string') {
+            return { message: error, details };
+        }
+
+        if (typeof error === 'object') {
+            const errorObj = error as Record<string, unknown>;
+
+            // 提取可能的错误属性
+            if ('stack' in errorObj) {
+                details.stack = errorObj.stack;
+            }
+            if ('name' in errorObj) {
+                details.name = errorObj.name;
+            }
+            if ('message' in errorObj && typeof errorObj.message === 'string') {
+                details.message = errorObj.message;
+                const name =
+                    'name' in errorObj && typeof errorObj.name === 'string'
+                        ? errorObj.name
+                        : 'Error';
+                return { message: `${name}: ${errorObj.message}`, details };
+            }
+
+            // 尝试 JSON 序列化以获取完整信息
+            try {
+                details.fullObject = JSON.stringify(error, Object.getOwnPropertyNames(error));
+                return { message: `Object: ${details.fullObject}`, details };
+            } catch {
+                details.type = error.constructor?.name || 'unknown';
+                return { message: `Object (${details.type})`, details };
+            }
+        }
+
+        // 对于其他类型，转换为字符串
+        return { message: String(error), details };
+    } catch {
+        return { message: 'Format error details failed', details: {} };
+    }
 };
 
 const getFilePath = async (group: AppSettingsGroup) => {
@@ -700,6 +707,7 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
         [writeAppSettings],
     );
 
+    const { isReady } = usePluginService();
     const updateAppSettings = useCallback(
         (
             group: AppSettingsGroup,
@@ -983,7 +991,16 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                 const settingsKeySet = new Set<string>();
                 const settingKeys: DrawToolbarKeyEventKey[] = Object.keys(
                     defaultDrawToolbarKeyEventSettings,
-                ) as DrawToolbarKeyEventKey[];
+                ).filter((key) => {
+                    if (
+                        key === DrawToolbarKeyEventKey.OcrDetectTool ||
+                        key === DrawToolbarKeyEventKey.OcrTranslateTool
+                    ) {
+                        return isReady?.(PLUGIN_ID_RAPID_OCR);
+                    }
+
+                    return true;
+                }) as DrawToolbarKeyEventKey[];
                 settingKeys.forEach((key) => {
                     const keyEventSettings = newSettings as Record<
                         DrawToolbarKeyEventKey,
@@ -1543,7 +1560,7 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
             return settings;
         },
-        [writeAppSettings, writeAppSettingsDebounce, setAppSettings],
+        [setAppSettings, isReady, writeAppSettingsDebounce, writeAppSettings],
     );
 
     const reloadAppSettings = useCallback(async () => {
@@ -1662,38 +1679,46 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
     useEffect(() => {
         const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-            const reason = event.reason;
-            const { message: errorMessage, details: errorDetails } = formatErrorDetails(reason);
+            try {
+                const reason = event.reason;
+                const { message: errorMessage, details: errorDetails } = formatErrorDetails(reason);
 
-            // 添加基础的上下文信息
-            const fullDetails: Record<string, unknown> = {
-                reason: reason,
-                timestamp: new Date().toISOString(),
-                userAgent: navigator.userAgent,
-                url: location.href,
-                ...errorDetails, // 合并错误对象的详细信息
-            };
+                // 添加基础的上下文信息
+                const fullDetails: Record<string, unknown> = {
+                    reason: reason,
+                    timestamp: new Date().toISOString(),
+                    userAgent: navigator.userAgent,
+                    url: location.href,
+                    ...errorDetails, // 合并错误对象的详细信息
+                };
 
-            appError(`Unhandled Promise Rejection: ${errorMessage}`, fullDetails);
+                appError(`Unhandled Promise Rejection: ${errorMessage}`, fullDetails);
+            } catch {
+                appError(`Failed to handle unhandled promise rejection`);
+            }
         };
 
         const handleGlobalError = (event: ErrorEvent) => {
-            const error = event.error;
-            const { message: errorMessage, details: errorDetails } = formatErrorDetails(error);
+            try {
+                const error = event.error;
+                const { message: errorMessage, details: errorDetails } = formatErrorDetails(error);
 
-            // 合并 ErrorEvent 的信息和错误对象的详细信息
-            const fullDetails: Record<string, unknown> = {
-                message: event.message,
-                filename: event.filename,
-                lineno: event.lineno,
-                colno: event.colno,
-                timestamp: new Date().toISOString(),
-                userAgent: navigator.userAgent,
-                url: location.href,
-                ...errorDetails, // 合并错误对象的详细信息
-            };
+                // 合并 ErrorEvent 的信息和错误对象的详细信息
+                const fullDetails: Record<string, unknown> = {
+                    message: event.message,
+                    filename: event.filename,
+                    lineno: event.lineno,
+                    colno: event.colno,
+                    timestamp: new Date().toISOString(),
+                    userAgent: navigator.userAgent,
+                    url: location.href,
+                    ...errorDetails, // 合并错误对象的详细信息
+                };
 
-            appError(`Global Error: ${errorMessage}`, fullDetails);
+                appError(`Global Error: ${errorMessage}`, fullDetails);
+            } catch {
+                appError(`Failed to handle global error`);
+            }
         };
 
         window.addEventListener('unhandledrejection', handleUnhandledRejection);

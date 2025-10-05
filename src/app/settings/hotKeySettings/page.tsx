@@ -20,6 +20,11 @@ import { Col, Divider, Form, Row, Spin, theme } from 'antd';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { FormattedMessage } from 'react-intl';
 import { usePlatform } from '@/hooks/usePlatform';
+import {
+    PLUGIN_ID_AI_CHAT,
+    PLUGIN_ID_RAPID_OCR,
+    usePluginService,
+} from '@/components/pluginService';
 
 export default function HotKeySettings() {
     const { token } = theme.useToken();
@@ -64,6 +69,8 @@ export default function HotKeySettings() {
 
     const [currentPlatform] = usePlatform();
 
+    const { isReadyStatus } = usePluginService();
+
     const drawToolbarKeyEventFormItemList = useMemo(() => {
         return Object.keys(defaultDrawToolbarKeyEventSettings)
             .filter((key) => {
@@ -78,6 +85,13 @@ export default function HotKeySettings() {
                         default:
                             return true;
                     }
+                }
+
+                if (
+                    key === DrawToolbarKeyEventKey.OcrDetectTool ||
+                    key === DrawToolbarKeyEventKey.OcrTranslateTool
+                ) {
+                    return isReadyStatus?.(PLUGIN_ID_RAPID_OCR);
                 }
 
                 return true;
@@ -120,7 +134,7 @@ export default function HotKeySettings() {
                     </Col>
                 );
             });
-    }, [currentPlatform, drawToolbarKeyEvent, updateAppSettings]);
+    }, [currentPlatform, drawToolbarKeyEvent, isReadyStatus, updateAppSettings]);
 
     const keyEventFormItemList = useMemo(() => {
         const groupFormItemMap: Record<KeyEventGroup, React.ReactNode[]> = {
@@ -170,56 +184,66 @@ export default function HotKeySettings() {
         });
 
         return groupFormItemMap;
-    }, [keyEvent, updateAppSettings]);
+    }, [keyEvent, updateAppSettings, isReadyStatus]);
 
     const keyEventFormItemListKeys = Object.keys(keyEventFormItemList) as KeyEventGroup[];
     return (
         <div className="settings-wrap">
             {/* 这里用 form 控制值的更新和保存的话反而很麻烦，所以 */}
             <Form className="settings-form common-settings-form" form={keyEventForm}>
-                {keyEventFormItemListKeys.map((configGroup, index) => {
-                    return (
-                        <div key={configGroup}>
-                            <GroupTitle
-                                id={configGroup}
-                                extra={
-                                    <ResetSettingsButton
-                                        title={
-                                            <FormattedMessage
-                                                id={`settings.hotKeySettings.${configGroup}`}
-                                                key={configGroup}
-                                            />
-                                        }
-                                        appSettingsGroup={AppSettingsGroup.KeyEvent}
-                                        filter={(settings) => {
-                                            return Object.keys(settings).reduce(
-                                                (acc, key) => {
-                                                    if (
-                                                        keyEvent[key as KeyEventKey].group ===
-                                                        configGroup
-                                                    ) {
-                                                        acc[key] = settings[key];
-                                                    }
-                                                    return acc;
-                                                },
-                                                {} as Record<string, unknown>,
-                                            );
-                                        }}
-                                    />
-                                }
-                            >
-                                <FormattedMessage id={`settings.hotKeySettings.${configGroup}`} />
-                            </GroupTitle>
-                            <Spin spinning={appSettingsLoading}>
-                                <Row gutter={token.marginLG}>
-                                    {keyEventFormItemList[configGroup as KeyEventGroup]}
-                                </Row>
-                            </Spin>
+                {keyEventFormItemListKeys
+                    .filter((configGroup) => {
+                        if (configGroup === KeyEventGroup.Chat) {
+                            return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
+                        }
 
-                            {index !== keyEventFormItemListKeys.length - 1 && <Divider />}
-                        </div>
-                    );
-                })}
+                        return true;
+                    })
+                    .map((configGroup, index) => {
+                        return (
+                            <div key={configGroup}>
+                                <GroupTitle
+                                    id={configGroup}
+                                    extra={
+                                        <ResetSettingsButton
+                                            title={
+                                                <FormattedMessage
+                                                    id={`settings.hotKeySettings.${configGroup}`}
+                                                    key={configGroup}
+                                                />
+                                            }
+                                            appSettingsGroup={AppSettingsGroup.KeyEvent}
+                                            filter={(settings) => {
+                                                return Object.keys(settings).reduce(
+                                                    (acc, key) => {
+                                                        if (
+                                                            keyEvent[key as KeyEventKey].group ===
+                                                            configGroup
+                                                        ) {
+                                                            acc[key] = settings[key];
+                                                        }
+                                                        return acc;
+                                                    },
+                                                    {} as Record<string, unknown>,
+                                                );
+                                            }}
+                                        />
+                                    }
+                                >
+                                    <FormattedMessage
+                                        id={`settings.hotKeySettings.${configGroup}`}
+                                    />
+                                </GroupTitle>
+                                <Spin spinning={appSettingsLoading}>
+                                    <Row gutter={token.marginLG}>
+                                        {keyEventFormItemList[configGroup as KeyEventGroup]}
+                                    </Row>
+                                </Spin>
+
+                                {index !== keyEventFormItemListKeys.length - 1 && <Divider />}
+                            </div>
+                        );
+                    })}
             </Form>
 
             <Divider />

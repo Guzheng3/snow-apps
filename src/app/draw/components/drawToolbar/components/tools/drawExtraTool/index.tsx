@@ -92,10 +92,18 @@ export const DrawExtraTool: React.FC<{
         );
     }, [drawState, intl, onToolClickAction, updateLastDrawExtraTool]);
 
-    let mainToolbarButton = watermarkButton;
-    if (lastDrawExtraTool === DrawState.Watermark) {
+    let mainToolbarButton = customToolbarToolHiddenMap?.[DrawState.Watermark]
+        ? highlightButton
+        : watermarkButton;
+    if (
+        lastDrawExtraTool === DrawState.Watermark &&
+        !customToolbarToolHiddenMap?.[DrawState.Watermark]
+    ) {
         mainToolbarButton = watermarkButton;
-    } else if (lastDrawExtraTool === DrawState.Highlight) {
+    } else if (
+        lastDrawExtraTool === DrawState.Highlight &&
+        !customToolbarToolHiddenMap?.[DrawState.Highlight]
+    ) {
         mainToolbarButton = highlightButton;
     }
 
@@ -109,7 +117,12 @@ export const DrawExtraTool: React.FC<{
     return (
         <>
             <ToolbarPopover
-                trigger="hover"
+                trigger={
+                    !customToolbarToolHiddenMap?.[DrawState.Watermark] &&
+                    !customToolbarToolHiddenMap?.[DrawState.Highlight]
+                        ? 'hover'
+                        : []
+                }
                 content={
                     <Flex align="center" gap={token.paddingXS} className="popover-toolbar">
                         {!customToolbarToolHiddenMap?.[DrawState.Watermark] && watermarkButton}

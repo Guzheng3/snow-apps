@@ -22,6 +22,7 @@ import { AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
 import { writeTextToClipboard } from '@/utils/clipboard';
 import { getPlatformValue } from '@/utils';
 import { releaseOcrSession } from '@/functions/ocr';
+import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
 
 // 定义角度阈值常量（以度为单位）
 const ROTATION_THRESHOLD = 3; // 小于3度的旋转被视为误差，不进行旋转
@@ -301,6 +302,7 @@ export const OcrResult: React.FC<{
 
     /** 请求 ID，避免 OCR 检测中切换工具后任然触发 OCR 结果 */
     const requestIdRef = useRef<number>(0);
+    const { isReady } = usePluginService();
     const initDrawCanvas = useCallback(
         async (params: OcrResultInitDrawCanvasParams) => {
             requestIdRef.current++;
@@ -312,7 +314,7 @@ export const OcrResult: React.FC<{
                 canvas.toBlob(resolve, 'image/png', 1);
             });
 
-            if (imageBlob) {
+            if (imageBlob && isReady?.(PLUGIN_ID_RAPID_OCR)) {
                 monitorScaleFactorRef.current = window.devicePixelRatio;
                 const ocrResult = params.ocrResult ?? {
                     result: await ocrDetect(
@@ -335,7 +337,7 @@ export const OcrResult: React.FC<{
                 onOcrDetect?.(ocrResult.result);
             }
         },
-        [getAppSettings, onOcrDetect, updateOcrTextElements],
+        [getAppSettings, isReady, onOcrDetect, updateOcrTextElements],
     );
 
     const initImage = useCallback(
@@ -364,7 +366,7 @@ export const OcrResult: React.FC<{
             };
             monitorScaleFactorRef.current = params.monitorScaleFactor;
 
-            if (imageBlob) {
+            if (imageBlob && isReady?.(PLUGIN_ID_RAPID_OCR)) {
                 const ocrResult = await ocrDetect(
                     await imageBlob.arrayBuffer(),
                     0,
@@ -376,7 +378,7 @@ export const OcrResult: React.FC<{
                 onOcrDetect?.(ocrResult);
             }
         },
-        [getAppSettings, onOcrDetect, updateOcrTextElements],
+        [getAppSettings, isReady, onOcrDetect, updateOcrTextElements],
     );
 
     const selectedTextRef = useRef<string>(undefined);

@@ -43,6 +43,7 @@ import * as dialog from '@tauri-apps/plugin-dialog';
 import { restartWithAdmin } from '@/commands/core';
 import { isAdminWithCache } from '@/utils';
 import { useStateRef } from '@/hooks/useStateRef';
+import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
 
 export default function SystemSettings() {
     const intl = useIntl();
@@ -198,6 +199,8 @@ export default function SystemSettings() {
             setIsAdmin(result);
         });
     }, [setIsAdmin]);
+
+    const { isReadyStatus } = usePluginService();
 
     return (
         <ContentWrap>
@@ -386,36 +389,37 @@ export default function SystemSettings() {
                         </Col>
                     </Row>
 
-                    <Row gutter={token.marginLG}>
-                        <Col span={12}>
-                            <ProFormSelect
-                                label={
-                                    <IconLabel
-                                        label={
-                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.ocrModel" />
-                                        }
-                                    />
-                                }
-                                name="ocrModel"
-                                options={ocrModelOptions}
-                            />
-                        </Col>
+                    {isReadyStatus?.(PLUGIN_ID_RAPID_OCR) && (
+                        <Row gutter={token.marginLG}>
+                            <Col span={12}>
+                                <ProFormSelect
+                                    label={
+                                        <IconLabel
+                                            label={
+                                                <FormattedMessage id="settings.systemSettings.screenshotSettings.ocrModel" />
+                                            }
+                                        />
+                                    }
+                                    name="ocrModel"
+                                    options={ocrModelOptions}
+                                />
+                            </Col>
 
-                        <Col span={12}>
-                            <ProFormSwitch
-                                label={
-                                    <IconLabel
-                                        label={
-                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.ocrDetectAngle" />
-                                        }
-                                    />
-                                }
-                                name="ocrDetectAngle"
-                                valuePropName="checked"
-                            />
-                        </Col>
-                    </Row>
-
+                            <Col span={12}>
+                                <ProFormSwitch
+                                    label={
+                                        <IconLabel
+                                            label={
+                                                <FormattedMessage id="settings.systemSettings.screenshotSettings.ocrDetectAngle" />
+                                            }
+                                        />
+                                    }
+                                    name="ocrDetectAngle"
+                                    valuePropName="checked"
+                                />
+                            </Col>
+                        </Row>
+                    )}
                     <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSwitch

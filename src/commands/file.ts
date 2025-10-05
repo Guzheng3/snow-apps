@@ -61,3 +61,13 @@ export const getAppConfigBaseDir = async () => {
     const result = await invoke<string>('get_app_config_base_dir');
     return result;
 };
+
+let getAppConfigBaseDirCache: string | undefined;
+export const getAppConfigBaseDirWithCache = async () => {
+    if (getAppConfigBaseDirCache !== undefined) {
+        return getAppConfigBaseDirCache;
+    }
+
+    getAppConfigBaseDirCache = await getAppConfigBaseDir();
+    return getAppConfigBaseDirCache;
+};

@@ -9,6 +9,7 @@ import { VideoRecordWindowInfo } from '@/functions/videoRecord';
 import { setCurrentWindowAlwaysOnTop } from '@/commands/core';
 import { setWindowRect } from '@/utils/window';
 import { useStateRef } from '@/hooks/useStateRef';
+import { PLUGIN_ID_FFMPEG, usePluginService } from '@/components/pluginService';
 
 const PENDING_STROKE_COLOR = '#4096ff';
 const RECORDING_STROKE_COLOR = '#f5222d';
@@ -122,6 +123,18 @@ export default function VideoRecordPage() {
             removeListener(changeVideoRecordStateListenerId);
         };
     }, [addListener, init, removeListener, setVideoRecordState]);
+
+    const { isReadyStatus } = usePluginService();
+
+    useEffect(() => {
+        if (!isReadyStatus) {
+            return;
+        }
+
+        if (!isReadyStatus(PLUGIN_ID_FFMPEG)) {
+            getCurrentWindow().close();
+        }
+    }, [isReadyStatus]);
 
     return (
         <div className="container" onContextMenu={(e) => e.preventDefault()}>

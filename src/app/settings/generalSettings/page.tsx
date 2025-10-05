@@ -43,6 +43,7 @@ import { ColorPickerShowMode } from '@/app/draw/components/colorPicker';
 import { DrawState } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { resourceDir } from '@tauri-apps/api/path';
 import { getDefaultIconPath } from '@/app/trayIcon';
+import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
 
 const { Option } = Select;
 
@@ -97,7 +98,13 @@ export default function GeneralSettings() {
         true,
     );
 
+    const { isReadyStatus } = usePluginService();
+
     const customToolbarToolListOptions = useMemo(() => {
+        if (!isReadyStatus) {
+            return [];
+        }
+
         return [
             {
                 label: intl.formatMessage({ id: 'draw.selectTool' }),
@@ -159,8 +166,14 @@ export default function GeneralSettings() {
                 label: intl.formatMessage({ id: 'draw.scrollScreenshotTool' }),
                 value: DrawState.ScrollScreenshot,
             },
-        ];
-    }, [intl]);
+        ].filter((item) => {
+            if (item.value === DrawState.OcrDetect || item.value === DrawState.OcrTranslate) {
+                return isReadyStatus(PLUGIN_ID_RAPID_OCR);
+            }
+
+            return true;
+        });
+    }, [intl, isReadyStatus]);
 
     const [defaultIconsOptions, setDefaultIconsOptions] = useState<
         CheckboxOptionType<TrayIconDefaultIcon>[]

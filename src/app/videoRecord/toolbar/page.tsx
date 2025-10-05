@@ -58,6 +58,7 @@ import { setWindowRect } from '@/utils/window';
 import { Window as AppWindow } from '@tauri-apps/api/window';
 import { useStateRef } from '@/hooks/useStateRef';
 import { appError } from '@/utils/log';
+import { PLUGIN_ID_FFMPEG, usePluginService } from '@/components/pluginService';
 
 dayjs.extend(duration);
 
@@ -399,6 +400,17 @@ export default function VideoRecordToolbar() {
             removeListener(startOrCopyVideoListenerId);
         };
     }, [addListener, init, removeListener, copyVideo, startRecord, videoRecordStateRef]);
+
+    const { isReadyStatus } = usePluginService();
+    useEffect(() => {
+        if (!isReadyStatus) {
+            return;
+        }
+
+        if (!isReadyStatus(PLUGIN_ID_FFMPEG)) {
+            getCurrentWindow().close();
+        }
+    }, [isReadyStatus]);
 
     return (
         <div className="video-record-toolbar-container" onContextMenu={onContextMenu}>

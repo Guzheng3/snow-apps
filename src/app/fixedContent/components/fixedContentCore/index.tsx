@@ -64,6 +64,7 @@ import {
 } from '@/functions/fixedContent';
 import { HandleFocusMode } from './components/handleFocusMode';
 import Color from 'color';
+import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
 
 export type FixedContentInitDrawParams = {
     captureBoundingBoxInfo: CaptureBoundingBoxInfo;
@@ -537,6 +538,7 @@ export const FixedContentCore: React.FC<{
         }
     }, [fixedContentTypeRef, textContentRef, renderToBlob]);
 
+    const { isReady, isReadyStatus } = usePluginService();
     const initDraw = useCallback(
         async (params: FixedContentInitDrawParams) => {
             ocrResultActionRef.current?.setEnable(false);
@@ -556,7 +558,10 @@ export const FixedContentCore: React.FC<{
                 max_y: canvas.height,
             };
             if (
-                !getAppSettings()[AppSettingsGroup.FunctionFixedContent].autoOcr &&
+                !(
+                    isReady?.(PLUGIN_ID_RAPID_OCR) &&
+                    getAppSettings()[AppSettingsGroup.FunctionFixedContent].autoOcr
+                ) &&
                 !params.ocrResult
             ) {
                 initOcrParams.current = {
@@ -623,7 +628,10 @@ export const FixedContentCore: React.FC<{
                     });
                     setEnableSelectText(true);
                     ocrResultActionRef.current.setEnable(true);
-                } else if (getAppSettings()[AppSettingsGroup.FunctionFixedContent].autoOcr) {
+                } else if (
+                    isReady?.(PLUGIN_ID_RAPID_OCR) &&
+                    getAppSettings()[AppSettingsGroup.FunctionFixedContent].autoOcr
+                ) {
                     ocrResultActionRef.current.init({
                         selectRect: {
                             min_x: 0,
@@ -648,6 +656,7 @@ export const FixedContentCore: React.FC<{
             setEnableSelectText,
             setFixedContentType,
             setWindowSize,
+            isReady,
         ],
     );
 
@@ -1070,6 +1079,10 @@ export const FixedContentCore: React.FC<{
     const scaleWindowRender = useCallbackRender(scaleWindow);
 
     const initMenuCore = useCallback(async () => {
+        if (!isReadyStatus) {
+            return;
+        }
+
         if (disabled) {
             return;
         }
@@ -1104,16 +1117,20 @@ export const FixedContentCore: React.FC<{
                     accelerator: formatKey(hotkeys?.[KeyEventKey.FixedContentSaveToFile]?.hotKey),
                     action: saveToFile,
                 },
-                {
-                    id: `${appWindow.label}-ocrTool`,
-                    text:
-                        getSelectTextMode(fixedContentType) === 'ocr'
-                            ? intl.formatMessage({ id: 'draw.showOrHideOcrResult' })
-                            : intl.formatMessage({ id: 'draw.selectText' }),
-                    accelerator: formatKey(hotkeys?.[KeyEventKey.FixedContentSelectText]?.hotKey),
-                    checked: enableSelectText,
-                    action: switchSelectText,
-                },
+                isReadyStatus(PLUGIN_ID_RAPID_OCR) || getSelectTextMode(fixedContentType) !== 'ocr'
+                    ? {
+                          id: `${appWindow.label}-ocrTool`,
+                          text:
+                              getSelectTextMode(fixedContentType) === 'ocr'
+                                  ? intl.formatMessage({ id: 'draw.showOrHideOcrResult' })
+                                  : intl.formatMessage({ id: 'draw.selectText' }),
+                          accelerator: formatKey(
+                              hotkeys?.[KeyEventKey.FixedContentSelectText]?.hotKey,
+                          ),
+                          checked: enableSelectText,
+                          action: switchSelectText,
+                      }
+                    : undefined,
                 {
                     item: 'Separator',
                 },
@@ -1323,26 +1340,27 @@ export const FixedContentCore: React.FC<{
         });
         rightClickMenu = menu;
     }, [
-        disabled,
-        intl,
-        hotkeys,
-        copyToClipboard,
-        copyRawToClipboard,
-        saveToFile,
-        fixedContentType,
-        enableSelectText,
-        switchSelectText,
-        enableDraw,
-        switchDraw,
-        isThumbnail,
-        isAlwaysOnTop,
-        switchAlwaysOnTop,
-        scrollAction,
-        switchThumbnail,
         changeContentOpacity,
-        scaleWindow,
+        copyRawToClipboard,
+        copyToClipboard,
+        disabled,
+        enableDraw,
+        enableSelectText,
+        fixedContentType,
+        hotkeys,
+        intl,
+        isAlwaysOnTop,
+        isReadyStatus,
+        isThumbnail,
+        saveToFile,
         scaleRef,
+        scaleWindow,
+        scrollAction,
         setscrollAction,
+        switchAlwaysOnTop,
+        switchDraw,
+        switchSelectText,
+        switchThumbnail,
     ]);
     const initMenu = useCallbackRender(initMenuCore);
 

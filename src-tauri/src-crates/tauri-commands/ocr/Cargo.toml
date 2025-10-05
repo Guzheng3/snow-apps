@@ -8,6 +8,7 @@ tauri = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 image = { workspace = true }
+log = { workspace = true }
 
 snow-shot-app-services = { workspace = true }
 

@@ -3,16 +3,18 @@ use serde::Deserialize;
 use serde::Serialize;
 use snow_shot_app_services::ocr_service::{OcrModel, OcrService};
 use std::io::Cursor;
+use std::path::PathBuf;
 use tokio::sync::Mutex;
+use log;
 
 pub async fn ocr_init(
-    app: tauri::AppHandle,
+    orc_plugin_path: PathBuf,
     ocr_service: tauri::State<'_, Mutex<OcrService>>,
     model: OcrModel,
 ) -> Result<(), String> {
     let mut ocr_service = ocr_service.lock().await;
 
-    ocr_service.init_models(app, model).await?;
+    ocr_service.init_models(orc_plugin_path, model).await?;
 
     Ok(())
 }
@@ -28,6 +30,8 @@ pub async fn ocr_detect(
     request: tauri::ipc::Request<'_>,
 ) -> Result<OcrDetectResult, String> {
     let mut ocr_service = ocr_service.lock().await;
+
+    log::info!("[ocr_detect] start detect");
 
     let image_data = match request.body() {
         tauri::ipc::InvokeBody::Raw(data) => data,
@@ -68,7 +72,7 @@ pub async fn ocr_detect(
     };
 
     let image_buffer = image.to_rgb8();
-    let ocr_result = ocr_service.get_session().detect_angle_rollback(
+    let ocr_result = ocr_service.get_session()?.detect_angle_rollback(
         &image_buffer,
         50,
         image.height().max(image.width()),

@@ -5,7 +5,7 @@ import { TrayIcon, TrayIconOptions } from '@tauri-apps/api/tray';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import React from 'react';
-import { Menu } from '@tauri-apps/api/menu';
+import { Menu, MenuItem } from '@tauri-apps/api/menu';
 import { useIntl } from 'react-intl';
 import { exitApp } from '@/commands';
 import { showWindow } from '@/utils/window';
@@ -41,6 +41,12 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { appError } from '@/utils/log';
 import { formatKey } from '@/utils/format';
 import { startOrCopyVideo } from '@/functions/videoRecord';
+import {
+    PLUGIN_ID_AI_CHAT,
+    PLUGIN_ID_FFMPEG,
+    PLUGIN_ID_RAPID_OCR,
+    usePluginService,
+} from '@/components/pluginService';
 
 export const TrayIconStatePublisher = createPublisher<{
     disableShortcut: boolean;
@@ -130,7 +136,12 @@ const TrayIconLoaderComponent = () => {
         }
     }, []);
 
+    const { isReadyStatus } = usePluginService();
     const initTrayIcon = useCallback(async () => {
+        if (!isReadyStatus) {
+            return;
+        }
+
         if (!shortcutKeys) {
             return;
         }
@@ -241,28 +252,35 @@ const TrayIconLoaderComponent = () => {
                             executeScreenshot(ScreenshotType.Fixed);
                         },
                     },
-                    {
-                        id: `${appWindow.label}-screenshot-ocr`,
-                        text: intl.formatMessage({ id: 'draw.ocrDetectTool' }),
-                        accelerator: disableShortcut
-                            ? undefined
-                            : formatKey(shortcutKeys[AppFunction.ScreenshotOcr].shortcutKey),
-                        action: async () => {
-                            executeScreenshot(ScreenshotType.OcrDetect);
-                        },
-                    },
-                    {
-                        id: `${appWindow.label}-screenshot-ocr-translate`,
-                        text: intl.formatMessage({ id: 'draw.ocrTranslateTool' }),
-                        accelerator: disableShortcut
-                            ? undefined
-                            : formatKey(
-                                  shortcutKeys[AppFunction.ScreenshotOcrTranslate].shortcutKey,
-                              ),
-                        action: async () => {
-                            executeScreenshot(ScreenshotType.OcrTranslate);
-                        },
-                    },
+                    ...(isReadyStatus(PLUGIN_ID_RAPID_OCR)
+                        ? [
+                              {
+                                  id: `${appWindow.label}-screenshot-ocr`,
+                                  text: intl.formatMessage({ id: 'draw.ocrDetectTool' }),
+                                  accelerator: disableShortcut
+                                      ? undefined
+                                      : formatKey(
+                                            shortcutKeys[AppFunction.ScreenshotOcr].shortcutKey,
+                                        ),
+                                  action: async () => {
+                                      executeScreenshot(ScreenshotType.OcrDetect);
+                                  },
+                              },
+                              {
+                                  id: `${appWindow.label}-screenshot-ocr-translate`,
+                                  text: intl.formatMessage({ id: 'draw.ocrTranslateTool' }),
+                                  accelerator: disableShortcut
+                                      ? undefined
+                                      : formatKey(
+                                            shortcutKeys[AppFunction.ScreenshotOcrTranslate]
+                                                .shortcutKey,
+                                        ),
+                                  action: async () => {
+                                      executeScreenshot(ScreenshotType.OcrTranslate);
+                                  },
+                              },
+                          ]
+                        : []),
                     {
                         id: `${appWindow.label}-screenshot-copy`,
                         text: intl.formatMessage({
@@ -306,33 +324,38 @@ const TrayIconLoaderComponent = () => {
                             executeScreenshot(ScreenshotType.CaptureFullScreen);
                         },
                     },
-                    {
-                        item: 'Separator',
-                    },
-                    {
-                        id: `${appWindow.label}-chat`,
-                        text: intl.formatMessage({ id: 'home.chat' }),
-                        accelerator: disableShortcut
-                            ? undefined
-                            : formatKey(shortcutKeys[AppFunction.Chat].shortcutKey),
-                        action: async () => {
-                            executeChat();
-                        },
-                    },
-                    ...(shortcutKeys[AppFunction.ChatSelectText].shortcutKey
+                    ...(isReadyStatus(PLUGIN_ID_AI_CHAT)
                         ? [
                               {
-                                  id: `${appWindow.label}-chat-selectText`,
-                                  text: intl.formatMessage({ id: 'home.chatSelectText' }),
+                                  item: 'Separator',
+                              } as unknown as MenuItem,
+                              {
+                                  id: `${appWindow.label}-chat`,
+                                  text: intl.formatMessage({ id: 'home.chat' }),
                                   accelerator: disableShortcut
                                       ? undefined
-                                      : formatKey(
-                                            shortcutKeys[AppFunction.ChatSelectText].shortcutKey,
-                                        ),
+                                      : formatKey(shortcutKeys[AppFunction.Chat].shortcutKey),
                                   action: async () => {
-                                      executeChatSelectedText();
+                                      executeChat();
                                   },
                               },
+                              ...(shortcutKeys[AppFunction.ChatSelectText].shortcutKey
+                                  ? [
+                                        {
+                                            id: `${appWindow.label}-chat-selectText`,
+                                            text: intl.formatMessage({ id: 'home.chatSelectText' }),
+                                            accelerator: disableShortcut
+                                                ? undefined
+                                                : formatKey(
+                                                      shortcutKeys[AppFunction.ChatSelectText]
+                                                          .shortcutKey,
+                                                  ),
+                                            action: async () => {
+                                                executeChatSelectedText();
+                                            },
+                                        },
+                                    ]
+                                  : []),
                           ]
                         : []),
                     {
@@ -367,26 +390,38 @@ const TrayIconLoaderComponent = () => {
                               },
                           ]
                         : []),
-                    {
-                        item: 'Separator',
-                    },
-                    {
-                        id: `${appWindow.label}-screenshot-videoRecord`,
-                        text: intl.formatMessage({ id: 'draw.extraTool.videoRecord' }),
-                        accelerator: disableShortcut
-                            ? undefined
-                            : formatKey(shortcutKeys[AppFunction.VideoRecord].shortcutKey),
-                        action: async () => {
-                            executeScreenshot(ScreenshotType.VideoRecord);
-                        },
-                    },
-                    {
-                        id: `${appWindow.label}-screenshot-videoRecord-copy`,
-                        text: intl.formatMessage({ id: 'home.videoRecordFunction.copyVideo' }),
-                        action: async () => {
-                            startOrCopyVideo();
-                        },
-                    },
+                    ...(isReadyStatus(PLUGIN_ID_FFMPEG)
+                        ? [
+                              {
+                                  item: 'Separator',
+                              } as unknown as MenuItem,
+                          ]
+                        : []),
+                    ...(isReadyStatus(PLUGIN_ID_FFMPEG)
+                        ? [
+                              {
+                                  id: `${appWindow.label}-screenshot-videoRecord`,
+                                  text: intl.formatMessage({ id: 'draw.extraTool.videoRecord' }),
+                                  accelerator: disableShortcut
+                                      ? undefined
+                                      : formatKey(
+                                            shortcutKeys[AppFunction.VideoRecord].shortcutKey,
+                                        ),
+                                  action: async () => {
+                                      executeScreenshot(ScreenshotType.VideoRecord);
+                                  },
+                              },
+                              {
+                                  id: `${appWindow.label}-screenshot-videoRecord-copy`,
+                                  text: intl.formatMessage({
+                                      id: 'home.videoRecordFunction.copyVideo',
+                                  }),
+                                  action: async () => {
+                                      startOrCopyVideo();
+                                  },
+                              },
+                          ]
+                        : []),
                     {
                         item: 'Separator',
                     },
@@ -478,6 +513,7 @@ const TrayIconLoaderComponent = () => {
         defaultIcon,
         getAppSettings,
         setTrayIconState,
+        isReadyStatus,
     ]);
 
     useEffect(() => {

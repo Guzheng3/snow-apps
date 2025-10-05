@@ -47,13 +47,17 @@ futures = "^0.3"
 rayon = "^1.10"
 regex = "^1.11"
 zune-jpegxl = "^0.4"
-zune-core = "^0.4"
+zune-core = "0.4"
 scap = { git = "https://github.com/mg-chao/scap", branch = "20250712_custom" }
 objc2 = "0.6.1"
 objc2-app-kit = { version = "0.3.1" }
 uiautomation = "0.24.0"
 macos-accessibility-client = "0.0.1"
 dashmap = "6.1.0"
+reqwest = "0.12"
+futures-lite = "2.6.1"
+tokio-util = "0.7.16"
+futures-util = "0.3"
 
 # 项目内依赖
 snow-shot-app-services = { path = "src-crates/app-services" }
@@ -66,6 +70,7 @@ snow-shot-tauri-commands-file = { path = "src-crates/tauri-commands/file" }
 snow-shot-tauri-commands-ocr = { path = "src-crates/tauri-commands/ocr" }
 snow-shot-tauri-commands-screenshot = { path = "src-crates/tauri-commands/screenshot" }
 snow-shot-tauri-commands-scroll-screenshot = { path = "src-crates/tauri-commands/scroll-screenshot" }
+snow-shot-plugin-service = { path = "src-crates/plugin-service" }
 
 [dependencies]
 snow-shot-app-shared = { workspace = true }
@@ -77,6 +82,7 @@ snow-shot-tauri-commands-file = { workspace = true }
 snow-shot-tauri-commands-ocr = { workspace = true }
 snow-shot-tauri-commands-screenshot = { workspace = true }
 snow-shot-tauri-commands-scroll-screenshot = { workspace = true }
+snow-shot-plugin-service = { workspace = true }
 
 # workspace 依赖
 tokio = { workspace = true }

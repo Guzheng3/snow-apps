@@ -85,8 +85,6 @@
             "icons/icon.ico"
         ],
         "resources": {
-            "models/": "models/",
-            "ffmpeg/": "ffmpeg/",
             "app-icons/": "app-icons/"
         }
     }

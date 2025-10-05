@@ -93,7 +93,7 @@ export const videoRecordGetMicrophoneDeviceNames = async () => {
     return result;
 };
 
-export const videoRecordInit = async () => {
-    const result = await invoke('video_record_init');
+export const videoRecordInit = async (ffmpegPluginDir: string) => {
+    const result = await invoke('video_record_init', { ffmpegPluginDir });
     return result;
 };

@@ -57,6 +57,12 @@ import {
 } from '@/commands/videoRecord';
 import { OcrDetectAfterAction } from '@/app/fixedContent/components/ocrResult';
 import { usePlatform } from '@/hooks/usePlatform';
+import {
+    PLUGIN_ID_AI_CHAT,
+    PLUGIN_ID_FFMPEG,
+    PLUGIN_ID_RAPID_OCR,
+    usePluginService,
+} from '@/components/pluginService';
 
 export default function SystemSettings() {
     const intl = useIntl();
@@ -212,11 +218,18 @@ export default function SystemSettings() {
         [currentPlatform],
     );
 
+    const { isReadyStatus } = usePluginService();
+
     const initedMicrophoneDeviceNameOptions = useRef(false);
     useEffect(() => {
         if (initedMicrophoneDeviceNameOptions.current) {
             return;
         }
+
+        if (!isReadyStatus?.(PLUGIN_ID_FFMPEG)) {
+            return;
+        }
+
         initedMicrophoneDeviceNameOptions.current = true;
 
         const options: { label: string; value: string }[] = [
@@ -240,7 +253,7 @@ export default function SystemSettings() {
             .finally(() => {
                 setMicrophoneDeviceNameOptions(options);
             });
-    }, [formatMicrophoneDeviceName, intl]);
+    }, [formatMicrophoneDeviceName, intl, isReadyStatus]);
 
     const videoMaxSizeOptions = useMemo(() => {
         return [
@@ -569,28 +582,30 @@ export default function SystemSettings() {
                         </Col>
                     </Row>
 
-                    <Row gutter={token.marginLG}>
-                        <Col span={12}>
-                            <ProFormSelect
-                                name="ocrAfterAction"
-                                layout="horizontal"
-                                label={
-                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.ocrAfterAction" />
-                                }
-                                options={ocrAfterActionOptions}
-                            />
-                        </Col>
+                    {isReadyStatus?.(PLUGIN_ID_RAPID_OCR) && (
+                        <Row gutter={token.marginLG}>
+                            <Col span={12}>
+                                <ProFormSelect
+                                    name="ocrAfterAction"
+                                    layout="horizontal"
+                                    label={
+                                        <FormattedMessage id="settings.functionSettings.screenshotSettings.ocrAfterAction" />
+                                    }
+                                    options={ocrAfterActionOptions}
+                                />
+                            </Col>
 
-                        <Col span={12}>
-                            <ProFormSwitch
-                                name="ocrCopyText"
-                                layout="horizontal"
-                                label={
-                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.ocrCopyText" />
-                                }
-                            />
-                        </Col>
-                    </Row>
+                            <Col span={12}>
+                                <ProFormSwitch
+                                    name="ocrCopyText"
+                                    layout="horizontal"
+                                    label={
+                                        <FormattedMessage id="settings.functionSettings.screenshotSettings.ocrCopyText" />
+                                    }
+                                />
+                            </Col>
+                        </Row>
+                    )}
 
                     <Row gutter={token.marginLG}>
                         <Col span={12}>
@@ -852,15 +867,17 @@ export default function SystemSettings() {
                             />
                         </Col>
 
-                        <Col span={12}>
-                            <ProFormSwitch
-                                label={
-                                    <FormattedMessage id="settings.functionSettings.fixedContentSettings.autoOcr" />
-                                }
-                                name="autoOcr"
-                                layout="horizontal"
-                            />
-                        </Col>
+                        {isReadyStatus?.(PLUGIN_ID_RAPID_OCR) && (
+                            <Col span={12}>
+                                <ProFormSwitch
+                                    label={
+                                        <FormattedMessage id="settings.functionSettings.fixedContentSettings.autoOcr" />
+                                    }
+                                    name="autoOcr"
+                                    layout="horizontal"
+                                />
+                            </Col>
+                        )}
 
                         <Col span={12}>
                             <ProFormSwitch
@@ -1116,41 +1133,43 @@ export default function SystemSettings() {
                     }}
                     submitter={false}
                 >
-                    <Row gutter={token.marginLG}>
-                        <Col span={12}>
-                            <ProForm.Item
-                                label={
-                                    <IconLabel
-                                        label={
-                                            <FormattedMessage id="settings.functionSettings.chatSettings.autoCreateNewSession" />
-                                        }
-                                    />
-                                }
-                                layout="horizontal"
-                                name="autoCreateNewSession"
-                                valuePropName="checked"
-                            >
-                                <Switch />
-                            </ProForm.Item>
-                        </Col>
+                    {isReadyStatus?.(PLUGIN_ID_AI_CHAT) && (
+                        <Row gutter={token.marginLG}>
+                            <Col span={12}>
+                                <ProForm.Item
+                                    label={
+                                        <IconLabel
+                                            label={
+                                                <FormattedMessage id="settings.functionSettings.chatSettings.autoCreateNewSession" />
+                                            }
+                                        />
+                                    }
+                                    layout="horizontal"
+                                    name="autoCreateNewSession"
+                                    valuePropName="checked"
+                                >
+                                    <Switch />
+                                </ProForm.Item>
+                            </Col>
 
-                        <Col span={12}>
-                            <ProForm.Item
-                                label={
-                                    <IconLabel
-                                        label={
-                                            <FormattedMessage id="settings.functionSettings.chatSettings.autoCreateNewSessionOnCloseWindow" />
-                                        }
-                                    />
-                                }
-                                layout="horizontal"
-                                name="autoCreateNewSessionOnCloseWindow"
-                                valuePropName="checked"
-                            >
-                                <Switch />
-                            </ProForm.Item>
-                        </Col>
-                    </Row>
+                            <Col span={12}>
+                                <ProForm.Item
+                                    label={
+                                        <IconLabel
+                                            label={
+                                                <FormattedMessage id="settings.functionSettings.chatSettings.autoCreateNewSessionOnCloseWindow" />
+                                            }
+                                        />
+                                    }
+                                    layout="horizontal"
+                                    name="autoCreateNewSessionOnCloseWindow"
+                                    valuePropName="checked"
+                                >
+                                    <Switch />
+                                </ProForm.Item>
+                            </Col>
+                        </Row>
+                    )}
 
                     <Row gutter={token.marginLG}>
                         <Col span={24}>
@@ -1365,242 +1384,244 @@ export default function SystemSettings() {
 
             <Divider />
 
-            <GroupTitle
-                id="videoRecordSettings"
-                extra={
-                    <ResetSettingsButton
-                        title={
-                            <FormattedMessage id="settings.functionSettings.videoRecordSettings" />
-                        }
-                        appSettingsGroup={AppSettingsGroup.FunctionVideoRecord}
-                    />
-                }
-            >
-                <FormattedMessage id="settings.functionSettings.videoRecordSettings" />
-            </GroupTitle>
-
-            <Spin spinning={appSettingsLoading}>
-                <ProForm
-                    form={videoRecordForm}
-                    onValuesChange={(_, values) => {
-                        updateAppSettings(
-                            AppSettingsGroup.FunctionVideoRecord,
-                            values,
-                            true,
-                            true,
-                            true,
-                            true,
-                            false,
-                        );
-                    }}
-                    submitter={false}
-                    layout="horizontal"
+            <div hidden={!isReadyStatus?.(PLUGIN_ID_FFMPEG)}>
+                <GroupTitle
+                    id="videoRecordSettings"
+                    extra={
+                        <ResetSettingsButton
+                            title={
+                                <FormattedMessage id="settings.functionSettings.videoRecordSettings" />
+                            }
+                            appSettingsGroup={AppSettingsGroup.FunctionVideoRecord}
+                        />
+                    }
                 >
-                    <Row gutter={token.marginLG}>
-                        <Col span={12}>
-                            <ProFormSelect
-                                name="videoMaxSize"
-                                layout="horizontal"
-                                label={
-                                    <FormattedMessage id="settings.functionSettings.videoRecordSettings.videoMaxSize" />
-                                }
-                                options={videoMaxSizeOptions}
-                            />
-                        </Col>
+                    <FormattedMessage id="settings.functionSettings.videoRecordSettings" />
+                </GroupTitle>
 
-                        <Col span={12}>
-                            <ProFormSelect
-                                name="frameRate"
-                                layout="horizontal"
-                                label={
-                                    <FormattedMessage id="settings.functionSettings.videoRecordSettings.frameRate" />
-                                }
-                                options={[
-                                    {
-                                        label: '10',
-                                        value: 10,
-                                    },
-                                    {
-                                        label: '15',
-                                        value: 15,
-                                    },
-                                    {
-                                        label: '24',
-                                        value: 24,
-                                    },
-                                    {
-                                        label: '30',
-                                        value: 30,
-                                    },
-                                    {
-                                        label: '60',
-                                        value: 60,
-                                    },
-                                    {
-                                        label: '120',
-                                        value: 120,
-                                    },
-                                    {
-                                        label: '83',
-                                        value: 83,
-                                    },
-                                    {
-                                        label: '42',
-                                        value: 42,
-                                    },
-                                ]}
-                            />
-                        </Col>
-                    </Row>
+                <Spin spinning={appSettingsLoading}>
+                    <ProForm
+                        form={videoRecordForm}
+                        onValuesChange={(_, values) => {
+                            updateAppSettings(
+                                AppSettingsGroup.FunctionVideoRecord,
+                                values,
+                                true,
+                                true,
+                                true,
+                                true,
+                                false,
+                            );
+                        }}
+                        submitter={false}
+                        layout="horizontal"
+                    >
+                        <Row gutter={token.marginLG}>
+                            <Col span={12}>
+                                <ProFormSelect
+                                    name="videoMaxSize"
+                                    layout="horizontal"
+                                    label={
+                                        <FormattedMessage id="settings.functionSettings.videoRecordSettings.videoMaxSize" />
+                                    }
+                                    options={videoMaxSizeOptions}
+                                />
+                            </Col>
 
-                    <Row gutter={token.marginLG}>
-                        <Col span={12}>
-                            <ProFormSelect
-                                name="gifMaxSize"
-                                layout="horizontal"
-                                label={
-                                    <FormattedMessage id="settings.functionSettings.videoRecordSettings.gifMaxSize" />
-                                }
-                                options={gifMaxSizeOptions}
-                            />
-                        </Col>
+                            <Col span={12}>
+                                <ProFormSelect
+                                    name="frameRate"
+                                    layout="horizontal"
+                                    label={
+                                        <FormattedMessage id="settings.functionSettings.videoRecordSettings.frameRate" />
+                                    }
+                                    options={[
+                                        {
+                                            label: '10',
+                                            value: 10,
+                                        },
+                                        {
+                                            label: '15',
+                                            value: 15,
+                                        },
+                                        {
+                                            label: '24',
+                                            value: 24,
+                                        },
+                                        {
+                                            label: '30',
+                                            value: 30,
+                                        },
+                                        {
+                                            label: '60',
+                                            value: 60,
+                                        },
+                                        {
+                                            label: '120',
+                                            value: 120,
+                                        },
+                                        {
+                                            label: '83',
+                                            value: 83,
+                                        },
+                                        {
+                                            label: '42',
+                                            value: 42,
+                                        },
+                                    ]}
+                                />
+                            </Col>
+                        </Row>
 
-                        <Col span={12}>
-                            <ProFormSelect
-                                name="gifFrameRate"
-                                layout="horizontal"
-                                label={
-                                    <FormattedMessage id="settings.functionSettings.videoRecordSettings.gifFrameRate" />
-                                }
-                                options={[
-                                    {
-                                        label: '10',
-                                        value: 10,
-                                    },
-                                    {
-                                        label: '15',
-                                        value: 15,
-                                    },
-                                    {
-                                        label: '24',
-                                        value: 24,
-                                    },
-                                ]}
-                            />
-                        </Col>
+                        <Row gutter={token.marginLG}>
+                            <Col span={12}>
+                                <ProFormSelect
+                                    name="gifMaxSize"
+                                    layout="horizontal"
+                                    label={
+                                        <FormattedMessage id="settings.functionSettings.videoRecordSettings.gifMaxSize" />
+                                    }
+                                    options={gifMaxSizeOptions}
+                                />
+                            </Col>
 
-                        <Col span={12}>
-                            <ProFormSelect
-                                name="gifFormat"
-                                layout="horizontal"
-                                label={
-                                    <FormattedMessage id="settings.functionSettings.videoRecordSettings.gifFormat" />
-                                }
-                                options={gifFormatOptions}
-                            />
-                        </Col>
-                    </Row>
-                    <Row gutter={token.marginLG}>
-                        <Col span={12}>
-                            <ProFormSelect
-                                name="microphoneDeviceName"
-                                layout="horizontal"
-                                label={
-                                    <FormattedMessage id="settings.functionSettings.videoRecordSettings.microphoneDeviceName" />
-                                }
-                                options={microphoneDeviceNameOptions}
-                            />
-                        </Col>
-                    </Row>
-                    <Row gutter={token.marginLG}>
-                        <Col span={12}>
-                            <ProFormSelect
-                                name="encoder"
-                                layout="horizontal"
-                                label={
-                                    <IconLabel
-                                        label={
-                                            <FormattedMessage id="settings.functionSettings.videoRecordSettings.encoder" />
-                                        }
-                                        tooltipTitle={
-                                            <FormattedMessage id="settings.functionSettings.videoRecordSettings.encoder.tip" />
-                                        }
-                                    />
-                                }
-                                options={[
-                                    {
-                                        label: 'Libx264 (CPU)',
-                                        value: 'libx264',
-                                    },
-                                    {
-                                        label: 'Libx265 (CPU)',
-                                        value: 'libx265',
-                                    },
-                                    ...(currentPlatform === 'windows'
-                                        ? [
-                                              {
-                                                  label: 'H264_AMF (AMD)',
-                                                  value: 'h264_amf',
-                                              },
-                                              {
-                                                  label: 'H264_NVENC (NVIDIA)',
-                                                  value: 'h264_nvenc',
-                                              },
-                                          ]
-                                        : []),
-                                ]}
-                            />
-                        </Col>
+                            <Col span={12}>
+                                <ProFormSelect
+                                    name="gifFrameRate"
+                                    layout="horizontal"
+                                    label={
+                                        <FormattedMessage id="settings.functionSettings.videoRecordSettings.gifFrameRate" />
+                                    }
+                                    options={[
+                                        {
+                                            label: '10',
+                                            value: 10,
+                                        },
+                                        {
+                                            label: '15',
+                                            value: 15,
+                                        },
+                                        {
+                                            label: '24',
+                                            value: 24,
+                                        },
+                                    ]}
+                                />
+                            </Col>
 
-                        <Col span={12}>
-                            <ProFormSelect
-                                name="encoderPreset"
-                                layout="horizontal"
-                                label={
-                                    <IconLabel
-                                        label={
-                                            <FormattedMessage id="settings.functionSettings.videoRecordSettings.encoderPreset" />
-                                        }
-                                        tooltipTitle={
-                                            <FormattedMessage id="settings.functionSettings.videoRecordSettings.encoderPreset.tip" />
-                                        }
-                                    />
-                                }
-                                options={encoderPresetOptions}
-                            />
-                        </Col>
+                            <Col span={12}>
+                                <ProFormSelect
+                                    name="gifFormat"
+                                    layout="horizontal"
+                                    label={
+                                        <FormattedMessage id="settings.functionSettings.videoRecordSettings.gifFormat" />
+                                    }
+                                    options={gifFormatOptions}
+                                />
+                            </Col>
+                        </Row>
+                        <Row gutter={token.marginLG}>
+                            <Col span={12}>
+                                <ProFormSelect
+                                    name="microphoneDeviceName"
+                                    layout="horizontal"
+                                    label={
+                                        <FormattedMessage id="settings.functionSettings.videoRecordSettings.microphoneDeviceName" />
+                                    }
+                                    options={microphoneDeviceNameOptions}
+                                />
+                            </Col>
+                        </Row>
+                        <Row gutter={token.marginLG}>
+                            <Col span={12}>
+                                <ProFormSelect
+                                    name="encoder"
+                                    layout="horizontal"
+                                    label={
+                                        <IconLabel
+                                            label={
+                                                <FormattedMessage id="settings.functionSettings.videoRecordSettings.encoder" />
+                                            }
+                                            tooltipTitle={
+                                                <FormattedMessage id="settings.functionSettings.videoRecordSettings.encoder.tip" />
+                                            }
+                                        />
+                                    }
+                                    options={[
+                                        {
+                                            label: 'Libx264 (CPU)',
+                                            value: 'libx264',
+                                        },
+                                        {
+                                            label: 'Libx265 (CPU)',
+                                            value: 'libx265',
+                                        },
+                                        ...(currentPlatform === 'windows'
+                                            ? [
+                                                  {
+                                                      label: 'H264_AMF (AMD)',
+                                                      value: 'h264_amf',
+                                                  },
+                                                  {
+                                                      label: 'H264_NVENC (NVIDIA)',
+                                                      value: 'h264_nvenc',
+                                                  },
+                                              ]
+                                            : []),
+                                    ]}
+                                />
+                            </Col>
 
-                        <Col span={12}>
-                            <ProFormSwitch
-                                name="hwaccel"
-                                layout="horizontal"
-                                label={
-                                    <FormattedMessage id="settings.functionSettings.videoRecordSettings.hwaccel" />
-                                }
-                            />
-                        </Col>
-                    </Row>
-                    <Row gutter={token.marginLG}>
-                        <Col span={24}>
-                            <ProForm.Item
-                                name="saveDirectory"
-                                label={
-                                    <IconLabel
-                                        label={
-                                            <FormattedMessage id="settings.functionSettings.videoRecordSettings.saveDirectory" />
-                                        }
-                                    />
-                                }
-                                required={false}
-                            >
-                                <DirectoryInput />
-                            </ProForm.Item>
-                        </Col>
-                    </Row>
-                </ProForm>
-            </Spin>
+                            <Col span={12}>
+                                <ProFormSelect
+                                    name="encoderPreset"
+                                    layout="horizontal"
+                                    label={
+                                        <IconLabel
+                                            label={
+                                                <FormattedMessage id="settings.functionSettings.videoRecordSettings.encoderPreset" />
+                                            }
+                                            tooltipTitle={
+                                                <FormattedMessage id="settings.functionSettings.videoRecordSettings.encoderPreset.tip" />
+                                            }
+                                        />
+                                    }
+                                    options={encoderPresetOptions}
+                                />
+                            </Col>
 
-            <Divider />
+                            <Col span={12}>
+                                <ProFormSwitch
+                                    name="hwaccel"
+                                    layout="horizontal"
+                                    label={
+                                        <FormattedMessage id="settings.functionSettings.videoRecordSettings.hwaccel" />
+                                    }
+                                />
+                            </Col>
+                        </Row>
+                        <Row gutter={token.marginLG}>
+                            <Col span={24}>
+                                <ProForm.Item
+                                    name="saveDirectory"
+                                    label={
+                                        <IconLabel
+                                            label={
+                                                <FormattedMessage id="settings.functionSettings.videoRecordSettings.saveDirectory" />
+                                            }
+                                        />
+                                    }
+                                    required={false}
+                                >
+                                    <DirectoryInput />
+                                </ProForm.Item>
+                            </Col>
+                        </Row>
+                    </ProForm>
+                </Spin>
+
+                <Divider />
+            </div>
 
             <GroupTitle
                 id="trayIconSettings"

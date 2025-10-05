@@ -36,11 +36,7 @@ import {
     executeTranslate,
     executeTranslateSelectedText,
 } from '@/functions/tools';
-import {
-    createFixedContentWindow,
-    createFullScreenDrawWindow,
-    hasVideoRecordWindow,
-} from '@/commands/core';
+import { createFixedContentWindow, createFullScreenDrawWindow } from '@/commands/core';
 import { IconLabel } from '@/components/iconLable';
 import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
 import { TrayIconStatePublisher } from '@/app/trayIcon';
@@ -55,8 +51,13 @@ import {
 import { FieldTimeOutlined } from '@ant-design/icons';
 import { ChangeDelaySeconds } from './components/changeDelaySeconds';
 import { Tooltip } from 'antd';
-import { getAllWebviewWindows } from '@tauri-apps/api/webviewWindow';
 import { startOrCopyVideo } from '@/functions/videoRecord';
+import {
+    PLUGIN_ID_AI_CHAT,
+    PLUGIN_ID_FFMPEG,
+    PLUGIN_ID_RAPID_OCR,
+    usePluginService,
+} from '../pluginService';
 
 export type GlobalShortcutContextType = {
     disableShortcutKeyRef: React.RefObject<boolean>;
@@ -89,6 +90,7 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
         undefined,
     );
 
+    const { isReadyStatus } = usePluginService();
     const {
         configs: defaultAppFunctionComponentConfigs,
         groupConfigs: defaultAppFunctionComponentGroupConfigs,
@@ -96,192 +98,214 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
         configs: Record<AppFunction, AppFunctionComponentConfig>;
         groupConfigs: Record<AppFunctionGroup, AppFunctionComponentConfig[]>;
     } = useMemo(() => {
-        const configs = Object.keys(defaultAppFunctionConfigs).reduce(
-            (configs, key) => {
-                let buttonTitle;
-                let buttonIcon;
-                let buttonOnClick: () => void | Promise<void>;
-                switch (key) {
-                    case AppFunction.ScreenshotFixed:
-                        buttonTitle = <FormattedMessage id="draw.fixedTool" />;
-                        buttonIcon = <FixedIcon style={{ fontSize: '1.3em' }} />;
-                        buttonOnClick = () => executeScreenshot(ScreenshotType.Fixed);
-                        break;
-                    case AppFunction.ScreenshotDelay:
-                        buttonTitle = (
-                            <Tooltip
-                                title={
-                                    <FormattedMessage id="home.screenshotFunction.screenshotDelay.tip" />
-                                }
-                            >
-                                <div>
-                                    <FormattedMessage
-                                        id="home.screenshotFunction.screenshotDelay"
-                                        values={{
-                                            seconds: <ChangeDelaySeconds />,
-                                        }}
-                                    />
-                                </div>
-                            </Tooltip>
-                        );
-                        buttonIcon = <FieldTimeOutlined />;
-                        buttonOnClick = () => executeScreenshot(ScreenshotType.Delay);
-                        break;
-                    case AppFunction.ScreenshotOcr:
-                        buttonTitle = <FormattedMessage id="draw.ocrDetectTool" />;
-                        buttonIcon = <OcrDetectIcon />;
-                        buttonOnClick = () => executeScreenshot(ScreenshotType.OcrDetect);
-                        break;
-                    case AppFunction.ScreenshotOcrTranslate:
-                        buttonTitle = <FormattedMessage id="draw.ocrTranslateTool" />;
-                        buttonIcon = <OcrTranslateIcon style={{ fontSize: '1.2em' }} />;
-                        buttonOnClick = () => executeScreenshot(ScreenshotType.OcrTranslate);
-                        break;
-                    case AppFunction.ScreenshotFullScreen:
-                        buttonTitle = (
-                            <FormattedMessage id="home.screenshotFunction.screenshotFullScreen" />
-                        );
-                        buttonIcon = <FullScreenIcon />;
-                        buttonOnClick = () => executeScreenshot(ScreenshotType.CaptureFullScreen);
-                        break;
-                    case AppFunction.ScreenshotFocusedWindow:
-                        buttonTitle = (
-                            <IconLabel
-                                label={
-                                    <FormattedMessage id="home.screenshotFunction.screenshotFocusedWindow" />
-                                }
-                            />
-                        );
-                        buttonIcon = <FocusedWindowIcon />;
-                        buttonOnClick = async () => {
-                            executeScreenshotFocusedWindow(getAppSettings());
-                        };
-                        break;
-                    case AppFunction.ScreenshotCopy:
-                        buttonTitle = (
-                            <FormattedMessage id="home.screenshotFunction.screenshotCopy" />
-                        );
-                        buttonIcon = <ClipboardIcon style={{ fontSize: '1.1em' }} />;
-                        buttonOnClick = () => executeScreenshot(ScreenshotType.Copy);
-                        break;
-                    case AppFunction.TranslationSelectText:
-                        buttonTitle = <FormattedMessage id="home.translationSelectText" />;
-                        buttonIcon = <SelectTextIcon style={{ fontSize: '1em' }} />;
-                        buttonOnClick = async () => {
-                            executeTranslateSelectedText();
-                        };
-                        break;
-                    case AppFunction.Translation:
-                        buttonTitle = <FormattedMessage id="home.translation" />;
-                        buttonIcon = <TranslationIcon />;
-                        buttonOnClick = () => {
-                            executeTranslate();
-                        };
-                        break;
-                    case AppFunction.ChatSelectText:
-                        buttonTitle = <FormattedMessage id="home.chatSelectText" />;
-                        buttonIcon = <SelectTextIcon style={{ fontSize: '1em' }} />;
-                        buttonOnClick = async () => {
-                            executeChatSelectedText();
-                        };
-                        break;
-                    case AppFunction.Chat:
-                        buttonTitle = <FormattedMessage id="home.chat" />;
-                        buttonIcon = <ChatIcon />;
-                        buttonOnClick = () => {
-                            executeChat();
-                        };
-                        break;
-                    case AppFunction.TopWindow:
-                        buttonTitle = <FormattedMessage id="home.topWindow" />;
-                        buttonIcon = <TopWindowIcon />;
-                        buttonOnClick = () => executeScreenshot(ScreenshotType.TopWindow);
-                        break;
-                    case AppFunction.FixedContent:
-                        buttonTitle = <FormattedMessage id="home.fixedContent" />;
-                        buttonIcon = <ClipboardIcon style={{ fontSize: '1.1em' }} />;
-                        buttonOnClick = () => createFixedContentWindow();
-                        break;
-                    case AppFunction.FullScreenDraw:
-                        buttonTitle = <FormattedMessage id="home.fullScreenDraw" />;
-                        buttonIcon = <FullScreenDrawIcon style={{ fontSize: '1.2em' }} />;
-                        buttonOnClick = () => createFullScreenDrawWindow();
-                        break;
-                    case AppFunction.VideoRecord:
-                        buttonTitle = (
-                            <FormattedMessage id="home.videoRecordFunction.videoRecord" />
-                        );
-                        buttonIcon = <VideoRecordIcon style={{ fontSize: '1.1em' }} />;
-                        buttonOnClick = () => executeScreenshot(ScreenshotType.VideoRecord);
-                        break;
-                    case AppFunction.VideoRecordCopy:
-                        buttonTitle = <FormattedMessage id="home.videoRecordFunction.copyVideo" />;
-                        buttonIcon = <ClipboardIcon style={{ fontSize: '1.1em' }} />;
-                        buttonOnClick = () => {
-                            startOrCopyVideo();
-                        };
-                        break;
-                    case AppFunction.Screenshot:
-                    default:
-                        buttonTitle = <FormattedMessage id="home.screenshot" />;
-                        buttonIcon = <ScreenshotIcon />;
-                        buttonOnClick = () => executeScreenshot();
-                        break;
+        const configs = Object.keys(defaultAppFunctionConfigs)
+            .filter((key) => {
+                if (key === AppFunction.VideoRecord || key === AppFunction.VideoRecordCopy) {
+                    return isReadyStatus?.(PLUGIN_ID_FFMPEG);
                 }
 
-                const onClick = async () => {
-                    if (disableShortcutKeyRef.current) {
-                        return;
+                if (
+                    key === AppFunction.ScreenshotOcr ||
+                    key === AppFunction.ScreenshotOcrTranslate
+                ) {
+                    return isReadyStatus?.(PLUGIN_ID_RAPID_OCR);
+                }
+
+                if (key === AppFunction.Chat) {
+                    return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
+                }
+
+                return true;
+            })
+            .reduce(
+                (configs, key) => {
+                    let buttonTitle;
+                    let buttonIcon;
+                    let buttonOnClick: () => void | Promise<void>;
+                    switch (key) {
+                        case AppFunction.ScreenshotFixed:
+                            buttonTitle = <FormattedMessage id="draw.fixedTool" />;
+                            buttonIcon = <FixedIcon style={{ fontSize: '1.3em' }} />;
+                            buttonOnClick = () => executeScreenshot(ScreenshotType.Fixed);
+                            break;
+                        case AppFunction.ScreenshotDelay:
+                            buttonTitle = (
+                                <Tooltip
+                                    title={
+                                        <FormattedMessage id="home.screenshotFunction.screenshotDelay.tip" />
+                                    }
+                                >
+                                    <div>
+                                        <FormattedMessage
+                                            id="home.screenshotFunction.screenshotDelay"
+                                            values={{
+                                                seconds: <ChangeDelaySeconds />,
+                                            }}
+                                        />
+                                    </div>
+                                </Tooltip>
+                            );
+                            buttonIcon = <FieldTimeOutlined />;
+                            buttonOnClick = () => executeScreenshot(ScreenshotType.Delay);
+                            break;
+                        case AppFunction.ScreenshotOcr:
+                            buttonTitle = <FormattedMessage id="draw.ocrDetectTool" />;
+                            buttonIcon = <OcrDetectIcon />;
+                            buttonOnClick = () => executeScreenshot(ScreenshotType.OcrDetect);
+                            break;
+                        case AppFunction.ScreenshotOcrTranslate:
+                            buttonTitle = <FormattedMessage id="draw.ocrTranslateTool" />;
+                            buttonIcon = <OcrTranslateIcon style={{ fontSize: '1.2em' }} />;
+                            buttonOnClick = () => executeScreenshot(ScreenshotType.OcrTranslate);
+                            break;
+                        case AppFunction.ScreenshotFullScreen:
+                            buttonTitle = (
+                                <FormattedMessage id="home.screenshotFunction.screenshotFullScreen" />
+                            );
+                            buttonIcon = <FullScreenIcon />;
+                            buttonOnClick = () =>
+                                executeScreenshot(ScreenshotType.CaptureFullScreen);
+                            break;
+                        case AppFunction.ScreenshotFocusedWindow:
+                            buttonTitle = (
+                                <IconLabel
+                                    label={
+                                        <FormattedMessage id="home.screenshotFunction.screenshotFocusedWindow" />
+                                    }
+                                />
+                            );
+                            buttonIcon = <FocusedWindowIcon />;
+                            buttonOnClick = async () => {
+                                executeScreenshotFocusedWindow(getAppSettings());
+                            };
+                            break;
+                        case AppFunction.ScreenshotCopy:
+                            buttonTitle = (
+                                <FormattedMessage id="home.screenshotFunction.screenshotCopy" />
+                            );
+                            buttonIcon = <ClipboardIcon style={{ fontSize: '1.1em' }} />;
+                            buttonOnClick = () => executeScreenshot(ScreenshotType.Copy);
+                            break;
+                        case AppFunction.TranslationSelectText:
+                            buttonTitle = <FormattedMessage id="home.translationSelectText" />;
+                            buttonIcon = <SelectTextIcon style={{ fontSize: '1em' }} />;
+                            buttonOnClick = async () => {
+                                executeTranslateSelectedText();
+                            };
+                            break;
+                        case AppFunction.Translation:
+                            buttonTitle = <FormattedMessage id="home.translation" />;
+                            buttonIcon = <TranslationIcon />;
+                            buttonOnClick = () => {
+                                executeTranslate();
+                            };
+                            break;
+                        case AppFunction.ChatSelectText:
+                            buttonTitle = <FormattedMessage id="home.chatSelectText" />;
+                            buttonIcon = <SelectTextIcon style={{ fontSize: '1em' }} />;
+                            buttonOnClick = async () => {
+                                executeChatSelectedText();
+                            };
+                            break;
+                        case AppFunction.Chat:
+                            buttonTitle = <FormattedMessage id="home.chat" />;
+                            buttonIcon = <ChatIcon />;
+                            buttonOnClick = () => {
+                                executeChat();
+                            };
+                            break;
+                        case AppFunction.TopWindow:
+                            buttonTitle = <FormattedMessage id="home.topWindow" />;
+                            buttonIcon = <TopWindowIcon />;
+                            buttonOnClick = () => executeScreenshot(ScreenshotType.TopWindow);
+                            break;
+                        case AppFunction.FixedContent:
+                            buttonTitle = <FormattedMessage id="home.fixedContent" />;
+                            buttonIcon = <ClipboardIcon style={{ fontSize: '1.1em' }} />;
+                            buttonOnClick = () => createFixedContentWindow();
+                            break;
+                        case AppFunction.FullScreenDraw:
+                            buttonTitle = <FormattedMessage id="home.fullScreenDraw" />;
+                            buttonIcon = <FullScreenDrawIcon style={{ fontSize: '1.2em' }} />;
+                            buttonOnClick = () => createFullScreenDrawWindow();
+                            break;
+                        case AppFunction.VideoRecord:
+                            buttonTitle = (
+                                <FormattedMessage id="home.videoRecordFunction.videoRecord" />
+                            );
+                            buttonIcon = <VideoRecordIcon style={{ fontSize: '1.1em' }} />;
+                            buttonOnClick = () => executeScreenshot(ScreenshotType.VideoRecord);
+                            break;
+                        case AppFunction.VideoRecordCopy:
+                            buttonTitle = (
+                                <FormattedMessage id="home.videoRecordFunction.copyVideo" />
+                            );
+                            buttonIcon = <ClipboardIcon style={{ fontSize: '1.1em' }} />;
+                            buttonOnClick = () => {
+                                startOrCopyVideo();
+                            };
+                            break;
+                        case AppFunction.Screenshot:
+                        default:
+                            buttonTitle = <FormattedMessage id="home.screenshot" />;
+                            buttonIcon = <ScreenshotIcon />;
+                            buttonOnClick = () => executeScreenshot();
+                            break;
                     }
 
-                    await buttonOnClick();
-                };
-                configs[key as AppFunction] = {
-                    ...defaultAppFunctionConfigs[key as AppFunction],
-                    configKey: key as AppFunction,
-                    title: buttonTitle,
-                    icon: buttonIcon,
-                    onClick,
-                    onKeyChange: async (value: string, prevValue: string) => {
-                        if (prevValue) {
-                            if (await isRegistered(prevValue)) {
-                                await unregister(prevValue);
+                    const onClick = async () => {
+                        if (disableShortcutKeyRef.current) {
+                            return;
+                        }
+
+                        await buttonOnClick();
+                    };
+                    configs[key as AppFunction] = {
+                        ...defaultAppFunctionConfigs[key as AppFunction],
+                        configKey: key as AppFunction,
+                        title: buttonTitle,
+                        icon: buttonIcon,
+                        onClick,
+                        onKeyChange: async (value: string, prevValue: string) => {
+                            if (prevValue) {
+                                if (await isRegistered(prevValue)) {
+                                    await unregister(prevValue);
+                                }
                             }
-                        }
 
-                        if (!value) {
-                            return false;
-                        }
+                            if (!value) {
+                                return false;
+                            }
 
-                        if (await isRegistered(value)) {
-                            return false;
-                        }
+                            if (await isRegistered(value)) {
+                                return false;
+                            }
 
-                        try {
-                            await register(value, (event) => {
-                                if (event.state !== 'Released') {
-                                    return;
-                                }
+                            try {
+                                await register(value, (event) => {
+                                    if (event.state !== 'Released') {
+                                        return;
+                                    }
 
-                                if (getTrayIconState()?.disableShortcut) {
-                                    return;
-                                }
+                                    if (getTrayIconState()?.disableShortcut) {
+                                        return;
+                                    }
 
-                                onClick();
-                            });
-                        } catch (error) {
-                            // 将错误传给组件，组件捕获错误来判断快捷键状态
-                            throw error;
-                        }
+                                    onClick();
+                                });
+                            } catch (error) {
+                                // 将错误传给组件，组件捕获错误来判断快捷键状态
+                                throw error;
+                            }
 
-                        return true;
-                    },
-                };
+                            return true;
+                        },
+                    };
 
-                return configs;
-            },
-            {} as Record<AppFunction, AppFunctionComponentConfig>,
-        );
+                    return configs;
+                },
+                {} as Record<AppFunction, AppFunctionComponentConfig>,
+            );
 
         const groupConfigs = Object.values(configs).reduce(
             (groupConfigs, config) => {
@@ -296,7 +320,7 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
         );
 
         return { configs, groupConfigs };
-    }, [getAppSettings, getTrayIconState]);
+    }, [getAppSettings, getTrayIconState, isReadyStatus]);
 
     const [shortcutKeyStatus, setShortcutKeyStatus] =
         useState<Record<AppFunction, ShortcutKeyStatus>>();
@@ -312,6 +336,10 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
 
     const updateShortcutKeyStatus = useCallback(
         async (settings: Record<AppFunction, AppFunctionConfig>) => {
+            if (!isReadyStatus) {
+                return;
+            }
+
             setUpdateShortcutKeyStatusLoading(true);
             const keyStatus: Record<AppFunction, ShortcutKeyStatus> = {} as Record<
                 AppFunction,
@@ -354,38 +382,35 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
             previousAppFunctionSettingsRef.current = settings;
             setUpdateShortcutKeyStatusLoading(false);
         },
-        [appFunctionComponentConfigsKeys, defaultAppFunctionComponentConfigs],
+        [appFunctionComponentConfigsKeys, defaultAppFunctionComponentConfigs, isReadyStatus],
     );
 
-    const [appSettingsLoading, setAppSettingsLoading] = useState(true);
     const [appFunctionSettings, setAppFunctionSettings] =
         useState<AppSettingsData[AppSettingsGroup.AppFunction]>();
+
     useAppSettingsLoad(
-        useCallback(() => {
+        useCallback((settings: AppSettingsData) => {
             unregisterAll().then(() => {
-                setAppSettingsLoading(false);
+                setAppFunctionSettings(settings[AppSettingsGroup.AppFunction]);
             });
         }, []),
     );
 
-    useStateSubscriber(
-        AppSettingsPublisher,
-        useCallback((settings: AppSettingsData) => {
-            setAppFunctionSettings(settings[AppSettingsGroup.AppFunction]);
-        }, []),
-    );
-
+    const updateShortcutKeyStatusPendingRef = useRef(false);
     useEffect(() => {
-        if (appSettingsLoading) {
-            return;
-        }
-
         if (!appFunctionSettings) {
             return;
         }
 
-        updateShortcutKeyStatus(appFunctionSettings);
-    }, [appFunctionSettings, appSettingsLoading, updateShortcutKeyStatus]);
+        if (updateShortcutKeyStatusPendingRef.current) {
+            return;
+        }
+
+        updateShortcutKeyStatusPendingRef.current = true;
+        updateShortcutKeyStatus(appFunctionSettings).then(() => {
+            updateShortcutKeyStatusPendingRef.current = false;
+        });
+    }, [appFunctionSettings, updateShortcutKeyStatus]);
 
     const contextValue = useMemo((): GlobalShortcutContextType => {
         return {
@@ -393,7 +418,7 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
             defaultAppFunctionComponentGroupConfigs,
             shortcutKeyStatus,
             updateShortcutKeyStatusLoading,
-            appSettingsLoading,
+            appSettingsLoading: appFunctionSettings === undefined,
             appFunctionSettings,
         };
     }, [
@@ -401,7 +426,6 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
         defaultAppFunctionComponentGroupConfigs,
         shortcutKeyStatus,
         updateShortcutKeyStatusLoading,
-        appSettingsLoading,
         appFunctionSettings,
     ]);
 

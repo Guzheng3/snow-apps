@@ -17,6 +17,7 @@ import {
     AppSettingsPublisher,
 } from '@/app/contextWrap';
 import { ToolbarPopover } from '@/app/draw/components/drawToolbar/components/toolbarPopover';
+import { PLUGIN_ID_FFMPEG, usePluginService } from '@/components/pluginService';
 
 export enum ExtraToolList {
     None = 0,
@@ -25,9 +26,8 @@ export enum ExtraToolList {
 }
 
 export const ExtraTool: React.FC<{
-    toolIcon: React.ReactNode;
     onToolClickAction: (tool: DrawState) => void;
-}> = ({ toolIcon, onToolClickAction }) => {
+}> = ({ onToolClickAction }) => {
     const intl = useIntl();
     const { token } = theme.useToken();
 
@@ -153,22 +153,26 @@ export const ExtraTool: React.FC<{
         />
     );
 
-    let mainToolbarButton = toolIcon;
+    const { isReadyStatus } = usePluginService();
+
+    let mainToolbarButton = isReadyStatus?.(PLUGIN_ID_FFMPEG)
+        ? videoRecordButton
+        : scanQrcodeButton;
 
     if (lastActiveTool === ExtraToolList.ScanQrcode) {
         mainToolbarButton = scanQrcodeButton;
-    } else if (lastActiveTool === ExtraToolList.VideoRecord) {
+    } else if (lastActiveTool === ExtraToolList.VideoRecord && isReadyStatus?.(PLUGIN_ID_FFMPEG)) {
         mainToolbarButton = videoRecordButton;
     }
 
     return (
         <ToolbarPopover
-            trigger="hover"
+            trigger={isReadyStatus?.(PLUGIN_ID_FFMPEG) ? 'hover' : []}
             content={
                 <Flex align="center" gap={token.paddingXS} className="popover-toolbar">
                     {scanQrcodeButton}
 
-                    {videoRecordButton}
+                    {isReadyStatus?.(PLUGIN_ID_FFMPEG) && videoRecordButton}
                 </Flex>
             }
         >

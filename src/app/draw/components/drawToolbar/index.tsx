@@ -25,7 +25,6 @@ import {
     ScrollScreenshotIcon,
     SerialNumberIcon,
     TextIcon,
-    ToolIcon,
 } from '@/components/icons';
 import {
     CaptureEvent,
@@ -69,6 +68,7 @@ import { getExcalidrawCanvas } from '@/utils/excalidraw';
 import { ExtraTool } from './components/tools/extraTool';
 import { DrawExtraTool } from './components/tools/drawExtraTool';
 import { HighlightTool } from './components/tools/highlightTool';
+import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
 
 export type DrawToolbarProps = {
     actionRef: React.RefObject<DrawToolbarActionType | undefined>;
@@ -202,6 +202,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
         [onDraggingChange],
     );
 
+    const { isReadyStatus, isReady } = usePluginService();
     const onToolClick = useCallback(
         (drawState: DrawState) => {
             const prev = getDrawState();
@@ -420,7 +421,9 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     break;
                 case DrawState.OcrDetect:
                 case DrawState.OcrTranslate:
-                    onOcrDetect();
+                    if (isReady?.(PLUGIN_ID_RAPID_OCR)) {
+                        onOcrDetect();
+                    }
                     break;
                 case DrawState.VideoRecord:
                 case DrawState.ScanQrcode:
@@ -443,6 +446,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
             enableLockDrawToolRef,
             getDrawState,
             intl,
+            isReady,
             message,
             onOcrDetect,
             selectLayerActionRef,
@@ -819,26 +823,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 
                             <div className="draw-toolbar-splitter" />
 
-                            <ExtraTool
-                                onToolClickAction={onToolClick}
-                                // 额外工具
-                                toolIcon={
-                                    <ToolButton
-                                        hidden={customToolbarToolHiddenMap?.[DrawState.ExtraTools]}
-                                        icon={<ToolIcon style={{ fontSize: '0.95em' }} />}
-                                        drawState={DrawState.ExtraTools}
-                                        extraDrawState={[
-                                            DrawState.ScanQrcode,
-                                            DrawState.VideoRecord,
-                                        ]}
-                                        disable={enableScrollScreenshot}
-                                        onClick={() => {
-                                            // 现在使用 Popover 来控制额外工具的显示
-                                            // onToolClick(DrawState.ExtraTools);
-                                        }}
-                                    />
-                                }
-                            />
+                            <ExtraTool onToolClickAction={onToolClick} />
 
                             {/* 固定到屏幕 */}
                             <ToolButton
@@ -861,11 +846,17 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 
                             {/* OCR */}
                             <ToolButton
-                                hidden={customToolbarToolHiddenMap?.[DrawState.OcrDetect]}
+                                hidden={
+                                    customToolbarToolHiddenMap?.[DrawState.OcrDetect] ||
+                                    !isReadyStatus?.(PLUGIN_ID_RAPID_OCR)
+                                }
                                 componentKey={KeyEventKey.OcrDetectTool}
                                 icon={<OcrDetectIcon style={{ fontSize: '0.88em' }} />}
                                 drawState={DrawState.OcrDetect}
-                                disable={disableNormalScreenshotTool}
+                                disable={
+                                    disableNormalScreenshotTool ||
+                                    !isReadyStatus?.(PLUGIN_ID_RAPID_OCR)
+                                }
                                 onClick={() => {
                                     onToolClick(DrawState.OcrDetect);
                                 }}
@@ -873,11 +864,17 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 
                             {/* OCR 翻译 */}
                             <ToolButton
-                                hidden={customToolbarToolHiddenMap?.[DrawState.OcrTranslate]}
+                                hidden={
+                                    customToolbarToolHiddenMap?.[DrawState.OcrTranslate] ||
+                                    !isReadyStatus?.(PLUGIN_ID_RAPID_OCR)
+                                }
                                 componentKey={KeyEventKey.OcrTranslateTool}
                                 icon={<OcrTranslateIcon style={{ fontSize: '1em' }} />}
                                 drawState={DrawState.OcrTranslate}
-                                disable={disableNormalScreenshotTool}
+                                disable={
+                                    disableNormalScreenshotTool ||
+                                    !isReadyStatus?.(PLUGIN_ID_RAPID_OCR)
+                                }
                                 onClick={() => {
                                     onToolClick(DrawState.OcrTranslate);
                                 }}

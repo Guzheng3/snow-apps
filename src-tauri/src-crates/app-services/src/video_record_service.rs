@@ -3,8 +3,10 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 #[cfg(target_os = "macos")]
 use snow_shot_app_utils::monitor_info::MonitorList;
-use std::{io::Result, path::PathBuf};
-use tauri::{Manager, path::BaseDirectory};
+use std::{
+    io::Result,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Copy)]
 pub enum VideoRecordState {
@@ -88,16 +90,11 @@ impl VideoRecordService {
         }
     }
 
-    pub fn init(&mut self, app: &tauri::AppHandle) {
+    pub fn init(&mut self, ffmpeg_plugin_dir: &Path) {
         if self.ffmpeg_path.is_none() {
-            let resource_path = match app.path().resolve("ffmpeg", BaseDirectory::Resource) {
-                Ok(resource_path) => resource_path,
-                Err(_) => panic!("[VideoRecordService] Failed to get resource path"),
-            };
-
             #[cfg(target_os = "windows")]
             {
-                self.ffmpeg_path = Some(resource_path.join("ffmpeg.exe"));
+                self.ffmpeg_path = Some(ffmpeg_plugin_dir.join("ffmpeg.exe"));
             }
 
             #[cfg(target_os = "macos")]
@@ -105,7 +102,7 @@ impl VideoRecordService {
                 use std::fs;
                 use std::os::unix::fs::PermissionsExt;
 
-                let ffmpeg_path = resource_path.join("ffmpeg");
+                let ffmpeg_path = ffmpeg_plugin_dir.join("ffmpeg");
 
                 // 为 ffmpeg 文件添加可执行权限
                 if ffmpeg_path.exists() {

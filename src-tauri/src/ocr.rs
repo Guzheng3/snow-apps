@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use tauri::command;
 use tokio::sync::Mutex;
 
@@ -6,11 +8,11 @@ use snow_shot_tauri_commands_ocr::OcrDetectResult;
 
 #[command]
 pub async fn ocr_init(
-    app: tauri::AppHandle,
     ocr_instance: tauri::State<'_, Mutex<OcrService>>,
+    orc_plugin_path: PathBuf,
     model: OcrModel,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_ocr::ocr_init(app, ocr_instance, model).await
+    snow_shot_tauri_commands_ocr::ocr_init(orc_plugin_path, ocr_instance, model).await
 }
 
 #[command]

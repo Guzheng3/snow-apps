@@ -101,7 +101,8 @@ export const settings = {
     'settings.functionSettings.chatSettings.autoCreateNewSessionOnCloseWindow':
         '关闭窗口时自动创建新会话',
     'settings.functionSettings.chatSettings.apiConfig': 'API 配置',
-    'settings.functionSettings.chatSettings.apiConfig.tip': '仅支持兼容 OpenAI SDK 的 API 配置',
+    'settings.functionSettings.chatSettings.apiConfig.tip':
+        '仅支持兼容 OpenAI SDK 的 API 配置，新增配置后将自动支持 AI 翻译',
     'settings.functionSettings.chatSettings.apiConfig.add': '添加 API 配置',
     'settings.functionSettings.chatSettings.apiConfig.apiKey': 'API Key',
     'settings.functionSettings.chatSettings.apiConfig.apiKey.tip':
@@ -170,8 +171,7 @@ export const settings = {
     'settings.functionSettings.outputSettings.fastSaveFileNameFormatPreview': '快速保存文件名预览',
     'settings.functionSettings.outputSettings.focusedWindowFileNameFormat':
         '截图当前具有焦点的窗口文件名格式',
-    'settings.functionSettings.outputSettings.fullScreenFileNameFormat':
-        '截取全屏文件名格式',
+    'settings.functionSettings.outputSettings.fullScreenFileNameFormat': '截取全屏文件名格式',
     'settings.functionSettings.outputSettings.focusedWindowFileNameFormatPreview':
         '截图当前具有焦点的窗口文件名预览',
     'settings.functionSettings.outputSettings.fullScreenFileNameFormatPreview':

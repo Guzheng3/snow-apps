@@ -6,8 +6,13 @@ import { autoStartDisable, autoStartEnable, setEnableProxy, setRunLog } from '@/
 import { ocrInit } from '@/commands/ocr';
 import { videoRecordInit } from '@/commands/videoRecord';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
+import {
+    PLUGIN_ID_FFMPEG,
+    PLUGIN_ID_RAPID_OCR,
+    usePluginService,
+} from '@/components/pluginService';
 import { CaptureHistory } from '@/utils/captureHistory';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export const InitService = () => {
     // 清除无效的截图历史
@@ -17,58 +22,87 @@ export const InitService = () => {
         await captureHistory.clearExpired(appSettings);
     }, []);
 
+    const hasInitOcr = useRef(false);
     const hasClearedCaptureHistory = useRef(false);
     const hasInitAutoStart = useRef(false);
     const hasInitEnableProxy = useRef(false);
     const hasInitRunLog = useRef(false);
+
+    const [appSettings, setAppSettings] = useState<AppSettingsData | undefined>(undefined);
+    const [prevAppSettings, setPrevAppSettings] = useState<AppSettingsData | undefined>(undefined);
+
+    const { isReadyStatus, pluginConfigRef } = usePluginService();
+
+    const initServices = useCallback(async () => {
+        if (!appSettings || !isReadyStatus) {
+            return;
+        }
+
+        if (
+            (!hasInitOcr.current ||
+                (prevAppSettings &&
+                    appSettings[AppSettingsGroup.SystemScreenshot].ocrModel !==
+                        prevAppSettings[AppSettingsGroup.SystemScreenshot].ocrModel)) &&
+            isReadyStatus(PLUGIN_ID_RAPID_OCR)
+        ) {
+            hasInitOcr.current = true;
+
+            ocrInit(
+                await pluginConfigRef.current!.getPluginDirPath(PLUGIN_ID_RAPID_OCR),
+                appSettings[AppSettingsGroup.SystemScreenshot].ocrModel,
+            );
+        }
+
+        if (!hasClearedCaptureHistory.current) {
+            hasClearedCaptureHistory.current = true;
+
+            clearCaptureHistory(appSettings);
+        }
+
+        if (
+            !hasInitEnableProxy.current ||
+            (prevAppSettings &&
+                appSettings[AppSettingsGroup.SystemNetwork].enableProxy !==
+                    prevAppSettings[AppSettingsGroup.SystemNetwork].enableProxy)
+        ) {
+            hasInitEnableProxy.current = true;
+
+            setEnableProxy(appSettings[AppSettingsGroup.SystemNetwork].enableProxy);
+        }
+
+        if (
+            process.env.NODE_ENV !== 'development' &&
+            (!hasInitAutoStart.current ||
+                (prevAppSettings &&
+                    appSettings[AppSettingsGroup.SystemCommon].autoStart !==
+                        prevAppSettings[AppSettingsGroup.SystemCommon].autoStart))
+        ) {
+            hasInitAutoStart.current = true;
+
+            if (appSettings[AppSettingsGroup.SystemCommon].autoStart) {
+                autoStartEnable();
+            } else {
+                autoStartDisable();
+            }
+        }
+
+        if (
+            !hasInitRunLog.current ||
+            (prevAppSettings &&
+                appSettings[AppSettingsGroup.SystemCommon].runLog !==
+                    prevAppSettings[AppSettingsGroup.SystemCommon].runLog)
+        ) {
+            hasInitRunLog.current = true;
+
+            setRunLog(appSettings[AppSettingsGroup.SystemCommon].runLog);
+        }
+    }, [appSettings, clearCaptureHistory, pluginConfigRef, isReadyStatus, prevAppSettings]);
+
     useAppSettingsLoad(
-        useCallback(
-            (appSettings, prevAppSettings) => {
-                ocrInit(appSettings[AppSettingsGroup.SystemScreenshot].ocrModel);
-
-                if (!hasClearedCaptureHistory.current) {
-                    hasClearedCaptureHistory.current = true;
-
-                    clearCaptureHistory(appSettings);
-                }
-
-                if (
-                    !hasInitEnableProxy.current ||
-                    appSettings[AppSettingsGroup.SystemNetwork].enableProxy !==
-                        prevAppSettings?.[AppSettingsGroup.SystemNetwork].enableProxy
-                ) {
-                    hasInitEnableProxy.current = true;
-
-                    setEnableProxy(appSettings[AppSettingsGroup.SystemNetwork].enableProxy);
-                }
-
-                if (
-                    process.env.NODE_ENV !== 'development' &&
-                    (!hasInitAutoStart.current ||
-                        appSettings[AppSettingsGroup.SystemCommon].autoStart !==
-                            prevAppSettings?.[AppSettingsGroup.SystemCommon].autoStart)
-                ) {
-                    hasInitAutoStart.current = true;
-
-                    if (appSettings[AppSettingsGroup.SystemCommon].autoStart) {
-                        autoStartEnable();
-                    } else {
-                        autoStartDisable();
-                    }
-                }
-
-                if (
-                    !hasInitRunLog.current ||
-                    appSettings[AppSettingsGroup.SystemCommon].runLog !==
-                        prevAppSettings?.[AppSettingsGroup.SystemCommon].runLog
-                ) {
-                    hasInitRunLog.current = true;
-
-                    setRunLog(appSettings[AppSettingsGroup.SystemCommon].runLog);
-                }
-            },
-            [clearCaptureHistory],
-        ),
+        useCallback((appSettings, prevAppSettings) => {
+            setAppSettings(appSettings);
+            setPrevAppSettings(prevAppSettings);
+        }, []),
         true,
     );
 
@@ -81,8 +115,26 @@ export const InitService = () => {
         inited.current = true;
 
         initUiElements();
-        videoRecordInit();
     }, []);
+
+    useEffect(() => {
+        initServices();
+    }, [initServices]);
+
+    const hasInitVideoRecord = useRef(false);
+    useEffect(() => {
+        if (hasInitVideoRecord.current) {
+            return;
+        }
+
+        if (isReadyStatus?.(PLUGIN_ID_FFMPEG)) {
+            hasInitVideoRecord.current = true;
+
+            pluginConfigRef.current!.getPluginDirPath(PLUGIN_ID_FFMPEG).then((ffmpegPluginDir) => {
+                videoRecordInit(ffmpegPluginDir);
+            });
+        }
+    }, [isReadyStatus, pluginConfigRef]);
 
     return null;
 };

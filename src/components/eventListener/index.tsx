@@ -33,6 +33,8 @@ import {
     FIXED_CONTENT_FOCUS_MODE_HIDE_OTHER_WINDOW,
     FIXED_CONTENT_FOCUS_MODE_SHOW_ALL_WINDOW,
 } from '@/functions/fixedContent';
+import { PLUGIN_EVENT_PLUGIN_STATUS_CHANGE } from '../pluginService';
+import { usePluginService } from '../pluginService';
 
 type Listener = {
     event: string;
@@ -136,6 +138,9 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
             await ocrRelease();
         }, 16 * 1000);
     }, []);
+
+    const { refreshPluginStatusThrottle } = usePluginService();
+
     useEffect(() => {
         if (inited.current) {
             return;
@@ -219,6 +224,13 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
         defaultListener.push({
             event: LISTEN_KEY_SERVICE_KEY_UP_EMIT_KEY,
             callback: listenKeyCallback(LISTEN_KEY_SERVICE_KEY_UP_EMIT_KEY),
+        });
+
+        defaultListener.push({
+            event: PLUGIN_EVENT_PLUGIN_STATUS_CHANGE,
+            callback: async () => {
+                refreshPluginStatusThrottle();
+            },
         });
 
         if (mainWindow) {
@@ -423,6 +435,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
         isCaptureHistoryPage,
         message,
         releaseOcrSessionAction,
+        refreshPluginStatusThrottle,
     ]);
 
     const eventListenerContextValue = useMemo(() => {

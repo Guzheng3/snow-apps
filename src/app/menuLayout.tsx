@@ -37,7 +37,6 @@ import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { zhHans } from '@/messages/zhHans';
 import { useIntl } from 'react-intl';
 import { TrayIconLoader, TrayIconStatePublisher } from './trayIcon';
-import { EventListener } from '@/components/eventListener';
 import { zhHant } from '@/messages/zhHant';
 import { en } from '@/messages/en';
 import { ItemType, MenuItemType } from 'antd/es/menu/interface';
@@ -49,6 +48,9 @@ import { InitService } from '@/components/initService';
 import * as tauriOs from '@tauri-apps/plugin-os';
 import { getPlatformValue } from '@/utils';
 import { GlobalShortcut } from '@/components/globalShortcut';
+import { PersonalizationIcon } from '@/components/icons';
+import { EventListener } from '@/components/eventListener';
+import { PLUGIN_ID_AI_CHAT, PLUGIN_ID_FFMPEG, usePluginService } from '@/components/pluginService';
 
 type MenuItem = ItemType<MenuItemType>;
 
@@ -408,7 +410,7 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
 
     const { token } = theme.useToken();
-
+    const { isReadyStatus } = usePluginService();
     const router = useRouter();
     const routes = useMemo(() => {
         const routes: RouteItem[] = [
@@ -431,10 +433,24 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
                         label: intl.formatMessage({ id: 'home.translationFunction' }),
                     },
                     {
+                        key: 'videoRecordFunction',
+                        label: intl.formatMessage({ id: 'home.videoRecordFunction' }),
+                    },
+                    {
                         key: 'otherFunction',
                         label: intl.formatMessage({ id: 'home.otherFunction' }),
                     },
-                ],
+                ].filter((item) => {
+                    if (item.key === 'videoRecordFunction') {
+                        return isReadyStatus?.(PLUGIN_ID_FFMPEG);
+                    }
+
+                    if (item.key === 'chatFunction') {
+                        return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
+                    }
+
+                    return true;
+                }),
             },
             {
                 key: '/tools',
@@ -476,6 +492,33 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
                             {
                                 key: 'captureHistory',
                                 label: intl.formatMessage({ id: 'menu.tools.captureHistory' }),
+                            },
+                        ],
+                    },
+                ].filter((item) => {
+                    if (item.key === '/tools/chat') {
+                        return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
+                    }
+
+                    return true;
+                }),
+            },
+            {
+                key: '/personalization',
+                path: undefined,
+                label: intl.formatMessage({ id: 'menu.personalization' }),
+                icon: <PersonalizationIcon />,
+                tabs: [],
+                children: [
+                    {
+                        key: '/personalization/plugins',
+                        path: '/personalization/plugins',
+                        label: intl.formatMessage({ id: 'menu.personalization.plugins' }),
+                        hideTabs: true,
+                        tabs: [
+                            {
+                                key: 'plugins',
+                                label: intl.formatMessage({ id: 'menu.personalization.plugins' }),
                             },
                         ],
                     },
@@ -563,7 +606,13 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
                                     id: 'settings.functionSettings.outputSettings',
                                 }),
                             },
-                        ],
+                        ].filter((item) => {
+                            if (item.key === 'videoRecordSettings') {
+                                return isReadyStatus?.(PLUGIN_ID_FFMPEG);
+                            }
+
+                            return true;
+                        }),
                     },
                     {
                         key: '/settings/hotKeySettings',
@@ -590,7 +639,13 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
                                 key: 'drawingHotKey',
                                 label: intl.formatMessage({ id: 'settings.drawingHotKey' }),
                             },
-                        ],
+                        ].filter((item) => {
+                            if (item.key === 'chat') {
+                                return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
+                            }
+
+                            return true;
+                        }),
                     },
                     {
                         key: '/settings/systemSettings',
@@ -640,7 +695,13 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
                                     id: 'settings.systemSettings.dataFile',
                                 }),
                             },
-                        ],
+                        ].filter(() => {
+                            // if (item.key === 'chatSettings') {
+                            //     return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
+                            // }
+
+                            return true;
+                        }),
                     },
                 ],
             },
@@ -659,7 +720,7 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
         ];
 
         return routes;
-    }, [intl]);
+    }, [intl, isReadyStatus]);
     const { menuItems, routeTabsMap } = useMemo(() => {
         const routeTabsMap: Record<string, RouteMapItem> = {};
 
@@ -752,7 +813,7 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const ML = React.memo(withStatePublisher(MenuLayoutCore, TrayIconStatePublisher));
 
-export const MenuLayout = ({ children }: { children: React.ReactNode }) => {
+export const MenuLayoutProvider = ({ children }: { children: React.ReactNode }) => {
     const pathname = usePathname();
     const noLayout = useMemo(
         () =>
@@ -767,16 +828,23 @@ export const MenuLayout = ({ children }: { children: React.ReactNode }) => {
     const mainWindow = !noLayout;
     return (
         <MenuLayoutContext.Provider value={{ noLayout, pathname, mainWindow }}>
-            <EventListener>
-                {noLayout ? (
-                    children
-                ) : (
-                    <>
-                        <InitService />
-                        <ML>{children}</ML>
-                    </>
-                )}
-            </EventListener>
+            {children}
         </MenuLayoutContext.Provider>
+    );
+};
+
+export const MenuLayout = ({ children }: { children: React.ReactNode }) => {
+    const { noLayout } = useContext(MenuLayoutContext);
+    return (
+        <EventListener>
+            {noLayout ? (
+                children
+            ) : (
+                <>
+                    <InitService />
+                    <ML>{children}</ML>
+                </>
+            )}
+        </EventListener>
     );
 };

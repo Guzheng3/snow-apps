@@ -2,12 +2,13 @@ pub mod core;
 pub mod file;
 pub mod listen_key;
 pub mod ocr;
+pub mod plugin;
 pub mod screenshot;
 pub mod scroll_screenshot;
 pub mod video_record;
 
-use std::sync::Arc;
 use snow_shot_app_services::listen_mouse_service;
+use std::sync::Arc;
 use tauri::Emitter;
 use tokio::sync::Mutex;
 
@@ -23,6 +24,7 @@ use snow_shot_app_services::listen_key_service;
 use snow_shot_app_services::ocr_service::OcrService;
 use snow_shot_app_services::video_record_service;
 use snow_shot_app_shared::EnigoManager;
+use snow_shot_plugin_service::plugin_service;
 
 #[cfg(feature = "dhat-heap")]
 pub static PROFILER: std::sync::LazyLock<Mutex<Option<dhat::Profiler>>> =
@@ -54,6 +56,8 @@ pub fn run() {
 
     let enable_run_log = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let enable_run_log_clone = enable_run_log.clone();
+
+    let plugin_service = Arc::new(plugin_service::PluginService::new());
 
     use tauri_plugin_log::{Target, TargetKind};
 
@@ -179,6 +183,7 @@ pub fn run() {
         .manage(listen_mouse_service)
         .manage(file_cache_service)
         .manage(enable_run_log_clone)
+        .manage(plugin_service)
         .invoke_handler(tauri::generate_handler![
             screenshot::capture_current_monitor,
             screenshot::capture_all_monitors,
@@ -252,6 +257,11 @@ pub fn run() {
             file::text_file_read,
             file::text_file_write,
             file::text_file_clear,
+            plugin::plugin_init,
+            plugin::plugin_get_plugins_status,
+            plugin::plugin_register_plugin,
+            plugin::plugin_install_plugin,
+            plugin::plugin_uninstall_plugin,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {

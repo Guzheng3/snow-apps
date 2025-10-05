@@ -7,6 +7,7 @@ import { common } from './common';
 import { about } from './about';
 import { fullScreenDraw } from './fullScreenDraw';
 import { videoRecord } from './videoRecord';
+import { plugin } from './plugin';
 
 export const zhHans = {
     ...menu,
@@ -18,4 +19,5 @@ export const zhHans = {
     ...fullScreenDraw,
     ...about,
     ...videoRecord,
+    ...plugin,
 };

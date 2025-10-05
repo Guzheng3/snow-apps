@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use tokio::sync::Mutex;
 
 use tauri::command;
@@ -7,11 +9,11 @@ use snow_shot_app_services::video_record_service::VideoRecordService;
 
 #[command]
 pub async fn video_record_init(
-    app: tauri::AppHandle,
     video_service: tauri::State<'_, Mutex<VideoRecordService>>,
+    ffmpeg_plugin_dir: PathBuf,
 ) -> Result<(), String> {
     let mut service = video_service.lock().await;
-    service.init(&app);
+    service.init(&ffmpeg_plugin_dir);
     Ok(())
 }
 
