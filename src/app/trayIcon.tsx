@@ -2,7 +2,7 @@
 
 import { defaultWindowIcon } from '@tauri-apps/api/app';
 import { TrayIcon, TrayIconOptions } from '@tauri-apps/api/tray';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import React from 'react';
 import { Menu, MenuItem } from '@tauri-apps/api/menu';
@@ -17,7 +17,7 @@ import {
     TrayIconClickAction,
     TrayIconDefaultIcon,
 } from './contextWrap';
-import { isEqual } from 'es-toolkit';
+import { debounce, isEqual } from 'es-toolkit';
 import { AppFunction, AppFunctionConfig } from './extra';
 import {
     executeScreenshot,
@@ -516,8 +516,22 @@ const TrayIconLoaderComponent = () => {
         isReadyStatus,
     ]);
 
+    const initTrayIconPendingRef = useRef(false);
+    const initTrayIconDebounce = useMemo(() => {
+        return debounce(async () => {
+            if (initTrayIconPendingRef.current) {
+                return;
+            }
+
+            initTrayIconPendingRef.current = true;
+            initTrayIcon().finally(() => {
+                initTrayIconPendingRef.current = false;
+            });
+        }, 100);
+    }, [initTrayIcon]);
+
     useEffect(() => {
-        initTrayIcon();
+        initTrayIconDebounce();
 
         const handleBeforeUnload = async () => {
             await closeTrayIcon();
@@ -529,7 +543,7 @@ const TrayIconLoaderComponent = () => {
             handleBeforeUnload();
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
-    }, [closeTrayIcon, initTrayIcon]);
+    }, [closeTrayIcon, initTrayIconDebounce]);
 
     return null;
 };
