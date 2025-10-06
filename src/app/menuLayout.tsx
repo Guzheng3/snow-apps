@@ -545,6 +545,10 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
                                 label: intl.formatMessage({ id: 'settings.screenshotSettings' }),
                             },
                             {
+                                key: 'fixedContentSettings',
+                                label: intl.formatMessage({ id: 'settings.fixedContentSettings' }),
+                            },
+                            {
                                 key: 'trayIconSettings',
                                 label: intl.formatMessage({
                                     id: 'settings.commonSettings.trayIconSettings',

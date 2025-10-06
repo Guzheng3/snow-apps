@@ -16,6 +16,7 @@ const APP_CONFIG_DIR: &str = "app_config_dir";
 const APP_CONFIG_BASE_DIR: &str = "app_config_base_dir";
 const APP_CONFIG_DIR_NAME: &str = "configs";
 const APP_CUSTOM_CONFIG_DIR_DATA_FILE_NAME: &str = "__custom_config_dir";
+const APP_PORTABLE_DIR_DATA_FILE_NAME: &str = "__portable";
 
 impl FileCacheService {
     pub fn new() -> Self {
@@ -32,6 +33,41 @@ impl FileCacheService {
             .app_config_dir()
             .map_err(|e| e.to_string())?
             .join(APP_CONFIG_DIR_NAME))
+    }
+
+    /// 获取便携版配置目录
+    fn get_app_portable_config_dir(&self) -> Option<PathBuf> {
+        #[cfg(not(target_os = "windows"))]
+        {
+            return None;
+        }
+
+        // 判断是否是便携版
+        #[cfg(target_os = "windows")]
+        {
+            // 获取应用程序所在目录
+            use std::env;
+            let exe_path = match env::current_exe() {
+                Ok(path) => path,
+                Err(_) => return None,
+            };
+
+            let exe_dir_path = match exe_path.parent() {
+                Some(path) => path,
+                None => return None,
+            };
+
+            let portable_config_file_path = exe_dir_path.join(APP_PORTABLE_DIR_DATA_FILE_NAME);
+            if portable_config_file_path.exists() {
+                return Some(
+                    exe_dir_path
+                        .to_path_buf()
+                        .join(APP_CONFIG_DIR_NAME),
+                );
+            } else {
+                return None;
+            }
+        }
     }
 
     fn get_app_custom_config_dir(&self, app: &tauri::AppHandle) -> Option<PathBuf> {
@@ -101,7 +137,9 @@ impl FileCacheService {
 
         let path = match local_config_dir {
             Some(path) => path,
-            None => self.get_app_global_config_dir(app)?,
+            None => self
+                .get_app_portable_config_dir()
+                .unwrap_or(self.get_app_global_config_dir(app)?),
         };
 
         self.env_path_cache
