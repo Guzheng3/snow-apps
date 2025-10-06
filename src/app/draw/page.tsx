@@ -349,7 +349,7 @@ const DrawPageCore: React.FC<{
                 // 隔一段时间释放，防止释放中途用户唤起
                 closeWindowAfterDelay(1000 * 3),
             ]);
-        }, 1000);
+        }, 1000 * 16);
     }, []);
 
     const finishCapture = useCallback<DrawContextType['finishCapture']>(

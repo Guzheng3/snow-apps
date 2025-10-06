@@ -136,7 +136,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
     const releaseOcrSessionAction = useMemo(() => {
         return debounce(async () => {
             await ocrRelease();
-        }, 1000);
+        }, 16 * 1000);
     }, []);
 
     const { refreshPluginStatusThrottle } = usePluginService();

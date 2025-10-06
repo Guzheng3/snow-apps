@@ -184,7 +184,7 @@ export default function HotKeySettings() {
         });
 
         return groupFormItemMap;
-    }, [keyEvent, updateAppSettings, isReadyStatus]);
+    }, [keyEvent, updateAppSettings]);
 
     const keyEventFormItemListKeys = Object.keys(keyEventFormItemList) as KeyEventGroup[];
     return (
