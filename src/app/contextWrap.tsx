@@ -297,6 +297,10 @@ export type AppSettingsData = {
     [AppSettingsGroup.SystemScreenshot]: {
         historyValidDuration: HistoryValidDuration;
         ocrModel: OcrModel;
+        /** OCR 热启动 */
+        ocrHotStart: boolean;
+        /** OCR 模型写入内存 */
+        ocrModelWriteToMemory: boolean;
         ocrDetectAngle: boolean;
         /** 启用浏览器剪贴板 */
         enableBrowserClipboard: boolean;
@@ -485,6 +489,8 @@ export const defaultAppSettingsData: AppSettingsData = {
     },
     [AppSettingsGroup.SystemScreenshot]: {
         ocrModel: OcrModel.RapidOcrV4,
+        ocrHotStart: true,
+        ocrModelWriteToMemory: false,
         ocrDetectAngle: false,
         historyValidDuration: HistoryValidDuration.Week,
         enableBrowserClipboard: true,
@@ -1511,6 +1517,16 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.ocrModel === 'string'
                             ? (newSettings.ocrModel as OcrModel)
                             : (prevSettings?.ocrModel ?? defaultAppSettingsData[group].ocrModel),
+                    ocrHotStart:
+                        typeof newSettings?.ocrHotStart === 'boolean'
+                            ? newSettings.ocrHotStart
+                            : (prevSettings?.ocrHotStart ??
+                              defaultAppSettingsData[group].ocrHotStart),
+                    ocrModelWriteToMemory:
+                        typeof newSettings?.ocrModelWriteToMemory === 'boolean'
+                            ? newSettings.ocrModelWriteToMemory
+                            : (prevSettings?.ocrModelWriteToMemory ??
+                              defaultAppSettingsData[group].ocrModelWriteToMemory),
                     ocrDetectAngle:
                         typeof newSettings?.ocrDetectAngle === 'boolean'
                             ? newSettings.ocrDetectAngle

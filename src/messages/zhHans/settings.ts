@@ -331,6 +331,12 @@ export const settings = {
     'settings.systemSettings.screenshotSettings.ocrModel': 'OCR 模型',
     'settings.systemSettings.screenshotSettings.ocrModel.rapidOcrV4': 'Rapid OCR V4',
     'settings.systemSettings.screenshotSettings.ocrModel.rapidOcrV5': 'Rapid OCR V5',
+    'settings.systemSettings.screenshotSettings.ocrHotStart': 'OCR 热启动',
+    'settings.systemSettings.screenshotSettings.ocrHotStart.tip':
+        '预加载 OCR 模型，提高 OCR 的识别速度，但会提高内存占用',
+    'settings.systemSettings.screenshotSettings.ocrModelWriteToMemory': 'OCR 模型写入内存',
+    'settings.systemSettings.screenshotSettings.ocrModelWriteToMemory.tip':
+        '将 OCR 模型写入内存，避免重复读写硬盘数据，提高 OCR 的加载速度，但会提高内存占用',
     'settings.systemSettings.screenshotSettings.ocrDetectAngle': 'OCR 检测角度',
     'settings.systemSettings.screenshotSettings.historyValidDuration': '截图历史有效时长',
     'settings.systemSettings.screenshotSettings.enableBrowserClipboard': '使用浏览器剪贴板',

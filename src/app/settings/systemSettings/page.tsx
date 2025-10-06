@@ -392,6 +392,40 @@ export default function SystemSettings() {
                     {isReadyStatus?.(PLUGIN_ID_RAPID_OCR) && (
                         <Row gutter={token.marginLG}>
                             <Col span={12}>
+                                <ProFormSwitch
+                                    label={
+                                        <IconLabel
+                                            label={
+                                                <FormattedMessage id="settings.systemSettings.screenshotSettings.ocrHotStart" />
+                                            }
+                                            tooltipTitle={
+                                                <FormattedMessage id="settings.systemSettings.screenshotSettings.ocrHotStart.tip" />
+                                            }
+                                        />
+                                    }
+                                    name="ocrHotStart"
+                                    valuePropName="checked"
+                                />
+                            </Col>
+
+                            <Col span={12}>
+                                <ProFormSwitch
+                                    label={
+                                        <IconLabel
+                                            label={
+                                                <FormattedMessage id="settings.systemSettings.screenshotSettings.ocrModelWriteToMemory" />
+                                            }
+                                            tooltipTitle={
+                                                <FormattedMessage id="settings.systemSettings.screenshotSettings.ocrModelWriteToMemory.tip" />
+                                            }
+                                        />
+                                    }
+                                    name="ocrModelWriteToMemory"
+                                    valuePropName="checked"
+                                />
+                            </Col>
+
+                            <Col span={12}>
                                 <ProFormSelect
                                     label={
                                         <IconLabel

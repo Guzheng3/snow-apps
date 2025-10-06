@@ -1,7 +1,7 @@
 export const plugin = {
     'plugin.extensionFunction': '扩展功能',
     'plugin.ffmpeg.name': '视频录制',
-    'plugin.ffmpeg.description': '基于 FFmpeg 实现音频和视频多种格式的录影、转换、串流等功能',
+    'plugin.ffmpeg.description': '基于 FFmpeg 实现音频和视频多种格式的录制、转换等功能',
     'plugin.ffmpeg.functionDescription': '视频录制',
     'plugin.rapid_ocr.name': '文字识别',
     'plugin.rapid_ocr.description':

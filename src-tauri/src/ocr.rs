@@ -11,8 +11,17 @@ pub async fn ocr_init(
     ocr_instance: tauri::State<'_, Mutex<OcrService>>,
     orc_plugin_path: PathBuf,
     model: OcrModel,
+    hot_start: bool,
+    model_write_to_memory: bool,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_ocr::ocr_init(orc_plugin_path, ocr_instance, model).await
+    snow_shot_tauri_commands_ocr::ocr_init(
+        orc_plugin_path,
+        ocr_instance,
+        model,
+        hot_start,
+        model_write_to_memory,
+    )
+    .await
 }
 
 #[command]

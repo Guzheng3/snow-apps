@@ -41,8 +41,13 @@ export const InitService = () => {
         if (
             (!hasInitOcr.current ||
                 (prevAppSettings &&
-                    appSettings[AppSettingsGroup.SystemScreenshot].ocrModel !==
-                        prevAppSettings[AppSettingsGroup.SystemScreenshot].ocrModel)) &&
+                    (appSettings[AppSettingsGroup.SystemScreenshot].ocrModel !==
+                        prevAppSettings[AppSettingsGroup.SystemScreenshot].ocrModel ||
+                        appSettings[AppSettingsGroup.SystemScreenshot].ocrHotStart !==
+                            prevAppSettings[AppSettingsGroup.SystemScreenshot].ocrHotStart ||
+                        appSettings[AppSettingsGroup.SystemScreenshot].ocrModelWriteToMemory !==
+                            prevAppSettings[AppSettingsGroup.SystemScreenshot]
+                                .ocrModelWriteToMemory))) &&
             isReadyStatus(PLUGIN_ID_RAPID_OCR)
         ) {
             hasInitOcr.current = true;
@@ -50,6 +55,8 @@ export const InitService = () => {
             ocrInit(
                 await pluginConfigRef.current!.getPluginDirPath(PLUGIN_ID_RAPID_OCR),
                 appSettings[AppSettingsGroup.SystemScreenshot].ocrModel,
+                appSettings[AppSettingsGroup.SystemScreenshot].ocrHotStart,
+                appSettings[AppSettingsGroup.SystemScreenshot].ocrModelWriteToMemory,
             );
         }
 

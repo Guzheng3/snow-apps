@@ -1,3 +1,4 @@
+use log;
 use paddle_ocr_rs::ocr_result::TextBlock;
 use serde::Deserialize;
 use serde::Serialize;
@@ -5,16 +6,19 @@ use snow_shot_app_services::ocr_service::{OcrModel, OcrService};
 use std::io::Cursor;
 use std::path::PathBuf;
 use tokio::sync::Mutex;
-use log;
 
 pub async fn ocr_init(
     orc_plugin_path: PathBuf,
     ocr_service: tauri::State<'_, Mutex<OcrService>>,
     model: OcrModel,
+    hot_start: bool,
+    ocr_model_write_to_memory: bool,
 ) -> Result<(), String> {
     let mut ocr_service = ocr_service.lock().await;
 
-    ocr_service.init_models(orc_plugin_path, model).await?;
+    ocr_service
+        .init_models(orc_plugin_path, model, hot_start, ocr_model_write_to_memory)
+        .await?;
 
     Ok(())
 }
@@ -72,7 +76,7 @@ pub async fn ocr_detect(
     };
 
     let image_buffer = image.to_rgb8();
-    let ocr_result = ocr_service.get_session()?.detect_angle_rollback(
+    let ocr_result = ocr_service.get_session().await?.detect_angle_rollback(
         &image_buffer,
         50,
         image.height().max(image.width()),
@@ -96,7 +100,7 @@ pub async fn ocr_detect(
 pub async fn ocr_release(ocr_service: tauri::State<'_, Mutex<OcrService>>) -> Result<(), String> {
     let mut ocr_service = ocr_service.lock().await;
 
-    ocr_service.release_session()?;
+    ocr_service.release_session().await?;
 
     Ok(())
 }

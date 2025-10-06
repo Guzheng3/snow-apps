@@ -34,8 +34,13 @@ export enum OcrModel {
     RapidOcrV5 = 'RapidOcrV5',
 }
 
-export const ocrInit = async (orcPluginPath: string, model: OcrModel): Promise<void> => {
-    await invoke<void>('ocr_init', { orcPluginPath, model });
+export const ocrInit = async (
+    orcPluginPath: string,
+    model: OcrModel,
+    hotStart: boolean,
+    modelWriteToMemory: boolean,
+): Promise<void> => {
+    await invoke<void>('ocr_init', { orcPluginPath, model, hotStart, modelWriteToMemory });
 };
 
 export const ocrRelease = async (): Promise<void> => {
