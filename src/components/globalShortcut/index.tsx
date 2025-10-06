@@ -388,12 +388,15 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
     const [appFunctionSettings, setAppFunctionSettings] =
         useState<AppSettingsData[AppSettingsGroup.AppFunction]>();
 
+    const hasUnregisteredAll = useRef(false);
     useAppSettingsLoad(
         useCallback((settings: AppSettingsData) => {
-            unregisterAll().then(() => {
+            (hasUnregisteredAll.current ? Promise.resolve() : unregisterAll()).then(() => {
                 setAppFunctionSettings(settings[AppSettingsGroup.AppFunction]);
             });
+            hasUnregisteredAll.current = true;
         }, []),
+        true,
     );
 
     const updateShortcutKeyStatusPendingRef = useRef(false);

@@ -204,6 +204,7 @@ const CaptureHistoryPage = () => {
                     },
                     actions: {
                         search: false,
+                        cardActionProps: 'extra',
                         render: (_, item: CaptureHistoryRecordItem) => [
                             <Button
                                 key="view"
