@@ -1617,6 +1617,18 @@ export default function SystemSettings() {
                                 </ProForm.Item>
                             </Col>
                         </Row>
+
+                        <Row gutter={token.marginLG}>
+                            <Col span={12}>
+                                <ProFormSwitch
+                                    name="enableExcludeFromCapture"
+                                    layout="horizontal"
+                                    label={
+                                        <FormattedMessage id="settings.functionSettings.videoRecordSettings.enableExcludeFromCapture" />
+                                    }
+                                />
+                            </Col>
+                        </Row>
                     </ProForm>
                 </Spin>
 

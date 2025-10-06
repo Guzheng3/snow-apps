@@ -22,3 +22,5 @@ get-selected-text = "^0.1"
 objc2 = { workspace = true }
 objc2-app-kit = { workspace = true }
 
+[target.'cfg(any(target_os = "windows"))'.dependencies]
+windows = { workspace = true, features = ["Win32_UI"] }

@@ -1,3 +1,4 @@
+import { getPlatform } from '@/utils';
 import { invoke } from '@tauri-apps/api/core';
 
 export enum VideoFormat {
@@ -95,5 +96,14 @@ export const videoRecordGetMicrophoneDeviceNames = async () => {
 
 export const videoRecordInit = async (ffmpegPluginDir: string) => {
     const result = await invoke('video_record_init', { ffmpegPluginDir });
+    return result;
+};
+
+export const setExcludeFromCapture = async (enable: boolean) => {
+    if (getPlatform() === 'macos') {
+        return;
+    }
+
+    const result = await invoke('set_exclude_from_capture', { enable });
     return result;
 };

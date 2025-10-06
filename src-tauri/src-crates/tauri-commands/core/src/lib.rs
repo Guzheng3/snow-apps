@@ -674,3 +674,47 @@ pub async fn retain_dir_files(dir_path: PathBuf, file_names: Vec<String>) -> Res
 
     Ok(())
 }
+
+/// 设置窗口不参与视频录制
+pub async fn set_exclude_from_capture(
+    #[allow(unused_variables)] window: tauri::Window,
+    enable: bool,
+) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        return Ok(());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let window_hwnd = window.hwnd();
+        let window_hwnd = match window_hwnd {
+            Ok(window_hwnd) => window_hwnd,
+            Err(_) => {
+                return Err(String::from(
+                    "[set_exclude_from_capture] Failed to get HWND",
+                ));
+            }
+        };
+
+        let result = unsafe {
+            windows::Win32::UI::WindowsAndMessaging::SetWindowDisplayAffinity(
+                window_hwnd,
+                if enable {
+                    windows::Win32::UI::WindowsAndMessaging::WDA_EXCLUDEFROMCAPTURE
+                } else {
+                    windows::Win32::UI::WindowsAndMessaging::WDA_NONE
+                },
+            )
+        };
+
+        if result.is_err() {
+            return Err(format!(
+                "[set_exclude_from_capture] Failed to set window display affinity: {}",
+                result.err().unwrap()
+            ));
+        }
+
+        Ok(())
+    }
+}

@@ -273,6 +273,8 @@ export type AppSettingsData = {
         defaultTool: DrawState;
     };
     [AppSettingsGroup.FunctionVideoRecord]: {
+        /** 录制画面中隐藏工具栏 */
+        enableExcludeFromCapture: boolean;
         /** 视频录制保存路径 */
         saveDirectory: string;
         /** 帧率 */
@@ -476,6 +478,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         defaultTool: DrawState.Select,
     },
     [AppSettingsGroup.FunctionVideoRecord]: {
+        enableExcludeFromCapture: true,
         saveDirectory: '',
         frameRate: 24,
         gifFrameRate: 10,
@@ -1435,6 +1438,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                     | undefined;
 
                 settings = {
+                    enableExcludeFromCapture:
+                        typeof newSettings?.enableExcludeFromCapture === 'boolean'
+                            ? newSettings.enableExcludeFromCapture
+                            : (prevSettings?.enableExcludeFromCapture ??
+                              defaultAppSettingsData[group].enableExcludeFromCapture),
                     saveDirectory:
                         typeof newSettings?.saveDirectory === 'string'
                             ? newSettings.saveDirectory

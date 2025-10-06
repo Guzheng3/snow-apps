@@ -23,6 +23,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ElementRect } from '@/commands';
 import { getVideoRecordParams, VideoRecordState } from '../extra';
 import {
+    setExcludeFromCapture,
     VideoFormat,
     VideoMaxSize,
     videoRecordKill,
@@ -242,6 +243,10 @@ export default function VideoRecordToolbar() {
         useCallback((appSettings: AppSettingsData) => {
             setEnableMicrophone(appSettings[AppSettingsGroup.Cache].enableMicrophone);
             setSettingLoading(false);
+
+            setExcludeFromCapture(
+                appSettings[AppSettingsGroup.FunctionVideoRecord].enableExcludeFromCapture,
+            );
         }, []),
         true,
     );

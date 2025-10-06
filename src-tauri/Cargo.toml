@@ -58,6 +58,7 @@ reqwest = "0.12"
 futures-lite = "2.6.1"
 tokio-util = "0.7.16"
 futures-util = "0.3"
+windows = "0.61.3"
 
 # 项目内依赖
 snow-shot-app-services = { path = "src-crates/app-services" }

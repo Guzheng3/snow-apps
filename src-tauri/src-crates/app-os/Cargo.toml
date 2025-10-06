@@ -16,7 +16,7 @@ snow-shot-app-utils = { workspace = true }
 snow-shot-app-shared = { workspace = true }
 
 [target.'cfg(any(target_os = "windows"))'.dependencies]
-windows = { version = "0.61.3", features = [
+windows = { workspace = true, features = [
     "Data_Xml_Dom",
     "Win32_System_WinRT",
     "Win32_System_Com",

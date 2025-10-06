@@ -185,6 +185,8 @@ export const settings = {
     'settings.functionSettings.fullScreenDrawSettings.defaultTool.laserPointer': '激光笔',
     'settings.functionSettings.videoRecordSettings': '视频录制',
     'settings.functionSettings.videoRecordSettings.frameRate': '帧率',
+    'settings.functionSettings.videoRecordSettings.enableExcludeFromCapture':
+        '录制画面中隐藏工具栏',
     'settings.functionSettings.videoRecordSettings.gifFrameRate': '动图帧率',
     'settings.functionSettings.videoRecordSettings.enableApngFormat': '启用 APNG 格式',
     'settings.functionSettings.videoRecordSettings.gifFormat': '动图格式',

@@ -233,6 +233,7 @@ pub fn run() {
             core::retain_dir_files,
             core::is_admin,
             core::set_run_log,
+            core::set_exclude_from_capture,
             scroll_screenshot::scroll_screenshot_get_image_data,
             scroll_screenshot::scroll_screenshot_init,
             scroll_screenshot::scroll_screenshot_capture,
