@@ -1,5 +1,5 @@
 export const plugin = {
-    'plugin.extensionFunction': '扩展功能',
+    'plugin.extensionFunction': '插件功能',
     'plugin.ffmpeg.name': '视频录制',
     'plugin.ffmpeg.description': '基于 FFmpeg 实现音频和视频多种格式的录制、转换等功能',
     'plugin.ffmpeg.functionDescription': '视频录制',
@@ -9,7 +9,7 @@ export const plugin = {
     'plugin.rapid_ocr.functionDescription': '文本识别',
     'plugin.ai_chat.name': 'AI 对话',
     'plugin.ai_chat.description':
-        '简单的 AI 对话功能，支持兼容 Open AI SDK 的 API 配置。该扩展不影响默认支持的 AI 翻译功能',
+        '简单的 AI 对话功能，支持兼容 Open AI SDK 的 API 配置。该插件不影响默认支持的 AI 翻译功能',
     'plugin.ai_chat.functionDescription': 'AI 对话页面',
     'plugin.status.NotInstalled': '未安装',
     'plugin.status.Installed': '已安装',

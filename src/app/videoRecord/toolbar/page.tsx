@@ -527,21 +527,15 @@ export default function VideoRecordToolbar() {
 
                         <Button
                             onClick={() => {
-                                setEnableMicrophone((prev) => {
-                                    const value = !prev;
-
-                                    updateAppSettings(
-                                        AppSettingsGroup.Cache,
-                                        { enableMicrophone: value },
-                                        true,
-                                        true,
-                                        false,
-                                        true,
-                                        true,
-                                    );
-
-                                    return value;
-                                });
+                                updateAppSettings(
+                                    AppSettingsGroup.Cache,
+                                    { enableMicrophone: !enableMicrophone },
+                                    true,
+                                    true,
+                                    false,
+                                    true,
+                                    false,
+                                );
                             }}
                             icon={
                                 <MicrophoneIcon
