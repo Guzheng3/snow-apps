@@ -27,3 +27,6 @@ windows = { workspace = true, features = ["Win32_UI_Magnification"] }
 clipboard-win = "5.4.1"
 rayon = { workspace = true }
 image = { workspace = true }
+widestring = "1.2.0"
+windows-capture = "2.0.0-alpha.7"
+half = "2.6.0"
