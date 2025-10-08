@@ -89,6 +89,7 @@ import {
     DrawContextType as CommonDrawContextType,
 } from '../fullScreenDraw/extra';
 import { ScanQrcodeTool } from './components/drawToolbar/components/tools/scanQrcodeTool';
+import { setExcludeFromCapture } from '@/commands/videoRecord';
 
 const DrawCacheLayer = dynamic(
     async () => (await import('./components/drawCacheLayer')).DrawCacheLayer,
@@ -913,6 +914,7 @@ const DrawPageCore: React.FC<{
     // 默认隐藏
     useEffect(() => {
         hideWindow();
+        setExcludeFromCapture(true);
     }, [hideWindow]);
 
     const drawContextValue = useMemo<DrawContextType>(() => {

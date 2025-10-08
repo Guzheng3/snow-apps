@@ -520,7 +520,9 @@ where
         (active_monitor_crop_region.max_y - active_monitor_crop_region.min_y) as usize;
 
     let mut active_monitor_image_bytes = unsafe {
-        let mut bytes = Vec::with_capacity(active_monitor_crop_region_width * active_monitor_crop_region_height * 3);
+        let mut bytes = Vec::with_capacity(
+            active_monitor_crop_region_width * active_monitor_crop_region_height * 3,
+        );
         bytes.set_len(active_monitor_crop_region_width * active_monitor_crop_region_height * 3);
         bytes
     };
@@ -534,8 +536,8 @@ where
     (0..active_monitor_crop_region_height)
         .into_par_iter()
         .for_each(|y| unsafe {
-            let active_monitor_image_row_ptr =
-                (active_monitor_image_bytes_ptr as *mut u8).add(y * active_monitor_crop_region_width * 3);
+            let active_monitor_image_row_ptr = (active_monitor_image_bytes_ptr as *mut u8)
+                .add(y * active_monitor_crop_region_width * 3);
             let all_monitor_image_row_ptr = (all_monitor_image_bytes_ptr as *mut u8)
                 .add(base_index + y * all_monitor_image_width * 3);
 

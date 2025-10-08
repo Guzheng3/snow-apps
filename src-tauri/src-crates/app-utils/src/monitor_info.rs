@@ -6,11 +6,18 @@ use serde::Serialize;
 use snow_shot_app_shared::ElementRect;
 use xcap::Monitor;
 
+#[cfg(target_os = "windows")]
+use crate::monitor_hdr_info::{self, MonitorHdrInfo};
+#[cfg(target_os = "windows")]
+use windows::Win32::Graphics::Gdi::HMONITOR;
+
 #[derive(Debug)]
 pub struct MonitorInfo {
     pub monitor: Monitor,
     pub rect: ElementRect,
     pub scale_factor: f32,
+    #[cfg(target_os = "windows")]
+    pub monitor_hdr_info: MonitorHdrInfo,
 }
 
 #[derive(Serialize, Clone)]
@@ -20,7 +27,7 @@ pub struct MonitorRect {
 }
 
 impl MonitorInfo {
-    pub fn new(monitor: &Monitor) -> Self {
+    pub fn new(monitor: &Monitor, monitor_hdr_info: MonitorHdrInfo) -> Self {
         let monitor_rect: ElementRect;
         let scale_factor: f32;
 
@@ -36,6 +43,13 @@ impl MonitorInfo {
                 },
             };
             scale_factor = monitor.scale_factor().unwrap_or(0.0);
+
+            MonitorInfo {
+                monitor: monitor.clone(),
+                rect: monitor_rect,
+                scale_factor,
+                monitor_hdr_info,
+            }
         }
 
         #[cfg(target_os = "macos")]
@@ -49,12 +63,12 @@ impl MonitorInfo {
                 max_y: ((rect.origin.y + rect.size.height) * monitor_scale_factor) as i32,
             };
             scale_factor = 0.0;
-        }
 
-        MonitorInfo {
-            monitor: monitor.clone(),
-            rect: monitor_rect,
-            scale_factor,
+            MonitorInfo {
+                monitor: monitor.clone(),
+                rect: monitor_rect,
+                scale_factor,
+            }
         }
     }
 
@@ -71,6 +85,90 @@ impl MonitorInfo {
             min_y: monitor_crop_region.min_y - self.rect.min_y,
             max_x: monitor_crop_region.max_x - self.rect.min_x,
             max_y: monitor_crop_region.max_y - self.rect.min_y,
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    pub fn get_monitor_handle(monitor: &Monitor) -> HMONITOR {
+        use std::ffi::c_void;
+
+        HMONITOR(monitor.id().unwrap() as *mut c_void)
+    }
+
+    /// 获取显示器设备名称
+    #[cfg(target_os = "windows")]
+    pub fn get_device_name(monitor: &Monitor) -> Result<String, String> {
+        use widestring::U16CString;
+        use windows::Win32::{
+            Foundation::RECT,
+            Graphics::Gdi::{GetMonitorInfoW, MONITORINFO, MONITORINFOEXW},
+        };
+
+        let mut monitor_info = MONITORINFOEXW {
+            monitorInfo: MONITORINFO {
+                cbSize: u32::try_from(std::mem::size_of::<MONITORINFOEXW>()).unwrap(),
+                rcMonitor: RECT::default(),
+                rcWork: RECT::default(),
+                dwFlags: 0,
+            },
+            szDevice: [0; 32],
+        };
+
+        let result = unsafe {
+            GetMonitorInfoW(
+                Self::get_monitor_handle(monitor),
+                std::ptr::addr_of_mut!(monitor_info).cast(),
+            )
+        };
+
+        if !result.as_bool() {
+            return Err(format!(
+                "[MonitorInfo::get_device_name] Failed to get monitor info: {:?}",
+                result
+            ));
+        }
+
+        let device_name = match U16CString::from_vec_truncate(monitor_info.szDevice).to_string() {
+            Ok(name) => name,
+            Err(e) => {
+                return Err(format!(
+                    "[MonitorInfo::get_device_name] Failed to get device name: {:?}",
+                    e
+                ));
+            }
+        };
+
+        Ok(device_name)
+    }
+
+    pub fn capture(
+        &self,
+        crop_area: Option<ElementRect>,
+        #[allow(unused_variables)] exclude_window: Option<&tauri::Window>,
+    ) -> Option<image::DynamicImage> {
+        #[cfg(target_os = "macos")]
+        {
+            return super::capture_target_monitor(&self.monitor, crop_area, exclude_window);
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            use crate::windows_capture_image;
+
+            if !self.monitor_hdr_info.hdr_enabled {
+                return super::capture_target_monitor(&self.monitor, crop_area, exclude_window);
+            }
+
+            return match windows_capture_image::capture_monitor_image(&self, crop_area) {
+                Ok(image) => Some(image),
+                Err(e) => {
+                    log::error!(
+                        "[MonitorInfo::capture] Failed to capture monitor image: {:?}",
+                        e
+                    );
+                    None
+                }
+            };
         }
     }
 }
@@ -92,9 +190,32 @@ impl MonitorList {
             },
         };
 
+        #[cfg(target_os = "windows")]
+        let monitor_hdr_info_map = monitor_hdr_info::get_all_monitors_sdr_info().unwrap();
+
         let monitor_info_list = monitors
             .iter()
-            .map(|monitor| MonitorInfo::new(monitor))
+            .map(|monitor| {
+                #[cfg(target_os = "windows")]
+                {
+                    MonitorInfo::new(
+                        monitor,
+                        monitor_hdr_info_map
+                            .get(
+                                MonitorInfo::get_device_name(monitor)
+                                    .unwrap_or_default()
+                                    .as_str(),
+                            )
+                            .unwrap_or(&MonitorHdrInfo::default())
+                            .clone(),
+                    )
+                }
+
+                #[cfg(target_os = "macos")]
+                {
+                    MonitorInfo::new(monitor, MonitorHdrInfo::default())
+                }
+            })
             .filter(|monitor| monitor.rect.overlaps(&region))
             .collect::<Vec<MonitorInfo>>();
 
@@ -163,8 +284,7 @@ impl MonitorList {
         // 特殊情况，只有一个显示器，直接返回
         if monitors.len() == 1 {
             let first_monitor = monitors.first().unwrap();
-            let capture_image = super::capture_target_monitor(
-                &first_monitor.monitor,
+            let capture_image = first_monitor.capture(
                 if let Some(crop_region) = crop_region {
                     Some(first_monitor.get_monitor_crop_region(crop_region))
                 } else {
@@ -210,7 +330,7 @@ impl MonitorList {
                     None
                 };
 
-                let capture_image = super::capture_target_monitor(&monitor.monitor, monitor_crop_region, exclude_window);
+                let capture_image = monitor.capture(monitor_crop_region, exclude_window);
 
                 match capture_image {
                     Some(image) => Some((image, monitor_crop_region)),
@@ -494,10 +614,33 @@ mod tests {
 
     use super::*;
 
+    #[cfg(target_os = "windows")]
     #[test]
     fn test_get_all_monitors() {
+        use crate::monitor_hdr_info;
+
         let monitors = MonitorList::all();
         println!("monitors: {:?}", monitors);
+
+        let monitor_hdr_info_map = monitor_hdr_info::get_all_monitors_sdr_info().unwrap();
+        println!("monitor_hdr_info_map: {:?}", monitor_hdr_info_map);
+
+        for monitor in monitors.iter() {
+            println!(
+                "monitor: {:?}",
+                MonitorInfo::get_device_name(&monitor.monitor).unwrap()
+            );
+            println!(
+                "monitor_hdr_info: {:?}",
+                monitor_hdr_info_map
+                    .get(
+                        MonitorInfo::get_device_name(&monitor.monitor)
+                            .unwrap()
+                            .as_str()
+                    )
+                    .unwrap()
+            );
+        }
     }
 
     #[tokio::test]

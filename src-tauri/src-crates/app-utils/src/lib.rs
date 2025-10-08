@@ -19,6 +19,11 @@ use zune_jpegxl::JxlSimpleEncoder;
 
 use crate::monitor_info::MonitorList;
 
+#[cfg(target_os = "windows")]
+mod monitor_hdr_info;
+#[cfg(target_os = "windows")]
+mod windows_capture_image;
+
 pub mod monitor_info;
 
 pub fn get_device_state() -> Result<DeviceState, String> {
@@ -272,7 +277,7 @@ pub fn capture_target_monitor(
     crop_area: Option<ElementRect>,
     #[allow(unused_variables)] exclude_window: Option<&tauri::Window>,
 ) -> Option<image::DynamicImage> {
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
     {
         let image = if let Some(crop_area) = crop_area {
             monitor.capture_region_rgb(
