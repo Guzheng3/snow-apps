@@ -9,6 +9,7 @@ import { OcrBlocksActionType } from './components/ocrBlocks';
 import { ColorPickerActionType } from './components/colorPicker';
 import { CaptureBoundingBoxInfo } from './extra';
 import { CaptureHistoryActionType } from './components/captureHistory';
+import { ImageSharedBufferData } from './tools';
 
 export enum CaptureStep {
     // 选择阶段
@@ -28,7 +29,7 @@ export type DrawContextType = {
     finishCapture: (clearScrollScreenshot?: boolean) => Promise<void>;
     drawLayerActionRef: React.RefObject<DrawLayerActionType | undefined>;
     selectLayerActionRef: React.RefObject<SelectLayerActionType | undefined>;
-    imageBufferRef: React.RefObject<ImageBuffer | undefined>;
+    imageBufferRef: React.RefObject<ImageBuffer | ImageSharedBufferData | undefined>;
     mousePositionRef: React.RefObject<MousePosition>;
     drawToolbarActionRef: React.RefObject<DrawToolbarActionType | undefined>;
     circleCursorRef: React.RefObject<HTMLDivElement | null>;

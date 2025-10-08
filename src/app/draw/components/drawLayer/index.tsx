@@ -14,6 +14,8 @@ import { CaptureHistoryItem } from '@/utils/appStore';
 import { INIT_CONTAINER_KEY } from '../baseLayer/actions';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
+import { ImageSharedBufferData } from '../../tools';
+import { ImageBuffer } from '@/commands';
 
 export type DrawLayerActionType = BaseLayerActionType & {
     switchCaptureHistory: (item: CaptureHistoryItem | undefined) => Promise<void>;
@@ -42,7 +44,7 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
         clearContext,
     } = useContext(BaseLayerContext);
 
-    const currentCaptureImageSrcRef = useRef<string | undefined>(undefined);
+    const currentCaptureImageSrcRef = useRef<string | ImageSharedBufferData | undefined>(undefined);
     const blurContainerKeyRef = useRef<string | undefined>(undefined);
     const highlightContainerKeyRef = useRef<string | undefined>(undefined);
     const watermarkContainerKeyRef = useRef<string | undefined>(undefined);
@@ -50,14 +52,19 @@ const DrawLayerCore: React.FC<DrawLayerProps> = ({ actionRef }) => {
      * 初始化截图
      */
     const onCaptureReady = useCallback<BaseLayerEventActionType['onCaptureReady']>(
-        async (imageSrc: string | undefined): Promise<void> => {
+        async (
+            imageSrc: string | undefined,
+            imageBuffer: ImageBuffer | ImageSharedBufferData | undefined,
+        ): Promise<void> => {
             // 底图作为单独的层级显示
-            currentCaptureImageSrcRef.current = imageSrc;
+            const isSharedBuffer = imageBuffer && 'sharedBuffer' in imageBuffer;
+            currentCaptureImageSrcRef.current = isSharedBuffer ? imageBuffer : imageSrc;
             // 可能是切换截图历史，这种情况下不存在截图数据
             if (imageSrc) {
                 await addImageToContainer(INIT_CONTAINER_KEY, imageSrc);
+            } else if (isSharedBuffer) {
+                await addImageToContainer(INIT_CONTAINER_KEY, imageBuffer);
             }
-
             // 水印层
             watermarkContainerKeyRef.current = await createNewCanvasContainer(
                 DRAW_LAYER_WATERMARK_CONTAINER_KEY,

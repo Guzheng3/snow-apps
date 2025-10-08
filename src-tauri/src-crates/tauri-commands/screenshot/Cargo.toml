@@ -15,3 +15,8 @@ rayon = { workspace = true }
 snow-shot-app-shared = { workspace = true }
 snow-shot-app-os = { workspace = true }
 snow-shot-app-utils = { workspace = true }
+
+[target.'cfg(any(target_os = "windows"))'.dependencies]
+webview2-com = "0.38.0"
+windows-core = { version = "0.61" }
+windows = { workspace = true }

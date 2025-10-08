@@ -17,7 +17,7 @@ use zune_core::colorspace::ColorSpace;
 use zune_core::options::EncoderOptions;
 use zune_jpegxl::JxlSimpleEncoder;
 
-use crate::monitor_info::MonitorList;
+use crate::monitor_info::{ColorFormat, MonitorList};
 
 #[cfg(target_os = "windows")]
 mod monitor_hdr_info;
@@ -276,30 +276,72 @@ pub fn capture_target_monitor(
     monitor: &Monitor,
     crop_area: Option<ElementRect>,
     #[allow(unused_variables)] exclude_window: Option<&tauri::Window>,
+    color_format: ColorFormat,
 ) -> Option<image::DynamicImage> {
     #[cfg(target_os = "windows")]
     {
         let image = if let Some(crop_area) = crop_area {
-            monitor.capture_region_rgb(
-                crop_area.min_x as u32,
-                crop_area.min_y as u32,
-                (crop_area.max_x - crop_area.min_x) as u32,
-                (crop_area.max_y - crop_area.min_y) as u32,
-            )
+            match color_format {
+                ColorFormat::Rgb8 => DynamicImage::ImageRgb8(
+                    match monitor.capture_region_rgb(
+                        crop_area.min_x as u32,
+                        crop_area.min_y as u32,
+                        (crop_area.max_x - crop_area.min_x) as u32,
+                        (crop_area.max_y - crop_area.min_y) as u32,
+                    ) {
+                        Ok(image) => image,
+                        Err(e) => {
+                            log::error!(
+                                "[capture_target_monitor] failed to capture image: {:?}",
+                                e
+                            );
+                            return None;
+                        }
+                    },
+                ),
+                ColorFormat::Rgba8 => DynamicImage::ImageRgba8(
+                    match monitor.capture_region(
+                        crop_area.min_x as u32,
+                        crop_area.min_y as u32,
+                        (crop_area.max_x - crop_area.min_x) as u32,
+                        (crop_area.max_y - crop_area.min_y) as u32,
+                    ) {
+                        Ok(image) => image,
+                        Err(e) => {
+                            log::error!(
+                                "[capture_target_monitor] failed to capture image: {:?}",
+                                e
+                            );
+                            return None;
+                        }
+                    },
+                ),
+            }
         } else {
-            monitor.capture_image_rgb()
-        };
-
-        return match image {
-            Ok(image) => Some(image::DynamicImage::ImageRgb8(image)),
-            Err(error) => {
-                log::error!(
-                    "[capture_target_monitor] failed to capture image: {:?}",
-                    error
-                );
-                None
+            match color_format {
+                ColorFormat::Rgb8 => DynamicImage::ImageRgb8(match monitor.capture_image_rgb() {
+                    Ok(image) => image,
+                    Err(e) => {
+                        log::error!("[capture_target_monitor] failed to capture image: {:?}", e);
+                        return None;
+                    }
+                }),
+                ColorFormat::Rgba8 => {
+                    DynamicImage::ImageRgba8(match monitor.capture_image() {
+                        Ok(image) => image,
+                        Err(e) => {
+                            log::error!(
+                                "[capture_target_monitor] failed to capture image: {:?}",
+                                e
+                            );
+                            return None;
+                        }
+                    })
+                }
             }
         };
+
+        return Some(image);
     }
 
     #[cfg(target_os = "macos")]

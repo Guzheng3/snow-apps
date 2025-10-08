@@ -7,9 +7,17 @@ export enum ImageEncoder {
     WebP = 'webp',
 }
 
+export enum ImageBufferType {
+    // 原始的像素数据
+    Pixels = 'pixels',
+    // 通过 SharedBuffer 传输的特殊标记
+    SharedBuffer = 'shared-buffer',
+}
+
 export type ImageBuffer = {
     encoder: ImageEncoder;
     data: Blob;
+    bufferType: ImageBufferType;
     buffer: ArrayBuffer;
 };
 
@@ -30,6 +38,7 @@ export const captureCurrentMonitor = async (
     return {
         encoder,
         data: new Blob([result]),
+        bufferType: ImageBufferType.Pixels,
         buffer: result,
     };
 };

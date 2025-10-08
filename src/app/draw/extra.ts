@@ -11,6 +11,7 @@ import { MousePosition } from '@/utils/mousePosition';
 import Flatbush from 'flatbush';
 import { last } from 'es-toolkit';
 import { ColorInstance } from 'color';
+import { ImageSharedBufferData } from './tools';
 
 export const switchLayer = (
     layer: CanvasLayer | undefined,
@@ -59,7 +60,7 @@ export type CaptureEventParams =
     | {
           event: CaptureEvent.onCaptureImageBufferReady;
           params: {
-              imageBuffer: ImageBuffer | undefined;
+              imageBuffer: ImageBuffer | ImageSharedBufferData | undefined;
           };
       }
     | {

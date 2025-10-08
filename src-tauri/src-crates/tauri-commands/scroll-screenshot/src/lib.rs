@@ -3,6 +3,7 @@ use image::imageops::FilterType;
 use serde::Serialize;
 use snow_shot_app_scroll_screenshot_service::scroll_screenshot_capture_service::ScrollScreenshotCaptureService;
 use snow_shot_app_shared::ElementRect;
+use snow_shot_app_utils::monitor_info::ColorFormat;
 use std::path::PathBuf;
 use tauri::ipc::Response;
 use tokio::sync::Mutex;
@@ -81,7 +82,7 @@ pub async fn scroll_screenshot_capture(
         };
 
         monitor_list
-            .capture_region(crop_region, Some(&window))
+            .capture_region(crop_region, Some(&window), ColorFormat::Rgb8)
             .await?
     };
 

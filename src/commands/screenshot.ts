@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { ElementRect, ImageBuffer, ImageEncoder } from '.';
+import { ElementRect, ImageBuffer, ImageBufferType, ImageEncoder } from '.';
 
 export const switchAlwaysOnTop = async (windowId: number) => {
     const result = await invoke<string>('switch_always_on_top', {
@@ -42,10 +42,18 @@ export const captureAllMonitors = async (
         return undefined;
     }
 
+    let type = ImageBufferType.Pixels;
+    if (result.byteLength === 1) {
+        if (new Uint8Array(result)[0] === 1) {
+            type = ImageBufferType.SharedBuffer;
+        }
+    }
+
     return {
         encoder: ImageEncoder.Png,
         data: new Blob([result]),
         buffer: result,
+        bufferType: type,
     };
 };
 

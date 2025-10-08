@@ -24,6 +24,7 @@ import {
 } from './renderActions';
 import { RefType } from '../baseLayer/baseLayerRenderActions';
 import { ImageBuffer } from '@/commands';
+import { ImageSharedBufferData } from '../../tools';
 
 export const initPreviewCanvasAction = async (
     renderWorker: Worker | undefined,
@@ -80,14 +81,14 @@ export const initImageDataAction = async (
     previewCanvasRef: RefType<OffscreenCanvas | HTMLCanvasElement | null>,
     previewImageDataRef: RefType<ImageData | null>,
     decoderWasmModuleArrayBufferRef: RefType<ArrayBuffer | null>,
-    imageBuffer: ImageBuffer,
+    imageBuffer: ImageBuffer | ImageSharedBufferData,
 ) => {
     return new Promise(async (resolve) => {
         if (renderWorker) {
             const InitImageDataData: ColorPickerRenderInitImageDataData = {
                 type: ColorPickerRenderMessageType.InitImageData,
                 payload: {
-                    imageBuffer: imageBuffer.buffer,
+                    imageBuffer: 'sharedBuffer' in imageBuffer ? imageBuffer : imageBuffer.buffer,
                 },
             };
 
@@ -107,7 +108,7 @@ export const initImageDataAction = async (
                 previewCanvasRef,
                 previewImageDataRef,
                 decoderWasmModuleArrayBufferRef,
-                imageBuffer.buffer,
+                'sharedBuffer' in imageBuffer ? imageBuffer : imageBuffer.buffer,
             );
             resolve(undefined);
         }

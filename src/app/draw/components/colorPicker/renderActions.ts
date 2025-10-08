@@ -1,3 +1,4 @@
+import { ImageSharedBufferData } from '../../tools';
 import { RefType } from '../baseLayer/baseLayerRenderActions';
 import { getPixels, getPixelsWorker } from './workers/getPixels';
 
@@ -37,9 +38,20 @@ export function renderInitImageDataAction(
     _previewCanvasRef: RefType<OffscreenCanvas | HTMLCanvasElement | null>,
     previewImageDataRef: RefType<ImageData | null>,
     decoderWasmModuleArrayBufferRef: RefType<ArrayBuffer | null>,
-    imageSrc: ArrayBuffer,
+    imageSrc: ArrayBuffer | ImageSharedBufferData,
 ): Promise<void> {
     return new Promise(async (resolve) => {
+        if ('sharedBuffer' in imageSrc) {
+            previewImageDataRef.current = new ImageData(
+                imageSrc.sharedBuffer,
+                imageSrc.width,
+                imageSrc.height,
+            );
+
+            resolve(undefined);
+            return;
+        }
+
         getPixels(decoderWasmModuleArrayBufferRef.current!, imageSrc as ArrayBuffer).then(
             (pixels) => {
                 previewImageDataRef.current = pixels.data;

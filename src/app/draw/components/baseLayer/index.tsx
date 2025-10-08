@@ -46,6 +46,7 @@ import {
 import { appError } from '@/utils/log';
 import { DRAW_LAYER_WATERMARK_CONTAINER_KEY } from '../drawLayer';
 import { defaultWatermarkProps } from '../drawToolbar/components/tools/drawExtraTool/components/watermarkTool';
+import { ImageSharedBufferData } from '../../tools';
 
 export type BaseLayerContextType = {
     /** 调整画布大小 */
@@ -71,7 +72,10 @@ export type BaseLayerContextType = {
     /**
      * 添加图片到画布容器
      */
-    addImageToContainer: (containerKey: string, imageSrc: string) => Promise<void>;
+    addImageToContainer: (
+        containerKey: string,
+        imageSrc: string | ImageSharedBufferData,
+    ) => Promise<void>;
     /**
      * 清空画布容器
      */
@@ -159,7 +163,7 @@ export type BaseLayerEventActionType = {
      */
     onCaptureReady: (
         imageSrc: string | undefined,
-        imageBuffer: ImageBuffer | undefined,
+        imageBuffer: ImageBuffer | ImageSharedBufferData | undefined,
         captureBoundingBoxInfo: CaptureBoundingBoxInfo,
     ) => Promise<void>;
     /**
@@ -173,7 +177,7 @@ export type BaseLayerEventActionType = {
      */
     onCaptureLoad: (
         imageSrc: string | undefined,
-        imageBuffer: ImageBuffer | undefined,
+        imageBuffer: ImageBuffer | ImageSharedBufferData | undefined,
         captureBoundingBoxInfo: CaptureBoundingBoxInfo,
     ) => Promise<void>;
     /**
@@ -203,7 +207,10 @@ export type BaseLayerEventActionType = {
     /**
      * 添加图片到画布容器
      */
-    addImageToContainer: (containerKey: string, imageSrc: string) => Promise<void>;
+    addImageToContainer: (
+        containerKey: string,
+        imageSrc: string | ImageSharedBufferData,
+    ) => Promise<void>;
     /**
      * 清空画布容器
      */
@@ -307,7 +314,10 @@ type BaseLayerCoreActionType = {
     /**
      * 添加图片到画布容器
      */
-    addImageToContainer: (containerKey: string, imageSrc: string) => Promise<void>;
+    addImageToContainer: (
+        containerKey: string,
+        imageSrc: string | ImageSharedBufferData,
+    ) => Promise<void>;
     /**
      * 清空画布容器
      */
@@ -496,7 +506,7 @@ export const BaseLayerCore: React.FC<
     }, [rendererWorker]);
 
     const addImageToContainer = useCallback<BaseLayerActionType['addImageToContainer']>(
-        async (containerKey: string, imageSrc: string) => {
+        async (containerKey: string, imageSrc: string | ImageSharedBufferData) => {
             await addImageToContainerAction(
                 rendererWorker,
                 canvasContainerMapRef,

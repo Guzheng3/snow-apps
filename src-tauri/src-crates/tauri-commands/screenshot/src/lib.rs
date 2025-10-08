@@ -2,7 +2,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Serialize;
 use snow_shot_app_os::ui_automation::UIElements;
 use snow_shot_app_shared::ElementRect;
-use snow_shot_app_utils::monitor_info::MonitorList;
+use snow_shot_app_utils::monitor_info::{ColorFormat, MonitorList};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -17,14 +17,18 @@ pub async fn capture_current_monitor(
     // 获取当前鼠标的位置
     let (_, _, monitor) = snow_shot_app_utils::get_target_monitor()?;
 
-    let image_buffer =
-        match snow_shot_app_utils::capture_target_monitor(&monitor, None, Some(&window)) {
-            Some(image) => image,
-            None => {
-                log::error!("Failed to capture current monitor");
-                return Ok(Response::new(Vec::new()));
-            }
-        };
+    let image_buffer = match snow_shot_app_utils::capture_target_monitor(
+        &monitor,
+        None,
+        Some(&window),
+        ColorFormat::Rgb8,
+    ) {
+        Some(image) => image,
+        None => {
+            log::error!("Failed to capture current monitor");
+            return Ok(Response::new(Vec::new()));
+        }
+    };
 
     let image_buffer = snow_shot_app_utils::encode_image(
         &image_buffer,
@@ -41,17 +45,177 @@ pub async fn capture_current_monitor(
 pub async fn capture_all_monitors(
     app_handle: tauri::AppHandle,
     window: tauri::Window,
+    webview: tauri::Webview,
     enable_multiple_monitor: bool,
 ) -> Result<Response, String> {
     let image =
         snow_shot_app_utils::get_capture_monitor_list(&app_handle, None, enable_multiple_monitor)?
-            .capture(Some(&window))
+            .capture(Some(&window), ColorFormat::Rgba8)
             .await?;
 
-    let image_buffer =
-        snow_shot_app_utils::encode_image(&image, snow_shot_app_utils::ImageEncoder::Png);
+    #[cfg(target_os = "macos")]
+    {
+        let image_buffer =
+            snow_shot_app_utils::encode_image(&image, snow_shot_app_utils::ImageEncoder::Png);
 
-    Ok(Response::new(image_buffer))
+        Ok(Response::new(image_buffer))
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use webview2_com::Microsoft::Web::WebView2::Win32::{
+            COREWEBVIEW2_SHARED_BUFFER_ACCESS_READ_WRITE, ICoreWebView2_17,
+            ICoreWebView2Environment12,
+        };
+        use windows_core::Interface;
+
+        // windows 可以使用 SharedBuffer 加快数据传输
+
+        let (transfer_result_sender, transfer_result_receiver) = std::sync::mpsc::channel::<bool>();
+        let image = Arc::new(image);
+        let image_clone = image.clone();
+        match webview.with_webview(move |webview| {
+            let environment = webview.environment();
+
+            let core_webview = match unsafe { webview.controller().CoreWebView2() } {
+                Ok(core_webview) => core_webview,
+                Err(e) => {
+                    log::error!("[capture_all_monitors] Failed to get core webview: {:?}", e);
+                    transfer_result_sender.send(false).unwrap();
+                    return;
+                }
+            };
+
+            let enviroment_12 = match environment.cast::<ICoreWebView2Environment12>() {
+                Ok(environment) => environment,
+                Err(e) => {
+                    log::error!(
+                        "[capture_all_monitors] Failed to cast to ICoreWebView2Environment12: {:?}",
+                        e
+                    );
+                    transfer_result_sender.send(false).unwrap();
+                    return;
+                }
+            };
+
+            let image_bytes_len = image.as_bytes().len();
+            let image_extra_info_bytes_len = 4 + 4 as usize;
+            let shared_buffer = match unsafe {
+                enviroment_12
+                    .CreateSharedBuffer((image_bytes_len + image_extra_info_bytes_len) as u64)
+            } {
+                Ok(sharedbuffer) => sharedbuffer,
+                Err(e) => {
+                    log::error!(
+                        "[capture_all_monitors] Failed to create shared buffer: {:?}",
+                        e
+                    );
+                    transfer_result_sender.send(false).unwrap();
+                    return;
+                }
+            };
+
+            let mut shared_buffer_ptr: *mut u8 = 0 as *mut u8;
+            match unsafe { shared_buffer.Buffer(&mut shared_buffer_ptr) } {
+                Ok(_) => (),
+                Err(e) => {
+                    log::error!(
+                        "[capture_all_monitors] Failed to buffer shared buffer: {:?}",
+                        e
+                    );
+                    transfer_result_sender.send(false).unwrap();
+                    return;
+                }
+            };
+
+            let webview_17 = match core_webview.cast::<ICoreWebView2_17>() {
+                Ok(environment) => environment,
+                Err(e) => {
+                    log::error!(
+                        "[capture_all_monitors] Failed to cast to ICoreWebView2_17: {:?}",
+                        e
+                    );
+                    transfer_result_sender.send(false).unwrap();
+                    return;
+                }
+            };
+
+            // 将 image 的像素数据拷贝到 shared_buffer
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    image.as_bytes().as_ptr(),
+                    shared_buffer_ptr,
+                    image_bytes_len as usize,
+                );
+            }
+
+            unsafe {
+                let image_width = image.width();
+                let image_height = image.height();
+                std::ptr::copy_nonoverlapping(
+                    &image_width as *const u32 as *const u8,
+                    shared_buffer_ptr.add(image_bytes_len as usize),
+                    4,
+                );
+                std::ptr::copy_nonoverlapping(
+                    &image_height as *const u32 as *const u8,
+                    shared_buffer_ptr.add(image_bytes_len as usize + 4),
+                    4,
+                );
+            }
+
+            match unsafe {
+                webview_17.PostSharedBufferToScript(
+                    &shared_buffer,
+                    COREWEBVIEW2_SHARED_BUFFER_ACCESS_READ_WRITE,
+                    windows::core::PCWSTR::default(),
+                )
+            } {
+                Ok(_) => (),
+                Err(e) => {
+                    log::error!(
+                        "[capture_all_monitors] Failed to post shared buffer to script: {:?}",
+                        e
+                    );
+                    transfer_result_sender.send(false).unwrap();
+                    return;
+                }
+            };
+
+            transfer_result_sender.send(true).unwrap();
+        }) {
+            Ok(_) => {}
+            Err(e) => {
+                log::error!(
+                    "[capture_all_monitors] Failed to create shared buffer: {:?}",
+                    e
+                );
+            }
+        }
+
+        let transfer_result = match transfer_result_receiver.recv() {
+            Ok(result) => result,
+            Err(e) => {
+                log::error!(
+                    "[capture_all_monitors] Failed to receive transfer result: {:?}",
+                    e
+                );
+                false
+            }
+        };
+
+        if transfer_result {
+            // 通过 SharedBuffer 传输的特殊标记
+            Ok(Response::new(vec![1]))
+        } else {
+            let image_buffer = snow_shot_app_utils::encode_image(
+                &image_clone,
+                snow_shot_app_utils::ImageEncoder::Png,
+            );
+
+            Ok(Response::new(image_buffer))
+        }
+    }
 }
 
 pub async fn save_and_copy_image<F>(
@@ -500,7 +664,7 @@ where
         snow_shot_app_utils::get_capture_monitor_list(&app_handle, None, enable_multiple_monitor)?;
 
     // 截取所有显示器的截图
-    let all_monitors_image = monitor_list.capture(None).await?;
+    let all_monitors_image = monitor_list.capture(None, ColorFormat::Rgb8).await?;
     // 所有显示器的最小矩形
     let all_monitors_bounding_box = monitor_list.get_monitors_bounding_box();
     // 获取激活的显示器相对所有显示器的位置

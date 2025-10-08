@@ -19,10 +19,16 @@ pub async fn capture_current_monitor(
 pub async fn capture_all_monitors(
     app: tauri::AppHandle,
     window: tauri::Window,
+    webview: tauri::Webview,
     enable_multiple_monitor: bool,
 ) -> Result<Response, String> {
-    snow_shot_tauri_commands_screenshot::capture_all_monitors(app, window, enable_multiple_monitor)
-        .await
+    snow_shot_tauri_commands_screenshot::capture_all_monitors(
+        app,
+        window,
+        webview,
+        enable_multiple_monitor,
+    )
+    .await
 }
 
 /**

@@ -64,6 +64,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
 import { useStateRef } from '@/hooks/useStateRef';
 import { useMonitorRect } from '../statusBar';
+import { ImageSharedBufferData } from '../../tools';
 
 export enum ColorPickerShowMode {
     Always = 0,
@@ -564,7 +565,7 @@ const ColorPickerCore: React.FC<{
     }, [update]);
 
     const initImageData = useCallback(
-        async (imageBuffer: ImageBuffer) => {
+        async (imageBuffer: ImageBuffer | ImageSharedBufferData) => {
             await initImageDataAction(
                 renderWorker,
                 previewCanvasRef,
@@ -579,7 +580,7 @@ const ColorPickerCore: React.FC<{
     );
 
     const onCaptureImageBufferReady = useCallback(
-        async (imageBuffer: ImageBuffer) => {
+        async (imageBuffer: ImageBuffer | ImageSharedBufferData) => {
             await initImageData(imageBuffer);
         },
         [initImageData],

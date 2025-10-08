@@ -5,6 +5,7 @@ import { RefObject } from 'react';
 import { ElementRect } from '@/commands';
 import { SelectRectParams } from '../selectLayer';
 import * as PIXIFilters from 'pixi-filters';
+import { ImageSharedBufferData } from '../../tools';
 
 export type RefType<T> = RefWrap<T> | RefObject<T>;
 
@@ -138,17 +139,27 @@ export const renderAddImageToContainerAction = async (
     canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
     currentImageTextureRef: RefType<PIXI.Texture | undefined>,
     containerKey: string,
-    imageSrc: string,
+    imageSrc: string | ImageSharedBufferData,
 ): Promise<void> => {
     const container = canvasContainerMapRef.current.get(containerKey);
     if (!container) {
         return;
     }
 
-    const texture = await PIXI.Assets.load<PIXI.Texture>({
-        src: imageSrc,
-        parser: 'texture',
-    });
+    const texture =
+        typeof imageSrc === 'object'
+            ? new PIXI.Texture({
+                  source: new PIXI.BufferImageSource({
+                      resource: imageSrc.sharedBuffer,
+                      width: imageSrc.width,
+                      height: imageSrc.height,
+                      alphaMode: 'no-premultiply-alpha',
+                  }),
+              })
+            : await PIXI.Assets.load<PIXI.Texture>({
+                  src: imageSrc,
+                  parser: 'texture',
+              });
     const image = new PIXI.Sprite(texture);
     container.removeChildren();
     container.addChild(image);

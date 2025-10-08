@@ -7,11 +7,11 @@ use windows_capture::frame::Frame;
 use windows_capture::graphics_capture_api::InternalCaptureControl;
 use windows_capture::monitor::Monitor;
 use windows_capture::settings::{
-    ColorFormat, CursorCaptureSettings, DirtyRegionSettings, DrawBorderSettings,
-    MinimumUpdateIntervalSettings, SecondaryWindowSettings, Settings,
+    CursorCaptureSettings, DirtyRegionSettings, DrawBorderSettings, MinimumUpdateIntervalSettings,
+    SecondaryWindowSettings, Settings,
 };
 
-use crate::monitor_info::MonitorInfo;
+use crate::monitor_info::{ColorFormat, MonitorInfo};
 
 struct CaptureFlags {
     on_frame_arrived: Sender<(Vec<u8>, usize, usize)>,
@@ -173,9 +173,48 @@ pub fn write_rgba16f_linear_to_rgb8(
     }
 }
 
+#[inline]
+pub fn write_rgba16f_linear_to_rgba8(
+    rgba16f_image: *const u8,
+    rgba8_image: *mut u8,
+    hdr_scale: f32,
+    pixel_index: usize,
+) {
+    unsafe {
+        let red_f = f16::from_bits(u16::from_le(
+            *(rgba16f_image.add(pixel_index * 8) as *const u16),
+        ))
+        .to_f32()
+            * hdr_scale;
+        let green_f = f16::from_bits(u16::from_le(
+            *(rgba16f_image.add(pixel_index * 8 + 2) as *const u16),
+        ))
+        .to_f32()
+            * hdr_scale;
+        let blue_f = f16::from_bits(u16::from_le(
+            *(rgba16f_image.add(pixel_index * 8 + 4) as *const u16),
+        ))
+        .to_f32()
+            * hdr_scale;
+
+        // 使用快速饱和转换
+        rgba8_image
+            .add(pixel_index * 4)
+            .write(linear_to_srgb_byte(red_f));
+        rgba8_image
+            .add(pixel_index * 4 + 1)
+            .write(linear_to_srgb_byte(green_f));
+        rgba8_image
+            .add(pixel_index * 4 + 2)
+            .write(linear_to_srgb_byte(blue_f));
+        rgba8_image.add(pixel_index * 4 + 3).write(255);
+    }
+}
+
 pub fn capture_monitor_image(
     monitor: &MonitorInfo,
     crop_area: Option<ElementRect>,
+    color_format: ColorFormat,
 ) -> Result<image::DynamicImage, String> {
     let capture_monitor =
         Monitor::from_raw_hmonitor(MonitorInfo::get_monitor_handle(&monitor.monitor).0);
@@ -189,7 +228,7 @@ pub fn capture_monitor_image(
         SecondaryWindowSettings::Default,
         MinimumUpdateIntervalSettings::Default,
         DirtyRegionSettings::Default,
-        ColorFormat::Rgba16F,
+        windows_capture::settings::ColorFormat::Rgba16F,
         CaptureFlags {
             on_frame_arrived: sender,
             crop_area,
@@ -216,10 +255,15 @@ pub fn capture_monitor_image(
         }
     };
 
-    let rgb8_image_pixels_count = image_width * image_height;
+    let pixel_len = match color_format {
+        ColorFormat::Rgb8 => 3,
+        ColorFormat::Rgba8 => 4,
+    };
+
+    let result_image_pixels_count = image_width * image_height;
     let mut rgb8_image_pixels: Vec<u8> = unsafe {
-        let mut rgb8_image_pixels = Vec::with_capacity(rgb8_image_pixels_count * 3);
-        rgb8_image_pixels.set_len(rgb8_image_pixels_count * 3);
+        let mut rgb8_image_pixels = Vec::with_capacity(result_image_pixels_count * pixel_len);
+        rgb8_image_pixels.set_len(result_image_pixels_count * pixel_len);
         rgb8_image_pixels
     };
 
@@ -227,25 +271,52 @@ pub fn capture_monitor_image(
 
     let rgb8_image_pixels_ptr = rgb8_image_pixels.as_mut_ptr() as usize;
     let rgba16f_image_ptr = rgba16f_image.as_ptr() as usize;
-    (0..rgb8_image_pixels_count).into_par_iter().for_each(|i| {
-        write_rgba16f_linear_to_rgb8(
-            rgba16f_image_ptr as *const u8,
-            rgb8_image_pixels_ptr as *mut u8,
-            hdr_scale,
-            i,
-        );
-    });
+    match color_format {
+        ColorFormat::Rgb8 => {
+            (0..result_image_pixels_count)
+                .into_par_iter()
+                .for_each(|i| {
+                    write_rgba16f_linear_to_rgb8(
+                        rgba16f_image_ptr as *const u8,
+                        rgb8_image_pixels_ptr as *mut u8,
+                        hdr_scale,
+                        i,
+                    );
+                });
 
-    let rgb8_image =
-        match image::RgbImage::from_raw(image_width as u32, image_height as u32, rgb8_image_pixels)
-        {
-            Some(rgb8_image) => rgb8_image,
-            None => {
-                return Err(format!(
+            match image::RgbImage::from_raw(
+                image_width as u32,
+                image_height as u32,
+                rgb8_image_pixels,
+            ) {
+                Some(rgb8_image) => Ok(image::DynamicImage::ImageRgb8(rgb8_image)),
+                None => Err(format!(
                     "[windows_capture_image::capture_monitor_image] Failed to create rgb8 image"
-                ));
+                )),
             }
-        };
+        }
+        ColorFormat::Rgba8 => {
+            (0..result_image_pixels_count)
+                .into_par_iter()
+                .for_each(|i| {
+                    write_rgba16f_linear_to_rgba8(
+                        rgba16f_image_ptr as *const u8,
+                        rgb8_image_pixels_ptr as *mut u8,
+                        hdr_scale,
+                        i,
+                    );
+                });
 
-    Ok(image::DynamicImage::ImageRgb8(rgb8_image))
+            match image::RgbaImage::from_raw(
+                image_width as u32,
+                image_height as u32,
+                rgb8_image_pixels,
+            ) {
+                Some(rgba8_image) => Ok(image::DynamicImage::ImageRgba8(rgba8_image)),
+                None => Err(format!(
+                    "[windows_capture_image::capture_monitor_image] Failed to create rgba8 image"
+                )),
+            }
+        }
+    }
 }

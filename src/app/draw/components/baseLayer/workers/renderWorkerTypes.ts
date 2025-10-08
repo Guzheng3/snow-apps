@@ -7,6 +7,7 @@ import {
     WatermarkProps,
 } from '../baseLayerRenderActions';
 import * as PIXI from 'pixi.js';
+import { ImageSharedBufferData } from '@/app/draw/tools';
 
 export type RefWrap<T> = {
     current: T;
@@ -85,7 +86,7 @@ export type BaseLayerRenderAddImageToContainerData = {
     type: BaseLayerRenderMessageType.AddImageToContainer;
     payload: {
         containerKey: string;
-        imageSrc: string;
+        imageSrc: string | ImageSharedBufferData;
     };
 };
 

@@ -1,6 +1,12 @@
 'use client';
 
-import { createDrawWindow, ElementRect, getMousePosition, ImageBuffer } from '@/commands';
+import {
+    createDrawWindow,
+    ElementRect,
+    getMousePosition,
+    ImageBuffer,
+    ImageBufferType,
+} from '@/commands';
 import { EventListenerContext } from '@/components/eventListener';
 import React, { useMemo, useState } from 'react';
 import { useCallback, useContext, useEffect, useRef } from 'react';
@@ -82,7 +88,7 @@ import Flatbush from 'flatbush';
 import { isOcrTool } from './components/drawToolbar/components/tools/ocrTool';
 import { CaptureHistoryActionType, CaptureHistoryController } from './components/captureHistory';
 import { AntdContext } from '@/components/globalLayoutExtra';
-import { appError } from '@/utils/log';
+import { appError, appInfo } from '@/utils/log';
 import { NonDeletedExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 import {
     DrawContext as CommonDrawContext,
@@ -90,6 +96,8 @@ import {
 } from '../fullScreenDraw/extra';
 import { ScanQrcodeTool } from './components/drawToolbar/components/tools/scanQrcodeTool';
 import { setExcludeFromCapture } from '@/commands/videoRecord';
+import { getPlatform } from '@/utils';
+import { getImageBufferFromSharedBuffer, ImageSharedBufferData } from './tools';
 
 const DrawCacheLayer = dynamic(
     async () => (await import('./components/drawCacheLayer')).DrawCacheLayer,
@@ -121,7 +129,7 @@ const DrawPageCore: React.FC<{
     }, []);
 
     // 截图原始数据
-    const imageBufferRef = useRef<ImageBuffer | undefined>(undefined);
+    const imageBufferRef = useRef<ImageBuffer | ImageSharedBufferData | undefined>(undefined);
     const captureBoundingBoxInfoRef = useRef<CaptureBoundingBoxInfo | undefined>(undefined);
     const imageBlobUrlRef = useRef<string | undefined>(undefined);
     const { addListener, removeListener } = useContext(EventListenerContext);
@@ -165,7 +173,7 @@ const DrawPageCore: React.FC<{
     const onCaptureLoad = useCallback<BaseLayerEventActionType['onCaptureLoad']>(
         async (
             imageSrc: string | undefined,
-            imageBuffer: ImageBuffer | undefined,
+            imageBuffer: ImageBuffer | ImageSharedBufferData | undefined,
             captureBoundingBoxInfo: CaptureBoundingBoxInfo,
         ) => {
             await Promise.all([
@@ -243,7 +251,7 @@ const DrawPageCore: React.FC<{
     /** 截图准备 */
     const readyCapture = useCallback(
         async (
-            imageBuffer: ImageBuffer | undefined,
+            imageBuffer: ImageBuffer | ImageSharedBufferData | undefined,
             captureBoundingBoxInfo: CaptureBoundingBoxInfo,
         ) => {
             setCaptureLoading(true);
@@ -256,9 +264,10 @@ const DrawPageCore: React.FC<{
                 }, 0);
             }
 
-            imageBlobUrlRef.current = imageBuffer
-                ? URL.createObjectURL(new Blob([imageBuffer.data]))
-                : undefined;
+            imageBlobUrlRef.current =
+                imageBuffer && 'data' in imageBuffer
+                    ? URL.createObjectURL(new Blob([imageBuffer.data]))
+                    : undefined;
 
             setCaptureEvent({
                 event: CaptureEvent.onCaptureImageBufferReady,
@@ -500,13 +509,19 @@ const DrawPageCore: React.FC<{
                 event: CaptureEvent.onExecuteScreenshot,
             });
 
-            let imageBuffer: ImageBuffer | undefined;
+            const imageBufferFromSharedBufferPromise = getImageBufferFromSharedBuffer();
+
+            let imageBuffer: ImageBuffer | ImageSharedBufferData | undefined;
             try {
                 imageBuffer = await captureAllMonitorsPromise;
             } catch {
                 imageBuffer = undefined;
             }
             await initCaptureBoundingBoxInfoPromise;
+
+            if (imageBuffer?.bufferType === ImageBufferType.SharedBuffer) {
+                imageBuffer = await imageBufferFromSharedBufferPromise;
+            }
 
             // 如果截图失败了，等窗口显示后，结束截图
             // 切换截图历史时，不进行截图，只进行显示

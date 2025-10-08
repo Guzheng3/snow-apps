@@ -29,9 +29,12 @@ import { onCaptureHistoryChange, ScreenshotType } from '@/functions/screenshot';
 import { captureFullScreen, CaptureFullScreenResult } from '@/commands/screenshot';
 import { getImagePathFromSettings } from '@/utils/file';
 import { playCameraShutterSound } from '@/utils/audio';
+import { ImageSharedBufferData } from '../../tools';
 
 export type CaptureHistoryActionType = {
-    saveCurrentCapture: (imageBuffer: ImageBuffer | undefined) => Promise<void>;
+    saveCurrentCapture: (
+        imageBuffer: ImageBuffer | ImageSharedBufferData | undefined,
+    ) => Promise<void>;
     switch: (captureHistoryId: string) => Promise<void>;
     captureFullScreen: () => Promise<void>;
 };
@@ -244,7 +247,13 @@ const CaptureHistoryControllerCore: React.FC<{
     );
 
     const saveCurrentCapture = useCallback(
-        async (imageBuffer: ImageBuffer | CaptureFullScreenResult | undefined) => {
+        async (
+            imageBuffer: ImageBuffer | ImageSharedBufferData | CaptureFullScreenResult | undefined,
+        ) => {
+            if (imageBuffer && 'sharedBuffer' in imageBuffer) {
+                return;
+            }
+
             if (!captureHistoryRef.current) {
                 appError('[CaptureHistoryController] saveCurrentCapture error, invalid state', {
                     captureHistoryRef: captureHistoryRef.current,

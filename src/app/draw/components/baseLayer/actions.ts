@@ -47,6 +47,7 @@ import {
     BaseLayerRenderClearContextData,
 } from './workers/renderWorkerTypes';
 import { ElementRect } from '@/commands';
+import { ImageSharedBufferData } from '../../tools';
 
 export const INIT_CONTAINER_KEY = 'init_container';
 
@@ -310,7 +311,7 @@ export const addImageToContainerAction = async (
     canvasContainerMapRef: RefObject<Map<string, Container>>,
     currentImageTextureRef: RefObject<Texture | undefined>,
     containerKey: string,
-    imageSrc: string,
+    imageSrc: string | ImageSharedBufferData,
 ): Promise<undefined> => {
     return new Promise(async (resolve) => {
         if (renderWorker) {

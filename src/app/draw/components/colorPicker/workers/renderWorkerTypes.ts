@@ -1,3 +1,5 @@
+import { ImageSharedBufferData } from '@/app/draw/tools';
+
 export enum ColorPickerRenderMessageType {
     InitPreviewCanvas = 'initPreviewCanvas',
     InitImageData = 'initImageData',
@@ -18,7 +20,7 @@ export type ColorPickerRenderInitPreviewCanvasData = {
 export type ColorPickerRenderInitImageDataData = {
     type: ColorPickerRenderMessageType.InitImageData;
     payload: {
-        imageBuffer: ArrayBuffer;
+        imageBuffer: ArrayBuffer | ImageSharedBufferData;
     };
 };
 

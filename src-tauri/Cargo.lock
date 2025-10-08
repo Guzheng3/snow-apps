@@ -6361,6 +6361,9 @@ dependencies = [
  "snow-shot-app-utils",
  "tauri",
  "tokio",
+ "webview2-com",
+ "windows 0.61.3",
+ "windows-core 0.61.2",
  "xcap",
 ]
 
