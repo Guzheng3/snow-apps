@@ -88,7 +88,7 @@ import Flatbush from 'flatbush';
 import { isOcrTool } from './components/drawToolbar/components/tools/ocrTool';
 import { CaptureHistoryActionType, CaptureHistoryController } from './components/captureHistory';
 import { AntdContext } from '@/components/globalLayoutExtra';
-import { appError, appInfo } from '@/utils/log';
+import { appError } from '@/utils/log';
 import { NonDeletedExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 import {
     DrawContext as CommonDrawContext,
