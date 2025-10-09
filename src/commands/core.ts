@@ -57,6 +57,11 @@ export const createFullScreenDrawWindow = async () => {
     return result;
 };
 
+export const closeFullScreenDrawWindow = async () => {
+    const result = await invoke<void>('close_full_screen_draw_window');
+    return result;
+};
+
 export type MonitorInfo = {
     monitor_x: number;
     monitor_y: number;

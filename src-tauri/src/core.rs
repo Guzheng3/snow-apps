@@ -6,11 +6,11 @@ use tauri_plugin_autostart::ManagerExt;
 use tokio::sync::Mutex;
 
 #[command]
-pub async fn exit_app(window: tauri::Window, handle: tauri::AppHandle) {
+pub async fn exit_app(handle: tauri::AppHandle) {
     #[cfg(feature = "dhat-heap")]
     drop(crate::PROFILER.lock().await.take());
 
-    snow_shot_tauri_commands_core::exit_app(window, handle).await;
+    snow_shot_tauri_commands_core::exit_app(handle).await;
 }
 
 #[command]
@@ -71,8 +71,21 @@ pub async fn read_image_from_clipboard(handle: tauri::AppHandle) -> Response {
 
 /// 创建全屏绘制窗口
 #[command]
-pub async fn create_full_screen_draw_window(app: tauri::AppHandle) -> Result<(), String> {
-    snow_shot_tauri_commands_core::create_full_screen_draw_window(app).await
+pub async fn create_full_screen_draw_window(
+    app: tauri::AppHandle,
+    full_screen_draw_window_id: tauri::State<'_, Mutex<i32>>,
+) -> Result<(), String> {
+    snow_shot_tauri_commands_core::create_full_screen_draw_window(app, full_screen_draw_window_id)
+        .await
+}
+
+#[command]
+pub async fn close_full_screen_draw_window(
+    app: tauri::AppHandle,
+    full_screen_draw_window_id: tauri::State<'_, Mutex<i32>>,
+) -> Result<(), String> {
+    snow_shot_tauri_commands_core::close_full_screen_draw_window(app, full_screen_draw_window_id)
+        .await
 }
 
 #[command]

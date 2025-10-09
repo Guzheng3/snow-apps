@@ -30,16 +30,16 @@ import {
 } from 'react';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { CloseOutlined, LockOutlined } from '@ant-design/icons';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useIntl } from 'react-intl';
 import { AppSettingsActionContext, AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
-import { fullScreenDrawChangeMouseThrough, closeFullScreenDraw } from '@/functions/fullScreenDraw';
+import { fullScreenDrawChangeMouseThrough } from '@/functions/fullScreenDraw';
 import { useStateRef } from '@/hooks/useStateRef';
 import { zIndexs } from '@/utils/zIndex';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import * as tauriOs from '@tauri-apps/plugin-os';
 import { useDrawContext } from '../../extra';
 import { HistoryControls } from '@/app/draw/components/drawToolbar/components/historyControls';
+import { closeFullScreenDrawWindow } from '@/commands/core';
 
 export type DrawToolbarActionType = {
     setTool: (drawState: DrawState) => void;
@@ -53,7 +53,13 @@ export const FullScreenDrawToolbar: React.FC<{
 
     const { updateAppSettings } = useContext(AppSettingsActionContext);
     const { getDrawCoreAction } = useDrawContext();
-    const [getDrawState, setDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
+    const [getDrawState, _setDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
+    const setDrawState = useCallback(
+        (drawState: DrawState) => {
+            _setDrawState(drawState);
+        },
+        [_setDrawState],
+    );
 
     const [showLockDrawTool, setShowLockDrawTool, showLockDrawToolRef] = useStateRef(false);
     const [enableLockDrawTool, setEnableLockDrawTool, enableLockDrawToolRef] = useStateRef(false);
@@ -223,12 +229,17 @@ export const FullScreenDrawToolbar: React.FC<{
 
     const appSettingsDefaultToolRef = useRef<DrawState | undefined>(undefined);
     const excalidrawReadyRef = useRef(false);
-    const initDefaultTool = useCallback(() => {
+    const appSettingsReadyRef = useRef(false);
+    const initDefaultToolReadyRef = useRef(false);
+    const initDefaultTool = useCallback((): void => {
         if (!appSettingsDefaultToolRef.current || !excalidrawReadyRef.current) {
             return;
         }
 
         onToolClick(appSettingsDefaultToolRef.current);
+        setTimeout(() => {
+            initDefaultToolReadyRef.current = true;
+        }, 100);
     }, [onToolClick]);
 
     useAppSettingsLoad(
@@ -246,9 +257,10 @@ export const FullScreenDrawToolbar: React.FC<{
                 appSettingsDefaultToolRef.current =
                     settings[AppSettingsGroup.FunctionFullScreenDraw].defaultTool;
 
+                appSettingsReadyRef.current = true;
                 initDefaultTool();
             },
-            [initDefaultTool, setEnableLockDrawTool, setShowLockDrawTool],
+            [setEnableLockDrawTool, setShowLockDrawTool, initDefaultTool],
         ),
     );
 
@@ -256,13 +268,15 @@ export const FullScreenDrawToolbar: React.FC<{
         ExcalidrawEventPublisher,
         useCallback(
             (params: ExcalidrawEventParams | undefined) => {
-                if (params?.event === 'onChange') {
-                    if (
-                        params.params.appState.activeTool.type === 'selection' &&
-                        getDrawState() !== DrawState.Select &&
-                        getDrawState() !== DrawState.Idle
-                    ) {
-                        onToolClick(DrawState.Select);
+                if (initDefaultToolReadyRef.current) {
+                    if (params?.event === 'onChange') {
+                        if (
+                            params.params.appState.activeTool.type === 'selection' &&
+                            getDrawState() !== DrawState.Select &&
+                            getDrawState() !== DrawState.Idle
+                        ) {
+                            onToolClick(DrawState.Select);
+                        }
                     }
                 }
 
@@ -478,8 +492,7 @@ export const FullScreenDrawToolbar: React.FC<{
                         buttonProps={toolButtonProps}
                         drawState={DrawState.Cancel}
                         onClick={() => {
-                            getCurrentWindow().close();
-                            closeFullScreenDraw();
+                            closeFullScreenDrawWindow();
                         }}
                     />
 

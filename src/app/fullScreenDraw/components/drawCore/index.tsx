@@ -116,6 +116,7 @@ const DrawCoreComponent: React.FC<{
     layoutMenuZIndex: number;
     excalidrawCustomOptions?: NonNullable<ExcalidrawPropsCustomOptions>;
     onLoad?: () => void;
+    onAppStateStoreReady?: () => void;
     appStateStorageKey?: string;
 }> = ({
     actionRef,
@@ -123,6 +124,7 @@ const DrawCoreComponent: React.FC<{
     layoutMenuZIndex,
     excalidrawCustomOptions: excalidrawCustomOptionsProp,
     onLoad,
+    onAppStateStoreReady,
     appStateStorageKey = storageKey,
 }) => {
     const { token } = theme.useToken();
@@ -226,9 +228,13 @@ const DrawCoreComponent: React.FC<{
                         };
                     }
                 }
+
+                setTimeout(() => {
+                    onAppStateStoreReady?.();
+                }, 17);
             });
         });
-    }, [appStateStorageKey]);
+    }, [appStateStorageKey, onAppStateStoreReady]);
 
     const [enableSliderChangeWidth, setEnableSliderChangeWidth, enableSliderChangeWidthRef] =
         useStateRef(false);
@@ -468,6 +474,11 @@ const DrawCoreComponent: React.FC<{
         () => ({
             setActiveTool: (tool, keepSelection, drawState) => {
                 const appStateStore = excalidrawAppStateStoreRef.current;
+
+                if (!appStateStore?.inited()) {
+                    return;
+                }
+
                 if (
                     drawState &&
                     needSaveAppState(drawState) &&
@@ -677,7 +688,6 @@ const DrawCoreComponent: React.FC<{
     const excalidrawAPICallback = useCallback<NonNullable<ExcalidrawProps['excalidrawAPI']>>(
         (api) => {
             excalidrawAPI(api);
-            onLoad?.();
 
             if (excalidrawAppStateStoreValue.current) {
                 // 未初始化 setstate 报错，未发现具体原因，延迟处理下
@@ -693,6 +703,10 @@ const DrawCoreComponent: React.FC<{
                     });
                 }, 0);
             }
+
+            setTimeout(() => {
+                onLoad?.();
+            }, 17);
         },
         [excalidrawAPI, onLoad],
     );

@@ -45,9 +45,15 @@ const FullScreenDrawPage = () => {
 
     const fullScreenContainerRef = useRef<HTMLDivElement | null>(null);
 
+    const excalidrawReadyRef = useRef(false);
+    const excalidrawAppStateStoreReadyRef = useRef(false);
     const inited = useRef(false);
     const init = useMemo(() => {
         return debounce(() => {
+            if (!excalidrawReadyRef.current || !excalidrawAppStateStoreReadyRef.current) {
+                return;
+            }
+
             limitRectRef.current = {
                 min_x: 0,
                 min_y: 0,
@@ -162,7 +168,14 @@ const FullScreenDrawPage = () => {
                         actionRef={drawCoreActionRef}
                         zIndex={zIndexs.FullScreenDraw_DrawLayer}
                         layoutMenuZIndex={zIndexs.FullScreenDraw_LayoutMenu}
-                        onLoad={init}
+                        onLoad={() => {
+                            excalidrawReadyRef.current = true;
+                            init();
+                        }}
+                        onAppStateStoreReady={() => {
+                            excalidrawAppStateStoreReadyRef.current = true;
+                            init();
+                        }}
                         appStateStorageKey={'full-screen-draw-page'}
                     />
 

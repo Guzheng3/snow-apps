@@ -347,13 +347,6 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
                 });
             }
 
-            if (isFullScreenDrawSwitchMouseThrough) {
-                defaultListener.push({
-                    event: 'close-full-screen-draw',
-                    callback: async () => {},
-                });
-            }
-
             if (isVideoRecordPage || isVideoRecordToolbarPage) {
                 defaultListener.push({
                     event: 'reload-video-record',

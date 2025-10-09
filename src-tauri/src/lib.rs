@@ -59,6 +59,8 @@ pub fn run() {
 
     let plugin_service = Arc::new(plugin_service::PluginService::new());
 
+    let full_screen_draw_window_id = Mutex::new(0);
+
     use tauri_plugin_log::{Target, TargetKind};
 
     // let current_date = chrono::Local::now().format("%Y-%m-%d").to_string();
@@ -184,6 +186,7 @@ pub fn run() {
         .manage(file_cache_service)
         .manage(enable_run_log_clone)
         .manage(plugin_service)
+        .manage(full_screen_draw_window_id)
         .invoke_handler(tauri::generate_handler![
             screenshot::capture_current_monitor,
             screenshot::capture_all_monitors,
@@ -220,6 +223,7 @@ pub fn run() {
             core::create_fixed_content_window,
             core::read_image_from_clipboard,
             core::create_full_screen_draw_window,
+            core::close_full_screen_draw_window,
             core::get_current_monitor_info,
             core::get_monitors_bounding_box,
             core::send_new_version_notification,

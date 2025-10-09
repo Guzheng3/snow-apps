@@ -19,5 +19,14 @@ async fn main() {
 
 #[cfg(not(feature = "dhat-heap"))]
 fn main() {
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        use std::backtrace::Backtrace;
+
+        let backtrace = Backtrace::force_capture();
+        log::error!("Panic: {info}\n{backtrace}");
+        default_panic(info);
+    }));
+
     snow_shot_lib::run();
 }

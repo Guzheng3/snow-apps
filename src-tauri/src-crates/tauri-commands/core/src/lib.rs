@@ -14,8 +14,7 @@ use snow_shot_app_services::free_drag_window_service::FreeDragWindowService;
 use snow_shot_app_shared::{ElementRect, EnigoManager};
 use snow_shot_app_utils::{get_target_monitor, monitor_info::MonitorRect};
 
-pub async fn exit_app(window: tauri::Window, handle: tauri::AppHandle) {
-    window.hide().unwrap();
+pub async fn exit_app(handle: tauri::AppHandle) {
     handle.exit(0);
 }
 
@@ -179,11 +178,15 @@ pub async fn create_fixed_content_window(
 }
 
 /// 创建全屏绘制窗口
-pub async fn create_full_screen_draw_window(app: tauri::AppHandle) -> Result<(), String> {
-    let window_label = "full-screen-draw";
+pub async fn create_full_screen_draw_window(
+    app: tauri::AppHandle,
+    full_screen_draw_window_id: tauri::State<'_, Mutex<i32>>,
+) -> Result<(), String> {
+    let full_screen_draw_window_id = full_screen_draw_window_id.lock().await;
+    let window_label = format!("full-screen-draw-{}", full_screen_draw_window_id);
 
     // 首先先查询是否存在窗口
-    let window = app.get_webview_window(window_label);
+    let window = app.get_webview_window(window_label.as_str());
 
     if let Some(window) = window {
         // 发送改变鼠标穿透的消息
@@ -203,7 +206,7 @@ pub async fn create_full_screen_draw_window(app: tauri::AppHandle) -> Result<(),
 
     let main_window = tauri::WebviewWindowBuilder::new(
         &app,
-        window_label,
+        window_label.as_str(),
         tauri::WebviewUrl::App(PathBuf::from(format!("/fullScreenDraw"))),
     )
     .always_on_top(true)
@@ -223,7 +226,7 @@ pub async fn create_full_screen_draw_window(app: tauri::AppHandle) -> Result<(),
 
     tauri::WebviewWindowBuilder::new(
         &app,
-        format!("{}_switch_mouse_through", window_label),
+        format!("{}_switch_mouse_through", window_label.as_str()),
         tauri::WebviewUrl::App(PathBuf::from(format!(
             "/fullScreenDraw/switchMouseThrough?monitor_x={}&monitor_y={}&monitor_width={}&monitor_height={}",
             monitor_x,
@@ -270,6 +273,29 @@ pub async fn create_full_screen_draw_window(app: tauri::AppHandle) -> Result<(),
     Ok(())
 }
 
+pub async fn close_full_screen_draw_window(
+    app: tauri::AppHandle,
+    full_screen_draw_window_id: tauri::State<'_, Mutex<i32>>,
+) -> Result<(), String> {
+    let mut full_screen_draw_window_id = full_screen_draw_window_id.lock().await;
+    let window_label = format!("full-screen-draw-{}", full_screen_draw_window_id);
+
+    let window = app.get_webview_window(window_label.as_str());
+
+    if let Some(window) = window {
+        window.destroy().unwrap();
+    }
+
+    let window_label = format!("{}_switch_mouse_through", window_label.as_str());
+    let window = app.get_webview_window(window_label.as_str());
+    if let Some(window) = window {
+        window.destroy().unwrap();
+    }
+
+    *full_screen_draw_window_id += 1;
+
+    Ok(())
+}
 #[derive(Serialize, Clone, Copy)]
 pub struct MonitorInfo {
     mouse_x: i32,
