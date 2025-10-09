@@ -116,7 +116,6 @@ const MenuSiderCore: React.FC<{
     return (
         <Sider
             theme={darkMode ? 'dark' : 'light'}
-            collapsible={currentPlatform !== 'macos'}
             collapsed={collapsed}
             onCollapse={(value) => {
                 setCollapsed(value);
