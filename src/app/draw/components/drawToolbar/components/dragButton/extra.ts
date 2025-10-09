@@ -114,8 +114,6 @@ export const updateElementPosition = (
     const viewportWidth = Math.max(document.body.clientWidth, toolbarWidth);
     const viewportHeight = Math.max(document.body.clientHeight, toolbarHeight);
 
-    console.log(calculatedBoundaryRect);
-
     const dragRes = dragRect(
         {
             min_x: 0,
@@ -140,7 +138,6 @@ export const updateElementPosition = (
         ),
     );
 
-    console.log(dragRes.rect.min_x, dragRes.rect.max_x);
     if (!(cancelOnBeyond && dragRes.isBeyond)) {
         const translateX = baseOffsetX + dragRes.rect.min_x;
         const translateY = baseOffsetY + dragRes.rect.min_y;

@@ -241,8 +241,6 @@ const DrawLayerCore: React.FC<{
                     (contentMaxY - currentindowContext.current.windowPosition.y) /
                         window.devicePixelRatio;
 
-                console.log(minXOffset, minYOffset, maxXOffset, maxYOffset);
-
                 return {
                     min_x: rect.min_x + minXOffset + BOX_SHADOW_WIDTH,
                     min_y: rect.min_y + minYOffset + BOX_SHADOW_WIDTH,
