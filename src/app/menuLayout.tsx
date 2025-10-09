@@ -17,7 +17,7 @@ import {
     SettingOutlined,
     ToolOutlined,
 } from '@ant-design/icons';
-import { Button, Layout, Menu, Space, TabsProps, theme } from 'antd';
+import { Button, Flex, Layout, Menu, Space, TabsProps, theme } from 'antd';
 import { useRouter } from 'next/navigation';
 const { Content, Sider } = Layout;
 import { usePathname } from 'next/navigation';
@@ -129,36 +129,40 @@ const MenuSiderCore: React.FC<{
                 );
             }}
         >
-            {currentPlatform === 'macos' && (
-                <div className="macos-title-bar-margin app-tauri-drag-region"></div>
-            )}
+            <div className="menu-sider-wrap">
+                {currentPlatform === 'macos' && (
+                    <div className="macos-title-bar-margin app-tauri-drag-region"></div>
+                )}
 
-            {currentPlatform !== 'macos' && (
-                <div className="logo-wrap">
-                    <div className="logo-text">
-                        {collapsed ? (
-                            <>
-                                <div className="logo-text-highlight">S</div>
-                                <div>now</div>
-                            </>
-                        ) : (
-                            <>
-                                <div className="logo-text-highlight">Snow</div>
-                                <div>Shot</div>
-                            </>
-                        )}
+                {currentPlatform !== 'macos' && (
+                    <div className="logo-wrap">
+                        <div className="logo-text">
+                            {collapsed ? (
+                                <>
+                                    <div className="logo-text-highlight">S</div>
+                                    <div>now</div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="logo-text-highlight">Snow</div>
+                                    <div>Shot</div>
+                                </>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
-            <Menu
-                defaultSelectedKeys={[menuItems[0]!.key?.toString() ?? '/']}
-                selectedKeys={[pathname]}
-                mode="inline"
-                items={menuItems}
-                defaultOpenKeys={menuItems
-                    .map((item) => item?.key as string)
-                    .filter((key) => !!key)}
-            />
+                )}
+                <RSC>
+                    <Menu
+                        defaultSelectedKeys={[menuItems[0]!.key?.toString() ?? '/']}
+                        selectedKeys={[pathname]}
+                        mode="inline"
+                        items={menuItems}
+                        defaultOpenKeys={menuItems
+                            .map((item) => item?.key as string)
+                            .filter((key) => !!key)}
+                    />
+                </RSC>
+            </div>
             <style jsx>{`
                 .logo-wrap {
                     margin-top: 16px;
@@ -191,6 +195,16 @@ const MenuSiderCore: React.FC<{
                 .macos-title-bar-margin {
                     width: 100%;
                     height: 32px;
+                }
+
+                .menu-sider-wrap {
+                    height: 100%;
+                    display: flex;
+                    flex-direction: column;
+                }
+
+                .menu-wrap {
+                    overflow: auto;
                 }
             `}</style>
         </Sider>
