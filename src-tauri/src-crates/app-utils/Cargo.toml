@@ -30,3 +30,5 @@ image = { workspace = true }
 widestring = "1.2.0"
 windows-capture = "2.0.0-alpha.7"
 half = "2.6.0"
+webview2-com = "0.38.0"
+windows-core = { version = "0.61" }

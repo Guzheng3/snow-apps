@@ -48,13 +48,16 @@ pub async fn capture_all_monitors(
     webview: tauri::Webview,
     enable_multiple_monitor: bool,
 ) -> Result<Response, String> {
-    let image =
-        snow_shot_app_utils::get_capture_monitor_list(&app_handle, None, enable_multiple_monitor)?
-            .capture(Some(&window), ColorFormat::Rgba8)
-            .await?;
-
     #[cfg(target_os = "macos")]
     {
+        let image = snow_shot_app_utils::get_capture_monitor_list(
+            &app_handle,
+            None,
+            enable_multiple_monitor,
+        )?
+        .capture(Some(&window), ColorFormat::Rgb8)
+        .await?;
+
         let image_buffer =
             snow_shot_app_utils::encode_image(&image, snow_shot_app_utils::ImageEncoder::Png);
 
@@ -69,8 +72,15 @@ pub async fn capture_all_monitors(
         };
         use windows_core::Interface;
 
-        // windows 可以使用 SharedBuffer 加快数据传输
+        let image = snow_shot_app_utils::get_capture_monitor_list(
+            &app_handle,
+            None,
+            enable_multiple_monitor,
+        )?
+        .capture(Some(&window), ColorFormat::Rgba8)
+        .await?;
 
+        // windows 可以使用 SharedBuffer 加快数据传输
         let (transfer_result_sender, transfer_result_receiver) = std::sync::mpsc::channel::<bool>();
         let image = Arc::new(image);
         let image_clone = image.clone();

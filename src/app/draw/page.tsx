@@ -96,7 +96,6 @@ import {
 } from '../fullScreenDraw/extra';
 import { ScanQrcodeTool } from './components/drawToolbar/components/tools/scanQrcodeTool';
 import { setExcludeFromCapture } from '@/commands/videoRecord';
-import { getPlatform } from '@/utils';
 import { getImageBufferFromSharedBuffer, ImageSharedBufferData } from './tools';
 
 const DrawCacheLayer = dynamic(
@@ -568,11 +567,15 @@ const DrawPageCore: React.FC<{
 
     const saveCaptureHistory = useCallback(async () => {
         const imageBuffer = imageBufferRef.current;
+        const selectRect = selectLayerActionRef.current?.getSelectRect();
+        const excalidrawApi = drawCacheLayerActionRef.current?.getExcalidrawAPI();
+        const excalidrawElements = excalidrawApi?.getSceneElements();
+        const appState = excalidrawApi?.getAppState();
 
         updateAppSettings(
             AppSettingsGroup.Cache,
             {
-                prevSelectRect: selectLayerActionRef.current?.getSelectRect(),
+                prevSelectRect: selectRect,
             },
             false,
             true,
@@ -581,7 +584,12 @@ const DrawPageCore: React.FC<{
             false,
         );
 
-        await captureHistoryActionRef.current?.saveCurrentCapture(imageBuffer);
+        await captureHistoryActionRef.current?.saveCurrentCapture(
+            imageBuffer,
+            selectRect,
+            excalidrawElements,
+            appState,
+        );
     }, [updateAppSettings]);
 
     const onSave = useCallback(

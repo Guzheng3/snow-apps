@@ -30,10 +30,16 @@ import { captureFullScreen, CaptureFullScreenResult } from '@/commands/screensho
 import { getImagePathFromSettings } from '@/utils/file';
 import { playCameraShutterSound } from '@/utils/audio';
 import { ImageSharedBufferData } from '../../tools';
+import { encodeImage } from './workers/encodeImage';
+import { AppState } from '@mg-chao/excalidraw/types';
+import { ElementRect } from '@/commands';
 
 export type CaptureHistoryActionType = {
     saveCurrentCapture: (
         imageBuffer: ImageBuffer | ImageSharedBufferData | undefined,
+        selectRect: ElementRect | undefined,
+        excalidrawElements: readonly Ordered<NonDeletedExcalidrawElement>[] | undefined,
+        appState: Readonly<AppState> | undefined,
     ) => Promise<void>;
     switch: (captureHistoryId: string) => Promise<void>;
     captureFullScreen: () => Promise<void>;
@@ -249,9 +255,18 @@ const CaptureHistoryControllerCore: React.FC<{
     const saveCurrentCapture = useCallback(
         async (
             imageBuffer: ImageBuffer | ImageSharedBufferData | CaptureFullScreenResult | undefined,
+            selectRect: ElementRect | undefined,
+            excalidrawElements: readonly Ordered<NonDeletedExcalidrawElement>[] | undefined,
+            appState: Readonly<AppState> | undefined,
         ) => {
+            let sharedBufferEncodeImagePromise: Promise<ArrayBuffer | undefined> =
+                Promise.resolve(undefined);
             if (imageBuffer && 'sharedBuffer' in imageBuffer) {
-                return;
+                sharedBufferEncodeImagePromise = encodeImage(
+                    imageBuffer.width,
+                    imageBuffer.height,
+                    imageBuffer.sharedBuffer,
+                );
             }
 
             if (!captureHistoryRef.current) {
@@ -271,7 +286,6 @@ const CaptureHistoryControllerCore: React.FC<{
                 return;
             }
 
-            const selectRect = selectLayerActionRef.current?.getSelectRect();
             if (!selectRect) {
                 appError(
                     '[CaptureHistoryController] saveCurrentCapture error, invalid selectRect',
@@ -282,19 +296,22 @@ const CaptureHistoryControllerCore: React.FC<{
                 return;
             }
 
-            const excalidrawApi = drawCacheLayerActionRef.current?.getExcalidrawAPI();
-
+            const sharedBufferEncodeImage = await sharedBufferEncodeImagePromise;
             const captureHistoryItem = await captureHistoryRef.current.save(
-                captureHistoryListRef.current[currentIndexRef.current] ?? imageBuffer,
-                excalidrawApi?.getSceneElements(),
-                excalidrawApi?.getAppState(),
+                sharedBufferEncodeImage
+                    ? {
+                          encodeData: sharedBufferEncodeImage,
+                      }
+                    : (captureHistoryListRef.current[currentIndexRef.current] ?? imageBuffer),
+                excalidrawElements,
+                appState,
                 selectRect,
             );
             captureHistoryListRef.current.push(captureHistoryItem);
             resetCurrentIndex();
             onCaptureHistoryChange();
         },
-        [drawCacheLayerActionRef, getScreenshotType, resetCurrentIndex, selectLayerActionRef],
+        [getScreenshotType, resetCurrentIndex],
     );
 
     const captureFullScreenAction = useCallback(async () => {

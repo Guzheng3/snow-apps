@@ -45,6 +45,10 @@ export enum HistoryValidDuration {
     Forever = 0,
 }
 
+export type EncodeImageData = {
+    encodeData: ArrayBuffer;
+};
+
 export class CaptureHistory {
     private store: CaptureHistoryStore;
 
@@ -61,7 +65,7 @@ export class CaptureHistory {
     }
 
     static generateCaptureHistoryItem(
-        imageBuffer: ImageBuffer | CaptureHistoryItem | 'full-screen',
+        imageBuffer: ImageBuffer | EncodeImageData | CaptureHistoryItem | 'full-screen',
         excalidrawElements: readonly Ordered<NonDeletedExcalidrawElement>[] | undefined,
         excalidrawAppState: Readonly<AppState> | undefined,
         selectedRect: ElementRect | undefined,
@@ -78,6 +82,8 @@ export class CaptureHistory {
                     fileExtension = '.png';
                     break;
             }
+        } else if ('encodeData' in imageBuffer) {
+            fileExtension = '.png';
         } else {
             fileExtension = path.extname(imageBuffer.file_name);
         }
@@ -109,6 +115,7 @@ export class CaptureHistory {
     async save(
         imageData:
             | ImageBuffer
+            | EncodeImageData
             | CaptureHistoryItem
             | {
                   type: 'full-screen';
@@ -134,7 +141,12 @@ export class CaptureHistory {
             if ('encoder' in imageData) {
                 await writeFile(
                     await getCaptureHistoryImageAbsPath(captureHistoryItem.file_name),
-                    new Uint8Array(imageData.buffer),
+                    imageData.buffer,
+                );
+            } else if ('encodeData' in imageData) {
+                await writeFile(
+                    await getCaptureHistoryImageAbsPath(captureHistoryItem.file_name),
+                    imageData.encodeData,
                 );
             } else if ('type' in imageData) {
             } else {

@@ -1,4 +1,4 @@
-import { decode_rgb_to_rgba, initSync } from 'turbo-png';
+import { decode_to_rgba, initSync } from 'turbo-png';
 
 self.onmessage = async (
     event: MessageEvent<{
@@ -13,7 +13,7 @@ self.onmessage = async (
     });
 
     // 后 8 位包含图像的宽高
-    const imageData = decode_rgb_to_rgba(new Uint8Array(imageBuffer));
+    const imageData = decode_to_rgba(new Uint8Array(imageBuffer));
 
     const dataView = new DataView(imageData.buffer, imageData.byteLength - 8);
     const imageWidth = dataView.getUint32(0, true);
@@ -21,7 +21,7 @@ self.onmessage = async (
 
     self.postMessage({
         data: new ImageData(
-            imageData.subarray(0, imageWidth * imageHeight * 4) as ImageDataArray,
+            imageData.subarray(0, imageData.byteLength - 8) as ImageDataArray,
             imageWidth,
             imageHeight,
         ),
