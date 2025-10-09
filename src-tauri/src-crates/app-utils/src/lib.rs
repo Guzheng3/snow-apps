@@ -17,7 +17,7 @@ use zune_core::colorspace::ColorSpace;
 use zune_core::options::EncoderOptions;
 use zune_jpegxl::JxlSimpleEncoder;
 
-use crate::monitor_info::{ColorFormat, MonitorList};
+use crate::monitor_info::{CaptureOption, ColorFormat, MonitorList};
 
 #[cfg(target_os = "windows")]
 mod monitor_hdr_info;
@@ -326,18 +326,13 @@ pub fn capture_target_monitor(
                         return None;
                     }
                 }),
-                ColorFormat::Rgba8 => {
-                    DynamicImage::ImageRgba8(match monitor.capture_image() {
-                        Ok(image) => image,
-                        Err(e) => {
-                            log::error!(
-                                "[capture_target_monitor] failed to capture image: {:?}",
-                                e
-                            );
-                            return None;
-                        }
-                    })
-                }
+                ColorFormat::Rgba8 => DynamicImage::ImageRgba8(match monitor.capture_image() {
+                    Ok(image) => image,
+                    Err(e) => {
+                        log::error!("[capture_target_monitor] failed to capture image: {:?}", e);
+                        return None;
+                    }
+                }),
             }
         };
 

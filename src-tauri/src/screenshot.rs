@@ -5,6 +5,7 @@ use tokio::sync::Mutex;
 
 use snow_shot_app_os::ui_automation::UIElements;
 use snow_shot_app_shared::ElementRect;
+use snow_shot_app_utils::monitor_info::CorrectHdrColorAlgorithm;
 use snow_shot_tauri_commands_screenshot::{CaptureFullScreenResult, WindowElement};
 
 #[command]
@@ -21,12 +22,14 @@ pub async fn capture_all_monitors(
     window: tauri::Window,
     webview: tauri::Webview,
     enable_multiple_monitor: bool,
+    correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
 ) -> Result<Response, String> {
     snow_shot_tauri_commands_screenshot::capture_all_monitors(
         app,
         window,
         webview,
         enable_multiple_monitor,
+        correct_hdr_color_algorithm,
     )
     .await
 }
@@ -114,6 +117,7 @@ pub async fn capture_full_screen(
     file_path: String,
     copy_to_clipboard: bool,
     capture_history_file_path: String,
+    correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
 ) -> Result<CaptureFullScreenResult, String> {
     snow_shot_tauri_commands_screenshot::capture_full_screen(
         app.clone(),
@@ -132,6 +136,7 @@ pub async fn capture_full_screen(
         file_path,
         copy_to_clipboard,
         capture_history_file_path,
+        correct_hdr_color_algorithm,
     )
     .await
 }

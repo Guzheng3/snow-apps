@@ -33,6 +33,7 @@ import { ImageSharedBufferData } from '../../tools';
 import { encodeImage } from './workers/encodeImage';
 import { AppState } from '@mg-chao/excalidraw/types';
 import { ElementRect } from '@/commands';
+import { getCorrectHdrColorAlgorithm } from '@/utils/appSettings';
 
 export type CaptureHistoryActionType = {
     saveCurrentCapture: (
@@ -342,6 +343,7 @@ const CaptureHistoryControllerCore: React.FC<{
                 imagePath.filePath,
                 appSettings[AppSettingsGroup.FunctionScreenshot].fullScreenCopyToClipboard,
                 await getCaptureHistoryImageAbsPath(captureHistoryParams.file_name),
+                getCorrectHdrColorAlgorithm(appSettings),
             );
             playCameraShutterSound();
             captureFullScreenResult = await captureFullScreenResultPromise;

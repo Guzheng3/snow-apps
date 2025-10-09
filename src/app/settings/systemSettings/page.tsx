@@ -7,6 +7,7 @@ import {
     Divider,
     Form,
     Row,
+    SelectProps,
     Slider,
     Space,
     Spin,
@@ -44,6 +45,7 @@ import { restartWithAdmin } from '@/commands/core';
 import { isAdminWithCache } from '@/utils';
 import { useStateRef } from '@/hooks/useStateRef';
 import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
+import { HdrColorAlgorithm } from '@/commands/screenshot';
 
 export default function SystemSettings() {
     const intl = useIntl();
@@ -187,6 +189,27 @@ export default function SystemSettings() {
                     id: 'settings.systemSettings.screenshotSettings.ocrModel.rapidOcrV5',
                 }),
                 value: OcrModel.RapidOcrV5,
+            },
+        ];
+    }, [intl]);
+
+    const hdrColorAlgorithmOptions = useMemo((): SelectProps['options'] => {
+        return [
+            {
+                label: (
+                    <IconLabel
+                        title={intl.formatMessage({
+                            id: 'settings.systemSettings.screenshotSettings.enableCorrectHdrColor.algorithm.linear',
+                        })}
+                        label={
+                            <FormattedMessage id="settings.systemSettings.screenshotSettings.enableCorrectHdrColor.algorithm.linear" />
+                        }
+                        tooltipTitle={
+                            <FormattedMessage id="settings.systemSettings.screenshotSettings.enableCorrectHdrColor.algorithm.linear.tip" />
+                        }
+                    />
+                ),
+                value: HdrColorAlgorithm.Linear,
             },
         ];
     }, [intl]);
@@ -369,6 +392,39 @@ export default function SystemSettings() {
                                 }
                                 name="enableMultipleMonitor"
                                 valuePropName="checked"
+                            />
+                        </Col>
+                    </Row>
+
+                    <Row gutter={token.marginLG}>
+                        <Col span={12}>
+                            <ProFormSwitch
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.enableCorrectHdrColor" />
+                                        }
+                                        tooltipTitle={
+                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.enableCorrectHdrColor.tip" />
+                                        }
+                                    />
+                                }
+                                name="correctHdrColor"
+                                valuePropName="checked"
+                            />
+                        </Col>
+
+                        <Col span={12}>
+                            <ProFormSelect
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.enableCorrectHdrColor.algorithm" />
+                                        }
+                                    />
+                                }
+                                name="correctHdrColorAlgorithm"
+                                options={hdrColorAlgorithmOptions}
                             />
                         </Col>
                     </Row>

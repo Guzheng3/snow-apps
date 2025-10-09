@@ -2,7 +2,9 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Serialize;
 use snow_shot_app_os::ui_automation::UIElements;
 use snow_shot_app_shared::ElementRect;
-use snow_shot_app_utils::monitor_info::{ColorFormat, MonitorList};
+use snow_shot_app_utils::monitor_info::{
+    CaptureOption, ColorFormat, CorrectHdrColorAlgorithm, MonitorList,
+};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -47,6 +49,7 @@ pub async fn capture_all_monitors(
     window: tauri::Window,
     webview: tauri::Webview,
     enable_multiple_monitor: bool,
+    correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
 ) -> Result<Response, String> {
     #[cfg(target_os = "macos")]
     {
@@ -55,7 +58,13 @@ pub async fn capture_all_monitors(
             None,
             enable_multiple_monitor,
         )?
-        .capture(Some(&window), ColorFormat::Rgb8)
+        .capture(
+            Some(&window),
+            CaptureOption {
+                color_format: ColorFormat::Rgb8,
+                correct_hdr_color_algorithm,
+            },
+        )
         .await?;
 
         let image_buffer =
@@ -77,7 +86,13 @@ pub async fn capture_all_monitors(
             None,
             enable_multiple_monitor,
         )?
-        .capture(Some(&window), ColorFormat::Rgba8)
+        .capture(
+            Some(&window),
+            CaptureOption {
+                color_format: ColorFormat::Rgba8,
+                correct_hdr_color_algorithm,
+            },
+        )
         .await?;
 
         // windows 可以使用 SharedBuffer 加快数据传输
@@ -657,6 +672,7 @@ pub async fn capture_full_screen<F>(
     file_path: String,
     copy_to_clipboard: bool,
     capture_history_file_path: String,
+    correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
 ) -> Result<CaptureFullScreenResult, String>
 where
     F: Fn(&image::DynamicImage) -> Result<(), String> + Send + 'static,
@@ -674,7 +690,15 @@ where
         snow_shot_app_utils::get_capture_monitor_list(&app_handle, None, enable_multiple_monitor)?;
 
     // 截取所有显示器的截图
-    let all_monitors_image = monitor_list.capture(None, ColorFormat::Rgb8).await?;
+    let all_monitors_image = monitor_list
+        .capture(
+            None,
+            CaptureOption {
+                color_format: ColorFormat::Rgb8,
+                correct_hdr_color_algorithm,
+            },
+        )
+        .await?;
     // 所有显示器的最小矩形
     let all_monitors_bounding_box = monitor_list.get_monitors_bounding_box();
     // 获取激活的显示器相对所有显示器的位置

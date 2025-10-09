@@ -15,6 +15,7 @@ import { setWindowRect } from '@/utils/window';
 import { appError, appWarn } from '@/utils/log';
 import { getPlatform } from '@/utils';
 import { writeBitmapImageToClipboard } from '@/commands/core';
+import { setExcludeFromCapture } from '@/commands/videoRecord';
 
 export const getCanvas = async (
     selectRectParams: SelectRectParams | undefined,
@@ -220,6 +221,7 @@ export const fixedToScreen = async (
             max_y: selectRectParams.rect.max_y + selectRectParams.shadowWidth,
         }),
     );
+    setExcludeFromCapture(false);
     await Promise.all([
         appWindow.show(),
         appWindow.setAlwaysOnTop(true),

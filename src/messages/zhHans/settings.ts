@@ -349,6 +349,14 @@ export const settings = {
     'settings.systemSettings.screenshotSettings.enableMultipleMonitor': '启用多显示器截图',
     'settings.systemSettings.screenshotSettings.enableMultipleMonitor.tip':
         '截图将同时截取多个显示器的画面，关闭后可提高性能',
+    'settings.systemSettings.screenshotSettings.enableCorrectHdrColor': '更正 HDR 颜色',
+    'settings.systemSettings.screenshotSettings.enableCorrectHdrColor.tip':
+        '显示器开启 HDR 后，获取到的截图将通过指定算法转换为 SDR 颜色。不同的转换算法适合不同的色彩需求',
+    'settings.systemSettings.screenshotSettings.enableCorrectHdrColor.algorithm':
+        'HDR 颜色转换算法',
+    'settings.systemSettings.screenshotSettings.enableCorrectHdrColor.algorithm.linear': '线性转换',
+    'settings.systemSettings.screenshotSettings.enableCorrectHdrColor.algorithm.linear.tip':
+        '适合将 HDR 中的 SDR 内容还原为 SDR，但当 Windows 的 HDR 设置中的 SDR 内容亮度不等于 50% 时，HDR 内容可能严重失真',
     'settings.systemSettings.screenshotSettings.enableBrowserClipboard.tip':
         '尝试使用浏览器接口快速写入剪贴板内容，如果出现无法复制到剪贴板的问题请禁用该功能',
     'settings.systemSettings.screenshotSettings.historyValidDuration.day': '1 天',

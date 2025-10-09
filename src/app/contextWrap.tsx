@@ -48,6 +48,7 @@ import {
 import { releaseDrawPage } from '@/functions/screenshot';
 import { ExtraToolList } from './draw/components/drawToolbar/components/tools/extraTool';
 import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
+import { HdrColorAlgorithm } from '@/commands/screenshot';
 
 export enum AppSettingsGroup {
     Common = 'common',
@@ -310,6 +311,10 @@ export type AppSettingsData = {
         tryWriteBitmapImageToClipboard: boolean;
         /** 启用多显示器截图 */
         enableMultipleMonitor: boolean;
+        /** 更正 HDR 颜色 */
+        correctHdrColor: boolean;
+        /** HDR 颜色转换算法 */
+        correctHdrColorAlgorithm: HdrColorAlgorithm;
     };
     [AppSettingsGroup.SystemScrollScreenshot]: {
         tryRollback: boolean;
@@ -501,6 +506,10 @@ export const defaultAppSettingsData: AppSettingsData = {
         tryWriteBitmapImageToClipboard: true,
         /** 启用多显示器截图 */
         enableMultipleMonitor: true,
+        /** 更正 HDR 颜色  */
+        correctHdrColor: true,
+        /** HDR 颜色转换算法 */
+        correctHdrColorAlgorithm: HdrColorAlgorithm.Linear,
     },
     [AppSettingsGroup.FunctionTrayIcon]: {
         iconClickAction: TrayIconClickAction.Screenshot,
@@ -1560,6 +1569,16 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? newSettings.enableMultipleMonitor
                             : (prevSettings?.enableMultipleMonitor ??
                               defaultAppSettingsData[group].enableMultipleMonitor),
+                    correctHdrColor:
+                        typeof newSettings?.correctHdrColor === 'boolean'
+                            ? newSettings.correctHdrColor
+                            : (prevSettings?.correctHdrColor ??
+                              defaultAppSettingsData[group].correctHdrColor),
+                    correctHdrColorAlgorithm:
+                        typeof newSettings?.correctHdrColorAlgorithm === 'string'
+                            ? (newSettings.correctHdrColorAlgorithm as HdrColorAlgorithm)
+                            : (prevSettings?.correctHdrColorAlgorithm ??
+                              defaultAppSettingsData[group].correctHdrColorAlgorithm),
                 };
             } else {
                 return defaultAppSettingsData[group];

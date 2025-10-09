@@ -4,11 +4,12 @@ import { theme, Tooltip } from 'antd';
 export const IconLabel: React.FC<{
     icon?: React.ReactNode;
     label: React.ReactNode;
+    title?: string;
     tooltipTitle?: React.ReactNode;
-}> = ({ icon, label, tooltipTitle }) => {
+}> = ({ icon, label, tooltipTitle, title }) => {
     const { token } = theme.useToken();
     return (
-        <div className="icon-label">
+        <div className="icon-label" title={title}>
             <div className="icon-label-label">{label}</div>
             {icon && <div className="icon-label-icon">{icon}</div>}
             {tooltipTitle && (

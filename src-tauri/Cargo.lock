@@ -6172,6 +6172,7 @@ dependencies = [
  "snow-shot-app-scroll-screenshot-service",
  "snow-shot-app-services",
  "snow-shot-app-shared",
+ "snow-shot-app-utils",
  "snow-shot-plugin-service",
  "snow-shot-tauri-commands-core",
  "snow-shot-tauri-commands-file",

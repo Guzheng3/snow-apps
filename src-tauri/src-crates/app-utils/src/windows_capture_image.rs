@@ -11,7 +11,7 @@ use windows_capture::settings::{
     SecondaryWindowSettings, Settings,
 };
 
-use crate::monitor_info::{ColorFormat, MonitorInfo};
+use crate::monitor_info::{CaptureOption, ColorFormat, MonitorInfo};
 
 struct CaptureFlags {
     on_frame_arrived: Sender<(Vec<u8>, usize, usize)>,

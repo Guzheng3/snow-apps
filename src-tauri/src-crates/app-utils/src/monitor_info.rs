@@ -2,7 +2,7 @@ use image::{DynamicImage, GenericImageView, RgbImage, RgbaImage};
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use snow_shot_app_shared::ElementRect;
 use xcap::Monitor;
 
@@ -30,6 +30,12 @@ pub enum ColorFormat {
 pub struct MonitorRect {
     pub rect: ElementRect,
     pub scale_factor: f32,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct CaptureOption {
+    pub color_format: ColorFormat,
+    pub correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
 }
 
 impl MonitorInfo {
@@ -151,7 +157,7 @@ impl MonitorInfo {
         &self,
         crop_area: Option<ElementRect>,
         #[allow(unused_variables)] exclude_window: Option<&tauri::Window>,
-        color_format: ColorFormat,
+        capture_option: CaptureOption,
     ) -> Option<image::DynamicImage> {
         #[cfg(target_os = "macos")]
         {
@@ -159,7 +165,7 @@ impl MonitorInfo {
                 &self.monitor,
                 crop_area,
                 exclude_window,
-                color_format,
+                capture_option.color_format,
             );
         }
 
@@ -167,19 +173,21 @@ impl MonitorInfo {
         {
             use crate::windows_capture_image;
 
-            if !self.monitor_hdr_info.hdr_enabled {
+            if !(self.monitor_hdr_info.hdr_enabled
+                && capture_option.correct_hdr_color_algorithm != CorrectHdrColorAlgorithm::None)
+            {
                 return super::capture_target_monitor(
                     &self.monitor,
                     crop_area,
                     exclude_window,
-                    color_format,
+                    capture_option.color_format,
                 );
             }
 
             return match windows_capture_image::capture_monitor_image(
                 &self,
                 crop_area,
-                color_format,
+                capture_option.color_format,
             ) {
                 Ok(image) => Some(image),
                 Err(e) => {
@@ -196,6 +204,12 @@ impl MonitorInfo {
 
 #[derive(Debug)]
 pub struct MonitorList(Vec<MonitorInfo>);
+
+#[derive(Serialize, Deserialize, Clone, Debug, Copy, PartialEq)]
+pub enum CorrectHdrColorAlgorithm {
+    None,
+    Linear,
+}
 
 impl MonitorList {
     fn get_monitors(region: Option<ElementRect>) -> MonitorList {
@@ -299,7 +313,7 @@ impl MonitorList {
         &self,
         crop_region: Option<ElementRect>,
         exclude_window: Option<&tauri::Window>,
-        color_format: ColorFormat,
+        capture_option: CaptureOption,
     ) -> Result<image::DynamicImage, String> {
         let monitors = &self.0;
 
@@ -313,7 +327,7 @@ impl MonitorList {
                     None
                 },
                 exclude_window,
-                color_format,
+                capture_option,
             );
 
             // 有些捕获失败的显示器，返回一个空图像，这里需要特殊处理
@@ -353,7 +367,7 @@ impl MonitorList {
                     None
                 };
 
-                let capture_image = monitor.capture(monitor_crop_region, exclude_window, color_format);
+                let capture_image = monitor.capture(monitor_crop_region, exclude_window, capture_option);
 
                 match capture_image {
                     Some(image) => Some((image, monitor_crop_region)),
@@ -396,7 +410,7 @@ impl MonitorList {
             )
         };
 
-        let pixel_len = match color_format {
+        let pixel_len = match capture_option.color_format {
             ColorFormat::Rgb8 => 3,
             ColorFormat::Rgba8 => 4,
         };
@@ -446,7 +460,7 @@ impl MonitorList {
             },
         );
 
-        let capture_image = match color_format {
+        let capture_image = match capture_option.color_format {
             ColorFormat::Rgb8 => image::DynamicImage::ImageRgb8(
                 image::RgbImage::from_raw(
                     capture_image_width as u32,
@@ -602,19 +616,21 @@ impl MonitorList {
         &self,
         crop_region: Option<ElementRect>,
         exclude_window: Option<&tauri::Window>,
-        color_format: ColorFormat,
+        capture_option: CaptureOption,
     ) -> Result<image::DynamicImage, String> {
         let result = tokio::try_join!(
-            self.capture_future(crop_region, exclude_window, color_format),
+            self.capture_future(crop_region, exclude_window, capture_option,),
             Self::get_mag_color_effect()
         );
 
         match result {
             Ok((image, color_effect)) => {
                 let image = match color_effect {
-                    Some(matrix) => {
-                        Self::apply_color_effect_to_image(&image, &matrix, color_format)?
-                    }
+                    Some(matrix) => Self::apply_color_effect_to_image(
+                        &image,
+                        &matrix,
+                        capture_option.color_format,
+                    )?,
                     None => image,
                 };
 
@@ -630,18 +646,19 @@ impl MonitorList {
     pub async fn capture(
         &self,
         exclude_window: Option<&tauri::Window>,
-        color_format: ColorFormat,
+        capture_option: CaptureOption,
     ) -> Result<image::DynamicImage, String> {
-        self.capture_core(None, exclude_window, color_format).await
+        self.capture_core(None, exclude_window, capture_option)
+            .await
     }
 
     pub async fn capture_region(
         &self,
         region: ElementRect,
         exclude_window: Option<&tauri::Window>,
-        color_format: ColorFormat,
+        capture_option: CaptureOption,
     ) -> Result<image::DynamicImage, String> {
-        self.capture_core(Some(region), exclude_window, color_format)
+        self.capture_core(Some(region), exclude_window, capture_option)
             .await
     }
 
@@ -721,7 +738,16 @@ mod tests {
 
         let monitors = MonitorList::get_by_region(crop_region);
 
-        let image = monitors.capture(None, ColorFormat::Rgb8).await.unwrap();
+        let image = monitors
+            .capture(
+                None,
+                CaptureOption {
+                    color_format: ColorFormat::Rgb8,
+                    correct_hdr_color_algorithm: CorrectHdrColorAlgorithm::None,
+                },
+            )
+            .await
+            .unwrap();
 
         println!("current_dir: {:?}", env::current_dir().unwrap());
 
@@ -748,7 +774,14 @@ mod tests {
 
         let monitors = MonitorList::get_by_region(crop_region);
         let image = monitors
-            .capture_region(crop_region, None, ColorFormat::Rgb8)
+            .capture_region(
+                crop_region,
+                None,
+                CaptureOption {
+                    color_format: ColorFormat::Rgb8,
+                    correct_hdr_color_algorithm: CorrectHdrColorAlgorithm::None,
+                },
+            )
             .await
             .unwrap();
 

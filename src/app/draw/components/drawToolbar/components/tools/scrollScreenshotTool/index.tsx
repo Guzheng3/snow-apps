@@ -44,6 +44,7 @@ import {
     listenMouseStart,
     listenMouseStop,
 } from '@/commands/listenKey';
+import { getCorrectHdrColorAlgorithm } from '@/utils/appSettings';
 
 const THUMBNAIL_WIDTH = 128;
 
@@ -359,6 +360,7 @@ export const ScrollScreenshot: React.FC<{
                 rect.min_y,
                 rect.max_x,
                 rect.max_y,
+                getCorrectHdrColorAlgorithm(getAppSettings()),
             );
 
             handleCaptureImageListDebounce();
@@ -368,6 +370,7 @@ export const ScrollScreenshot: React.FC<{
             selectLayerActionRef,
             setDrawEvent,
             handleCaptureImageListDebounce,
+            getAppSettings,
         ],
     );
 

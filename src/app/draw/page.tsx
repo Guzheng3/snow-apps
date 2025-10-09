@@ -53,7 +53,12 @@ import {
     ScreenshotType,
 } from '@/functions/screenshot';
 import { setWindowRect, showWindow as showCurrentWindow } from '@/utils/window';
-import { captureAllMonitors, setDrawWindowStyle, switchAlwaysOnTop } from '@/commands/screenshot';
+import {
+    captureAllMonitors,
+    HdrColorAlgorithm,
+    setDrawWindowStyle,
+    switchAlwaysOnTop,
+} from '@/commands/screenshot';
 import { debounce } from 'es-toolkit';
 import {
     scrollScreenshotClear,
@@ -97,6 +102,8 @@ import {
 import { ScanQrcodeTool } from './components/drawToolbar/components/tools/scanQrcodeTool';
 import { setExcludeFromCapture } from '@/commands/videoRecord';
 import { getImageBufferFromSharedBuffer, ImageSharedBufferData } from './tools';
+import { getPlatform } from '@/utils';
+import { getCorrectHdrColorAlgorithm } from '@/utils/appSettings';
 
 const DrawCacheLayer = dynamic(
     async () => (await import('./components/drawCacheLayer')).DrawCacheLayer,
@@ -467,6 +474,7 @@ const DrawPageCore: React.FC<{
 
             const result = await captureAllMonitors(
                 getAppSettings()[AppSettingsGroup.SystemScreenshot].enableMultipleMonitor,
+                getCorrectHdrColorAlgorithm(getAppSettings()),
             ).catch((error) => {
                 appError('[DrawPageCore] captureAllMonitors error', error);
                 return undefined;
