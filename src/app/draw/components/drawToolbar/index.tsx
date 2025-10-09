@@ -677,7 +677,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                         onDoubleClick={handleDoubleClick}
                         ref={drawToolbarRef}
                     >
-                        <Flex align="center" gap={token.paddingXS}>
+                        <Flex align="center" gap={token.paddingXS} className="draw-toolbar-content">
                             <DragButton actionRef={dragButtonActionRef} />
 
                             {/* 默认状态 */}
@@ -994,6 +994,10 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     position: absolute;
                     opacity: 0;
                     transform-origin: top left;
+                }
+
+                :global(.draw-toolbar-content > div) {
+                    line-height: 0;
                 }
 
                 .draw-toolbar {

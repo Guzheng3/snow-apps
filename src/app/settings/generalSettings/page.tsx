@@ -12,6 +12,7 @@ import {
     Select,
     Space,
     Spin,
+    Switch,
     theme,
 } from 'antd';
 import {
@@ -370,6 +371,14 @@ export default function GeneralSettings() {
                                 name="theme"
                             >
                                 <Select options={themeOptions} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item
+                                name="enableCompactLayout"
+                                label={<FormattedMessage id="settings.compactLayout" />}
+                            >
+                                <Switch />
                             </Form.Item>
                         </Col>
                         <Col span={12}>

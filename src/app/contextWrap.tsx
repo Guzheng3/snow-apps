@@ -109,6 +109,8 @@ export enum TrayIconDefaultIcon {
 export type AppSettingsData = {
     [AppSettingsGroup.Common]: {
         theme: AppSettingsTheme;
+        /** 紧凑布局 */
+        enableCompactLayout: boolean;
         language: AppSettingsLanguage;
         /** 浏览器语言，用于自动切换语言 */
         browserLanguage: string;
@@ -360,6 +362,7 @@ export enum AppSettingsTheme {
 export const defaultAppSettingsData: AppSettingsData = {
     [AppSettingsGroup.Common]: {
         theme: AppSettingsTheme.System,
+        enableCompactLayout: false,
         language: AppSettingsLanguage.ZHHans,
         browserLanguage: '',
     },
@@ -634,11 +637,13 @@ const getFilePath = async (group: AppSettingsGroup) => {
 export type AppContextType = {
     appWindowRef: RefObject<AppWindow | undefined>;
     currentTheme: AppSettingsTheme;
+    enableCompactLayout: boolean;
 };
 
 export const AppContext = createContext<AppContextType>({
     appWindowRef: { current: undefined },
     currentTheme: AppSettingsTheme.Light,
+    enableCompactLayout: false,
 });
 
 const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -769,6 +774,10 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.theme === 'string'
                             ? newSettings.theme
                             : (prevSettings?.theme ?? AppSettingsTheme.System),
+                    enableCompactLayout:
+                        typeof newSettings?.enableCompactLayout === 'boolean'
+                            ? newSettings.enableCompactLayout
+                            : (prevSettings?.enableCompactLayout ?? false),
                     language: (() => {
                         switch (newSettings?.language) {
                             case 'zh-Hans':
@@ -1726,8 +1735,9 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                 appSettingsTheme === AppSettingsTheme.System
                     ? currentSystemTheme
                     : appSettingsTheme,
+            enableCompactLayout: appSettings[AppSettingsGroup.Common].enableCompactLayout,
         };
-    }, [appSettingsTheme, currentSystemTheme]);
+    }, [appSettings, appSettingsTheme, currentSystemTheme]);
 
     useEffect(() => {
         const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
@@ -1783,13 +1793,18 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
     }, []);
 
     const antdTheme = useMemo(() => {
+        const algorithms = [
+            appContextValue.currentTheme === AppSettingsTheme.Dark
+                ? theme.darkAlgorithm
+                : theme.defaultAlgorithm,
+        ];
+        if (appContextValue.enableCompactLayout) {
+            algorithms.push(theme.compactAlgorithm);
+        }
         return {
-            algorithm:
-                appContextValue.currentTheme === AppSettingsTheme.Dark
-                    ? theme.darkAlgorithm
-                    : theme.defaultAlgorithm,
+            algorithm: algorithms,
         };
-    }, [appContextValue.currentTheme]);
+    }, [appContextValue.currentTheme, appContextValue.enableCompactLayout]);
     useEffect(() => {
         document.body.className =
             appContextValue.currentTheme === AppSettingsTheme.Dark ? 'app-dark' : 'app-light';

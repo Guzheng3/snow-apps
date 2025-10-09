@@ -2,6 +2,7 @@ export const settings = {
     'settings.commonSettings': '常用',
     'settings.language': '语言',
     'settings.theme': '主题',
+    'settings.compactLayout': '紧凑布局',
     'settings.theme.light': '浅色',
     'settings.theme.dark': '暗黑',
     'settings.theme.system': '跟随系统',
