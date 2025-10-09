@@ -29,14 +29,6 @@ export const getImageBufferFromSharedBuffer = (): Promise<ImageSharedBufferData 
             };
         };
 
-        const timeout = setTimeout(() => {
-            resolve(undefined);
-            chromeWindows.chrome.webview.removeEventListener(
-                'sharedbufferreceived',
-                handleSharedBufferReceived,
-            );
-        }, 1000 * 5);
-
         const handleSharedBufferReceived = (e: { getBuffer: () => ArrayBuffer }) => {
             clearTimeout(timeout);
 
@@ -63,5 +55,13 @@ export const getImageBufferFromSharedBuffer = (): Promise<ImageSharedBufferData 
             'sharedbufferreceived',
             handleSharedBufferReceived,
         );
+
+        const timeout = setTimeout(() => {
+            resolve(undefined);
+            chromeWindows.chrome.webview.removeEventListener(
+                'sharedbufferreceived',
+                handleSharedBufferReceived,
+            );
+        }, 1000 * 5);
     });
 };

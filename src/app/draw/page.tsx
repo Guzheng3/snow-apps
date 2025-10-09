@@ -496,6 +496,8 @@ const DrawPageCore: React.FC<{
             capturingRef.current = true;
             drawToolbarActionRef.current?.setEnable(false);
 
+            const imageBufferFromSharedBufferPromise = getImageBufferFromSharedBuffer();
+
             const initCaptureBoundingBoxInfoPromise = initCaptureBoundingBoxInfoAndShowWindow();
             const captureAllMonitorsPromise = captureAllMonitorsAction(excuteScreenshotType);
 
@@ -510,8 +512,6 @@ const DrawPageCore: React.FC<{
             setCaptureEvent({
                 event: CaptureEvent.onExecuteScreenshot,
             });
-
-            const imageBufferFromSharedBufferPromise = getImageBufferFromSharedBuffer();
 
             let imageBuffer: ImageBuffer | ImageSharedBufferData | undefined;
             try {
