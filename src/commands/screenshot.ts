@@ -39,10 +39,12 @@ export enum HdrColorAlgorithm {
 export const captureAllMonitors = async (
     enableMultipleMonitor: boolean,
     correctHdrColorAlgorithm: HdrColorAlgorithm,
+    correctColorFilter: boolean,
 ): Promise<ImageBuffer | undefined> => {
     const result = await invoke<ArrayBuffer>('capture_all_monitors', {
         enableMultipleMonitor,
         correctHdrColorAlgorithm,
+        correctColorFilter,
     });
 
     if (result.byteLength === 0) {
@@ -74,6 +76,7 @@ export const captureFullScreen = async (
     copyToClipboard: boolean,
     captureHistoryFilePath: string,
     correctHdrColorAlgorithm: HdrColorAlgorithm,
+    correctColorFilter: boolean,
 ): Promise<CaptureFullScreenResult> => {
     const result = await invoke<CaptureFullScreenResult>('capture_full_screen', {
         enableMultipleMonitor,
@@ -81,6 +84,7 @@ export const captureFullScreen = async (
         copyToClipboard,
         captureHistoryFilePath,
         correctHdrColorAlgorithm,
+        correctColorFilter,
     });
     return result;
 };

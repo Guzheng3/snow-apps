@@ -23,6 +23,7 @@ pub async fn capture_all_monitors(
     webview: tauri::Webview,
     enable_multiple_monitor: bool,
     correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
+    correct_color_filter: bool,
 ) -> Result<Response, String> {
     snow_shot_tauri_commands_screenshot::capture_all_monitors(
         app,
@@ -30,6 +31,7 @@ pub async fn capture_all_monitors(
         webview,
         enable_multiple_monitor,
         correct_hdr_color_algorithm,
+        correct_color_filter,
     )
     .await
 }
@@ -118,6 +120,7 @@ pub async fn capture_full_screen(
     copy_to_clipboard: bool,
     capture_history_file_path: String,
     correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
+    correct_color_filter: bool,
 ) -> Result<CaptureFullScreenResult, String> {
     snow_shot_tauri_commands_screenshot::capture_full_screen(
         app.clone(),
@@ -137,6 +140,7 @@ pub async fn capture_full_screen(
         copy_to_clipboard,
         capture_history_file_path,
         correct_hdr_color_algorithm,
+        correct_color_filter,
     )
     .await
 }

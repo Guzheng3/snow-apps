@@ -396,38 +396,57 @@ export default function SystemSettings() {
                         </Col>
                     </Row>
 
-                    <Row gutter={token.marginLG}>
-                        <Col span={12}>
-                            <ProFormSwitch
-                                label={
-                                    <IconLabel
-                                        label={
-                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.enableCorrectHdrColor" />
-                                        }
-                                        tooltipTitle={
-                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.enableCorrectHdrColor.tip" />
-                                        }
-                                    />
-                                }
-                                name="correctHdrColor"
-                                valuePropName="checked"
-                            />
-                        </Col>
+                    {currentPlatform === 'windows' && (
+                        <Row gutter={token.marginLG}>
+                            <Col span={24}>
+                                <ProFormSwitch
+                                    label={
+                                        <IconLabel
+                                            label={
+                                                <FormattedMessage id="settings.systemSettings.screenshotSettings.correctColorFilter" />
+                                            }
+                                            tooltipTitle={
+                                                <FormattedMessage id="settings.systemSettings.screenshotSettings.correctColorFilter.tip" />
+                                            }
+                                        />
+                                    }
+                                    name="correctColorFilter"
+                                    valuePropName="checked"
+                                />
+                            </Col>
 
-                        <Col span={12}>
-                            <ProFormSelect
-                                label={
-                                    <IconLabel
-                                        label={
-                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.enableCorrectHdrColor.algorithm" />
-                                        }
-                                    />
-                                }
-                                name="correctHdrColorAlgorithm"
-                                options={hdrColorAlgorithmOptions}
-                            />
-                        </Col>
-                    </Row>
+                            <Col span={12}>
+                                <ProFormSwitch
+                                    label={
+                                        <IconLabel
+                                            label={
+                                                <FormattedMessage id="settings.systemSettings.screenshotSettings.enableCorrectHdrColor" />
+                                            }
+                                            tooltipTitle={
+                                                <FormattedMessage id="settings.systemSettings.screenshotSettings.enableCorrectHdrColor.tip" />
+                                            }
+                                        />
+                                    }
+                                    name="correctHdrColor"
+                                    valuePropName="checked"
+                                />
+                            </Col>
+
+                            <Col span={12}>
+                                <ProFormSelect
+                                    label={
+                                        <IconLabel
+                                            label={
+                                                <FormattedMessage id="settings.systemSettings.screenshotSettings.enableCorrectHdrColor.algorithm" />
+                                            }
+                                        />
+                                    }
+                                    name="correctHdrColorAlgorithm"
+                                    options={hdrColorAlgorithmOptions}
+                                />
+                            </Col>
+                        </Row>
+                    )}
 
                     <Row gutter={token.marginLG}>
                         <Col span={12}>

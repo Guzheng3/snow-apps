@@ -1,4 +1,4 @@
-use image::{DynamicImage, GenericImageView, RgbImage, RgbaImage};
+use image::{DynamicImage, GenericImageView};
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
 };
@@ -36,6 +36,7 @@ pub struct MonitorRect {
 pub struct CaptureOption {
     pub color_format: ColorFormat,
     pub correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
+    pub correct_color_filter: bool,
 }
 
 impl MonitorInfo {
@@ -482,6 +483,38 @@ impl MonitorList {
         Ok(capture_image)
     }
 
+    #[inline(always)]
+    fn apply_color_matrix_to_channel(
+        channel_index: usize,
+        red_f: f32,
+        green_f: f32,
+        blue_f: f32,
+        output_pixel: *mut u8,
+        matrix: &[f32; 25],
+    ) {
+        let mut current_result = 0.0;
+
+        // 处理 RGB 变换
+        current_result += matrix[channel_index * 5 + 0] * red_f; // 注意 current_output 未初始化
+        current_result += matrix[channel_index * 5 + 1] * green_f;
+        current_result += matrix[channel_index * 5 + 2] * blue_f;
+
+        // 第5行提供平移（相加）操作：直接加上第5行对应的值
+        current_result += matrix[4 * 5 + channel_index];
+
+        unsafe {
+            output_pixel
+                .add(channel_index)
+                .write(if current_result > 1.0 {
+                    255
+                } else if current_result < 0.0 {
+                    0
+                } else {
+                    (current_result * 255.0) as u8
+                });
+        }
+    }
+
     /// 应用 5x5 颜色变换矩阵到 RGB 像素
     fn apply_color_matrix(pixel: *const u8, output_pixel: *mut u8, matrix: &[f32; 25]) {
         let (red_f, green_f, blue_f) = unsafe {
@@ -493,47 +526,26 @@ impl MonitorList {
         };
 
         // 前 3 行：矩阵乘法计算 RGB 变换（不处理 alpha 通道）
-        unsafe {
-            for i in 0..3 {
-                let mut current_result = 0.0;
-
-                // 处理 RGB 变换
-                current_result += matrix[i * 5 + 0] * red_f; // 注意 current_output 未初始化
-                current_result += matrix[i * 5 + 1] * green_f;
-                current_result += matrix[i * 5 + 2] * blue_f;
-
-                // 第5行提供平移（相加）操作：直接加上第5行对应的值
-                current_result += matrix[4 * 5 + i];
-
-                // 将结果限制在0.0-1.0范围内
-                current_result = current_result.clamp(0.0, 1.0);
-
-                output_pixel.add(i).write((current_result * 255.0) as u8);
-            }
-        }
+        Self::apply_color_matrix_to_channel(0, red_f, green_f, blue_f, output_pixel, matrix);
+        Self::apply_color_matrix_to_channel(1, red_f, green_f, blue_f, output_pixel, matrix);
+        Self::apply_color_matrix_to_channel(2, red_f, green_f, blue_f, output_pixel, matrix);
     }
 
     /// 将颜色矩阵应用到整个图像
     fn apply_color_effect_to_image(
-        image: &DynamicImage,
+        image: &mut DynamicImage,
         matrix: &[f32; 25],
         color_format: ColorFormat,
-    ) -> Result<DynamicImage, String> {
+    ) -> Result<(), String> {
         let (width, height) = image.dimensions();
 
-        let image_raw = image.as_bytes();
-        let pixel_len = match color_format {
-            ColorFormat::Rgba8 => 4,
-            ColorFormat::Rgb8 => 3,
+        let (pixel_len, image_raw_ptr) = match color_format {
+            ColorFormat::Rgba8 => (4, image.as_mut_rgba8().unwrap().as_mut_ptr()),
+            ColorFormat::Rgb8 => (3, image.as_mut_rgb8().unwrap().as_mut_ptr()),
         };
-        let mut output_data = unsafe {
-            let mut array: Vec<u8> = Vec::with_capacity(image_raw.len());
-            array.set_len(image_raw.len());
 
-            array
-        };
-        let image_raw_ptr = image_raw.as_ptr() as usize;
-        let output_data_ptr = output_data.as_mut_ptr() as usize;
+        let image_raw_ptr = image_raw_ptr as usize;
+        let output_data_ptr = image_raw_ptr as usize;
 
         let pixel_count = (width * height) as usize;
 
@@ -548,13 +560,137 @@ impl MonitorList {
             }
         });
 
-        match color_format {
-            ColorFormat::Rgba8 => Ok(DynamicImage::ImageRgba8(
-                RgbaImage::from_raw(width, height, output_data).unwrap(),
-            )),
-            ColorFormat::Rgb8 => Ok(DynamicImage::ImageRgb8(
-                RgbImage::from_raw(width, height, output_data).unwrap(),
-            )),
+        Ok(())
+    }
+
+    fn invert_color_matrix(matrix: &[f32; 25]) -> Result<[f32; 25], String> {
+        /// 计算 3x3 矩阵的行列式
+        #[inline(always)]
+        fn determinant_3x3(m: &[[f32; 3]; 3]) -> f32 {
+            m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
+                - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
+                + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
+        }
+
+        /// 计算 3x3 矩阵的逆矩阵（优化版）
+        #[inline(always)]
+        fn invert_3x3_matrix(m: &[[f32; 3]; 3]) -> Option<[[f32; 3]; 3]> {
+            let det = determinant_3x3(m);
+            if det.abs() < f32::EPSILON * 100.0 {
+                return None;
+            }
+
+            let inv_det = 1.0 / det;
+
+            // 使用伴随矩阵公式，但优化计算顺序减少重复访问
+            let m00 = m[0][0];
+            let m01 = m[0][1];
+            let m02 = m[0][2];
+            let m10 = m[1][0];
+            let m11 = m[1][1];
+            let m12 = m[1][2];
+            let m20 = m[2][0];
+            let m21 = m[2][1];
+            let m22 = m[2][2];
+
+            // 预计算中间值以减少重复计算
+            let c00 = m11 * m22 - m12 * m21;
+            let c01 = m12 * m20 - m10 * m22;
+            let c02 = m10 * m21 - m11 * m20;
+
+            let c10 = m02 * m21 - m01 * m22;
+            let c11 = m00 * m22 - m02 * m20;
+            let c12 = m01 * m20 - m00 * m21;
+
+            let c20 = m01 * m12 - m02 * m11;
+            let c21 = m02 * m10 - m00 * m12;
+            let c22 = m00 * m11 - m01 * m10;
+
+            Some([
+                [c00 * inv_det, c01 * inv_det, c02 * inv_det],
+                [c10 * inv_det, c11 * inv_det, c12 * inv_det],
+                [c20 * inv_det, c21 * inv_det, c22 * inv_det],
+            ])
+        }
+
+        /// 计算矩阵-向量乘法：result = -matrix * vector
+        #[inline(always)]
+        fn matrix_vector_mul_neg(matrix: &[[f32; 3]; 3], vector: [f32; 3]) -> [f32; 3] {
+            [
+                -(matrix[0][0] * vector[0] + matrix[0][1] * vector[1] + matrix[0][2] * vector[2]),
+                -(matrix[1][0] * vector[0] + matrix[1][1] * vector[1] + matrix[1][2] * vector[2]),
+                -(matrix[2][0] * vector[0] + matrix[2][1] * vector[1] + matrix[2][2] * vector[2]),
+            ]
+        }
+
+        // 直接提取 3x3 线性变换矩阵和 3x1 平移向量
+        let linear_matrix = [
+            [matrix[0], matrix[1], matrix[2]],    // R 行
+            [matrix[5], matrix[6], matrix[7]],    // G 行
+            [matrix[10], matrix[11], matrix[12]], // B 行
+        ];
+        let translation = [matrix[20], matrix[21], matrix[22]]; // RGB 平移
+
+        // 计算线性变换的逆矩阵
+        let inv_linear = invert_3x3_matrix(&linear_matrix).ok_or(
+            "[MonitorInfoList::invert_color_matrix] linear_matrix is not invertible".to_string(),
+        )?;
+
+        // 计算逆平移向量
+        let inv_translation = matrix_vector_mul_neg(&inv_linear, translation);
+
+        // 构建反转的 5x5 矩阵
+        let mut inverted_matrix = [0.0f32; 25];
+
+        // RGB 变换行（直接映射到正确的索引位置）
+        inverted_matrix[0] = inv_linear[0][0];
+        inverted_matrix[1] = inv_linear[0][1];
+        inverted_matrix[2] = inv_linear[0][2];
+
+        inverted_matrix[5] = inv_linear[1][0];
+        inverted_matrix[6] = inv_linear[1][1];
+        inverted_matrix[7] = inv_linear[1][2];
+
+        inverted_matrix[10] = inv_linear[2][0];
+        inverted_matrix[11] = inv_linear[2][1];
+        inverted_matrix[12] = inv_linear[2][2];
+
+        // Alpha 通道保持单位变换：[0, 0, 0, 1, 0]
+        inverted_matrix[15] = 0.0; // Alpha R
+        inverted_matrix[16] = 0.0; // Alpha G
+        inverted_matrix[17] = 0.0; // Alpha B
+        inverted_matrix[18] = 1.0; // Alpha A
+        inverted_matrix[19] = 0.0; // Alpha 偏移
+
+        // 平移行
+        inverted_matrix[20] = inv_translation[0]; // R 偏移
+        inverted_matrix[21] = inv_translation[1]; // G 偏移
+        inverted_matrix[22] = inv_translation[2]; // B 偏移
+        inverted_matrix[23] = 0.0; // A 偏移
+
+        // 最后一行：[0, 0, 0, 0, 1] 用于仿射变换
+        inverted_matrix[24] = 1.0;
+
+        Ok(inverted_matrix)
+    }
+
+    /**
+     * 获取 Windows 下放大镜的反转颜色变换矩阵
+     * 用于还原被放大镜颜色效果影响的图像
+     */
+    pub async fn get_mag_color_effect_inverse(
+        correct_color_filter: bool,
+    ) -> Result<Option<[f32; 25]>, String> {
+        if !correct_color_filter {
+            return Ok(None);
+        }
+
+        match Self::get_mag_color_effect().await? {
+            Some(matrix) => {
+                let inverted = Self::invert_color_matrix(&matrix)?;
+                Ok(Some(inverted))
+            }
+            None => Ok(None),
         }
     }
 
@@ -620,17 +756,21 @@ impl MonitorList {
     ) -> Result<image::DynamicImage, String> {
         let result = tokio::try_join!(
             self.capture_future(crop_region, exclude_window, capture_option,),
-            Self::get_mag_color_effect()
+            Self::get_mag_color_effect_inverse(capture_option.correct_color_filter)
         );
 
         match result {
-            Ok((image, color_effect)) => {
+            Ok((mut image, color_effect)) => {
                 let image = match color_effect {
-                    Some(matrix) => Self::apply_color_effect_to_image(
-                        &image,
-                        &matrix,
-                        capture_option.color_format,
-                    )?,
+                    Some(matrix) => {
+                        Self::apply_color_effect_to_image(
+                            &mut image,
+                            &matrix,
+                            capture_option.color_format,
+                        )?;
+
+                        image
+                    }
                     None => image,
                 };
 
@@ -744,6 +884,7 @@ mod tests {
                 CaptureOption {
                     color_format: ColorFormat::Rgb8,
                     correct_hdr_color_algorithm: CorrectHdrColorAlgorithm::None,
+                    correct_color_filter: false,
                 },
             )
             .await
@@ -759,6 +900,68 @@ mod tests {
             .unwrap();
 
         println!("time: {:?}", instance.elapsed());
+    }
+
+    #[test]
+    fn test_invert_color_matrix() {
+        // 测试单位矩阵的反转
+        let identity: [f32; 25] = [
+            1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ];
+
+        let inverted = MonitorList::invert_color_matrix(&identity).unwrap();
+        assert_eq!(inverted, identity);
+
+        // 测试简单的缩放矩阵
+        let scale_matrix: [f32; 25] = [
+            2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ];
+
+        let inverted_scale = MonitorList::invert_color_matrix(&scale_matrix).unwrap();
+        let expected_scale: [f32; 25] = [
+            0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ];
+
+        for (i, (&actual, &expected)) in
+            inverted_scale.iter().zip(expected_scale.iter()).enumerate()
+        {
+            assert!(
+                (actual - expected).abs() < 1e-6,
+                "Index {}: {} != {}",
+                i,
+                actual,
+                expected
+            );
+        }
+
+        // 测试带平移的矩阵
+        let translate_matrix: [f32; 25] = [
+            1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.1, 0.2, 0.3, 0.0, 1.0,
+        ];
+
+        let inverted_translate = MonitorList::invert_color_matrix(&translate_matrix).unwrap();
+        let expected_translate: [f32; 25] = [
+            1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, -0.1, -0.2, -0.3, 0.0, 1.0,
+        ];
+
+        for (i, (&actual, &expected)) in inverted_translate
+            .iter()
+            .zip(expected_translate.iter())
+            .enumerate()
+        {
+            assert!(
+                (actual - expected).abs() < 1e-6,
+                "Index {}: {} != {}",
+                i,
+                actual,
+                expected
+            );
+        }
     }
 
     #[tokio::test]
@@ -780,6 +983,7 @@ mod tests {
                 CaptureOption {
                     color_format: ColorFormat::Rgb8,
                     correct_hdr_color_algorithm: CorrectHdrColorAlgorithm::None,
+                    correct_color_filter: false,
                 },
             )
             .await

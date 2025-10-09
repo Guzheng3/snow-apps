@@ -361,6 +361,7 @@ export const ScrollScreenshot: React.FC<{
                 rect.max_x,
                 rect.max_y,
                 getCorrectHdrColorAlgorithm(getAppSettings()),
+                getAppSettings()[AppSettingsGroup.SystemScreenshot].correctColorFilter,
             );
 
             handleCaptureImageListDebounce();

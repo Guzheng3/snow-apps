@@ -17,7 +17,7 @@ use zune_core::colorspace::ColorSpace;
 use zune_core::options::EncoderOptions;
 use zune_jpegxl::JxlSimpleEncoder;
 
-use crate::monitor_info::{CaptureOption, ColorFormat, MonitorList};
+use crate::monitor_info::{ColorFormat, MonitorList};
 
 #[cfg(target_os = "windows")]
 mod monitor_hdr_info;

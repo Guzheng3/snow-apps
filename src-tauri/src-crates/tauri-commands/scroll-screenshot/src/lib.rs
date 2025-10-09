@@ -50,6 +50,8 @@ pub async fn scroll_screenshot_capture(
     min_y: i32,
     max_x: i32,
     max_y: i32,
+    correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
+    correct_color_filter: bool,
 ) -> Result<(), String> {
     // 区域截图
     let image = {
@@ -87,7 +89,8 @@ pub async fn scroll_screenshot_capture(
                 Some(&window),
                 CaptureOption {
                     color_format: ColorFormat::Rgb8,
-                    correct_hdr_color_algorithm: CorrectHdrColorAlgorithm::None,
+                    correct_hdr_color_algorithm,
+                    correct_color_filter,
                 },
             )
             .await?

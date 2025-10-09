@@ -63,6 +63,7 @@ export const scrollScreenshotCapture = async (
     maxX: number,
     maxY: number,
     correctHdrColorAlgorithm: HdrColorAlgorithm,
+    correctColorFilter: boolean,
 ) => {
     const result = await invoke<ArrayBuffer>('scroll_screenshot_capture', {
         scrollImageList,
@@ -71,6 +72,7 @@ export const scrollScreenshotCapture = async (
         maxX,
         maxY,
         correctHdrColorAlgorithm,
+        correctColorFilter,
     });
 
     return result;

@@ -311,6 +311,8 @@ export type AppSettingsData = {
         tryWriteBitmapImageToClipboard: boolean;
         /** 启用多显示器截图 */
         enableMultipleMonitor: boolean;
+        /** 更正颜色滤镜 */
+        correctColorFilter: boolean;
         /** 更正 HDR 颜色 */
         correctHdrColor: boolean;
         /** HDR 颜色转换算法 */
@@ -506,6 +508,8 @@ export const defaultAppSettingsData: AppSettingsData = {
         tryWriteBitmapImageToClipboard: true,
         /** 启用多显示器截图 */
         enableMultipleMonitor: true,
+        /** 更正颜色滤镜 */
+        correctColorFilter: true,
         /** 更正 HDR 颜色  */
         correctHdrColor: true,
         /** HDR 颜色转换算法 */
@@ -1554,6 +1558,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? (newSettings.historyValidDuration as HistoryValidDuration)
                             : (prevSettings?.historyValidDuration ??
                               defaultAppSettingsData[group].historyValidDuration),
+                    correctColorFilter:
+                        typeof newSettings?.correctColorFilter === 'boolean'
+                            ? newSettings.correctColorFilter
+                            : (prevSettings?.correctColorFilter ??
+                              defaultAppSettingsData[group].correctColorFilter),
                     enableBrowserClipboard:
                         typeof newSettings?.enableBrowserClipboard === 'boolean'
                             ? newSettings.enableBrowserClipboard

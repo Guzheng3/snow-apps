@@ -349,6 +349,9 @@ export const settings = {
     'settings.systemSettings.screenshotSettings.enableMultipleMonitor': '启用多显示器截图',
     'settings.systemSettings.screenshotSettings.enableMultipleMonitor.tip':
         '截图将同时截取多个显示器的画面，关闭后可提高性能',
+    'settings.systemSettings.screenshotSettings.correctColorFilter': '更正颜色滤镜',
+    'settings.systemSettings.screenshotSettings.correctColorFilter.tip':
+        '系统应用颜色滤镜后，截取到的图片也将应用颜色滤镜，开启后将截取原始颜色',
     'settings.systemSettings.screenshotSettings.enableCorrectHdrColor': '更正 HDR 颜色',
     'settings.systemSettings.screenshotSettings.enableCorrectHdrColor.tip':
         '显示器开启 HDR 后，获取到的截图将通过指定算法转换为 SDR 颜色。不同的转换算法适合不同的色彩需求',

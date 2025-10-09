@@ -344,6 +344,7 @@ const CaptureHistoryControllerCore: React.FC<{
                 appSettings[AppSettingsGroup.FunctionScreenshot].fullScreenCopyToClipboard,
                 await getCaptureHistoryImageAbsPath(captureHistoryParams.file_name),
                 getCorrectHdrColorAlgorithm(appSettings),
+                appSettings[AppSettingsGroup.SystemScreenshot].correctColorFilter,
             );
             playCameraShutterSound();
             captureFullScreenResult = await captureFullScreenResultPromise;

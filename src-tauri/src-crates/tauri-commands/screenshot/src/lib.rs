@@ -50,6 +50,7 @@ pub async fn capture_all_monitors(
     webview: tauri::Webview,
     enable_multiple_monitor: bool,
     correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
+    correct_color_filter: bool,
 ) -> Result<Response, String> {
     #[cfg(target_os = "macos")]
     {
@@ -91,6 +92,7 @@ pub async fn capture_all_monitors(
             CaptureOption {
                 color_format: ColorFormat::Rgba8,
                 correct_hdr_color_algorithm,
+                correct_color_filter,
             },
         )
         .await?;
@@ -673,6 +675,7 @@ pub async fn capture_full_screen<F>(
     copy_to_clipboard: bool,
     capture_history_file_path: String,
     correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
+    correct_color_filter: bool,
 ) -> Result<CaptureFullScreenResult, String>
 where
     F: Fn(&image::DynamicImage) -> Result<(), String> + Send + 'static,
@@ -696,6 +699,7 @@ where
             CaptureOption {
                 color_format: ColorFormat::Rgb8,
                 correct_hdr_color_algorithm,
+                correct_color_filter,
             },
         )
         .await?;
