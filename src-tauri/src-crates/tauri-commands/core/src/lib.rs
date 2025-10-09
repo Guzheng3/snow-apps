@@ -678,7 +678,7 @@ pub async fn retain_dir_files(dir_path: PathBuf, file_names: Vec<String>) -> Res
 /// 设置窗口不参与视频录制
 pub async fn set_exclude_from_capture(
     #[allow(unused_variables)] window: tauri::Window,
-    enable: bool,
+    #[allow(unused_variables)] enable: bool,
 ) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {

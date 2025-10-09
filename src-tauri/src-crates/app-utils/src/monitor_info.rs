@@ -40,7 +40,10 @@ pub struct CaptureOption {
 }
 
 impl MonitorInfo {
-    pub fn new(monitor: &Monitor, monitor_hdr_info: MonitorHdrInfo) -> Self {
+    pub fn new(
+        monitor: &Monitor,
+        #[cfg(target_os = "windows")] monitor_hdr_info: MonitorHdrInfo,
+    ) -> Self {
         let monitor_rect: ElementRect;
         let scale_factor: f32;
 
@@ -249,7 +252,7 @@ impl MonitorList {
 
                 #[cfg(target_os = "macos")]
                 {
-                    MonitorInfo::new(monitor, MonitorHdrInfo::default())
+                    MonitorInfo::new(monitor)
                 }
             })
             .filter(|monitor| monitor.rect.overlaps(&region))

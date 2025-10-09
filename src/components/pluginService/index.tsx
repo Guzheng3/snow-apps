@@ -13,6 +13,7 @@ import { getAppConfigBaseDirWithCache } from '@/commands/file';
 import { isDeepEqualReact } from '@ant-design/pro-components';
 import { throttle } from 'es-toolkit';
 import { MenuLayoutContext } from '@/app/menuLayout';
+import { getPlatform } from '@/utils';
 
 export const PLUGIN_EVENT_PLUGIN_STATUS_CHANGE = 'plugin-status-change';
 
@@ -103,7 +104,7 @@ export const PluginServiceProvider = ({ children }: { children: React.ReactNode 
             },
             {
                 id: PLUGIN_ID_FFMPEG,
-                file_list: ['ffmpeg.exe'],
+                file_list: getPlatform() === 'windows' ? ['ffmpeg.exe'] : ['ffmpeg'],
             },
             {
                 id: PLUGIN_ID_AI_CHAT,

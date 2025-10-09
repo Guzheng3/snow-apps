@@ -47,7 +47,7 @@ pub async fn capture_current_monitor(
 pub async fn capture_all_monitors(
     app_handle: tauri::AppHandle,
     window: tauri::Window,
-    webview: tauri::Webview,
+    #[allow(unused_variables)] webview: tauri::Webview,
     enable_multiple_monitor: bool,
     correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
     correct_color_filter: bool,
@@ -64,6 +64,7 @@ pub async fn capture_all_monitors(
             CaptureOption {
                 color_format: ColorFormat::Rgb8,
                 correct_hdr_color_algorithm,
+                correct_color_filter,
             },
         )
         .await?;
