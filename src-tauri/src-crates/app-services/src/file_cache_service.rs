@@ -16,6 +16,7 @@ const APP_CONFIG_DIR: &str = "app_config_dir";
 const APP_CONFIG_BASE_DIR: &str = "app_config_base_dir";
 const APP_CONFIG_DIR_NAME: &str = "configs";
 const APP_CUSTOM_CONFIG_DIR_DATA_FILE_NAME: &str = "__custom_config_dir";
+#[cfg(target_os = "windows")]
 const APP_PORTABLE_DIR_DATA_FILE_NAME: &str = "__portable";
 
 impl FileCacheService {

@@ -276,7 +276,7 @@ pub fn capture_target_monitor(
     monitor: &Monitor,
     crop_area: Option<ElementRect>,
     #[allow(unused_variables)] exclude_window: Option<&tauri::Window>,
-    color_format: ColorFormat,
+    #[allow(unused_variables)] color_format: ColorFormat,
 ) -> Option<image::DynamicImage> {
     #[cfg(target_os = "windows")]
     {
