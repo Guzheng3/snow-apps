@@ -47,6 +47,7 @@ import {
     PLUGIN_ID_RAPID_OCR,
     usePluginService,
 } from '@/components/pluginService';
+import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 
 export const TrayIconStatePublisher = createPublisher<{
     disableShortcut: boolean;
@@ -97,15 +98,15 @@ const TrayIconLoaderComponent = () => {
         TrayIconDefaultIcon.Default,
     );
     const [enableTrayIcon, setEnableTrayIcon] = useState(false);
-    const [getAppSettings] = useStateSubscriber(
-        AppSettingsPublisher,
+    const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
+    useAppSettingsLoad(
         useCallback(
-            (settings: AppSettingsData, previous: AppSettingsData) => {
+            (settings: AppSettingsData, previous: AppSettingsData | undefined) => {
                 if (
                     shortcutKeysRef.current === undefined ||
                     !isEqual(
                         settings[AppSettingsGroup.AppFunction],
-                        previous[AppSettingsGroup.AppFunction],
+                        previous?.[AppSettingsGroup.AppFunction],
                     )
                 ) {
                     setShortcutKeys(settings[AppSettingsGroup.AppFunction]);
@@ -118,6 +119,7 @@ const TrayIconLoaderComponent = () => {
             },
             [setShortcutKeys, shortcutKeysRef, setIconPath, setDefaultIcon],
         ),
+        true,
     );
 
     const closeTrayIcon = useCallback(async () => {
