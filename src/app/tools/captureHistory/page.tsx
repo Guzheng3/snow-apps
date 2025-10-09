@@ -119,25 +119,21 @@ const CaptureHistoryPage = () => {
                         endTs = dayjs(params.create_ts[1], 'YYYY-MM-DD HH:mm:ss').valueOf();
                     }
 
+                    const filterData = dataSourceRef.current.filter((item) => {
+                        if (startTs && endTs) {
+                            return item.create_ts >= startTs && item.create_ts <= endTs;
+                        }
+                        return true;
+                    });
                     const data = await Promise.all(
-                        dataSourceRef.current
-                            .filter((item) => {
-                                if (startTs && endTs) {
-                                    return item.create_ts >= startTs && item.create_ts <= endTs;
-                                }
-                                return true;
-                            })
-                            .slice(startIndex, startIndex + pageSize)
-                            .map(async (item) => {
-                                const file_path = await getCaptureHistoryImageAbsPath(
-                                    item.file_name,
-                                );
-                                return {
-                                    ...item,
-                                    file_path,
-                                    file_url: convertFileSrc(file_path),
-                                };
-                            }),
+                        filterData.slice(startIndex, startIndex + pageSize).map(async (item) => {
+                            const file_path = await getCaptureHistoryImageAbsPath(item.file_name);
+                            return {
+                                ...item,
+                                file_path,
+                                file_url: convertFileSrc(file_path),
+                            };
+                        }),
                     );
 
                     setLoading(false);
@@ -145,8 +141,8 @@ const CaptureHistoryPage = () => {
                     return {
                         data,
                         success: true,
-                        pageSize: 10,
-                        total: dataSourceRef.current.length,
+                        pageSize: pageSize,
+                        total: data.length,
                     };
                 }}
                 pagination={{

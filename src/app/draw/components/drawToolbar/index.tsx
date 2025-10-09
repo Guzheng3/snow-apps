@@ -572,6 +572,9 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     case ScreenshotType.TopWindow:
                         onTopWindow();
                         break;
+                    case ScreenshotType.SwitchCaptureHistory:
+                        onToolClick(DrawState.Select);
+                        break;
                     case ScreenshotType.Default:
                     default:
                         onToolClick(DrawState.Idle);
