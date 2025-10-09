@@ -535,6 +535,7 @@ const DrawCoreComponent: React.FC<{
                         selectionElement: null,
                         selectedElementIds: {},
                         selectedGroupIds: {},
+                        multiElement: null,
                     },
                     captureUpdate: 'NEVER',
                 });
