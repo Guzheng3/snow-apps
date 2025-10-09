@@ -123,13 +123,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
     const { updateAppSettings } = useContext(AppSettingsActionContext);
     const { drawCacheLayerActionRef, selectLayerActionRef } = useContext(DrawContext);
 
-    const [getDrawToolbarState, setDrawToolbarState] = useStateSubscriber(
-        DrawToolbarStatePublisher,
-        undefined,
-    );
-    const [getDrawState, setDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
-    const [, setCaptureStep] = useStateSubscriber(CaptureStepPublisher, undefined);
-    const [getScreenshotType] = useStateSubscriber(ScreenshotTypePublisher, undefined);
     const { token } = theme.useToken();
     const { message } = useContext(AntdContext);
     const intl = useIntl();
@@ -149,6 +142,15 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
     const drawToolbarRef = useRef<HTMLDivElement | null>(null);
     const dragButtonActionRef = useRef<DragButtonActionType | undefined>(undefined);
     const [, setEnableKeyEvent] = useStateSubscriber(EnableKeyEventPublisher, undefined);
+
+    const [getDrawToolbarState, setDrawToolbarState] = useStateSubscriber(
+        DrawToolbarStatePublisher,
+        undefined,
+    );
+    const [getDrawState, setDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
+    const [, setCaptureStep] = useStateSubscriber(CaptureStepPublisher, undefined);
+    const [getScreenshotType] = useStateSubscriber(ScreenshotTypePublisher, undefined);
+
     useStateSubscriber(
         AppSettingsPublisher,
         useCallback(
@@ -493,15 +495,26 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
     const canHandleScreenshotTypeRef = useRef(false);
     useStateSubscriber(
         CaptureEventPublisher,
-        useCallback((event: CaptureEventParams | undefined) => {
-            if (!event) {
-                return;
-            }
+        useCallback(
+            (event: CaptureEventParams | undefined) => {
+                if (!event) {
+                    return;
+                }
 
-            if (event.event === CaptureEvent.onCaptureReady) {
-                canHandleScreenshotTypeRef.current = true;
-            }
-        }, []),
+                if (event.event === CaptureEvent.onCaptureReady) {
+                    canHandleScreenshotTypeRef.current = true;
+                }
+
+                if (drawToolarContainerRef.current) {
+                    if (event.event === CaptureEvent.onCaptureFinish) {
+                        drawToolarContainerRef.current.style.opacity = '0';
+                    } else if (event.event === CaptureEvent.onCaptureLoad) {
+                        drawToolarContainerRef.current.style.opacity = '1';
+                    }
+                }
+            },
+            [drawToolarContainerRef],
+        ),
     );
 
     const showDrawToolbarContainer = useCallback(() => {
