@@ -48,7 +48,7 @@ export const getImageBufferFromSharedBuffer = (): Promise<ImageSharedBufferData 
                 handleSharedBufferReceived,
             );
             // 释放 SharedBuffer
-            // chromeWindows.chrome.webview.releaseBuffer(buffer);
+            chromeWindows.chrome.webview.releaseBuffer(buffer);
         };
 
         chromeWindows.chrome.webview.addEventListener(
