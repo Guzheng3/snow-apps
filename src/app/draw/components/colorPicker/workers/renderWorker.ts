@@ -58,14 +58,15 @@ const handleInitImageData = async (data: ColorPickerRenderInitImageDataData) => 
 };
 
 const handlePutImageData = async (data: ColorPickerRenderPutImageDataData) => {
-    const { x, y, baseIndex, centerAuxiliaryLineColor } = data.payload;
+    const { x, y, colorX, colorY, centerAuxiliaryLineColor } = data.payload;
     return renderPutImageDataAction(
         previewCanvasCtxRef,
         previewImageDataRef,
         captureHistoryImageDataRef,
         x,
         y,
-        baseIndex,
+        colorX,
+        colorY,
         centerAuxiliaryLineColor,
     );
 };
@@ -84,8 +85,8 @@ const handleSwitchCaptureHistory = async (data: ColorPickerRenderSwitchCaptureHi
 };
 
 const handlePickColor = async (data: ColorPickerRenderPickColorData) => {
-    const { baseIndex } = data.payload;
-    return renderPickColorAction(captureHistoryImageDataRef, previewImageDataRef, baseIndex);
+    const { x, y } = data.payload;
+    return renderPickColorAction(captureHistoryImageDataRef, previewImageDataRef, x, y);
 };
 
 self.onmessage = async ({ data }: MessageEvent<ColorPickerRenderData>) => {

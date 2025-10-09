@@ -124,7 +124,8 @@ export const putImageDataAction = async (
     captureHistoryImageDataRef: RefType<ImageData | undefined>,
     x: number,
     y: number,
-    baseIndex: number,
+    colorX: number,
+    colorY: number,
     centerAuxiliaryLineColor: string | undefined,
 ): Promise<{ color: [red: number, green: number, blue: number] }> => {
     return new Promise((resolve) => {
@@ -134,7 +135,8 @@ export const putImageDataAction = async (
                 payload: {
                     x,
                     y,
-                    baseIndex,
+                    colorX,
+                    colorY,
                     centerAuxiliaryLineColor,
                 },
             };
@@ -157,7 +159,8 @@ export const putImageDataAction = async (
                 captureHistoryImageDataRef,
                 x,
                 y,
-                baseIndex,
+                colorX,
+                colorY,
                 centerAuxiliaryLineColor,
             );
             resolve(color);
@@ -243,14 +246,16 @@ export const pickColorAction = async (
     renderWorker: Worker | undefined,
     captureHistoryImageDataRef: RefType<ImageData | undefined>,
     previewImageDataRef: RefType<ImageData | null>,
-    baseIndex: number,
+    x: number,
+    y: number,
 ): Promise<{ color: [red: number, green: number, blue: number] }> => {
     return new Promise((resolve) => {
         if (renderWorker) {
             const PickColorData: ColorPickerRenderPickColorData = {
                 type: ColorPickerRenderMessageType.PickColor,
                 payload: {
-                    baseIndex,
+                    x,
+                    y,
                 },
             };
 
@@ -268,7 +273,8 @@ export const pickColorAction = async (
             const color = renderPickColorAction(
                 captureHistoryImageDataRef,
                 previewImageDataRef,
-                baseIndex,
+                x,
+                y,
             );
             resolve(color);
         }

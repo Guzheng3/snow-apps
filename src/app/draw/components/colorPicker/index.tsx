@@ -410,7 +410,7 @@ const ColorPickerCore: React.FC<{
 
     const { isDisableMouseMove, enableMouseMove, disableMouseMove } = useMoveCursor();
     const updateImageDataPutImage = useCallback(
-        async (x: number, y: number, baseIndex: number) => {
+        async (x: number, y: number, colorX: number, colorY: number) => {
             const color = await putImageDataAction(
                 renderWorker,
                 previewCanvasCtxRef,
@@ -418,25 +418,15 @@ const ColorPickerCore: React.FC<{
                 captureHistoryImageDataRef,
                 x,
                 y,
-                baseIndex,
+                colorX,
+                colorY,
                 getAppSettings()[AppSettingsGroup.Screenshot].colorPickerCenterAuxiliaryLineColor,
             );
+
             // 更新颜色
             updateColor(color.color[0], color.color[1], color.color[2]);
         },
         [getAppSettings, renderWorker, updateColor],
-    );
-
-    const convertPositionToImageDataIndex = useCallback(
-        (mouseX: number, mouseY: number) => {
-            const captureBoundingBoxInfo = captureBoundingBoxInfoRef.current;
-            if (!captureBoundingBoxInfo) {
-                return 0;
-            }
-
-            return (mouseY * captureBoundingBoxInfo.width + mouseX) * 4;
-        },
-        [captureBoundingBoxInfoRef],
     );
 
     const updateImageDataPutImageRender = useCallbackRender(updateImageDataPutImage);
@@ -474,18 +464,16 @@ const ColorPickerCore: React.FC<{
             // 将数据绘制到预览画布
             updatePickerPosition(mouseX, mouseY);
 
-            const baseIndex = convertPositionToImageDataIndex(mouseX, mouseY);
-
             // 计算和绘制错开 1 帧率
             updateImageDataPutImageRender(
                 mouseX - halfPickerSize,
                 mouseY - halfPickerSize,
-                baseIndex,
+                mouseX,
+                mouseY,
             );
         },
         [
             captureBoundingBoxInfoRef,
-            convertPositionToImageDataIndex,
             enableMouseMove,
             updateImageDataPutImageRender,
             updatePickerPosition,
@@ -701,15 +689,12 @@ const ColorPickerCore: React.FC<{
 
     const pickColor = useCallback(
         async (mousePosition: MousePosition): Promise<string> => {
-            const baseIndex = convertPositionToImageDataIndex(
-                Math.round(mousePosition.mouseX * window.devicePixelRatio),
-                Math.round(mousePosition.mouseY * window.devicePixelRatio),
-            );
             const color = await pickColorAction(
                 renderWorker,
                 captureHistoryImageDataRef,
                 previewImageDataRef,
-                baseIndex,
+                Math.round(mousePosition.mouseX * window.devicePixelRatio),
+                Math.round(mousePosition.mouseY * window.devicePixelRatio),
             );
 
             return Color({
@@ -720,7 +705,7 @@ const ColorPickerCore: React.FC<{
                 .hex()
                 .toString();
         },
-        [convertPositionToImageDataIndex, renderWorker],
+        [renderWorker],
     );
 
     useImperativeHandle(

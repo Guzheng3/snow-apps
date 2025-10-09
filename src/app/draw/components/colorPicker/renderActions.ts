@@ -70,7 +70,8 @@ export function renderPutImageDataAction(
     captureHistoryImageDataRef: RefType<ImageData | undefined>,
     x: number,
     y: number,
-    baseIndex: number,
+    colorX: number,
+    colorY: number,
     centerAuxiliaryLineColor: string | undefined,
 ): { color: [red: number, green: number, blue: number] } {
     const ctx = previewCanvasCtxRef.current;
@@ -129,6 +130,7 @@ export function renderPutImageDataAction(
         ctx.restore();
     }
 
+    const baseIndex = (colorY * imageData.width + colorX) * 4;
     const color: [red: number, green: number, blue: number] = [
         imageData.data[baseIndex] ?? 0,
         imageData.data[baseIndex + 1] ?? 0,
@@ -176,7 +178,8 @@ export function renderPixelsWorkerTerminateAction() {
 export function renderPickColorAction(
     captureHistoryImageDataRef: RefType<ImageData | undefined>,
     previewImageDataRef: RefType<ImageData | null>,
-    baseIndex: number,
+    x: number,
+    y: number,
 ): {
     color: [red: number, green: number, blue: number];
 } {
@@ -187,6 +190,7 @@ export function renderPickColorAction(
         };
     }
 
+    const baseIndex = (y * imageData.width + x) * 4;
     const color: [red: number, green: number, blue: number] = [
         imageData.data[baseIndex] ?? 0,
         imageData.data[baseIndex + 1] ?? 0,

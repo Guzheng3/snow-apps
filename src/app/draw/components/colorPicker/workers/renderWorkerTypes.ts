@@ -29,7 +29,8 @@ export type ColorPickerRenderPutImageDataData = {
     payload: {
         x: number;
         y: number;
-        baseIndex: number;
+        colorX: number;
+        colorY: number;
         centerAuxiliaryLineColor: string | undefined;
     };
 };
@@ -37,7 +38,8 @@ export type ColorPickerRenderPutImageDataData = {
 export type ColorPickerRenderPickColorData = {
     type: ColorPickerRenderMessageType.PickColor;
     payload: {
-        baseIndex: number;
+        x: number;
+        y: number;
     };
 };
 
