@@ -203,6 +203,7 @@ export const FixedContentCore: React.FC<{
     const [showBorder, setShowBorder] = useState(true);
     const [borderRadius, setBorderRadius] = useState(0);
     const [enableDraw, setEnableDraw, enableDrawRef] = useStateRef(false);
+    const [enableDrawLayer, setEnableDrawLayer] = useState(false);
     const [enableSelectText, setEnableSelectText, enableSelectTextRef] = useStateRef(false);
     const [contentOpacity, setContentOpacity, contentOpacityRef] = useStateRef(1);
     const [isAlwaysOnTop, setIsAlwaysOnTop] = useStateRef(true);
@@ -1689,6 +1690,12 @@ export const FixedContentCore: React.FC<{
         appWindowRef.current.setSize(
             new PhysicalSize(targetWindowSize.width, targetWindowSize.height),
         );
+
+        if (enableDraw) {
+            setEnableDrawLayer(true);
+        } else {
+            setEnableDrawLayer(false);
+        }
     }, [enableDraw, getWindowPhysicalSize, scale.x]);
     useEffect(() => {
         updateDrawWindowSize();
@@ -1879,7 +1886,7 @@ export const FixedContentCore: React.FC<{
                     actionRef={drawActionRef}
                     documentSize={documentSize}
                     scaleInfo={scale}
-                    disabled={!enableDraw}
+                    disabled={!enableDraw || !enableDrawLayer}
                     hidden={enableSelectText}
                     onConfirm={switchDraw}
                 />

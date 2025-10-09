@@ -30,7 +30,13 @@ const useDragElementCore: () => {
         baseOffsetX: number,
         baseOffsetY: number,
         contentScale?: number,
-        calculatedBoundaryRect?: (rect: ElementRect) => ElementRect,
+        calculatedBoundaryRect?: (
+            rect: ElementRect,
+            toolbarWidth: number,
+            toolbarHeight: number,
+            viewportWidth: number,
+            viewportHeight: number,
+        ) => ElementRect,
     ) => UpdateElementPositionResult;
     reset: () => void;
     mouseOriginPositionRef: React.RefObject<MousePosition>;
@@ -55,7 +61,13 @@ const useDragElementCore: () => {
             baseOffsetX: number,
             baseOffsetY: number,
             contentScale?: number,
-            calculatedBoundaryRect?: (rect: ElementRect) => ElementRect,
+            calculatedBoundaryRect?: (
+                rect: ElementRect,
+                toolbarWidth: number,
+                toolbarHeight: number,
+                viewportWidth: number,
+                viewportHeight: number,
+            ) => ElementRect,
         ): UpdateElementPositionResult => {
             const dragRes = updateElementPosition(
                 element,
@@ -110,7 +122,13 @@ export type DragElementConfig = {
         y: number;
     };
     getContentScale?: () => number;
-    calculatedBoundaryRect?: (rect: ElementRect) => ElementRect;
+    calculatedBoundaryRect?: (
+        rect: ElementRect,
+        toolbarWidth: number,
+        toolbarHeight: number,
+        viewportWidth: number,
+        viewportHeight: number,
+    ) => ElementRect;
 };
 
 export type DragElementOptionalConfig = {
@@ -128,7 +146,13 @@ export const useDragElement = (
     update: (
         element: HTMLElement,
         contentScale?: number,
-        calculatedBoundaryRect?: (rect: ElementRect) => ElementRect,
+        calculatedBoundaryRect?: (
+            rect: ElementRect,
+            toolbarWidth: number,
+            toolbarHeight: number,
+            viewportWidth: number,
+            viewportHeight: number,
+        ) => ElementRect,
     ) => UpdateElementPositionResult;
     reset: () => void;
     onMouseDown: (event: React.MouseEvent<HTMLDivElement> | MouseEvent) => void;
@@ -136,7 +160,13 @@ export const useDragElement = (
         event: React.MouseEvent<HTMLDivElement> | MouseEvent,
         element: HTMLElement,
         contentScale?: number,
-        calculatedBoundaryRect?: (rect: ElementRect) => ElementRect,
+        calculatedBoundaryRect?: (
+            rect: ElementRect,
+            toolbarWidth: number,
+            toolbarHeight: number,
+            viewportWidth: number,
+            viewportHeight: number,
+        ) => ElementRect,
     ) => void;
     onMouseUp: () => void;
 } => {
@@ -158,7 +188,13 @@ export const useDragElement = (
         (
             element: HTMLElement,
             contentScale?: number,
-            calculatedBoundaryRect?: (rect: ElementRect) => ElementRect,
+            calculatedBoundaryRect?: (
+                rect: ElementRect,
+                toolbarWidth: number,
+                toolbarHeight: number,
+                viewportWidth: number,
+                viewportHeight: number,
+            ) => ElementRect,
         ) => {
             const baseOffset = selectedConfigRef.current
                 ? selectedConfigRef.current.getBaseOffset(element)
@@ -240,7 +276,13 @@ export const useDragElement = (
             event: React.MouseEvent<HTMLDivElement> | MouseEvent,
             element: HTMLElement,
             contentScale?: number,
-            calculatedBoundaryRect?: (rect: ElementRect) => ElementRect,
+            calculatedBoundaryRect?: (
+                rect: ElementRect,
+                toolbarWidth: number,
+                toolbarHeight: number,
+                viewportWidth: number,
+                viewportHeight: number,
+            ) => ElementRect,
         ) => {
             if (!draggingRef.current) {
                 return;

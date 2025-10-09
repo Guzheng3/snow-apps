@@ -215,6 +215,8 @@ export enum DrawState {
     MouseThrough = 113,
     // 视频录制
     VideoRecord = 114,
+    // 拖拽窗口
+    DragWindow = 115,
 }
 
 export const DrawStatePublisher = createPublisher<DrawState>(DrawState.Idle);
@@ -235,7 +237,13 @@ export type DrawCoreContextValue = {
     ) => DragElementOptionalConfig[];
     getAction: () => DrawCoreActionType | undefined;
     getMousePosition: () => MousePosition | undefined;
-    calculatedBoundaryRect?: (rect: ElementRect) => ElementRect;
+    calculatedBoundaryRect?: (
+        rect: ElementRect,
+        toolbarWidth: number,
+        toolbarHeight: number,
+        viewportWidth: number,
+        viewportHeight: number,
+    ) => ElementRect;
     getContentScale?: () => number;
     getPopoverPopupContainer?: () => HTMLElement;
 };

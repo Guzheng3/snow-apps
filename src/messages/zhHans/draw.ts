@@ -166,4 +166,5 @@ export const draw = {
     'draw.maskBorderType.solid': '实线',
     'draw.maskBorderType.dashed': '虚线',
     'draw.maskBorderType.dotted': '点线',
+    'draw.dragWindow': '拖拽窗口',
 };

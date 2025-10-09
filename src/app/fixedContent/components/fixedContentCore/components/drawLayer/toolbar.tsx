@@ -4,6 +4,7 @@ import {
     ArrowIcon,
     ArrowSelectIcon,
     CircleIcon,
+    DragWindowIcon,
     EraserIcon,
     PenIcon,
     RectIcon,
@@ -16,6 +17,7 @@ import {
     DrawStatePublisher,
     ExcalidrawEventPublisher,
     ExcalidrawEventParams,
+    DrawCoreContext,
 } from '@/app/fullScreenDraw/components/drawCore/extra';
 import {
     useCallback,
@@ -27,7 +29,7 @@ import {
     useState,
 } from 'react';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { CheckOutlined, LockOutlined } from '@ant-design/icons';
+import { CheckOutlined, HolderOutlined, LockOutlined } from '@ant-design/icons';
 import { AppSettingsActionContext, AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
 import { useStateRef } from '@/hooks/useStateRef';
 import { zIndexs } from '@/utils/zIndex';
@@ -39,12 +41,14 @@ import { HistoryControls } from '@/app/draw/components/drawToolbar/components/hi
 import { getButtonTypeByState } from '@/app/draw/components/drawToolbar/extra';
 import { useIntl } from 'react-intl';
 import { formatKey } from '@/utils/format';
+import { useDragElement } from '@/app/draw/components/drawToolbar/components/dragButton';
+import { startFreeDrag } from '@/commands/core';
 
 export type FixedContentCoreDrawToolbarActionType = {
     getSize: () => { width: number; height: number };
 } & DrawToolbarActionType;
 
-const BOX_SHADOW_WIDTH = 3;
+export const BOX_SHADOW_WIDTH = 3;
 
 export const FixedContentCoreDrawToolbar: React.FC<{
     actionRef: React.RefObject<FixedContentCoreDrawToolbarActionType | undefined>;
@@ -63,7 +67,100 @@ export const FixedContentCoreDrawToolbar: React.FC<{
     const [enableLockDrawTool, setEnableLockDrawTool, enableLockDrawToolRef] = useStateRef(false);
     const [switchDrawHotKey, setSwitchDrawHotKey] = useState('');
 
+    const { getLimitRect, getDevicePixelRatio, getContentScale, calculatedBoundaryRect } =
+        useContext(DrawCoreContext);
+
+    const getSelectedRect = useCallback(() => {
+        return (
+            getLimitRect() ?? {
+                min_x: 0,
+                min_y: 0,
+                max_x: 0,
+                max_y: 0,
+            }
+        );
+    }, [getLimitRect]);
     const toolbarElementRef = useRef<HTMLDivElement>(null);
+
+    const getSize = useCallback(() => {
+        return {
+            width: (toolbarElementRef.current?.clientWidth ?? 0) + BOX_SHADOW_WIDTH * 2,
+            height:
+                (toolbarElementRef.current?.clientHeight ?? 0) +
+                BOX_SHADOW_WIDTH * 2 +
+                token.marginXXS,
+        };
+    }, [token.marginXXS]);
+
+    const {
+        update: updateDrawToolbarStyleCore,
+        reset: resetDrag,
+        onMouseDown,
+        onMouseMove,
+        onMouseUp,
+    } = useDragElement(
+        useMemo(() => {
+            return {
+                getBaseOffset: (element) => {
+                    const limitRect = getSelectedRect();
+                    const devicePixelRatio = getDevicePixelRatio();
+                    return {
+                        x:
+                            limitRect.max_x / devicePixelRatio -
+                            BOX_SHADOW_WIDTH -
+                            element.clientWidth,
+                        y: limitRect.max_y / devicePixelRatio + token.marginXXS,
+                    };
+                },
+            };
+        }, [getDevicePixelRatio, getSelectedRect, token.marginXXS]),
+    );
+
+    const updateDrawToolbarStyle = useCallback(() => {
+        const element = toolbarElementRef.current;
+        if (!element) {
+            return;
+        }
+
+        updateDrawToolbarStyleCore(element, getContentScale?.(), calculatedBoundaryRect);
+    }, [updateDrawToolbarStyleCore, getContentScale, calculatedBoundaryRect]);
+
+    const handleMouseDown = useCallback(
+        (e: React.MouseEvent<HTMLDivElement>) => {
+            e.stopPropagation();
+            onMouseDown(e);
+        },
+        [onMouseDown],
+    );
+
+    useEffect(() => {
+        if (disabled) {
+            return;
+        }
+
+        const handleMouseMove = (event: MouseEvent) => {
+            if (!toolbarElementRef.current) {
+                return;
+            }
+
+            onMouseMove(
+                event,
+                toolbarElementRef.current,
+                getContentScale?.(),
+                calculatedBoundaryRect,
+            );
+        };
+        const handleMouseUp = () => {
+            onMouseUp();
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [calculatedBoundaryRect, disabled, getContentScale, onMouseMove, onMouseUp]);
 
     const onToolClick = useCallback(
         (drawState: DrawState) => {
@@ -266,16 +363,6 @@ export const FixedContentCoreDrawToolbar: React.FC<{
         ),
     );
 
-    const getSize = useCallback(() => {
-        return {
-            width: (toolbarElementRef.current?.clientWidth ?? 0) + BOX_SHADOW_WIDTH * 2,
-            height:
-                (toolbarElementRef.current?.clientHeight ?? 0) +
-                BOX_SHADOW_WIDTH * 2 +
-                token.marginXXS,
-        };
-    }, [token.marginXXS]);
-
     useImperativeHandle(
         actionRef,
         useCallback(() => {
@@ -286,16 +373,18 @@ export const FixedContentCoreDrawToolbar: React.FC<{
         }, [getSize, onToolClick]),
     );
 
-    const [currentSize, setCurrentSize] = useState({
-        width: 0,
-        height: 0,
-    });
-
     useEffect(() => {
-        if (!disabled) {
-            setCurrentSize(getSize());
+        if (disabled) {
+            toolbarElementRef.current!.style.opacity = '0';
+        } else {
+            setTimeout(() => {
+                resetDrag();
+                updateDrawToolbarStyle();
+
+                toolbarElementRef.current!.style.opacity = '1';
+            }, 17);
         }
-    }, [disabled, getSize, onToolClick]);
+    }, [disabled, resetDrag, updateDrawToolbarStyle]);
 
     const toolButtonProps = useMemo<ButtonProps>(() => {
         return {};
@@ -315,10 +404,22 @@ export const FixedContentCoreDrawToolbar: React.FC<{
         );
     }, [intl, switchDrawHotKey]);
 
+    const dragTitle = useMemo(() => {
+        return intl.formatMessage({ id: 'draw.drag' });
+    }, [intl]);
+
+    const dragWindowButtonTitle = useMemo(() => {
+        return intl.formatMessage({ id: 'draw.dragWindow' });
+    }, [intl]);
+
     return (
         <div className="fixed-content-draw-toolbar-container">
             <div className="fixed-content-draw-toolbar" ref={toolbarElementRef}>
                 <Flex align="center" gap={token.paddingXS}>
+                    <div className="drag-button" title={dragTitle} onMouseDown={handleMouseDown}>
+                        <HolderOutlined />
+                    </div>
+
                     {/* 选择状态 */}
                     <ToolButton
                         componentKey={KeyEventKey.SelectTool}
@@ -458,6 +559,21 @@ export const FixedContentCoreDrawToolbar: React.FC<{
                     <Button
                         {...toolButtonProps}
                         icon={
+                            <DragWindowIcon
+                                style={{
+                                    fontSize: '1em',
+                                }}
+                            />
+                        }
+                        type={getButtonTypeByState(false)}
+                        title={dragWindowButtonTitle}
+                        onClick={() => {}}
+                        onMouseDown={startFreeDrag}
+                    />
+
+                    <Button
+                        {...toolButtonProps}
+                        icon={
                             <CheckOutlined
                                 style={{
                                     color: token.colorPrimary,
@@ -476,27 +592,33 @@ export const FixedContentCoreDrawToolbar: React.FC<{
             <style jsx>{`
                 .fixed-content-draw-toolbar-container {
                     position: fixed;
-                    left: ${BOX_SHADOW_WIDTH}px;
                     width: ${documentSize.width - BOX_SHADOW_WIDTH * 2}px;
-                    top: ${documentSize.height + token.marginXXS}px;
                     pointer-events: none;
                     z-index: ${zIndexs.FullScreenDraw_Toolbar};
-                    opacity: ${disabled ? 0 : 1};
                     display: flex;
-                    transition: opacity ${token.motionDurationFast} ${token.motionEaseInOut};
-                    justify-content: ${currentSize.width >= documentSize.width
-                        ? 'flex-start'
-                        : 'flex-end'};
+                    left: 0;
+                    top: 0;
                 }
 
                 .fixed-content-draw-toolbar-container:hover {
                     z-index: ${zIndexs.FullScreenDraw_ToolbarHover};
                 }
 
+                .fixed-content-draw-toolbar {
+                    opacity: 0;
+                    transition: opacity ${token.motionDurationFast} ${token.motionEaseInOut};
+                }
+
                 .fixed-content-draw-toolbar :global(.ant-btn) :global(.ant-btn-icon) {
                     font-size: 24px;
                     display: flex;
                     align-items: center;
+                }
+
+                .fixed-content-draw-toolbar .drag-button {
+                    color: ${token.colorTextQuaternary};
+                    cursor: move;
+                    font-size: 18px;
                 }
 
                 .fixed-content-draw-toolbar {

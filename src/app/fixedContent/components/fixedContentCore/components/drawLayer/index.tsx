@@ -20,13 +20,19 @@ import { FixedContentWindowSize } from '../..';
 import { theme } from 'antd';
 import { ElementRect } from '@/commands';
 import { MousePosition } from '@/utils/mousePosition';
-import { FixedContentCoreDrawToolbar, FixedContentCoreDrawToolbarActionType } from './toolbar';
+import {
+    BOX_SHADOW_WIDTH,
+    FixedContentCoreDrawToolbar,
+    FixedContentCoreDrawToolbarActionType,
+} from './toolbar';
 import { withStatePublisher } from '@/hooks/useStatePublisher';
 import { EnableKeyEventPublisher } from '@/app/draw/components/drawToolbar/components/keyEventWrap/extra';
 import { DrawContext, DrawContextType } from '@/app/fullScreenDraw/extra';
 import { withCanvasHistory } from '@/app/fullScreenDraw/components/drawCore/components/historyContext';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { NormalizedZoomValue } from '@mg-chao/excalidraw/types';
+import { getCurrentWindow, PhysicalPosition, PhysicalSize } from '@tauri-apps/api/window';
+import { getMonitorsBoundingBox, MonitorBoundingBox } from '@/commands/core';
 
 const DrawCore = dynamic(
     async () => (await import('../../../../../fullScreenDraw/components/drawCore')).DrawCore,
@@ -90,6 +96,58 @@ const DrawLayerCore: React.FC<{
         };
     }, []);
 
+    const [toolbarEnable, setToolbarEnable] = useState(false);
+    const currentindowContext = useRef<
+        | {
+              monitorBounds: MonitorBoundingBox | undefined;
+              windowSize: PhysicalSize;
+              windowPosition: PhysicalPosition;
+          }
+        | undefined
+    >(undefined);
+    const activeToolbar = useCallback(async () => {
+        const appWindow = getCurrentWindow();
+        const [windowSize, windowPosition] = await Promise.all([
+            appWindow.outerSize(),
+            appWindow.outerPosition(),
+        ]);
+        const points = [
+            [
+                Math.round(windowPosition.x + windowSize.width / 2),
+                Math.round(windowPosition.y + windowSize.height / 2),
+            ],
+            [windowPosition.x, windowPosition.y],
+            [windowPosition.x + windowSize.width, windowPosition.y + windowSize.height],
+            [windowPosition.x + windowSize.width, windowPosition.y],
+            [windowPosition.x, windowPosition.y + windowSize.height],
+        ];
+
+        let monitorBounds: MonitorBoundingBox | undefined = undefined;
+        for (const point of points) {
+            const bounds = await getMonitorsBoundingBox(
+                {
+                    min_x: point[0],
+                    min_y: point[1],
+                    max_x: point[0],
+                    max_y: point[1],
+                },
+                false,
+            );
+            if (bounds.monitor_rect_list.length > 0) {
+                monitorBounds = bounds;
+                break;
+            }
+        }
+
+        currentindowContext.current = {
+            monitorBounds: monitorBounds,
+            windowSize,
+            windowPosition,
+        };
+
+        setToolbarEnable(true);
+    }, [setToolbarEnable]);
+
     const drawCoreContextValue = useMemo<DrawCoreContextValue>(() => {
         return {
             getLimitRect: () => {
@@ -114,6 +172,83 @@ const DrawLayerCore: React.FC<{
             },
             getMousePosition: () => {
                 return mousePositionRef.current;
+            },
+            calculatedBoundaryRect: (
+                rect: ElementRect,
+                toolbarWidth: number,
+                toolbarHeight: number,
+            ) => {
+                if (!currentindowContext.current || !currentindowContext.current.monitorBounds) {
+                    return {
+                        min_x: rect.min_x + BOX_SHADOW_WIDTH,
+                        min_y: rect.min_y + BOX_SHADOW_WIDTH,
+                        max_x: rect.max_x - BOX_SHADOW_WIDTH,
+                        max_y: rect.max_y - BOX_SHADOW_WIDTH,
+                    };
+                }
+
+                // 获取窗口相对显示器的左上角
+                let contentMinX = Math.max(
+                    currentindowContext.current.windowPosition.x,
+                    currentindowContext.current.monitorBounds.rect.min_x,
+                );
+                let contentMinY = Math.max(
+                    currentindowContext.current.windowPosition.y,
+                    currentindowContext.current.monitorBounds.rect.min_y,
+                );
+                // 获取窗口相对显示器的右下角
+                let contentMaxX = Math.min(
+                    currentindowContext.current.windowPosition.x +
+                        currentindowContext.current.windowSize.width,
+                    currentindowContext.current.monitorBounds.rect.max_x,
+                );
+                let contentMaxY = Math.min(
+                    currentindowContext.current.windowPosition.y +
+                        currentindowContext.current.windowSize.height,
+                    currentindowContext.current.monitorBounds.rect.max_y,
+                );
+
+                const toolbarPhysicalWidth = toolbarWidth * window.devicePixelRatio + 9;
+                const toolbarPhysicalHeight = toolbarHeight * window.devicePixelRatio + 9;
+                if (contentMaxX - contentMinX < toolbarPhysicalWidth) {
+                    if (contentMaxX === currentindowContext.current.monitorBounds.rect.max_x) {
+                        contentMaxX = contentMinX + toolbarPhysicalWidth;
+                    } else {
+                        contentMinX = contentMaxX - toolbarPhysicalWidth;
+                    }
+                }
+
+                if (contentMaxY - contentMinY < toolbarPhysicalHeight) {
+                    if (contentMaxY === currentindowContext.current.monitorBounds.rect.max_y) {
+                        contentMaxY = contentMinY + toolbarPhysicalHeight;
+                    } else {
+                        contentMinY = contentMaxY - toolbarPhysicalHeight;
+                    }
+                }
+
+                const minXOffset =
+                    (contentMinX - currentindowContext.current.windowPosition.x) /
+                    window.devicePixelRatio;
+                const minYOffset =
+                    (contentMinY - currentindowContext.current.windowPosition.y) /
+                    window.devicePixelRatio;
+                const maxXOffset =
+                    document.body.clientWidth -
+                    (contentMaxX - currentindowContext.current.windowPosition.x) /
+                        window.devicePixelRatio;
+                const maxYOffset =
+                    document.body.clientHeight -
+                    (contentMaxY - currentindowContext.current.windowPosition.y) /
+                        window.devicePixelRatio;
+
+                console.log(minXOffset, minYOffset, maxXOffset, maxYOffset);
+
+                return {
+                    min_x: rect.min_x + minXOffset + BOX_SHADOW_WIDTH,
+                    min_y: rect.min_y + minYOffset + BOX_SHADOW_WIDTH,
+                    max_x: rect.max_x - maxXOffset - BOX_SHADOW_WIDTH,
+                    max_y: rect.max_y - maxYOffset - BOX_SHADOW_WIDTH,
+                };
             },
         };
     }, [documentSize.height, documentSize.width, token.marginXXS]);
@@ -185,8 +320,11 @@ const DrawLayerCore: React.FC<{
         if (disabled) {
             drawCoreActionRef.current?.finishDraw();
             drawToolbarActionRef.current?.setTool(DrawState.Select);
+            setToolbarEnable(false);
+        } else {
+            activeToolbar();
         }
-    }, [drawCoreActionRef, disabled]);
+    }, [drawCoreActionRef, disabled, activeToolbar]);
 
     return (
         <DrawContext.Provider value={drawContextValue}>
@@ -206,7 +344,7 @@ const DrawLayerCore: React.FC<{
 
                     <FixedContentCoreDrawToolbar
                         actionRef={drawToolbarActionRef}
-                        disabled={disabled}
+                        disabled={!toolbarEnable}
                         documentSize={documentSize}
                         onConfirm={() => {
                             onConfirm();

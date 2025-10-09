@@ -52,7 +52,7 @@ export const zIndexs = {
     /** 全屏截图绘制图层 */
     FullScreenDraw_DrawLayer: 0,
     /** 全屏截图绘制工具栏 */
-    FullScreenDraw_Toolbar: 205,
+    FullScreenDraw_Toolbar: 206,
     /** 全屏截图绘制图层 */
     FullScreenDraw_LayoutMenu: 207,
     /** 全屏截图绘制工具栏 hover 状态 */
