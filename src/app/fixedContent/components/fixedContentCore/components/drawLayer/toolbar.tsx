@@ -420,6 +420,21 @@ export const FixedContentCoreDrawToolbar: React.FC<{
                         <HolderOutlined />
                     </div>
 
+                    <Button
+                        {...toolButtonProps}
+                        icon={
+                            <DragWindowIcon
+                                style={{
+                                    fontSize: '1.15em',
+                                }}
+                            />
+                        }
+                        type={getButtonTypeByState(false)}
+                        title={dragWindowButtonTitle}
+                        onClick={() => {}}
+                        onMouseDown={startFreeDrag}
+                    />
+
                     {/* 选择状态 */}
                     <ToolButton
                         componentKey={KeyEventKey.SelectTool}
@@ -555,21 +570,6 @@ export const FixedContentCoreDrawToolbar: React.FC<{
                     <HistoryControls disable={disabled ?? false} />
 
                     <div className="draw-toolbar-splitter" />
-
-                    <Button
-                        {...toolButtonProps}
-                        icon={
-                            <DragWindowIcon
-                                style={{
-                                    fontSize: '1em',
-                                }}
-                            />
-                        }
-                        type={getButtonTypeByState(false)}
-                        title={dragWindowButtonTitle}
-                        onClick={() => {}}
-                        onMouseDown={startFreeDrag}
-                    />
 
                     <Button
                         {...toolButtonProps}
