@@ -17,7 +17,7 @@ import {
     SettingOutlined,
     ToolOutlined,
 } from '@ant-design/icons';
-import { Button, Flex, Layout, Menu, Space, TabsProps, theme } from 'antd';
+import { Button, Layout, Menu, Space, TabsProps, theme } from 'antd';
 import { useRouter } from 'next/navigation';
 const { Content, Sider } = Layout;
 import { usePathname } from 'next/navigation';
@@ -155,6 +155,7 @@ const MenuSiderCore: React.FC<{
                         defaultSelectedKeys={[menuItems[0]!.key?.toString() ?? '/']}
                         selectedKeys={[pathname]}
                         mode="inline"
+                        theme={darkMode ? 'dark' : 'light'}
                         items={menuItems}
                         defaultOpenKeys={menuItems
                             .map((item) => item?.key as string)
