@@ -2,7 +2,7 @@
     "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
     "productName": "Snow Shot",
     "mainBinaryName": "snowshot",
-    "version": "0.4.8-beta",
+    "version": "0.4.9-beta",
     "identifier": "com.chao.snowshot",
     "build": {
         "removeUnusedCommands": true,
@@ -62,6 +62,7 @@
                 "type": "embedBootstrapper"
             },
             "nsis": {
+                "template": "./build-configs/installer.nsi",
                 "displayLanguageSelector": true,
                 "installerIcon": "icons/icon.ico",
                 "installMode": "perMachine",
