@@ -497,6 +497,7 @@ const DrawPageCore: React.FC<{
             drawToolbarActionRef.current?.setEnable(false);
 
             const imageBufferFromSharedBufferPromise = getImageBufferFromSharedBuffer();
+            setExcludeFromCapture(true);
 
             const initCaptureBoundingBoxInfoPromise = initCaptureBoundingBoxInfoAndShowWindow();
             const captureAllMonitorsPromise = captureAllMonitorsAction(excuteScreenshotType);
@@ -524,6 +525,8 @@ const DrawPageCore: React.FC<{
             if (imageBuffer?.bufferType === ImageBufferType.SharedBuffer) {
                 imageBuffer = await imageBufferFromSharedBufferPromise;
             }
+
+            setExcludeFromCapture(false);
 
             // 如果截图失败了，等窗口显示后，结束截图
             // 切换截图历史时，不进行截图，只进行显示
@@ -940,7 +943,6 @@ const DrawPageCore: React.FC<{
     // 默认隐藏
     useEffect(() => {
         hideWindow();
-        setExcludeFromCapture(true);
     }, [hideWindow]);
 
     const drawContextValue = useMemo<DrawContextType>(() => {

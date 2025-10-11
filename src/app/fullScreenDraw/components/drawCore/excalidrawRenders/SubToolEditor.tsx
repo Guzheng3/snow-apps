@@ -56,7 +56,7 @@ const WatermarkTextInput = () => {
 
 const SubToolEditor: NonNullable<
     NonNullable<ExcalidrawPropsCustomOptions['pickerRenders']>['SubToolEditor']
-> = ({ appState, targetElements }) => {
+> = ({ appState, targetElements, isSerialNumberTool }) => {
     const { setTool } = useContext(DrawContext);
 
     const drawStyleSubTools = useMemo(() => {
@@ -109,7 +109,10 @@ const SubToolEditor: NonNullable<
             );
         }
 
-        if (drawState === DrawState.Arrow || drawState === DrawState.Line) {
+        if (
+            !isSerialNumberTool &&
+            (drawState === DrawState.Arrow || drawState === DrawState.Line)
+        ) {
             return (
                 <Radio.Group value={drawState} style={{ display: 'flex' }}>
                     <Radio.Button value={DrawState.Arrow}>
@@ -164,7 +167,7 @@ const SubToolEditor: NonNullable<
         }
 
         return undefined;
-    }, [appState.activeTool.type, setTool]);
+    }, [appState.activeTool.type, isSerialNumberTool, setTool]);
 
     const watermarkSubTools = useMemo(() => {
         if (appState.activeTool.type !== 'watermark') {
