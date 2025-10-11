@@ -1,7 +1,7 @@
 import { useCallback, useContext, useImperativeHandle, useRef } from 'react';
 import { DrawContext } from '../../types';
 import { CaptureHistory, getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
-import { CaptureHistoryItem } from '@/utils/appStore';
+import { CaptureHistoryItem, CaptureHistorySource } from '@/utils/appStore';
 import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { KeyEventWrap } from '../drawToolbar/components/keyEventWrap';
@@ -42,6 +42,7 @@ export type CaptureHistoryActionType = {
         excalidrawElements: readonly Ordered<NonDeletedExcalidrawElement>[] | undefined,
         appState: Readonly<AppState> | undefined,
         captureResult?: ArrayBuffer,
+        source?: CaptureHistorySource,
     ) => Promise<void>;
     switch: (captureHistoryId: string) => Promise<void>;
     captureFullScreen: () => Promise<void>;
@@ -261,6 +262,7 @@ const CaptureHistoryControllerCore: React.FC<{
             excalidrawElements: readonly Ordered<NonDeletedExcalidrawElement>[] | undefined,
             appState: Readonly<AppState> | undefined,
             captureResult?: ArrayBuffer,
+            source?: CaptureHistorySource,
         ) => {
             let sharedBufferEncodeImagePromise: Promise<ArrayBuffer | undefined> =
                 Promise.resolve(undefined);
@@ -310,6 +312,7 @@ const CaptureHistoryControllerCore: React.FC<{
                 appState,
                 selectRect,
                 captureResult,
+                source,
             );
             captureHistoryListRef.current.push(captureHistoryItem);
             resetCurrentIndex();
@@ -332,6 +335,8 @@ const CaptureHistoryControllerCore: React.FC<{
             undefined,
             undefined,
             undefined,
+            undefined,
+            CaptureHistorySource.FullScreen,
         );
 
         const imagePath = await getImagePathFromSettings(appSettings, 'full-screen');
@@ -365,6 +370,8 @@ const CaptureHistoryControllerCore: React.FC<{
             undefined,
             undefined,
             captureFullScreenResult.monitor_rect,
+            undefined,
+            CaptureHistorySource.FullScreen,
         );
         const captureHistoryItem = await captureHistoryItemPromise;
         captureHistoryListRef.current.push(captureHistoryItem);

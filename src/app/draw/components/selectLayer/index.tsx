@@ -992,8 +992,8 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                         {
                             min_x: 0,
                             min_y: 0,
-                            max_x: captureBoundingBoxInfoRef.current!.width,
-                            max_y: captureBoundingBoxInfoRef.current!.height,
+                            max_x: captureBoundingBoxInfoRef.current?.width ?? 0,
+                            max_y: captureBoundingBoxInfoRef.current?.height ?? 0,
                         },
                         true,
                     ),
@@ -1069,8 +1069,8 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 limitRect(getSelectRect()!, {
                     min_x: 0,
                     min_y: 0,
-                    max_x: captureBoundingBoxInfoRef.current!.width,
-                    max_y: captureBoundingBoxInfoRef.current!.height,
+                    max_x: captureBoundingBoxInfoRef.current?.width ?? 0,
+                    max_y: captureBoundingBoxInfoRef.current?.height ?? 0,
                 }),
             );
             dragRectRef.current = undefined;
@@ -1267,8 +1267,8 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             const actualPrevSelectRect = limitRect(prevSelectRect, {
                 min_x: 0,
                 min_y: 0,
-                max_x: captureBoundingBoxInfoRef.current!.width,
-                max_y: captureBoundingBoxInfoRef.current!.height,
+                max_x: captureBoundingBoxInfoRef.current?.width ?? 0,
+                max_y: captureBoundingBoxInfoRef.current?.height ?? 0,
             });
 
             if (
@@ -1453,8 +1453,8 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 limitRect(rect, {
                     min_x: 0,
                     min_y: 0,
-                    max_x: captureBoundingBoxInfoRef.current!.width,
-                    max_y: captureBoundingBoxInfoRef.current!.height,
+                    max_x: captureBoundingBoxInfoRef.current?.width ?? 0,
+                    max_y: captureBoundingBoxInfoRef.current?.height ?? 0,
                 }),
                 true,
             );

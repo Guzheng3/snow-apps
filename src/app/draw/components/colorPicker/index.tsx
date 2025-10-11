@@ -626,8 +626,8 @@ const ColorPickerCore: React.FC<{
 
             if (mouseX < 0) {
                 mouseX = 0;
-            } else if (mouseX > captureBoundingBoxInfoRef.current!.width) {
-                mouseX = captureBoundingBoxInfoRef.current!.width;
+            } else if (mouseX > (captureBoundingBoxInfoRef.current?.width ?? 0)) {
+                mouseX = captureBoundingBoxInfoRef.current?.width ?? 0;
             }
 
             if (mouseY < 0) {

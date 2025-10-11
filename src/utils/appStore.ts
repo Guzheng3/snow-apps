@@ -113,6 +113,16 @@ export class ChatWorkflowConfigStore extends BaseStore<ChatWorkflowConfig> {
     }
 }
 
+export enum CaptureHistorySource {
+    ScrollScreenshotCopy = 'scroll-screenshot-copy',
+    ScrollScreenshotSave = 'scroll-screenshot-save',
+    ScrollScreenshotFixed = 'scroll-screenshot-fixed',
+    Copy = 'copy',
+    Save = 'save',
+    Fixed = 'fixed',
+    FullScreen = 'full-screen',
+}
+
 export type CaptureHistoryItem = {
     id: string;
     selected_rect: ElementRect;
@@ -120,6 +130,7 @@ export type CaptureHistoryItem = {
     capture_result_file_name?: string;
     excalidraw_elements: readonly Ordered<NonDeletedExcalidrawElement>[] | undefined;
     excalidraw_app_state: Pick<AppState, keyof AppState> | undefined;
+    source?: CaptureHistorySource;
     create_ts: number;
 };
 

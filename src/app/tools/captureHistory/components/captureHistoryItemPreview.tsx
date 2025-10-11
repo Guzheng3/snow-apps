@@ -12,7 +12,7 @@ export const CaptureHistoryItemPreview: React.FC<{
         <Tooltip
             title={
                 item.capture_result_file_url ? (
-                    <FormattedMessage id="personalization.switchImage.tip" />
+                    <FormattedMessage id="tools.captureHistory.switchImage.tip" />
                 ) : undefined
             }
         >

@@ -98,6 +98,7 @@ import { ScanQrcodeTool } from './components/drawToolbar/components/tools/scanQr
 import { setExcludeFromCapture } from '@/commands/videoRecord';
 import { getImageBufferFromSharedBuffer, ImageSharedBufferData } from './tools';
 import { getCorrectHdrColorAlgorithm } from '@/utils/appSettings';
+import { CaptureHistorySource } from '@/utils/appStore';
 
 const DrawCacheLayer = dynamic(
     async () => (await import('./components/drawCacheLayer')).DrawCacheLayer,
@@ -572,7 +573,10 @@ const DrawPageCore: React.FC<{
     );
 
     const saveCaptureHistory = useCallback(
-        async (captureResult?: ArrayBuffer | HTMLCanvasElement) => {
+        async (
+            captureResult: ArrayBuffer | HTMLCanvasElement | undefined,
+            source: CaptureHistorySource | undefined,
+        ) => {
             const imageBuffer = imageBufferRef.current;
             const selectRect = selectLayerActionRef.current?.getSelectRect();
             const excalidrawApi = drawCacheLayerActionRef.current?.getExcalidrawAPI();
@@ -590,6 +594,10 @@ const DrawPageCore: React.FC<{
                 true,
                 false,
             );
+
+            if (!getAppSettings()[AppSettingsGroup.SystemScreenshot].recordCaptureHistory) {
+                return;
+            }
 
             let captureResultImageBuffer: ArrayBuffer | undefined = undefined;
             if (captureResult instanceof HTMLCanvasElement) {
@@ -612,15 +620,16 @@ const DrawPageCore: React.FC<{
                 excalidrawElements,
                 appState,
                 captureResultImageBuffer,
+                source,
             );
         },
-        [updateAppSettings],
+        [getAppSettings, updateAppSettings],
     );
 
     const onSave = useCallback(
         async (fastSave: boolean = false) => {
             if (getDrawState() === DrawState.ScrollScreenshot) {
-                saveCaptureHistory(undefined); // 滚动截图不保存编辑结果
+                saveCaptureHistory(undefined, CaptureHistorySource.ScrollScreenshotSave); // 滚动截图不保存编辑结果
 
                 const imagePath =
                     (await getImagePathFromSettings(
@@ -671,6 +680,7 @@ const DrawPageCore: React.FC<{
                 getAppSettings()[AppSettingsGroup.SystemScreenshot].historySaveEditResult
                     ? imageCanvas
                     : undefined,
+                CaptureHistorySource.Save,
             );
 
             saveToFile(
@@ -705,6 +715,8 @@ const DrawPageCore: React.FC<{
         listenKeyStop();
 
         if (getDrawState() === DrawState.ScrollScreenshot) {
+            saveCaptureHistory(undefined, CaptureHistorySource.ScrollScreenshotFixed);
+
             createFixedContentWindow(true);
             finishCapture(false);
             return;
@@ -739,6 +751,7 @@ const DrawPageCore: React.FC<{
             getAppSettings()[AppSettingsGroup.SystemScreenshot].historySaveEditResult
                 ? canvas
                 : undefined,
+            CaptureHistorySource.Fixed,
         );
 
         await fixedToScreen(
@@ -802,7 +815,7 @@ const DrawPageCore: React.FC<{
         const enableAutoSave = getAppSettings()[AppSettingsGroup.FunctionScreenshot].autoSaveOnCopy;
 
         if (getDrawState() === DrawState.ScrollScreenshot) {
-            saveCaptureHistory(undefined);
+            saveCaptureHistory(undefined, CaptureHistorySource.ScrollScreenshotCopy);
 
             const filePath = (await getImagePathFromSettings(getAppSettings(), 'auto'))?.filePath;
             Promise.all([
@@ -848,7 +861,7 @@ const DrawPageCore: React.FC<{
             }
 
             if (!getAppSettings()[AppSettingsGroup.SystemScreenshot].historySaveEditResult) {
-                saveCaptureHistory(undefined);
+                saveCaptureHistory(undefined, CaptureHistorySource.Copy);
             }
 
             // 保持焦点，假隐藏窗口
@@ -877,7 +890,7 @@ const DrawPageCore: React.FC<{
             });
 
             if (getAppSettings()[AppSettingsGroup.SystemScreenshot].historySaveEditResult) {
-                saveCaptureHistory(imageData);
+                saveCaptureHistory(imageData, CaptureHistorySource.Copy);
             }
 
             if (!imageData) {

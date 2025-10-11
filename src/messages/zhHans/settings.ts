@@ -341,6 +341,7 @@ export const settings = {
     'settings.systemSettings.screenshotSettings.ocrModelWriteToMemory.tip':
         '将 OCR 模型写入内存，避免重复读写硬盘数据，提高 OCR 的加载速度，但会提高内存占用',
     'settings.systemSettings.screenshotSettings.ocrDetectAngle': 'OCR 检测角度',
+    'settings.systemSettings.screenshotSettings.recordCaptureHistory': '记录截图历史',
     'settings.systemSettings.screenshotSettings.historyValidDuration': '截图历史有效时长',
     'settings.systemSettings.screenshotSettings.historySaveEditResult': '截图历史保存编辑结果',
     'settings.systemSettings.screenshotSettings.historySaveEditResult.tip':
@@ -367,6 +368,7 @@ export const settings = {
     'settings.systemSettings.screenshotSettings.enableBrowserClipboard.tip':
         '尝试使用浏览器接口快速写入剪贴板内容，如果出现无法复制到剪贴板的问题请禁用该功能',
     'settings.systemSettings.screenshotSettings.historyValidDuration.day': '1 天',
+    'settings.systemSettings.screenshotSettings.historyValidDuration.three': '3 天',
     'settings.systemSettings.screenshotSettings.historyValidDuration.week': '7 天',
     'settings.systemSettings.screenshotSettings.historyValidDuration.month': '30 天',
     'settings.systemSettings.screenshotSettings.historyValidDuration.forever': '永久保留',

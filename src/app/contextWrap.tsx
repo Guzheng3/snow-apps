@@ -301,6 +301,8 @@ export type AppSettingsData = {
     };
     [AppSettingsGroup.SystemScreenshot]: {
         historyValidDuration: HistoryValidDuration;
+        /** 记录截图历史 */
+        recordCaptureHistory: boolean;
         /** 截图历史保存编辑结果 */
         historySaveEditResult: boolean;
         ocrModel: OcrModel;
@@ -508,6 +510,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         ocrModelWriteToMemory: false,
         ocrDetectAngle: false,
         historyValidDuration: HistoryValidDuration.Week,
+        recordCaptureHistory: true,
         historySaveEditResult: true,
         enableBrowserClipboard: true,
         /** 尝试使用 Bitmap 格式写入到剪贴板 */
@@ -1565,6 +1568,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? newSettings.ocrDetectAngle
                             : (prevSettings?.ocrDetectAngle ??
                               defaultAppSettingsData[group].ocrDetectAngle),
+                    recordCaptureHistory:
+                        typeof newSettings?.recordCaptureHistory === 'boolean'
+                            ? newSettings.recordCaptureHistory
+                            : (prevSettings?.recordCaptureHistory ??
+                              defaultAppSettingsData[group].recordCaptureHistory),
                     historyValidDuration:
                         typeof newSettings?.historyValidDuration === 'number'
                             ? (newSettings.historyValidDuration as HistoryValidDuration)

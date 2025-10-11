@@ -146,6 +146,12 @@ export default function SystemSettings() {
             },
             {
                 label: intl.formatMessage({
+                    id: 'settings.systemSettings.screenshotSettings.historyValidDuration.three',
+                }),
+                value: HistoryValidDuration.Three,
+            },
+            {
+                label: intl.formatMessage({
                     id: 'settings.systemSettings.screenshotSettings.historyValidDuration.week',
                 }),
                 value: HistoryValidDuration.Week,
@@ -449,6 +455,19 @@ export default function SystemSettings() {
                     )}
 
                     <Row gutter={token.marginLG}>
+                        <Col span={12}>
+                            <ProFormSwitch
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.recordCaptureHistory" />
+                                        }
+                                    />
+                                }
+                                name="recordCaptureHistory"
+                                valuePropName="checked"
+                            />
+                        </Col>
                         <Col span={12}>
                             <ProFormSelect
                                 label={

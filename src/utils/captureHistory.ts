@@ -1,5 +1,5 @@
 import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
-import { CaptureHistoryItem, CaptureHistoryStore } from './appStore';
+import { CaptureHistoryItem, CaptureHistorySource, CaptureHistoryStore } from './appStore';
 import { ElementRect, ImageBuffer, ImageEncoder } from '@/commands';
 import { join as joinPath } from '@tauri-apps/api/path';
 import path from 'path';
@@ -40,6 +40,7 @@ export enum HistoryValidDuration {
     /** 用于测试，不对外暴露 */
     Test = 1,
     Day = dayDuration,
+    Three = 3 * dayDuration,
     Week = 7 * dayDuration,
     Month = 30 * dayDuration,
     Forever = 0,
@@ -70,6 +71,7 @@ export class CaptureHistory {
         excalidrawAppState: Readonly<AppState> | undefined,
         selectedRect: ElementRect | undefined,
         captureResult?: ArrayBuffer,
+        source?: CaptureHistorySource,
     ): CaptureHistoryItem {
         let fileExtension = '.webp';
         if (imageBuffer === 'full-screen') {
@@ -111,6 +113,7 @@ export class CaptureHistory {
                   } as CaptureHistoryItem['excalidraw_app_state'])
                 : undefined,
             capture_result_file_name: captureResult ? `${timestamp}_capture_result.png` : undefined,
+            source,
         };
     }
 
@@ -127,6 +130,7 @@ export class CaptureHistory {
         excalidrawAppState: Readonly<AppState> | undefined,
         selectedRect: ElementRect,
         captureResult?: ArrayBuffer,
+        source?: CaptureHistorySource,
     ): Promise<CaptureHistoryItem> {
         const captureHistoryItem =
             'type' in imageData
@@ -137,6 +141,7 @@ export class CaptureHistory {
                       excalidrawAppState,
                       selectedRect,
                       captureResult,
+                      source,
                   );
 
         try {

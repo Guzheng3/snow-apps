@@ -2,7 +2,7 @@
 
 import { AppSettingsData, AppSettingsPublisher } from '@/app/contextWrap';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
-import { CaptureHistoryItem } from '@/utils/appStore';
+import { CaptureHistoryItem, CaptureHistorySource } from '@/utils/appStore';
 import { CaptureHistory, getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
 import { ReloadOutlined } from '@ant-design/icons';
 import { ActionType, ProList } from '@ant-design/pro-components';
@@ -67,6 +67,27 @@ const CaptureHistoryPage = () => {
         };
     }, [addListener, reloadList, removeListener]);
 
+    const getSourceDesc = useCallback((source: CaptureHistorySource | undefined) => {
+        switch (source) {
+            case CaptureHistorySource.ScrollScreenshotCopy:
+                return <FormattedMessage id="tools.captureHistory.source.scrollScreenshotCopy" />;
+            case CaptureHistorySource.ScrollScreenshotSave:
+                return <FormattedMessage id="tools.captureHistory.source.scrollScreenshotSave" />;
+            case CaptureHistorySource.ScrollScreenshotFixed:
+                return <FormattedMessage id="tools.captureHistory.source.scrollScreenshotFixed" />;
+            case CaptureHistorySource.Copy:
+                return <FormattedMessage id="tools.captureHistory.source.copy" />;
+            case CaptureHistorySource.Save:
+                return <FormattedMessage id="tools.captureHistory.source.save" />;
+            case CaptureHistorySource.Fixed:
+                return <FormattedMessage id="tools.captureHistory.source.fixed" />;
+            case CaptureHistorySource.FullScreen:
+                return <FormattedMessage id="tools.captureHistory.source.fullScreen" />;
+        }
+
+        return <FormattedMessage id="tools.captureHistory.source.unknown" />;
+    }, []);
+
     return (
         <>
             <ProList<CaptureHistoryRecordItem>
@@ -120,10 +141,14 @@ const CaptureHistoryPage = () => {
                     }
 
                     const filterData = dataSourceRef.current.filter((item) => {
+                        let isMatch = true;
                         if (startTs && endTs) {
-                            return item.create_ts >= startTs && item.create_ts <= endTs;
+                            isMatch &&= item.create_ts >= startTs && item.create_ts <= endTs;
                         }
-                        return true;
+                        if (params.source) {
+                            isMatch &&= item.source === params.source;
+                        }
+                        return isMatch;
                     });
                     const data = await Promise.all(
                         filterData.slice(startIndex, startIndex + pageSize).map(async (item) => {
@@ -160,6 +185,35 @@ const CaptureHistoryPage = () => {
                     filterType: 'light',
                 }}
                 metas={{
+                    source: {
+                        search: true,
+                        dataIndex: 'source',
+                        valueType: 'select',
+                        title: <FormattedMessage id="tools.captureHistory.source" />,
+                        valueEnum: {
+                            [CaptureHistorySource.Copy]: (
+                                <FormattedMessage id="tools.captureHistory.source.copy" />
+                            ),
+                            [CaptureHistorySource.Save]: (
+                                <FormattedMessage id="tools.captureHistory.source.save" />
+                            ),
+                            [CaptureHistorySource.Fixed]: (
+                                <FormattedMessage id="tools.captureHistory.source.fixed" />
+                            ),
+                            [CaptureHistorySource.FullScreen]: (
+                                <FormattedMessage id="tools.captureHistory.source.fullScreen" />
+                            ),
+                            [CaptureHistorySource.ScrollScreenshotCopy]: (
+                                <FormattedMessage id="tools.captureHistory.source.scrollScreenshotCopy" />
+                            ),
+                            [CaptureHistorySource.ScrollScreenshotSave]: (
+                                <FormattedMessage id="tools.captureHistory.source.scrollScreenshotSave" />
+                            ),
+                            [CaptureHistorySource.ScrollScreenshotFixed]: (
+                                <FormattedMessage id="tools.captureHistory.source.scrollScreenshotFixed" />
+                            ),
+                        },
+                    },
                     title: {
                         title: <FormattedMessage id="tools.captureHistory.date" />,
                         render: (_, item) => {
@@ -200,6 +254,11 @@ const CaptureHistoryPage = () => {
                                     <Tag>
                                         <FormattedMessage id="tools.captureHistory.drawElements" />
                                         {`: ${item.excalidraw_elements?.length ?? 0}`}
+                                    </Tag>
+                                    <Tag>
+                                        <FormattedMessage id="tools.captureHistory.source" />
+                                        {`: `}
+                                        {getSourceDesc(item.source)}
                                     </Tag>
                                 </>
                             );
