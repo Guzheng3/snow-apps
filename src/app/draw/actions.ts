@@ -245,7 +245,7 @@ export const fixedToScreen = async (
 };
 
 export const copyToClipboard = async (
-    imageData: Blob,
+    imageData: Blob | ArrayBuffer,
     appSettings: AppSettingsData,
     selectRectParams: SelectRectParams | undefined,
 ) => {
@@ -258,7 +258,8 @@ export const copyToClipboard = async (
         selectRectParams.radius === 0
     ) {
         try {
-            imageDataArrayBuffer = await imageData.arrayBuffer();
+            imageDataArrayBuffer =
+                imageData instanceof Blob ? await imageData.arrayBuffer() : imageData;
             await writeBitmapImageToClipboard(imageDataArrayBuffer);
 
             // 写入成功后直接返回
@@ -279,7 +280,10 @@ export const copyToClipboard = async (
             ) {
                 if (window.isSecureContext && window.document.hasFocus()) {
                     await navigator.clipboard.write([
-                        new ClipboardItem({ ['image/png']: imageData }),
+                        new ClipboardItem({
+                            ['image/png']:
+                                imageData instanceof Blob ? imageData : new Blob([imageData]),
+                        }),
                     ]);
                     browserClipboardWriteSuccess = true;
                 }

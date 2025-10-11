@@ -41,6 +41,7 @@ export type CaptureHistoryActionType = {
         selectRect: ElementRect | undefined,
         excalidrawElements: readonly Ordered<NonDeletedExcalidrawElement>[] | undefined,
         appState: Readonly<AppState> | undefined,
+        captureResult?: ArrayBuffer,
     ) => Promise<void>;
     switch: (captureHistoryId: string) => Promise<void>;
     captureFullScreen: () => Promise<void>;
@@ -259,6 +260,7 @@ const CaptureHistoryControllerCore: React.FC<{
             selectRect: ElementRect | undefined,
             excalidrawElements: readonly Ordered<NonDeletedExcalidrawElement>[] | undefined,
             appState: Readonly<AppState> | undefined,
+            captureResult?: ArrayBuffer,
         ) => {
             let sharedBufferEncodeImagePromise: Promise<ArrayBuffer | undefined> =
                 Promise.resolve(undefined);
@@ -307,6 +309,7 @@ const CaptureHistoryControllerCore: React.FC<{
                 excalidrawElements,
                 appState,
                 selectRect,
+                captureResult,
             );
             captureHistoryListRef.current.push(captureHistoryItem);
             resetCurrentIndex();

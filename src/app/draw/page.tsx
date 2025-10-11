@@ -571,38 +571,57 @@ const DrawPageCore: React.FC<{
         ],
     );
 
-    const saveCaptureHistory = useCallback(async () => {
-        const imageBuffer = imageBufferRef.current;
-        const selectRect = selectLayerActionRef.current?.getSelectRect();
-        const excalidrawApi = drawCacheLayerActionRef.current?.getExcalidrawAPI();
-        const excalidrawElements = excalidrawApi?.getSceneElements();
-        const appState = excalidrawApi?.getAppState();
+    const saveCaptureHistory = useCallback(
+        async (captureResult?: ArrayBuffer | HTMLCanvasElement) => {
+            const imageBuffer = imageBufferRef.current;
+            const selectRect = selectLayerActionRef.current?.getSelectRect();
+            const excalidrawApi = drawCacheLayerActionRef.current?.getExcalidrawAPI();
+            const excalidrawElements = excalidrawApi?.getSceneElements();
+            const appState = excalidrawApi?.getAppState();
 
-        updateAppSettings(
-            AppSettingsGroup.Cache,
-            {
-                prevSelectRect: selectRect,
-            },
-            false,
-            true,
-            false,
-            true,
-            false,
-        );
+            updateAppSettings(
+                AppSettingsGroup.Cache,
+                {
+                    prevSelectRect: selectRect,
+                },
+                false,
+                true,
+                false,
+                true,
+                false,
+            );
 
-        await captureHistoryActionRef.current?.saveCurrentCapture(
-            imageBuffer,
-            selectRect,
-            excalidrawElements,
-            appState,
-        );
-    }, [updateAppSettings]);
+            let captureResultImageBuffer: ArrayBuffer | undefined = undefined;
+            if (captureResult instanceof HTMLCanvasElement) {
+                captureResultImageBuffer = await new Promise<ArrayBuffer | undefined>((resolve) => {
+                    captureResult.toBlob(
+                        async (blob) => {
+                            resolve(await blob?.arrayBuffer());
+                        },
+                        'image/png',
+                        1,
+                    );
+                });
+            } else if (captureResult instanceof ArrayBuffer) {
+                captureResultImageBuffer = captureResult;
+            }
+
+            await captureHistoryActionRef.current?.saveCurrentCapture(
+                imageBuffer,
+                selectRect,
+                excalidrawElements,
+                appState,
+                captureResultImageBuffer,
+            );
+        },
+        [updateAppSettings],
+    );
 
     const onSave = useCallback(
         async (fastSave: boolean = false) => {
-            saveCaptureHistory();
-
             if (getDrawState() === DrawState.ScrollScreenshot) {
+                saveCaptureHistory(undefined); // 滚动截图不保存编辑结果
+
                 const imagePath =
                     (await getImagePathFromSettings(
                         fastSave ? getAppSettings() : undefined,
@@ -646,6 +665,12 @@ const DrawPageCore: React.FC<{
                 selectLayerActionRef.current.getSelectRectParams(),
                 drawLayerActionRef.current,
                 drawCacheLayerActionRef.current,
+            );
+
+            saveCaptureHistory(
+                getAppSettings()[AppSettingsGroup.SystemScreenshot].historySaveEditResult
+                    ? imageCanvas
+                    : undefined,
             );
 
             saveToFile(
@@ -754,11 +779,11 @@ const DrawPageCore: React.FC<{
     }, []);
 
     const onCopyToClipboard = useCallback(async () => {
-        saveCaptureHistory();
-
         const enableAutoSave = getAppSettings()[AppSettingsGroup.FunctionScreenshot].autoSaveOnCopy;
 
         if (getDrawState() === DrawState.ScrollScreenshot) {
+            saveCaptureHistory(undefined);
+
             const filePath = (await getImagePathFromSettings(getAppSettings(), 'auto'))?.filePath;
             Promise.all([
                 scrollScreenshotSaveToClipboard(),
@@ -802,6 +827,10 @@ const DrawPageCore: React.FC<{
                 return;
             }
 
+            if (!getAppSettings()[AppSettingsGroup.SystemScreenshot].historySaveEditResult) {
+                saveCaptureHistory(undefined);
+            }
+
             // 保持焦点，假隐藏窗口
             appWindowRef.current.setIgnoreCursorEvents(true);
             layerContainerRef.current!.style.opacity = '0';
@@ -817,15 +846,19 @@ const DrawPageCore: React.FC<{
                 return;
             }
 
-            const imageData = await new Promise<Blob | null>((resolve) => {
+            const imageData = await new Promise<ArrayBuffer | undefined>((resolve) => {
                 imageCanvas.toBlob(
-                    (blob) => {
-                        resolve(blob);
+                    async (blob) => {
+                        resolve(await blob?.arrayBuffer());
                     },
                     'image/png',
                     1,
                 );
             });
+
+            if (getAppSettings()[AppSettingsGroup.SystemScreenshot].historySaveEditResult) {
+                saveCaptureHistory(imageData);
+            }
 
             if (!imageData) {
                 return;

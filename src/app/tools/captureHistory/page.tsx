@@ -4,21 +4,20 @@ import { AppSettingsData, AppSettingsPublisher } from '@/app/contextWrap';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { CaptureHistoryItem } from '@/utils/appStore';
 import { CaptureHistory, getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
-import { CopyOutlined, DeleteOutlined, EditOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
 import { ActionType, ProList } from '@ant-design/pro-components';
 import { Button, Tag } from 'antd';
 import dayjs from 'dayjs';
 import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { FormattedMessage } from 'react-intl';
-import { Image } from 'antd';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useStateRef } from '@/hooks/useStateRef';
-import { writeFilePathToClipboard } from '@/utils/clipboard';
 import { executeScreenshot, ScreenshotType } from '@/functions/screenshot';
 import { EventListenerContext } from '@/components/eventListener';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { CaptureHistoryRecordItem } from './extra';
 import { CaptureHistoryItemActions } from './components/captureHistoryItemActions';
+import { CaptureHistoryItemPreview } from './components/captureHistoryItemPreview';
 
 const CaptureHistoryPage = () => {
     const [loading, setLoading] = useState(true);
@@ -129,10 +128,17 @@ const CaptureHistoryPage = () => {
                     const data = await Promise.all(
                         filterData.slice(startIndex, startIndex + pageSize).map(async (item) => {
                             const file_path = await getCaptureHistoryImageAbsPath(item.file_name);
+                            const capture_result_file_path = item.capture_result_file_name
+                                ? await getCaptureHistoryImageAbsPath(item.capture_result_file_name)
+                                : undefined;
                             return {
                                 ...item,
                                 file_path,
                                 file_url: convertFileSrc(file_path),
+                                capture_result_file_path,
+                                capture_result_file_url: capture_result_file_path
+                                    ? convertFileSrc(capture_result_file_path)
+                                    : undefined,
                             };
                         }),
                     );
@@ -215,17 +221,7 @@ const CaptureHistoryPage = () => {
                     extra: {
                         search: false,
                         render: (_: unknown, item: CaptureHistoryRecordItem) => {
-                            return (
-                                <Image
-                                    alt="preview"
-                                    loading="lazy"
-                                    key={item.id}
-                                    src={item.file_url}
-                                    width={350}
-                                    height={128}
-                                    style={{ objectFit: 'contain' }}
-                                />
-                            );
+                            return <CaptureHistoryItemPreview item={item} />;
                         },
                     },
                 }}

@@ -301,6 +301,8 @@ export type AppSettingsData = {
     };
     [AppSettingsGroup.SystemScreenshot]: {
         historyValidDuration: HistoryValidDuration;
+        /** 截图历史保存编辑结果 */
+        historySaveEditResult: boolean;
         ocrModel: OcrModel;
         /** OCR 热启动 */
         ocrHotStart: boolean;
@@ -506,6 +508,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         ocrModelWriteToMemory: false,
         ocrDetectAngle: false,
         historyValidDuration: HistoryValidDuration.Week,
+        historySaveEditResult: true,
         enableBrowserClipboard: true,
         /** 尝试使用 Bitmap 格式写入到剪贴板 */
         tryWriteBitmapImageToClipboard: true,
@@ -1567,6 +1570,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? (newSettings.historyValidDuration as HistoryValidDuration)
                             : (prevSettings?.historyValidDuration ??
                               defaultAppSettingsData[group].historyValidDuration),
+                    historySaveEditResult:
+                        typeof newSettings?.historySaveEditResult === 'boolean'
+                            ? newSettings.historySaveEditResult
+                            : (prevSettings?.historySaveEditResult ??
+                              defaultAppSettingsData[group].historySaveEditResult),
                     correctColorFilter:
                         typeof newSettings?.correctColorFilter === 'boolean'
                             ? newSettings.correctColorFilter

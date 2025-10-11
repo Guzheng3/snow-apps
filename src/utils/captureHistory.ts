@@ -69,6 +69,7 @@ export class CaptureHistory {
         excalidrawElements: readonly Ordered<NonDeletedExcalidrawElement>[] | undefined,
         excalidrawAppState: Readonly<AppState> | undefined,
         selectedRect: ElementRect | undefined,
+        captureResult?: ArrayBuffer,
     ): CaptureHistoryItem {
         let fileExtension = '.webp';
         if (imageBuffer === 'full-screen') {
@@ -109,6 +110,7 @@ export class CaptureHistory {
                       scrollY: excalidrawAppState.scrollY,
                   } as CaptureHistoryItem['excalidraw_app_state'])
                 : undefined,
+            capture_result_file_name: captureResult ? `${timestamp}_capture_result.png` : undefined,
         };
     }
 
@@ -124,6 +126,7 @@ export class CaptureHistory {
         excalidrawElements: readonly Ordered<NonDeletedExcalidrawElement>[] | undefined,
         excalidrawAppState: Readonly<AppState> | undefined,
         selectedRect: ElementRect,
+        captureResult?: ArrayBuffer,
     ): Promise<CaptureHistoryItem> {
         const captureHistoryItem =
             'type' in imageData
@@ -133,28 +136,42 @@ export class CaptureHistory {
                       excalidrawElements,
                       excalidrawAppState,
                       selectedRect,
+                      captureResult,
                   );
 
         try {
             await createDir(await getCaptureHistoryImageAbsPath(''));
 
+            let writeActionPromise = Promise.resolve();
             if ('encoder' in imageData) {
-                await writeFile(
+                writeActionPromise = writeFile(
                     await getCaptureHistoryImageAbsPath(captureHistoryItem.file_name),
                     imageData.buffer,
                 );
             } else if ('encodeData' in imageData) {
-                await writeFile(
+                writeActionPromise = writeFile(
                     await getCaptureHistoryImageAbsPath(captureHistoryItem.file_name),
                     imageData.encodeData,
                 );
             } else if ('type' in imageData) {
             } else {
-                await copyFile(
+                writeActionPromise = copyFile(
                     await getCaptureHistoryImageAbsPath(imageData.file_name),
                     await getCaptureHistoryImageAbsPath(captureHistoryItem.file_name),
                 );
             }
+
+            await Promise.all([
+                writeActionPromise,
+                captureHistoryItem.capture_result_file_name && captureResult
+                    ? writeFile(
+                          await getCaptureHistoryImageAbsPath(
+                              captureHistoryItem.capture_result_file_name,
+                          ),
+                          captureResult,
+                      )
+                    : Promise.resolve(),
+            ]);
 
             await this.store.set(captureHistoryItem.id, captureHistoryItem);
         } catch (error) {
@@ -212,9 +229,12 @@ export class CaptureHistory {
 
         // 读取有效的图片文件名，比较文件夹里的文件名，删除文件夹里不存在的文件
         const validImageFileNames = await this.store.entries().then((entries) => {
-            return entries.map(([, item]) => {
-                return item.file_name;
-            });
+            return entries
+                .map(([, item]) => {
+                    return [item.file_name, item.capture_result_file_name];
+                })
+                .flat()
+                .filter((fileName) => fileName !== undefined);
         });
         try {
             await retainDirFiles(await getCaptureHistoryImageAbsPath(''), validImageFileNames);

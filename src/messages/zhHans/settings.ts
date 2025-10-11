@@ -342,6 +342,9 @@ export const settings = {
         '将 OCR 模型写入内存，避免重复读写硬盘数据，提高 OCR 的加载速度，但会提高内存占用',
     'settings.systemSettings.screenshotSettings.ocrDetectAngle': 'OCR 检测角度',
     'settings.systemSettings.screenshotSettings.historyValidDuration': '截图历史有效时长',
+    'settings.systemSettings.screenshotSettings.historySaveEditResult': '截图历史保存编辑结果',
+    'settings.systemSettings.screenshotSettings.historySaveEditResult.tip':
+        '开启后将保存截图编辑的最终结果到截图历史中，但将占用更多的存储空间',
     'settings.systemSettings.screenshotSettings.enableBrowserClipboard': '使用浏览器剪贴板',
     'settings.systemSettings.screenshotSettings.tryWriteBitmapImageToClipboard':
         '尝试降低复制的图片大小',

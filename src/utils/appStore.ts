@@ -117,6 +117,7 @@ export type CaptureHistoryItem = {
     id: string;
     selected_rect: ElementRect;
     file_name: string;
+    capture_result_file_name?: string;
     excalidraw_elements: readonly Ordered<NonDeletedExcalidrawElement>[] | undefined;
     excalidraw_app_state: Pick<AppState, keyof AppState> | undefined;
     create_ts: number;

@@ -8,6 +8,7 @@ import { about } from './about';
 import { fullScreenDraw } from './fullScreenDraw';
 import { videoRecord } from './videoRecord';
 import { plugin } from './plugin';
+import { personalization } from './personalization';
 
 export const zhHans = {
     ...menu,
@@ -20,4 +21,5 @@ export const zhHans = {
     ...about,
     ...videoRecord,
     ...plugin,
+    ...personalization,
 };

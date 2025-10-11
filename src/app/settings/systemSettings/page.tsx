@@ -462,6 +462,22 @@ export default function SystemSettings() {
                                 options={historyValidDurationOptions}
                             />
                         </Col>
+                        <Col span={12}>
+                            <ProFormSwitch
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.historySaveEditResult" />
+                                        }
+                                        tooltipTitle={
+                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.historySaveEditResult.tip" />
+                                        }
+                                    />
+                                }
+                                name="historySaveEditResult"
+                                valuePropName="checked"
+                            />
+                        </Col>
                     </Row>
 
                     {isReadyStatus?.(PLUGIN_ID_RAPID_OCR) && (

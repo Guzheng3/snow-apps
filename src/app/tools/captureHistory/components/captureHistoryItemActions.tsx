@@ -42,7 +42,7 @@ export const CaptureHistoryItemActions: React.FC<{
         <Button
             onClick={async () => {
                 setCopyLoading(true);
-                await writeFilePathToClipboard(item.file_path);
+                await writeFilePathToClipboard(item.capture_result_file_path ?? item.file_path);
                 setCopyLoading(false);
             }}
             key="copy"
