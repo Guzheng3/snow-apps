@@ -724,16 +724,29 @@ const DrawPageCore: React.FC<{
             return;
         }
 
-        // 非滚动截图时保存截屏历史
-        saveCaptureHistory();
+        // 创建一个固定的图片
+        const selectRectParams = selectLayerActionRef.current.getSelectRectParams();
+        const canvas = await getCanvas(
+            selectRectParams,
+            drawLayerActionRef.current,
+            drawCacheLayerActionRef.current,
+        );
+        if (!canvas) {
+            return;
+        }
+
+        saveCaptureHistory(
+            getAppSettings()[AppSettingsGroup.SystemScreenshot].historySaveEditResult
+                ? canvas
+                : undefined,
+        );
 
         await fixedToScreen(
+            canvas,
             captureBoundingBoxInfoRef.current,
             appWindowRef.current,
             layerContainerRef.current,
             selectLayerActionRef.current,
-            drawLayerActionRef.current,
-            drawCacheLayerActionRef.current,
             fixedContentAction,
             setCaptureStep,
             // 如果当前是 OCR 识别状态，则使用已有的 OCR 结果
@@ -745,7 +758,14 @@ const DrawPageCore: React.FC<{
         switchLayer(undefined, drawLayerActionRef.current, selectLayerActionRef.current);
 
         imageBufferRef.current = undefined;
-    }, [finishCapture, getDrawState, getFixedContentAction, saveCaptureHistory, setCaptureStep]);
+    }, [
+        finishCapture,
+        getAppSettings,
+        getDrawState,
+        getFixedContentAction,
+        saveCaptureHistory,
+        setCaptureStep,
+    ]);
 
     const onTopWindow = useCallback(async () => {
         const windowId = selectLayerActionRef.current?.getWindowId();

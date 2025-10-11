@@ -175,12 +175,11 @@ export const saveToFile = async (
 };
 
 export const fixedToScreen = async (
+    canvas: HTMLCanvasElement,
     captureBoundingBoxInfo: CaptureBoundingBoxInfo,
     appWindow: AppWindow,
     layerContainerElement: HTMLDivElement,
     selectLayerAction: SelectLayerActionType,
-    drawLayerAction: DrawLayerActionType,
-    drawCacheLayerAction: DrawCacheLayerActionType,
     fixedContentAction: FixedContentActionType,
     setCaptureStep: (step: CaptureStep) => void,
     /** 已有的 OCR 结果 */
@@ -191,26 +190,13 @@ export const fixedToScreen = async (
         return;
     }
 
-    // 创建一个固定的图片
-    const imageCanvasPromise = getCanvas(selectRectParams, drawLayerAction, drawCacheLayerAction);
-
     setCaptureStep(CaptureStep.Fixed);
     createDrawWindow();
 
+    await Promise.all([appWindow.hide(), appWindow.setTitle('Snow Shot - Fixed Content')]);
     layerContainerElement.style.opacity = '0';
     layerContainerElement.style.width = '100%';
     layerContainerElement.style.height = '100%';
-    // 等待窗口内容被隐藏，防止窗口闪烁
-    await new Promise((resolve) => {
-        setTimeout(resolve, 17);
-    });
-    await Promise.all([appWindow.hide(), appWindow.setTitle('Snow Shot - Fixed Content')]);
-
-    const imageCanvas = await imageCanvasPromise;
-
-    if (!imageCanvas) {
-        return;
-    }
 
     await setWindowRect(
         appWindow,
@@ -226,7 +212,7 @@ export const fixedToScreen = async (
         appWindow.show(),
         appWindow.setAlwaysOnTop(true),
         fixedContentAction.init({
-            canvas: imageCanvas,
+            canvas,
             captureBoundingBoxInfo,
             ocrResult,
             selectRectParams,
@@ -238,7 +224,7 @@ export const fixedToScreen = async (
 
     // 等待两帧，让窗口内容显示出来
     await new Promise((resolve) => {
-        setTimeout(resolve, 17 * 2);
+        setTimeout(resolve, 17);
     });
 
     layerContainerElement.style.opacity = '1';
