@@ -4,7 +4,7 @@ import { AppSettingsData, AppSettingsPublisher } from '@/app/contextWrap';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { CaptureHistoryItem } from '@/utils/appStore';
 import { CaptureHistory, getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
-import { CopyOutlined, EditOutlined, ReloadOutlined } from '@ant-design/icons';
+import { CopyOutlined, DeleteOutlined, EditOutlined, ReloadOutlined } from '@ant-design/icons';
 import { ActionType, ProList } from '@ant-design/pro-components';
 import { Button, Tag } from 'antd';
 import dayjs from 'dayjs';
@@ -17,14 +17,15 @@ import { writeFilePathToClipboard } from '@/utils/clipboard';
 import { executeScreenshot, ScreenshotType } from '@/functions/screenshot';
 import { EventListenerContext } from '@/components/eventListener';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-
-type CaptureHistoryRecordItem = CaptureHistoryItem & { file_path: string; file_url: string };
+import { CaptureHistoryRecordItem } from './extra';
+import { CaptureHistoryItemActions } from './components/captureHistoryItemActions';
 
 const CaptureHistoryPage = () => {
     const [loading, setLoading] = useState(true);
     const [dataSource, setDataSource, dataSourceRef] = useStateRef<
         CaptureHistoryItem[] | undefined
     >(undefined);
+    const captureHistoryRef = useRef<CaptureHistory | undefined>(undefined);
 
     const actionRef = useRef<ActionType>(null);
 
@@ -39,9 +40,9 @@ const CaptureHistoryPage = () => {
 
             setLoading(true);
 
-            const captureHistory = new CaptureHistory();
-            await captureHistory.init();
-            const list = (await captureHistory.getList(appSettings)).sort(
+            captureHistoryRef.current = new CaptureHistory();
+            await captureHistoryRef.current.init();
+            const list = (await captureHistoryRef.current.getList(appSettings)).sort(
                 (a, b) => b.create_ts - a.create_ts,
             );
             setDataSource(list);
@@ -201,34 +202,15 @@ const CaptureHistoryPage = () => {
                     actions: {
                         search: false,
                         cardActionProps: 'extra',
-                        render: (_, item: CaptureHistoryRecordItem) => [
-                            <Button
-                                key="view"
-                                onClick={() => {
-                                    executeScreenshot(
-                                        ScreenshotType.SwitchCaptureHistory,
-                                        undefined,
-                                        item.id,
-                                    );
-                                }}
-                                size="small"
-                                type="link"
-                                icon={<EditOutlined />}
-                            >
-                                <FormattedMessage id="tools.captureHistory.switch" />
-                            </Button>,
-                            <Button
-                                onClick={() => {
-                                    writeFilePathToClipboard(item.file_path);
-                                }}
-                                key="copy"
-                                size="small"
-                                type="link"
-                                icon={<CopyOutlined />}
-                            >
-                                <FormattedMessage id="tools.captureHistory.copy" />
-                            </Button>,
-                        ],
+                        render: (_, item: CaptureHistoryRecordItem) => {
+                            return (
+                                <CaptureHistoryItemActions
+                                    item={item}
+                                    reloadList={reloadList}
+                                    captureHistoryRef={captureHistoryRef}
+                                />
+                            );
+                        },
                     },
                     extra: {
                         search: false,

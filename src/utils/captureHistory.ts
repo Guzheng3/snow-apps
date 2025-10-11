@@ -206,16 +206,7 @@ export class CaptureHistory {
                     return;
                 }
 
-                try {
-                    await this.store.delete(id);
-                } catch (error) {
-                    appWarn('[CaptureHistory] delete captureHistoryItem failed', error);
-                }
-                try {
-                    await removeFile(await getCaptureHistoryImageAbsPath(item.file_name));
-                } catch (error) {
-                    appWarn('[CaptureHistory] remove captureHistoryItem image failed', error);
-                }
+                await this.delete(id, item);
             }),
         );
 
@@ -229,6 +220,27 @@ export class CaptureHistory {
             await retainDirFiles(await getCaptureHistoryImageAbsPath(''), validImageFileNames);
         } catch (error) {
             appWarn('[CaptureHistory] retain captureHistoryImagesDir failed', error);
+        }
+    }
+
+    async delete(id: string, item?: CaptureHistoryItem) {
+        if (!item) {
+            item = await this.store.get(id);
+        }
+
+        if (!item) {
+            return;
+        }
+
+        try {
+            await this.store.delete(id);
+        } catch (error) {
+            appWarn('[CaptureHistory] delete captureHistoryItem failed', error);
+        }
+        try {
+            await removeFile(await getCaptureHistoryImageAbsPath(item.file_name));
+        } catch (error) {
+            appWarn('[CaptureHistory] remove captureHistoryItem image failed', error);
         }
     }
 

@@ -76,6 +76,8 @@ export const tools = {
     'tools.captureHistory.position': '位置',
     'tools.captureHistory.size': '大小',
     'tools.captureHistory.drawElements': '绘制元素',
-    'tools.captureHistory.switch': '切换到截图',
-    'tools.captureHistory.copy': '复制图片',
+    'tools.captureHistory.switch': '编辑',
+    'tools.captureHistory.copy': '复制',
+    'tools.captureHistory.delete': '删除',
+    'tools.captureHistory.delete.confirm': '确定要删除该截图吗？',
 };
