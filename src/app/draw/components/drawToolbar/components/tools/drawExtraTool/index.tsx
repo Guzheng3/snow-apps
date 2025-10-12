@@ -20,7 +20,8 @@ import { ToolbarPopover } from '@/app/draw/components/drawToolbar/components/too
 export const DrawExtraTool: React.FC<{
     customToolbarToolHiddenMap: Partial<Record<DrawState, boolean>> | undefined;
     onToolClickAction: (tool: DrawState) => void;
-}> = ({ customToolbarToolHiddenMap, onToolClickAction }) => {
+    disable: boolean;
+}> = ({ customToolbarToolHiddenMap, onToolClickAction, disable }) => {
     const intl = useIntl();
     const { token } = theme.useToken();
 
@@ -73,9 +74,10 @@ export const DrawExtraTool: React.FC<{
                     onToolClickAction(DrawState.Watermark);
                     updateLastDrawExtraTool(DrawState.Watermark);
                 }}
+                disabled={disable}
             />
         );
-    }, [drawState, intl, onToolClickAction, updateLastDrawExtraTool]);
+    }, [disable, drawState, intl, onToolClickAction, updateLastDrawExtraTool]);
 
     const highlightButton = useMemo(() => {
         return (
@@ -88,9 +90,10 @@ export const DrawExtraTool: React.FC<{
                     onToolClickAction(DrawState.Highlight);
                     updateLastDrawExtraTool(DrawState.Highlight);
                 }}
+                disabled={disable}
             />
         );
-    }, [drawState, intl, onToolClickAction, updateLastDrawExtraTool]);
+    }, [disable, drawState, intl, onToolClickAction, updateLastDrawExtraTool]);
 
     let mainToolbarButton = customToolbarToolHiddenMap?.[DrawState.Watermark]
         ? highlightButton

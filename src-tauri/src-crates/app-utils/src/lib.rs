@@ -1,8 +1,10 @@
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::ffi::OsStr;
 use std::path::PathBuf;
+use tauri::http::HeaderValue;
 use tokio::fs;
 
+use base64::prelude::*;
 use device_query::{DeviceQuery, DeviceState, MouseState};
 use image::codecs::avif::AvifEncoder;
 use image::codecs::jpeg::JpegEncoder;
@@ -714,5 +716,73 @@ pub async fn write_bitmap_image_to_clipboard(
         drop(_clip);
 
         Ok(())
+    }
+}
+
+pub fn get_request_header(
+    request: &tauri::ipc::Request<'_>,
+    header_name: &str,
+) -> Result<HeaderValue, String> {
+    let header = request.headers().get(header_name);
+    match header {
+        Some(header) => Ok(header.clone()),
+        None => Err(String::from(format!(
+            "[get_request_header] Missing header: {}",
+            header_name
+        ))),
+    }
+}
+
+pub fn get_request_string_header(
+    request: &tauri::ipc::Request<'_>,
+    header_name: &str,
+) -> Result<String, String> {
+    let header = get_request_header(request, header_name)?;
+    let base64_header = match header.to_str() {
+        Ok(header) => header.to_string(),
+        Err(_) => {
+            return Err(format!(
+                "[get_request_string_header] Invalid header: {}",
+                header_name
+            ));
+        }
+    };
+    match BASE64_STANDARD.decode(base64_header) {
+        Ok(header) => Ok(String::from_utf8(header).unwrap()),
+        Err(_) => Err(format!(
+            "[get_request_string_header] Invalid header: {}",
+            header_name
+        )),
+    }
+}
+
+pub fn get_request_optional_string_header(
+    request: &tauri::ipc::Request<'_>,
+    header_name: &str,
+) -> Result<Option<String>, String> {
+    let text_header = match get_request_string_header(request, header_name) {
+        Ok(text_header) => text_header,
+        Err(_) => return Ok(None),
+    };
+    if text_header == "" {
+        Ok(None)
+    } else {
+        Ok(Some(text_header))
+    }
+}
+
+pub fn get_request_bool_header(
+    request: &tauri::ipc::Request<'_>,
+    header_name: &str,
+) -> Result<bool, String> {
+    let text_header = get_request_string_header(request, header_name)?;
+    match text_header.parse::<bool>() {
+        Ok(header) => Ok(header),
+        Err(_) => {
+            return Err(format!(
+                "[get_request_bool_header] Invalid header: {}",
+                header_name
+            ));
+        }
     }
 }

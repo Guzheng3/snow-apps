@@ -10,5 +10,4 @@ zune-jpegxl = { workspace = true }
 tauri = { workspace = true }
 log = { workspace = true }
 tokio = { workspace = true }
-
-base64 = "^0.22"
+base64 = { workspace = true }

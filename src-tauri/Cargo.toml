@@ -10,7 +10,9 @@ members = [
     "src-crates/tauri-commands/ocr",
     "src-crates/tauri-commands/screenshot",
     "src-crates/tauri-commands/scroll-screenshot",
+    "src-crates/tauri-commands/http-service",
     "src-crates/webview",
+    "src-crates/http-services",
 ]
 
 [package]
@@ -60,6 +62,7 @@ futures-lite = "2.6.1"
 tokio-util = "0.7.16"
 futures-util = "0.3"
 windows = "0.61"
+base64 = "^0.22"
 
 # 项目内依赖
 snow-shot-app-services = { path = "src-crates/app-services" }
@@ -72,8 +75,10 @@ snow-shot-tauri-commands-file = { path = "src-crates/tauri-commands/file" }
 snow-shot-tauri-commands-ocr = { path = "src-crates/tauri-commands/ocr" }
 snow-shot-tauri-commands-screenshot = { path = "src-crates/tauri-commands/screenshot" }
 snow-shot-tauri-commands-scroll-screenshot = { path = "src-crates/tauri-commands/scroll-screenshot" }
+snow-shot-tauri-commands-http-service = { path = "src-crates/tauri-commands/http-service" }
 snow-shot-plugin-service = { path = "src-crates/plugin-service" }
 snow-shot-webview = { path = "src-crates/webview" }
+snow-shot-http-services = { path = "src-crates/http-services" }
 
 [dependencies]
 snow-shot-app-shared = { workspace = true }
@@ -88,6 +93,8 @@ snow-shot-tauri-commands-scroll-screenshot = { workspace = true }
 snow-shot-plugin-service = { workspace = true }
 snow-shot-app-utils = { workspace = true }
 snow-shot-webview = { workspace = true }
+snow-shot-http-services = { workspace = true }
+snow-shot-tauri-commands-http-service = { workspace = true }
 
 # workspace 依赖
 tokio = { workspace = true }
@@ -117,6 +124,8 @@ tauri-plugin-macos-permissions = "2.3.0"
 
 
 # 其他依赖
+base64 = { workspace = true }
+
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"

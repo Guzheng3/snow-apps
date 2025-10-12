@@ -27,7 +27,8 @@ export enum ExtraToolList {
 
 export const ExtraTool: React.FC<{
     onToolClickAction: (tool: DrawState) => void;
-}> = ({ onToolClickAction }) => {
+    disable: boolean;
+}> = ({ onToolClickAction, disable }) => {
     const intl = useIntl();
     const { token } = theme.useToken();
 
@@ -138,6 +139,7 @@ export const ExtraTool: React.FC<{
             onClick={() => {
                 onToolClickAction(DrawState.ScanQrcode);
             }}
+            disabled={disable}
         />
     );
 
@@ -150,6 +152,7 @@ export const ExtraTool: React.FC<{
             onClick={() => {
                 onToolClickAction(DrawState.VideoRecord);
             }}
+            disabled={disable}
         />
     );
 

@@ -15,6 +15,7 @@ rayon = { workspace = true }
 snow-shot-app-shared = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
+base64 = { workspace = true }
 
 [target.'cfg(any(target_os = "macos"))'.dependencies]
 scap = { workspace = true }

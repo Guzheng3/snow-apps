@@ -32,6 +32,7 @@ export enum KeyEventKey {
     ColorPickerCopy = 'colorPickerCopy',
     SaveTool = 'saveTool',
     FastSaveTool = 'fastSaveTool',
+    SaveToCloudTool = 'saveToCloudTool',
     ScrollScreenshotTool = 'scrollScreenshotTool',
     CopyTool = 'copyTool',
     FixedTool = 'fixedTool',
@@ -126,6 +127,10 @@ export const defaultDrawToolbarKeyEventSettings: Record<KeyEventKey, KeyEventVal
     },
     [KeyEventKey.OcrTranslateTool]: {
         hotKey: getPlatformValue('Ctrl+T', 'Meta+T'),
+        unique: true,
+    },
+    [KeyEventKey.SaveToCloudTool]: {
+        hotKey: getPlatformValue('Ctrl+Shift+C', 'Meta+Shift+C'),
         unique: true,
     },
     [KeyEventKey.ScrollScreenshotTool]: {

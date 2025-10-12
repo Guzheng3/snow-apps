@@ -59,7 +59,12 @@ import {
     scrollScreenshotClear,
     scrollScreenshotSaveToClipboard,
 } from '@/commands/scrollScreenshot';
-import { getImageFormat, getImagePathFromSettings, showImageDialog } from '@/utils/file';
+import {
+    generateImageFileName,
+    getImageFormat,
+    getImagePathFromSettings,
+    showImageDialog,
+} from '@/utils/file';
 import { scrollScreenshotSaveToFile } from '@/commands/scrollScreenshot';
 import { AppSettingsActionContext, AppSettingsGroup } from '../contextWrap';
 import { AppSettingsPublisher } from '../contextWrap';
@@ -99,6 +104,7 @@ import { setExcludeFromCapture } from '@/commands/videoRecord';
 import { getImageBufferFromSharedBuffer, ImageSharedBufferData } from './tools';
 import { getCorrectHdrColorAlgorithm } from '@/utils/appSettings';
 import { CaptureHistorySource } from '@/utils/appStore';
+import { uploadToS3 } from '@/commands/httpServices';
 
 const DrawCacheLayer = dynamic(
     async () => (await import('./components/drawCacheLayer')).DrawCacheLayer,
@@ -713,6 +719,66 @@ const DrawPageCore: React.FC<{
         [finishCapture, getAppSettings, getDrawState, saveCaptureHistory, updateAppSettings],
     );
 
+    const onSaveToCloud = useCallback(async () => {
+        if (!getAppSettings()[AppSettingsGroup.FunctionScreenshot].saveToCloud) {
+            return;
+        }
+
+        if (
+            !selectLayerActionRef.current ||
+            !drawLayerActionRef.current ||
+            !drawCacheLayerActionRef.current
+        ) {
+            return;
+        }
+
+        const imageCanvas = await getCanvas(
+            selectLayerActionRef.current.getSelectRectParams(),
+            drawLayerActionRef.current,
+            drawCacheLayerActionRef.current,
+        );
+
+        const imageBuffer = await new Promise<ArrayBuffer | undefined>((resolve) => {
+            imageCanvas?.toBlob(
+                async (blob) => {
+                    resolve(await blob?.arrayBuffer());
+                },
+                'image/png',
+                1,
+            );
+        });
+
+        if (!imageBuffer) {
+            return;
+        }
+
+        const hideLoading = message.loading(<FormattedMessage id="draw.saveToCloud.loading" />);
+        try {
+            const result = await uploadToS3(
+                getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3Endpoint,
+                getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3Region,
+                getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3AccessKeyId,
+                getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3SecretAccessKey,
+                getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3BucketName,
+                getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3PathPrefix,
+                getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3ForcePathStyle,
+                imageBuffer,
+                generateImageFileName(
+                    getAppSettings()[AppSettingsGroup.FunctionOutput].manualSaveFileNameFormat,
+                ),
+                'image/png',
+            );
+
+            await writeTextToClipboard(result);
+            finishCapture();
+        } catch (error) {
+            appError('[DrawPageCore] S3 upload error', error);
+            message.error(<FormattedMessage id="draw.saveToCloud.error" />);
+        }
+
+        hideLoading();
+    }, [finishCapture, getAppSettings, message]);
+
     const onFixed = useCallback(async () => {
         // 停止监听键盘
         listenKeyStop();
@@ -1199,6 +1265,7 @@ const DrawPageCore: React.FC<{
                         actionRef={drawToolbarActionRef}
                         onCancel={finishCapture}
                         onSave={onSave}
+                        onSaveToCloud={onSaveToCloud}
                         onFixed={onFixed}
                         onCopyToClipboard={onCopyToClipboard}
                         onOcrDetect={onOcrDetect}

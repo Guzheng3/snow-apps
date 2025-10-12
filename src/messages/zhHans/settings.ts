@@ -149,6 +149,20 @@ export const settings = {
         '截图当前具有焦点的窗口时复制到剪贴板',
     'settings.functionSettings.screenshotSettings.fullScreenCopyToClipboard':
         '截取全屏时复制到剪贴板',
+    'settings.functionSettings.screenshotSettings.saveToCloud': '保存到云端',
+    'settings.functionSettings.screenshotSettings.saveToCloud.tip':
+        '工具栏新增保存到云端按钮，快速保存到云端并复制结果到剪贴板',
+    'settings.functionSettings.screenshotSettings.cloudSaveUrl.type': '云端保存协议',
+    'settings.functionSettings.screenshotSettings.cloudSaveUrl.type.s3': 'S3',
+    'settings.functionSettings.screenshotSettings.cloudSaveUrl.s3AccessKeyId': 'Access key ID',
+    'settings.functionSettings.screenshotSettings.cloudSaveUrl.s3SecretAccessKey':
+        'Secret access key',
+    'settings.functionSettings.screenshotSettings.cloudSaveUrl.s3Region': 'Region',
+    'settings.functionSettings.screenshotSettings.cloudSaveUrl.s3BucketName': 'Bucket name',
+    'settings.functionSettings.screenshotSettings.cloudSaveUrl.s3Endpoint': 'Endpoint',
+    'settings.functionSettings.screenshotSettings.cloudSaveUrl.s3PathPrefix': 'Path prefix',
+    'settings.functionSettings.screenshotSettings.cloudSaveUrl.s3ForcePathStyle':
+        'Force path style',
     'settings.functionSettings.screenshotSettings.autoSaveFileMode': '保存文件增强',
     'settings.functionSettings.screenshotSettings.autoSaveFileMode.saveMode': '保存方式',
     'settings.functionSettings.screenshotSettings.autoSaveFileMode.autoSave': '复制后自动保存',

@@ -217,6 +217,8 @@ export enum DrawState {
     VideoRecord = 114,
     // 拖拽窗口
     DragWindow = 115,
+    // 保存到云端
+    SaveToCloud = 116,
 }
 
 export const DrawStatePublisher = createPublisher<DrawState>(DrawState.Idle);

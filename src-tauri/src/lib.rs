@@ -7,6 +7,7 @@ pub mod screenshot;
 pub mod scroll_screenshot;
 pub mod video_record;
 pub mod webview;
+pub mod http_services;
 
 use snow_shot_app_services::listen_mouse_service;
 use std::sync::Arc;
@@ -273,6 +274,7 @@ pub fn run() {
             plugin::plugin_uninstall_plugin,
             webview::create_webview_shared_buffer,
             webview::set_support_webview_shared_buffer,
+            http_services::upload_to_s3,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {

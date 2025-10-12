@@ -19,6 +19,7 @@ import {
     AppSettingsData,
     AppSettingsFixedContentInitialPosition,
     AppSettingsGroup,
+    CloudSaveUrlType,
     TrayIconClickAction,
 } from '../../contextWrap';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -518,6 +519,17 @@ export default function SystemSettings() {
         ];
     }, [intl]);
 
+    const cloudSaveUrlTypeOptions = useMemo(() => {
+        return [
+            {
+                label: intl.formatMessage({
+                    id: 'settings.functionSettings.screenshotSettings.cloudSaveUrl.type.s3',
+                }),
+                value: CloudSaveUrlType.S3,
+            },
+        ];
+    }, [intl]);
+
     return (
         <ContentWrap>
             <GroupTitle
@@ -708,6 +720,113 @@ export default function SystemSettings() {
                             </ProForm.Item>
                         </Col>
                     </Row>
+
+                    <Row gutter={token.marginLG}>
+                        <Col span={12}>
+                            <ProFormSwitch
+                                name="saveToCloud"
+                                layout="horizontal"
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.functionSettings.screenshotSettings.saveToCloud" />
+                                        }
+                                        tooltipTitle={
+                                            <FormattedMessage id="settings.functionSettings.screenshotSettings.saveToCloud.tip" />
+                                        }
+                                    />
+                                }
+                                valuePropName="checked"
+                            />
+                        </Col>
+                    </Row>
+
+                    <ProFormDependency<{ saveToCloud: boolean }> name={['saveToCloud']}>
+                        {({ saveToCloud }) => {
+                            if (!saveToCloud) {
+                                return null;
+                            }
+
+                            return (
+                                <Row gutter={token.marginLG}>
+                                    <Col span={12}>
+                                        <ProFormSelect
+                                            name="cloudSaveUrlType"
+                                            layout="horizontal"
+                                            label={
+                                                <FormattedMessage id="settings.functionSettings.screenshotSettings.cloudSaveUrl.type" />
+                                            }
+                                            options={cloudSaveUrlTypeOptions}
+                                        />
+                                    </Col>
+                                    <Col span={12}> </Col>
+                                    <Col span={12}>
+                                        <ProFormText
+                                            name="s3Endpoint"
+                                            layout="horizontal"
+                                            label={
+                                                <FormattedMessage id="settings.functionSettings.screenshotSettings.cloudSaveUrl.s3Endpoint" />
+                                            }
+                                        />
+                                    </Col>
+                                    <Col span={12}>
+                                        <ProFormText.Password
+                                            name="s3AccessKeyId"
+                                            layout="horizontal"
+                                            label={
+                                                <FormattedMessage id="settings.functionSettings.screenshotSettings.cloudSaveUrl.s3AccessKeyId" />
+                                            }
+                                        />
+                                    </Col>
+                                    <Col span={12}>
+                                        <ProFormText.Password
+                                            name="s3SecretAccessKey"
+                                            layout="horizontal"
+                                            label={
+                                                <FormattedMessage id="settings.functionSettings.screenshotSettings.cloudSaveUrl.s3SecretAccessKey" />
+                                            }
+                                        />
+                                    </Col>
+                                    <Col span={12}>
+                                        <ProFormText
+                                            name="s3Region"
+                                            layout="horizontal"
+                                            label={
+                                                <FormattedMessage id="settings.functionSettings.screenshotSettings.cloudSaveUrl.s3Region" />
+                                            }
+                                        />
+                                    </Col>
+                                    <Col span={12}>
+                                        <ProFormText
+                                            name="s3BucketName"
+                                            layout="horizontal"
+                                            label={
+                                                <FormattedMessage id="settings.functionSettings.screenshotSettings.cloudSaveUrl.s3BucketName" />
+                                            }
+                                        />
+                                    </Col>
+                                    <Col span={12}>
+                                        <ProFormText
+                                            name="s3PathPrefix"
+                                            layout="horizontal"
+                                            label={
+                                                <FormattedMessage id="settings.functionSettings.screenshotSettings.cloudSaveUrl.s3PathPrefix" />
+                                            }
+                                        />
+                                    </Col>
+                                    <Col span={12}>
+                                        <ProFormSwitch
+                                            name="s3ForcePathStyle"
+                                            layout="horizontal"
+                                            label={
+                                                <FormattedMessage id="settings.functionSettings.screenshotSettings.cloudSaveUrl.s3ForcePathStyle" />
+                                            }
+                                        />
+                                    </Col>
+                                </Row>
+                            );
+                        }}
+                    </ProFormDependency>
                 </ProForm>
             </Spin>
 

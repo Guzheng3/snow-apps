@@ -97,6 +97,10 @@ export enum TrayIconClickAction {
     Screenshot = 'screenshot',
 }
 
+export enum CloudSaveUrlType {
+    S3 = 's3',
+}
+
 export enum TrayIconDefaultIcon {
     Default = 'default',
     Light = 'light',
@@ -232,12 +236,30 @@ export type AppSettingsData = {
         shortcutCanleTip: boolean;
         /** 复制后自动保存文件 */
         autoSaveOnCopy: boolean;
+        /** 快速保存文件 */
+        fastSave: boolean;
         /** 截图当前具有焦点的窗口时复制到剪贴板 */
         focusedWindowCopyToClipboard: boolean;
         /** 截取全屏时复制到剪贴板 */
         fullScreenCopyToClipboard: boolean;
-        /** 快速保存文件 */
-        fastSave: boolean;
+        /** 保存到云端 */
+        saveToCloud: boolean;
+        /** 云端保存协议 */
+        cloudSaveUrlType: CloudSaveUrlType;
+        /** S3 访问密钥 ID */
+        s3AccessKeyId: string;
+        /** S3 访问密钥 */
+        s3SecretAccessKey: string;
+        /** S3 区域 */
+        s3Region: string;
+        /** S3 端点 */
+        s3Endpoint: string;
+        /** S3 桶名 */
+        s3BucketName: string;
+        /** S3 路径前缀 */
+        s3PathPrefix: string;
+        /** S3 强制路径样式 */
+        s3ForcePathStyle: boolean;
         /** 保存文件路径 */
         saveFileDirectory: string;
         /** 保存文件格式 */
@@ -461,6 +483,17 @@ export const defaultAppSettingsData: AppSettingsData = {
         focusedWindowCopyToClipboard: true,
         fullScreenCopyToClipboard: true,
         fastSave: false,
+        /** 保存到云端 */
+        saveToCloud: false,
+        /** 云端保存协议 */
+        cloudSaveUrlType: CloudSaveUrlType.S3,
+        s3AccessKeyId: '',
+        s3SecretAccessKey: '',
+        s3Region: '',
+        s3Endpoint: '',
+        s3BucketName: '',
+        s3PathPrefix: '',
+        s3ForcePathStyle: false,
         saveFileDirectory: '',
         saveFileFormat: ImageFormat.PNG,
         ocrAfterAction: OcrDetectAfterAction.None,
@@ -1313,10 +1346,52 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.fastSave === 'boolean'
                             ? newSettings.fastSave
                             : (prevSettings?.fastSave ?? false),
+                    saveToCloud:
+                        typeof newSettings?.saveToCloud === 'boolean'
+                            ? newSettings.saveToCloud
+                            : (prevSettings?.saveToCloud ?? false),
+                    cloudSaveUrlType:
+                        typeof newSettings?.cloudSaveUrlType === 'string'
+                            ? (newSettings.cloudSaveUrlType as CloudSaveUrlType)
+                            : (prevSettings?.cloudSaveUrlType ?? CloudSaveUrlType.S3),
+                    s3AccessKeyId:
+                        typeof newSettings?.s3AccessKeyId === 'string'
+                            ? newSettings.s3AccessKeyId
+                            : (prevSettings?.s3AccessKeyId ??
+                              defaultAppSettingsData[group].s3AccessKeyId),
+                    s3SecretAccessKey:
+                        typeof newSettings?.s3SecretAccessKey === 'string'
+                            ? newSettings.s3SecretAccessKey
+                            : (prevSettings?.s3SecretAccessKey ??
+                              defaultAppSettingsData[group].s3SecretAccessKey),
+                    s3Region:
+                        typeof newSettings?.s3Region === 'string'
+                            ? newSettings.s3Region
+                            : (prevSettings?.s3Region ?? defaultAppSettingsData[group].s3Region),
+                    s3Endpoint:
+                        typeof newSettings?.s3Endpoint === 'string'
+                            ? newSettings.s3Endpoint
+                            : (prevSettings?.s3Endpoint ??
+                              defaultAppSettingsData[group].s3Endpoint),
+                    s3BucketName:
+                        typeof newSettings?.s3BucketName === 'string'
+                            ? newSettings.s3BucketName
+                            : (prevSettings?.s3BucketName ??
+                              defaultAppSettingsData[group].s3BucketName),
+                    s3PathPrefix:
+                        typeof newSettings?.s3PathPrefix === 'string'
+                            ? newSettings.s3PathPrefix
+                            : (prevSettings?.s3PathPrefix ??
+                              defaultAppSettingsData[group].s3PathPrefix),
+                    s3ForcePathStyle:
+                        typeof newSettings?.s3ForcePathStyle === 'boolean'
+                            ? newSettings.s3ForcePathStyle
+                            : (prevSettings?.s3ForcePathStyle ?? false),
                     saveFileDirectory:
                         typeof newSettings?.saveFileDirectory === 'string'
                             ? newSettings.saveFileDirectory
-                            : (prevSettings?.saveFileDirectory ?? ''),
+                            : (prevSettings?.saveFileDirectory ??
+                              defaultAppSettingsData[group].saveFileDirectory),
                     saveFileFormat:
                         typeof newSettings?.saveFileFormat === 'string'
                             ? newSettings.saveFileFormat

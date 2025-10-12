@@ -167,4 +167,7 @@ export const draw = {
     'draw.maskBorderType.dashed': '虚线',
     'draw.maskBorderType.dotted': '点线',
     'draw.dragWindow': '拖拽窗口',
+    'draw.saveToCloudTool': '保存到云端',
+    'draw.saveToCloud.loading': '保存到云端中',
+    'draw.saveToCloud.error': '保存到云端失败',
 };
