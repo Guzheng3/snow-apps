@@ -167,7 +167,8 @@ pub async fn create_fixed_content_window(
     .transparent(true)
     .skip_taskbar(true)
     .resizable(false)
-    .inner_size(1.0, 1.0)
+    .inner_size(500.0, 500.0)
+    .position(0.0, 0.0)
     .build()
     .unwrap();
 
