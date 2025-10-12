@@ -10,5 +10,18 @@ declare global {
         __APP_HANDLE_SERVICE_ERROR__: ((response: ServiceResponse<any>) => void) | undefined;
         __APP_HANDLE_REQUEST_ERROR__: ((response: ServiceResponse<any>) => void) | undefined;
         __APP_ACCEPT_LANGUAGE__: string;
+        chrome: {
+            webview: {
+                addEventListener: (
+                    event: string,
+                    callback: (e: { getBuffer: () => ArrayBuffer }) => void,
+                ) => void;
+                removeEventListener: (
+                    event: string,
+                    callback: (e: { getBuffer: () => ArrayBuffer }) => void,
+                ) => void;
+                releaseBuffer: (buffer: ArrayBuffer) => void;
+            };
+        };
     }
 }

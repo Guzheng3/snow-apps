@@ -51,6 +51,7 @@ import { GlobalShortcut } from '@/components/globalShortcut';
 import { PersonalizationIcon } from '@/components/icons';
 import { EventListener } from '@/components/eventListener';
 import { PLUGIN_ID_AI_CHAT, PLUGIN_ID_FFMPEG, usePluginService } from '@/components/pluginService';
+import { CheckEnvironment } from './components/checkEnvironment';
 
 type MenuItem = ItemType<MenuItemType>;
 
@@ -781,6 +782,7 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
         <>
             <TrayIconLoader />
             <GlobalEventHandler />
+            <CheckEnvironment />
             <CheckVersion />
             <div className="menu-layout-wrap">
                 <Layout>

@@ -6284,6 +6284,7 @@ dependencies = [
  "snow-shot-tauri-commands-ocr",
  "snow-shot-tauri-commands-screenshot",
  "snow-shot-tauri-commands-scroll-screenshot",
+ "snow-shot-webview",
  "tauri",
  "tauri-build",
  "tauri-plugin-autostart",
@@ -6467,6 +6468,7 @@ dependencies = [
  "snow-shot-app-os",
  "snow-shot-app-shared",
  "snow-shot-app-utils",
+ "snow-shot-webview",
  "tauri",
  "tokio",
  "webview2-com",
@@ -6488,6 +6490,18 @@ dependencies = [
  "tauri",
  "tokio",
  "xcap",
+]
+
+[[package]]
+name = "snow-shot-webview"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "tauri",
+ "tokio",
+ "webview2-com",
+ "windows 0.61.3",
+ "windows-core 0.61.2",
 ]
 
 [[package]]

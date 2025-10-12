@@ -48,6 +48,7 @@ pub async fn capture_all_monitors(
     app_handle: tauri::AppHandle,
     window: tauri::Window,
     #[allow(unused_variables)] webview: tauri::Webview,
+    #[allow(unused_variables)] support_webview_shared_buffer: tauri::State<'_, Mutex<bool>>,
     enable_multiple_monitor: bool,
     correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
     correct_color_filter: bool,
@@ -77,12 +78,6 @@ pub async fn capture_all_monitors(
 
     #[cfg(target_os = "windows")]
     {
-        use webview2_com::Microsoft::Web::WebView2::Win32::{
-            COREWEBVIEW2_SHARED_BUFFER_ACCESS_READ_WRITE, ICoreWebView2_17,
-            ICoreWebView2Environment12,
-        };
-        use windows_core::Interface;
-
         let image = snow_shot_app_utils::get_capture_monitor_list(
             &app_handle,
             None,
@@ -98,148 +93,30 @@ pub async fn capture_all_monitors(
         )
         .await?;
 
-        // windows 可以使用 SharedBuffer 加快数据传输
-        let (transfer_result_sender, transfer_result_receiver) = std::sync::mpsc::channel::<bool>();
-        let image = Arc::new(image);
-        let image_clone = image.clone();
-        match webview.with_webview(move |webview| {
-            let environment = webview.environment();
-
-            let core_webview = match unsafe { webview.controller().CoreWebView2() } {
-                Ok(core_webview) => core_webview,
-                Err(e) => {
-                    log::error!("[capture_all_monitors] Failed to get core webview: {:?}", e);
-                    transfer_result_sender.send(false).unwrap();
-                    return;
-                }
-            };
-
-            let enviroment_12 = match environment.cast::<ICoreWebView2Environment12>() {
-                Ok(environment) => environment,
-                Err(e) => {
-                    log::error!(
-                        "[capture_all_monitors] Failed to cast to ICoreWebView2Environment12: {:?}",
-                        e
-                    );
-                    transfer_result_sender.send(false).unwrap();
-                    return;
-                }
-            };
-
-            let image_bytes_len = image.as_bytes().len();
-            let image_extra_info_bytes_len = 4 + 4 as usize;
-            let shared_buffer = match unsafe {
-                enviroment_12
-                    .CreateSharedBuffer((image_bytes_len + image_extra_info_bytes_len) as u64)
-            } {
-                Ok(sharedbuffer) => sharedbuffer,
-                Err(e) => {
-                    log::error!(
-                        "[capture_all_monitors] Failed to create shared buffer: {:?}",
-                        e
-                    );
-                    transfer_result_sender.send(false).unwrap();
-                    return;
-                }
-            };
-
-            let mut shared_buffer_ptr: *mut u8 = 0 as *mut u8;
-            match unsafe { shared_buffer.Buffer(&mut shared_buffer_ptr) } {
-                Ok(_) => (),
-                Err(e) => {
-                    log::error!(
-                        "[capture_all_monitors] Failed to buffer shared buffer: {:?}",
-                        e
-                    );
-                    transfer_result_sender.send(false).unwrap();
-                    return;
-                }
-            };
-
-            let webview_17 = match core_webview.cast::<ICoreWebView2_17>() {
-                Ok(environment) => environment,
-                Err(e) => {
-                    log::error!(
-                        "[capture_all_monitors] Failed to cast to ICoreWebView2_17: {:?}",
-                        e
-                    );
-                    transfer_result_sender.send(false).unwrap();
-                    return;
-                }
-            };
-
-            // 将 image 的像素数据拷贝到 shared_buffer
-            unsafe {
-                std::ptr::copy_nonoverlapping(
-                    image.as_bytes().as_ptr(),
-                    shared_buffer_ptr,
-                    image_bytes_len as usize,
-                );
-            }
-
+        if *support_webview_shared_buffer.lock().await {
+            let mut extra_data = vec![0; 8];
             unsafe {
                 let image_width = image.width();
                 let image_height = image.height();
                 std::ptr::copy_nonoverlapping(
                     &image_width as *const u32 as *const u8,
-                    shared_buffer_ptr.add(image_bytes_len as usize),
+                    extra_data.as_mut_ptr(),
                     4,
                 );
                 std::ptr::copy_nonoverlapping(
                     &image_height as *const u32 as *const u8,
-                    shared_buffer_ptr.add(image_bytes_len as usize + 4),
+                    extra_data.as_mut_ptr().add(4),
                     4,
                 );
             }
 
-            match unsafe {
-                webview_17.PostSharedBufferToScript(
-                    &shared_buffer,
-                    COREWEBVIEW2_SHARED_BUFFER_ACCESS_READ_WRITE,
-                    windows::core::PCWSTR::default(),
-                )
-            } {
-                Ok(_) => (),
-                Err(e) => {
-                    log::error!(
-                        "[capture_all_monitors] Failed to post shared buffer to script: {:?}",
-                        e
-                    );
-                    transfer_result_sender.send(false).unwrap();
-                    return;
-                }
-            };
+            snow_shot_webview::create_shared_buffer(webview, image.as_bytes(), &extra_data).await?;
 
-            transfer_result_sender.send(true).unwrap();
-        }) {
-            Ok(_) => {}
-            Err(e) => {
-                log::error!(
-                    "[capture_all_monitors] Failed to create shared buffer: {:?}",
-                    e
-                );
-            }
-        }
-
-        let transfer_result = match transfer_result_receiver.recv() {
-            Ok(result) => result,
-            Err(e) => {
-                log::error!(
-                    "[capture_all_monitors] Failed to receive transfer result: {:?}",
-                    e
-                );
-                false
-            }
-        };
-
-        if transfer_result {
             // 通过 SharedBuffer 传输的特殊标记
             Ok(Response::new(vec![1]))
         } else {
-            let image_buffer = snow_shot_app_utils::encode_image(
-                &image_clone,
-                snow_shot_app_utils::ImageEncoder::Png,
-            );
+            let image_buffer =
+                snow_shot_app_utils::encode_image(&image, snow_shot_app_utils::ImageEncoder::Png);
 
             Ok(Response::new(image_buffer))
         }

@@ -6,6 +6,7 @@ pub mod plugin;
 pub mod screenshot;
 pub mod scroll_screenshot;
 pub mod video_record;
+pub mod webview;
 
 use snow_shot_app_services::listen_mouse_service;
 use std::sync::Arc;
@@ -60,6 +61,8 @@ pub fn run() {
     let plugin_service = Arc::new(plugin_service::PluginService::new());
 
     let full_screen_draw_window_id = Mutex::new(0);
+
+    let support_webview_shared_buffer = Mutex::new(false);
 
     use tauri_plugin_log::{Target, TargetKind};
 
@@ -187,6 +190,7 @@ pub fn run() {
         .manage(enable_run_log_clone)
         .manage(plugin_service)
         .manage(full_screen_draw_window_id)
+        .manage(support_webview_shared_buffer)
         .invoke_handler(tauri::generate_handler![
             screenshot::capture_current_monitor,
             screenshot::capture_all_monitors,
@@ -267,6 +271,8 @@ pub fn run() {
             plugin::plugin_register_plugin,
             plugin::plugin_install_plugin,
             plugin::plugin_uninstall_plugin,
+            webview::create_webview_shared_buffer,
+            webview::set_support_webview_shared_buffer,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {

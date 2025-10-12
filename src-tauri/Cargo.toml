@@ -10,6 +10,7 @@ members = [
     "src-crates/tauri-commands/ocr",
     "src-crates/tauri-commands/screenshot",
     "src-crates/tauri-commands/scroll-screenshot",
+    "src-crates/webview",
 ]
 
 [package]
@@ -72,6 +73,7 @@ snow-shot-tauri-commands-ocr = { path = "src-crates/tauri-commands/ocr" }
 snow-shot-tauri-commands-screenshot = { path = "src-crates/tauri-commands/screenshot" }
 snow-shot-tauri-commands-scroll-screenshot = { path = "src-crates/tauri-commands/scroll-screenshot" }
 snow-shot-plugin-service = { path = "src-crates/plugin-service" }
+snow-shot-webview = { path = "src-crates/webview" }
 
 [dependencies]
 snow-shot-app-shared = { workspace = true }
@@ -85,6 +87,7 @@ snow-shot-tauri-commands-screenshot = { workspace = true }
 snow-shot-tauri-commands-scroll-screenshot = { workspace = true }
 snow-shot-plugin-service = { workspace = true }
 snow-shot-app-utils = { workspace = true }
+snow-shot-webview = { workspace = true }
 
 # workspace 依赖
 tokio = { workspace = true }
@@ -142,6 +145,7 @@ debug = false
 [profile.dev.package.snow-shot-tauri-commands-ocr]
 [profile.dev.package.snow-shot-tauri-commands-screenshot]
 [profile.dev.package.snow-shot-tauri-commands-scroll-screenshot]
+[profile.dev.package.snow-shot-webview]
 opt-level = 2
 debug = true
 
