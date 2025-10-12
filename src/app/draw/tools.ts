@@ -1,4 +1,4 @@
-import { getWebViewSharedBuffer } from '@/utils/webview';
+import { getWebViewSharedBuffer, releaseWebViewSharedBuffer } from '@/utils/webview';
 
 export type ImageSharedBufferData = {
     sharedBuffer: Uint8ClampedArray<ArrayBuffer>;
@@ -20,9 +20,12 @@ export const getImageBufferFromSharedBuffer = async (): Promise<
     const width = new DataView(buffer, imageBytesLength, 4).getUint32(0, true);
     const height = new DataView(buffer, imageBytesLength + 4, 4).getUint32(0, true);
 
-    return {
+    const result = {
         sharedBuffer: new Uint8ClampedArray(buffer.slice(0, imageBytesLength)),
         width,
         height,
     };
+
+    releaseWebViewSharedBuffer(buffer);
+    return result;
 };

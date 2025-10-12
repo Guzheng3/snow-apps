@@ -1,6 +1,6 @@
 import { createWebViewSharedBuffer, setSupportWebViewSharedBuffer } from '@/commands/webview';
 import { appInfo } from '@/utils/log';
-import { getWebViewSharedBuffer } from '@/utils/webview';
+import { getWebViewSharedBuffer, releaseWebViewSharedBuffer } from '@/utils/webview';
 import { useCallback, useEffect, useRef } from 'react';
 
 export const CheckEnvironment = () => {
@@ -29,6 +29,7 @@ export const CheckEnvironment = () => {
 
         appInfo('[CheckEnvironment] Support WebView Shared Buffer');
         setSupportWebViewSharedBuffer(true);
+        releaseWebViewSharedBuffer(receiveData);
     }, []);
 
     useEffect(() => {
