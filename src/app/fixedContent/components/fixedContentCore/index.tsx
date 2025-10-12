@@ -221,11 +221,15 @@ export const FixedContentCore: React.FC<{
     const originHtmlContentRef = useRef<string | undefined>(undefined);
     const htmlContentContainerRef = useRef<HTMLIFrameElement>(null);
     const initHtml = useCallback(
-        (htmlContent: string) => {
+        async (htmlContent: string) => {
+            // 通过设置窗口大小的位置，来激活窗口，触发窗口的 laod 事件
+            await getCurrentWindow().setPosition(new PhysicalPosition(0, 0));
+            await getCurrentWindow().setSize(new PhysicalSize(600, 600));
+
             originHtmlContentRef.current = htmlContent;
-            if (htmlContent.startsWith('<html>') && htmlContent.endsWith('</html>')) {
-                htmlContent = `
-                <html>
+            const baseHtmlContent = `
+               <html>
+                  <head>
                   <style>
                         body {
                             width: fit-content;
@@ -238,7 +242,7 @@ export const FixedContentCore: React.FC<{
                         }
                     </style>
                     <script>
-                       window.addEventListener('load', () => {
+                         window.addEventListener('load', () => {
                             window.parent.postMessage({
                                 type: 'bodySize',
                                 width: document.body.offsetWidth,
@@ -328,11 +332,17 @@ export const FixedContentCore: React.FC<{
                                 }, '*');
                             }
                         });
-
                     </script>
-                    ${htmlContent.slice(6, -7)}
+                    </head>
+                    <body>
+                    </body>
                 </html>`;
-            }
+
+            const parser = new DOMParser();
+            const htmlDom = parser.parseFromString(baseHtmlContent, 'text/html');
+            const contentHtmlDom = parser.parseFromString(htmlContent, 'text/html');
+            htmlDom.body.innerHTML = contentHtmlDom.body.innerHTML;
+            htmlContent = htmlDom.documentElement.outerHTML;
             setFixedContentType(FixedContentType.Html);
 
             const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
