@@ -454,7 +454,9 @@ const DrawPageCore: React.FC<{
     }, [getAppSettings, getScreenshotType, message, showWindow]);
 
     const captureAllMonitorsAction = useCallback(
-        async (excuteScreenshotType: ScreenshotType) => {
+        async (
+            excuteScreenshotType: ScreenshotType,
+        ): Promise<ImageBuffer | ImageSharedBufferData | undefined> => {
             if (excuteScreenshotType === ScreenshotType.SwitchCaptureHistory) {
                 return undefined;
             }
@@ -467,7 +469,9 @@ const DrawPageCore: React.FC<{
                 });
             }
 
-            const result = await captureAllMonitors(
+            const imageBufferFromSharedBufferPromise = getImageBufferFromSharedBuffer();
+
+            let result: ImageBuffer | ImageSharedBufferData | undefined = await captureAllMonitors(
                 getAppSettings()[AppSettingsGroup.SystemScreenshot].enableMultipleMonitor,
                 getCorrectHdrColorAlgorithm(getAppSettings()),
                 getAppSettings()[AppSettingsGroup.SystemScreenshot].correctColorFilter,
@@ -475,6 +479,10 @@ const DrawPageCore: React.FC<{
                 appError('[DrawPageCore] captureAllMonitors error', error);
                 return undefined;
             });
+
+            if (result?.bufferType === ImageBufferType.SharedBuffer) {
+                result = await imageBufferFromSharedBufferPromise;
+            }
 
             if (
                 excuteScreenshotType === ScreenshotType.Delay &&
@@ -497,7 +505,6 @@ const DrawPageCore: React.FC<{
             capturingRef.current = true;
             drawToolbarActionRef.current?.setEnable(false);
 
-            const imageBufferFromSharedBufferPromise = getImageBufferFromSharedBuffer();
             setExcludeFromCapture(true);
 
             const initCaptureBoundingBoxInfoPromise = initCaptureBoundingBoxInfoAndShowWindow();
@@ -522,10 +529,6 @@ const DrawPageCore: React.FC<{
                 imageBuffer = undefined;
             }
             await initCaptureBoundingBoxInfoPromise;
-
-            if (imageBuffer?.bufferType === ImageBufferType.SharedBuffer) {
-                imageBuffer = await imageBufferFromSharedBufferPromise;
-            }
 
             setExcludeFromCapture(false);
 
