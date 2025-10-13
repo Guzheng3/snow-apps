@@ -266,7 +266,11 @@ const CaptureHistoryControllerCore: React.FC<{
         ) => {
             let sharedBufferEncodeImagePromise: Promise<ArrayBuffer | undefined> =
                 Promise.resolve(undefined);
-            if (imageBuffer && 'sharedBuffer' in imageBuffer) {
+            if (
+                imageBuffer &&
+                'sharedBuffer' in imageBuffer &&
+                !captureHistoryListRef.current[currentIndexRef.current]
+            ) {
                 sharedBufferEncodeImagePromise = encodeImage(
                     imageBuffer.width,
                     imageBuffer.height,
@@ -303,11 +307,12 @@ const CaptureHistoryControllerCore: React.FC<{
 
             const sharedBufferEncodeImage = await sharedBufferEncodeImagePromise;
             const captureHistoryItem = await captureHistoryRef.current.save(
-                sharedBufferEncodeImage
-                    ? {
-                          encodeData: sharedBufferEncodeImage,
-                      }
-                    : (captureHistoryListRef.current[currentIndexRef.current] ?? imageBuffer),
+                captureHistoryListRef.current[currentIndexRef.current] ??
+                    (sharedBufferEncodeImage
+                        ? {
+                              encodeData: sharedBufferEncodeImage,
+                          }
+                        : imageBuffer),
                 excalidrawElements,
                 appState,
                 selectRect,
