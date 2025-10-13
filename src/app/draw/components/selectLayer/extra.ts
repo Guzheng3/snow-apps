@@ -119,15 +119,20 @@ export const drawSelectRect = (
         radius = 0;
     }
 
-    canvasContext.clearRect(0, 0, monitorWidth, monitorHeight);
-
     if (drawElementMask) {
         canvasContext.putImageData(drawElementMask.imageData, 0, 0);
     }
 
+    // 使用 'copy' 模式直接替换所有内容（包括 alpha 通道），无需初始化时 clearRect
+    canvasContext.globalCompositeOperation = 'copy';
     canvasContext.fillStyle = selectRectMaskColor ?? getMaskBackgroundColor(darkMode);
     canvasContext.fillRect(0, 0, monitorWidth, monitorHeight);
+    // 恢复默认模式
+    canvasContext.globalCompositeOperation = 'source-over';
 
+    // 防止滚动截图的时候截取到选区边缘
+    const halfWidth = Math.floor(maskControlBorderStrokeWidth * 0.5);
+    const doubleHalfWidth = halfWidth * 2;
     if (radius > 0 && !enableScrollScreenshot) {
         // 清除圆角矩形区域
         // 保存当前上下文状态
@@ -135,15 +140,31 @@ export const drawSelectRect = (
 
         // 创建圆角矩形路径
         canvasContext.beginPath();
-        canvasContext.roundRect(rectMinX, rectMinY, rectWidth, rectHeight, radius);
+        canvasContext.roundRect(
+            rectMinX - halfWidth,
+            rectMinY - halfWidth,
+            rectWidth + doubleHalfWidth,
+            rectHeight + doubleHalfWidth,
+            radius,
+        );
         canvasContext.clip();
 
-        canvasContext.clearRect(rectMinX, rectMinY, rectWidth, rectHeight);
+        canvasContext.clearRect(
+            rectMinX - halfWidth,
+            rectMinY - halfWidth,
+            rectWidth + doubleHalfWidth,
+            rectHeight + doubleHalfWidth,
+        );
 
         // 恢复上下文状态
         canvasContext.restore();
     } else {
-        canvasContext.clearRect(rectMinX, rectMinY, rectWidth, rectHeight);
+        canvasContext.clearRect(
+            rectMinX - halfWidth,
+            rectMinY - halfWidth,
+            rectWidth + doubleHalfWidth,
+            rectHeight + doubleHalfWidth,
+        );
     }
 
     if (enableScrollScreenshot) {
