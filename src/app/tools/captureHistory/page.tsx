@@ -151,21 +151,28 @@ const CaptureHistoryPage = () => {
                         return isMatch;
                     });
                     const data = await Promise.all(
-                        filterData.slice(startIndex, startIndex + pageSize).map(async (item) => {
-                            const file_path = await getCaptureHistoryImageAbsPath(item.file_name);
-                            const capture_result_file_path = item.capture_result_file_name
-                                ? await getCaptureHistoryImageAbsPath(item.capture_result_file_name)
-                                : undefined;
-                            return {
-                                ...item,
-                                file_path,
-                                file_url: convertFileSrc(file_path),
-                                capture_result_file_path,
-                                capture_result_file_url: capture_result_file_path
-                                    ? convertFileSrc(capture_result_file_path)
-                                    : undefined,
-                            };
-                        }),
+                        filterData
+                            .slice(startIndex, startIndex + pageSize)
+                            .map(async (item, index) => {
+                                const file_path = await getCaptureHistoryImageAbsPath(
+                                    item.file_name,
+                                );
+                                const capture_result_file_path = item.capture_result_file_name
+                                    ? await getCaptureHistoryImageAbsPath(
+                                          item.capture_result_file_name,
+                                      )
+                                    : undefined;
+                                return {
+                                    ...item,
+                                    serial_number: startIndex + index + 1,
+                                    file_path,
+                                    file_url: convertFileSrc(file_path),
+                                    capture_result_file_path,
+                                    capture_result_file_url: capture_result_file_path
+                                        ? convertFileSrc(capture_result_file_path)
+                                        : undefined,
+                                };
+                            }),
                     );
 
                     setLoading(false);
@@ -174,7 +181,7 @@ const CaptureHistoryPage = () => {
                         data,
                         success: true,
                         pageSize: pageSize,
-                        total: data.length,
+                        total: filterData.length,
                     };
                 }}
                 pagination={{
@@ -227,6 +234,7 @@ const CaptureHistoryPage = () => {
                                         );
                                     }}
                                 >
+                                    {`${item.serial_number}. `}
                                     <FormattedMessage id="tools.captureHistory.date" />
                                     {`: ${dayjs(item.create_ts).format('YYYY-MM-DD HH:mm:ss')}`}
                                 </div>
