@@ -81,6 +81,7 @@ export type SelectLayerActionType = {
     getSelectRectParams: () => SelectRectParams | undefined;
     switchCaptureHistory: (captureHistory: CaptureHistoryItem | undefined) => void;
     getSelectState: () => SelectState;
+    getDragMode: () => DragMode | undefined;
     getWindowId: () => number | undefined;
     setEnable: (enable: boolean) => void;
     onExecuteScreenshot: () => Promise<void>;
@@ -1301,6 +1302,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 setIsEnable(enable);
             },
             getSelectState: () => selectStateRef.current,
+            getDragMode: () => dragModeRef.current,
             switchCaptureHistory: (captureHistory: CaptureHistoryItem | undefined) => {
                 // 截图 OCR 和复制到剪贴板等如果固定了选区，会触发对应操作，所以保持状态不变
                 if (

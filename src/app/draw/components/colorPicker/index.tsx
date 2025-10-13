@@ -38,7 +38,7 @@ import {
 } from '@/app/contextWrap';
 import Color, { ColorInstance } from 'color';
 import { DrawToolbarStatePublisher } from '../drawToolbar';
-import { SelectState } from '../selectLayer/extra';
+import { DragMode, SelectState } from '../selectLayer/extra';
 import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useMoveCursor } from './extra';
 import { getPlatform, supportOffscreenCanvas } from '@/utils';
@@ -65,6 +65,7 @@ import { getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
 import { useStateRef } from '@/hooks/useStateRef';
 import { useMonitorRect } from '../statusBar';
 import { ImageSharedBufferData } from '../../tools';
+import { useTextScaleFactor } from '@/hooks/useTextScaleFactor';
 
 export enum ColorPickerShowMode {
     Always = 0,
@@ -155,91 +156,97 @@ const ColorPickerCore: React.FC<{
     const {
         contentScale: [, , contentScaleRef],
     } = useMonitorRect();
-    const updateOpacity = useCallback(() => {
-        if (!colorPickerRef.current) {
-            return;
-        }
+    const updateOpacity = useCallback(
+        (hasDrag: boolean) => {
+            if (!colorPickerRef.current) {
+                return;
+            }
 
-        const captureBoundingBoxInfo = captureBoundingBoxInfoRef.current;
-        if (!captureBoundingBoxInfo) {
-            return;
-        }
+            const captureBoundingBoxInfo = captureBoundingBoxInfoRef.current;
+            if (!captureBoundingBoxInfo) {
+                return;
+            }
 
-        if (!imageDataReadyRef.current) {
-            return;
-        }
+            if (!imageDataReadyRef.current) {
+                return;
+            }
 
-        let opacity = '1';
+            let opacity = '1';
 
-        if (enableRef.current || forceEnableRef.current) {
-            const mouseX = pickerPositionRef.current.mouseX;
-            const mouseY = pickerPositionRef.current.mouseY;
-            if (
-                getAppSettings()[AppSettingsGroup.Screenshot].colorPickerShowMode ===
-                ColorPickerShowMode.BeyondSelectRect
-            ) {
-                const selectRect = selectLayerActionRef.current?.getSelectRect();
-                if (selectRect) {
-                    const tolerance = token.marginXXS;
+            // 当拖动选区四个角落时，取色器保持显示，并且定位到四个角
+            if (hasDrag) {
+                opacity = '0.83';
+            } else if (enableRef.current || forceEnableRef.current) {
+                const mouseX = pickerPositionRef.current.mouseX;
+                const mouseY = pickerPositionRef.current.mouseY;
+                if (
+                    getAppSettings()[AppSettingsGroup.Screenshot].colorPickerShowMode ===
+                    ColorPickerShowMode.BeyondSelectRect
+                ) {
+                    const selectRect = selectLayerActionRef.current?.getSelectRect();
+                    if (selectRect) {
+                        const tolerance = token.marginXXS;
 
-                    if (
-                        mouseX > selectRect.min_x - tolerance &&
-                        mouseX < selectRect.max_x + tolerance &&
-                        mouseY > selectRect.min_y - tolerance &&
-                        mouseY < selectRect.max_y + tolerance
-                    ) {
-                        opacity = '1';
+                        if (
+                            mouseX > selectRect.min_x - tolerance &&
+                            mouseX < selectRect.max_x + tolerance &&
+                            mouseY > selectRect.min_y - tolerance &&
+                            mouseY < selectRect.max_y + tolerance
+                        ) {
+                            opacity = '1';
+                        } else {
+                            opacity = '0';
+                        }
                     } else {
                         opacity = '0';
                     }
-                } else {
+                } else if (
+                    getAppSettings()[AppSettingsGroup.Screenshot].colorPickerShowMode ===
+                    ColorPickerShowMode.Never
+                ) {
                     opacity = '0';
+                } else {
+                    opacity = '1';
                 }
-            } else if (
-                getAppSettings()[AppSettingsGroup.Screenshot].colorPickerShowMode ===
-                ColorPickerShowMode.Never
-            ) {
-                opacity = '0';
-            } else {
-                opacity = '1';
-            }
 
-            if (opacity === '1') {
-                // 获取选区的状态，如果是未选定的状态，加个透明度
-                const selectState = selectLayerActionRef.current?.getSelectState();
-                if (selectState === SelectState.Manual || selectState === SelectState.Drag) {
-                    opacity = '0.5';
-                } else if (selectState === SelectState.Auto && colorPickerRef.current) {
-                    // 这时是自动选区，那就根据是否在边缘判断
-                    // 一般都是从左上到右下，所以只判断右下边缘即可
-                    const maxX =
-                        captureBoundingBoxInfo.width -
-                        colorPickerRef.current!.clientWidth *
-                            window.devicePixelRatio *
-                            contentScaleRef.current;
-                    const maxY =
-                        captureBoundingBoxInfo.height -
-                        colorPickerRef.current!.clientHeight *
-                            window.devicePixelRatio *
-                            contentScaleRef.current;
-                    if (mouseX > maxX || mouseY > maxY) {
+                if (opacity === '1') {
+                    // 获取选区的状态，如果是未选定的状态，加个透明度
+                    const selectState = selectLayerActionRef.current?.getSelectState();
+                    if (selectState === SelectState.Manual || selectState === SelectState.Drag) {
                         opacity = '0.5';
+                    } else if (selectState === SelectState.Auto && colorPickerRef.current) {
+                        // 这时是自动选区，那就根据是否在边缘判断
+                        // 一般都是从左上到右下，所以只判断右下边缘即可
+                        const maxX =
+                            captureBoundingBoxInfo.width -
+                            colorPickerRef.current!.clientWidth *
+                                window.devicePixelRatio *
+                                contentScaleRef.current;
+                        const maxY =
+                            captureBoundingBoxInfo.height -
+                            colorPickerRef.current!.clientHeight *
+                                window.devicePixelRatio *
+                                contentScaleRef.current;
+                        if (mouseX > maxX || mouseY > maxY) {
+                            opacity = '0.5';
+                        }
                     }
                 }
+            } else {
+                opacity = '0';
             }
-        } else {
-            opacity = '0';
-        }
 
-        colorPickerRef.current.style.opacity = opacity;
-    }, [
-        captureBoundingBoxInfoRef,
-        forceEnableRef,
-        getAppSettings,
-        selectLayerActionRef,
-        token.marginXXS,
-        contentScaleRef,
-    ]);
+            colorPickerRef.current.style.opacity = opacity;
+        },
+        [
+            captureBoundingBoxInfoRef,
+            forceEnableRef,
+            getAppSettings,
+            selectLayerActionRef,
+            token.marginXXS,
+            contentScaleRef,
+        ],
+    );
 
     const appWindowRef = useRef<AppWindow | undefined>(undefined);
     useEffect(() => {
@@ -279,7 +286,7 @@ const ColorPickerCore: React.FC<{
         (enable: boolean) => {
             enableRef.current = enable;
 
-            updateOpacity();
+            updateOpacity(false);
         },
         [updateOpacity],
     );
@@ -431,7 +438,13 @@ const ColorPickerCore: React.FC<{
 
     const updateImageDataPutImageRender = useCallbackRender(updateImageDataPutImage);
     const updateImageData = useCallback(
-        async (mouseX: number, mouseY: number, physicalX?: number, physicalY?: number) => {
+        async (
+            mouseX: number,
+            mouseY: number,
+            physicalX?: number,
+            physicalY?: number,
+            dragPosition?: { x: number; y: number },
+        ) => {
             const captureBoundingBoxInfo = captureBoundingBoxInfoRef.current;
             if (!captureBoundingBoxInfo) {
                 return;
@@ -439,17 +452,6 @@ const ColorPickerCore: React.FC<{
 
             // 恢复鼠标事件触发
             enableMouseMove();
-
-            // 带宽限制，暂时不从系统获取 mouseposition
-            // let [mouseX, mouseY] = await getMousePosition();
-            // mouseX = Math.min(
-            //     Math.max(0, mouseX - imageBufferRef.current!.monitorX),
-            //     imageBufferRef.current!.monitorWidth,
-            // );
-            // mouseY = Math.min(
-            //     Math.max(0, mouseY - imageBufferRef.current!.monitorY),
-            //     imageBufferRef.current!.monitorHeight,
-            // );
 
             mouseX = Math.min(
                 Math.max(0, physicalX ?? Math.floor(mouseX * window.devicePixelRatio)),
@@ -461,16 +463,26 @@ const ColorPickerCore: React.FC<{
             );
 
             const halfPickerSize = Math.floor(COLOR_PICKER_PREVIEW_PICKER_SIZE / 2);
-            // 将数据绘制到预览画布
-            updatePickerPosition(mouseX, mouseY);
 
             // 计算和绘制错开 1 帧率
-            updateImageDataPutImageRender(
-                mouseX - halfPickerSize,
-                mouseY - halfPickerSize,
-                mouseX,
-                mouseY,
-            );
+            if (dragPosition) {
+                // 将数据绘制到预览画布
+                updatePickerPosition(dragPosition.x, dragPosition.y);
+                updateImageDataPutImageRender(
+                    dragPosition.x - halfPickerSize,
+                    dragPosition.y - halfPickerSize,
+                    dragPosition.x,
+                    dragPosition.y,
+                );
+            } else {
+                updatePickerPosition(mouseX, mouseY);
+                updateImageDataPutImageRender(
+                    mouseX - halfPickerSize,
+                    mouseY - halfPickerSize,
+                    mouseX,
+                    mouseY,
+                );
+            }
         },
         [
             captureBoundingBoxInfoRef,
@@ -481,8 +493,9 @@ const ColorPickerCore: React.FC<{
     );
     const updateImageRender = useCallbackRenderSlow(updateImageData);
 
+    const [, , textScaleFactorRef] = useTextScaleFactor();
     const updateTransform = useCallback(
-        (mouseX: number, mouseY: number) => {
+        (mouseX: number, mouseY: number, dragPosition: { x: number; y: number } | undefined) => {
             const colorPickerElement = colorPickerRef.current;
             if (!colorPickerElement) {
                 return;
@@ -497,22 +510,58 @@ const ColorPickerCore: React.FC<{
             const maxTop = canvasHeight - colorPickerHeight;
             const maxLeft = canvasWidth - colorPickerWidth;
 
-            const colorPickerLeft = Math.min(Math.max(mouseX, 0), maxLeft);
-            const colorPickerTop = Math.min(Math.max(mouseY, 0), maxTop);
+            let colorPickerLeft;
+            let colorPickerTop;
+            if (dragPosition) {
+                colorPickerLeft = dragPosition.x / textScaleFactorRef.current;
+                colorPickerTop = dragPosition.y / textScaleFactorRef.current;
+            } else {
+                colorPickerLeft = Math.min(Math.max(mouseX, 0), maxLeft);
+                colorPickerTop = Math.min(Math.max(mouseY, 0), maxTop);
+            }
 
             colorPickerElement.style.transform = `translate(${colorPickerLeft}px, ${colorPickerTop}px) scale(${contentScaleRef.current})`;
 
-            updateOpacity();
+            updateOpacity(dragPosition !== undefined);
         },
-        [contentScaleRef, updateOpacity],
+        [contentScaleRef, textScaleFactorRef, updateOpacity],
     );
     const updateTransformRender = useCallbackRender(updateTransform);
     const update = useCallback(
         (mouseX: number, mouseY: number, physicalX?: number, physicalY?: number) => {
-            updateTransformRender(mouseX, mouseY);
-            updateImageRender(mouseX, mouseY, physicalX, physicalY);
+            let dragPosition: { x: number; y: number } | undefined = undefined;
+            if (
+                selectLayerActionRef.current &&
+                selectLayerActionRef.current.getSelectState() === SelectState.Drag &&
+                (selectLayerActionRef.current.getDragMode() === DragMode.TopLeft ||
+                    selectLayerActionRef.current?.getDragMode() === DragMode.TopRight ||
+                    selectLayerActionRef.current.getDragMode() === DragMode.BottomLeft ||
+                    selectLayerActionRef.current.getDragMode() === DragMode.BottomRight)
+            ) {
+                const selectRect = selectLayerActionRef.current.getSelectRect()!;
+                dragPosition = {
+                    x: 0,
+                    y: 0,
+                };
+                if (selectLayerActionRef.current.getDragMode() === DragMode.TopLeft) {
+                    dragPosition.x = selectRect.min_x;
+                    dragPosition.y = selectRect.min_y;
+                } else if (selectLayerActionRef.current.getDragMode() === DragMode.TopRight) {
+                    dragPosition.x = selectRect.max_x;
+                    dragPosition.y = selectRect.min_y;
+                } else if (selectLayerActionRef.current.getDragMode() === DragMode.BottomLeft) {
+                    dragPosition.x = selectRect.min_x;
+                    dragPosition.y = selectRect.max_y;
+                } else if (selectLayerActionRef.current.getDragMode() === DragMode.BottomRight) {
+                    dragPosition.x = selectRect.max_x;
+                    dragPosition.y = selectRect.max_y;
+                }
+            }
+
+            updateTransformRender(mouseX, mouseY, dragPosition);
+            updateImageRender(mouseX, mouseY, physicalX, physicalY, dragPosition);
         },
-        [updateImageRender, updateTransformRender],
+        [selectLayerActionRef, updateImageRender, updateTransformRender],
     );
 
     const initedPreviewCanvasRef = useRef(false);

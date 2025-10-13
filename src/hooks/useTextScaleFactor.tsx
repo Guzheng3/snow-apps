@@ -29,9 +29,11 @@ function listenDevicePixelRatio(callback: (ratio: number) => void) {
 
 const TextScaleFactorContext = createContext<{
     textScaleFactor: number;
+    textScaleFactorRef: RefObject<number>;
     devicePixelRatio: number;
 }>({
     textScaleFactor: 1,
+    textScaleFactorRef: { current: 1 },
     devicePixelRatio: 1,
 });
 
@@ -40,7 +42,7 @@ let useTextScaleFactorDataCache_devicePixelRatio = 1;
 export const TextScaleFactorProvider: React.FC<{
     children: React.ReactNode;
 }> = ({ children }) => {
-    const [textScaleFactor, setTextScaleFactor] = useState(
+    const [textScaleFactor, setTextScaleFactor, textScaleFactorRef] = useStateRef(
         useTextScaleFactorDataCache_textScaleFactor,
     );
     const [devicePixelRatio, setDevicePixelRatio] = useState(
@@ -66,7 +68,9 @@ export const TextScaleFactorProvider: React.FC<{
     }, []);
 
     return (
-        <TextScaleFactorContext.Provider value={{ textScaleFactor, devicePixelRatio }}>
+        <TextScaleFactorContext.Provider
+            value={{ textScaleFactor, textScaleFactorRef, devicePixelRatio }}
+        >
             {children}
         </TextScaleFactorContext.Provider>
     );
@@ -75,10 +79,11 @@ export const TextScaleFactorProvider: React.FC<{
 /**
  * 获取文本缩放比例
  */
-export const useTextScaleFactor = () => {
-    const { textScaleFactor, devicePixelRatio } = useContext(TextScaleFactorContext);
+export const useTextScaleFactor = (): [number, number, RefObject<number>] => {
+    const { textScaleFactor, textScaleFactorRef, devicePixelRatio } =
+        useContext(TextScaleFactorContext);
 
-    return [textScaleFactor, devicePixelRatio];
+    return [textScaleFactor, devicePixelRatio, textScaleFactorRef];
 };
 
 /**
@@ -108,7 +113,7 @@ export const useContentScale = (
     monitorScaleFactor: number,
     isToolbar?: boolean,
 ): [number, Dispatch<SetStateAction<number>>, RefObject<number>] => {
-    const [textScaleFactor, devicePixelRatio] = useTextScaleFactor();
+    const [textScaleFactor, devicePixelRatio, textScaleFactorRef] = useTextScaleFactor();
     const [contentScale, setContentScale, contentScaleRef] = useStateRef(1);
 
     const [uiScale, setUiScale] = useState<number>();
