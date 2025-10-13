@@ -44,7 +44,6 @@ import { HistoryControls } from './components/historyControls';
 import { ToolButton } from './components/toolButton';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { BlurTool } from './components/tools/blurTool';
-import { ScreenshotType } from '@/functions/screenshot';
 import {
     ScrollScreenshot,
     ScrollScreenshotActionType,
@@ -70,6 +69,7 @@ import { ExtraTool } from './components/tools/extraTool';
 import { DrawExtraTool } from './components/tools/drawExtraTool';
 import { HighlightTool } from './components/tools/highlightTool';
 import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
+import { ScreenshotType } from '@/utils/types';
 
 export type DrawToolbarProps = {
     actionRef: React.RefObject<DrawToolbarActionType | undefined>;
@@ -845,7 +845,10 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 
                             <div className="draw-toolbar-splitter" />
 
-                            <ExtraTool onToolClickAction={onToolClick} disable={disableNormalScreenshotTool} />
+                            <ExtraTool
+                                onToolClickAction={onToolClick}
+                                disable={disableNormalScreenshotTool}
+                            />
 
                             {/* 固定到屏幕 */}
                             <ToolButton

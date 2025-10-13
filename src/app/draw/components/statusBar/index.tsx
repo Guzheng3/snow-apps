@@ -28,7 +28,7 @@ import { getMaskBackgroundColor } from '../selectLayer/extra';
 import { MousePosition } from '@/utils/mousePosition';
 import { useCallbackRender } from '@/hooks/useCallbackRender';
 import { debounce } from 'es-toolkit';
-import { ScreenshotType } from '@/functions/screenshot';
+import { ScreenshotType } from '@/utils/types';
 import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { getPlatformValue } from '@/utils';

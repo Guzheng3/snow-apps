@@ -3,7 +3,7 @@ import { DrawLayerActionType } from './components/drawLayer';
 import { SelectLayerActionType, SelectRectParams } from './components/selectLayer';
 import { createPublisher } from '@/hooks/useStatePublisher';
 import { BaseLayerEventActionType } from './components/baseLayer';
-import { ScreenshotType } from '@/functions/screenshot';
+import { ScreenshotType } from '@/utils/types';
 import { OcrDetectResult } from '@/commands/ocr';
 import { MonitorInfo } from '@/commands/core';
 import { ElementRect, ImageBuffer } from '@/commands';

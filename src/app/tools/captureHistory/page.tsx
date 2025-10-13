@@ -12,7 +12,8 @@ import React, { useCallback, useContext, useEffect, useRef, useState } from 'rea
 import { FormattedMessage } from 'react-intl';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useStateRef } from '@/hooks/useStateRef';
-import { executeScreenshot, ScreenshotType } from '@/functions/screenshot';
+import { executeScreenshot } from '@/functions/screenshot';
+import { ScreenshotType } from '@/utils/types';
 import { EventListenerContext } from '@/components/eventListener';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { CaptureHistoryRecordItem } from './extra';

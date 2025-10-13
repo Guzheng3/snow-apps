@@ -5,7 +5,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useContext, useEffect, useRef } from 'react';
 import { getVideoRecordParams, VideoRecordState } from './extra';
 import { EventListenerContext } from '@/components/eventListener';
-import { VideoRecordWindowInfo } from '@/functions/videoRecord';
+import { VideoRecordWindowInfo } from '@/utils/types';
 import { setCurrentWindowAlwaysOnTop } from '@/commands/core';
 import { setWindowRect } from '@/utils/window';
 import { useStateRef } from '@/hooks/useStateRef';

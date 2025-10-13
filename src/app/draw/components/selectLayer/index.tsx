@@ -56,7 +56,7 @@ import { CaptureStep, DrawContext } from '../../types';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { CaptureStepPublisher } from '../../extra';
 import { ResizeToolbar, ResizeToolbarActionType } from './components/resizeToolbar';
-import { ScreenshotType } from '@/functions/screenshot';
+import { ScreenshotType } from '@/utils/types';
 import { zIndexs } from '@/utils/zIndex';
 import { isHotkeyPressed } from 'react-hotkeys-hook';
 import { KeyEventKey } from '../drawToolbar/components/keyEventWrap/extra';

@@ -32,11 +32,7 @@ import {
     videoRecordStart,
     videoRecordStop,
 } from '@/commands/videoRecord';
-import {
-    changeVideoRecordState,
-    closeVideoRecordWindow,
-    VideoRecordWindowInfo,
-} from '@/functions/videoRecord';
+import { changeVideoRecordState, closeVideoRecordWindow } from '@/functions/videoRecord';
 import { EventListenerContext } from '@/components/eventListener';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
@@ -60,6 +56,7 @@ import { Window as AppWindow } from '@tauri-apps/api/window';
 import { useStateRef } from '@/hooks/useStateRef';
 import { appError, appInfo } from '@/utils/log';
 import { PLUGIN_ID_FFMPEG, usePluginService } from '@/components/pluginService';
+import { VideoRecordWindowInfo } from '@/utils/types';
 
 dayjs.extend(duration);
 

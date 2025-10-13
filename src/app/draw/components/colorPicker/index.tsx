@@ -30,7 +30,7 @@ import { withStatePublisher } from '@/hooks/useStatePublisher';
 import { EnableKeyEventPublisher } from '../drawToolbar/components/keyEventWrap/extra';
 import { KeyEventWrap } from '../drawToolbar/components/keyEventWrap';
 import { debounce } from 'es-toolkit';
-import { ScreenshotType } from '@/functions/screenshot';
+import { ScreenshotType } from '@/utils/types';
 import {
     AppSettingsActionContext,
     AppSettingsGroup,

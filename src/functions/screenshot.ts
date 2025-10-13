@@ -5,19 +5,7 @@ import { playCameraShutterSound } from '@/utils/audio';
 import { emit } from '@tauri-apps/api/event';
 import * as tauriLog from '@tauri-apps/plugin-log';
 import { FOCUS_WINDOW_APP_NAME_ENV_VARIABLE } from '@/app/settings/functionSettings/extra';
-
-export enum ScreenshotType {
-    Default = 'default',
-    Fixed = 'fixed',
-    Delay = 'delay',
-    OcrDetect = 'ocr-detect',
-    OcrTranslate = 'ocr-translate',
-    TopWindow = 'top-window',
-    Copy = 'copy',
-    VideoRecord = 'video-record',
-    SwitchCaptureHistory = 'switch-capture-history',
-    CaptureFullScreen = 'capture-full-screen',
-}
+import { ScreenshotType } from '@/utils/types';
 
 export const executeScreenshot = async (
     type: ScreenshotType = ScreenshotType.Default,

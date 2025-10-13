@@ -10,19 +10,18 @@ const compatConfig = new FlatCompat({
     baseDirectory: __dirname,
 });
 
-const eslintConfig = [
-    ...compatConfig.extends('next/core-web-vitals', 'next/typescript', 'prettier'),
-    {
-        plugins: {
-            compat,
-        },
-        rules: {
-            '@typescript-eslint/no-duplicate-enum-values': 'off',
-            '@typescript-eslint/no-empty-object-type': 'off',
-            'compat/compat': 'error',
-        },
-        ignores: ['./src/global.d.ts'],
+const eslintConfig = [{
+    ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "src-tauri/**"]
+}, ...compatConfig.extends('next/core-web-vitals', 'next/typescript', 'prettier'), {
+    plugins: {
+        compat,
     },
-];
+    rules: {
+        '@typescript-eslint/no-duplicate-enum-values': 'off',
+        '@typescript-eslint/no-empty-object-type': 'off',
+        'compat/compat': 'error',
+    },
+    ignores: ['./src/global.d.ts'],
+}];
 
 export default eslintConfig;

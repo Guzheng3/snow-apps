@@ -11,7 +11,7 @@ import {
     ScreenshotTypePublisher,
 } from '@/app/draw/extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { ScreenshotType } from '@/functions/screenshot';
+import { ScreenshotType } from '@/utils/types';
 import { debounce } from 'es-toolkit';
 import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { RadiusIcon, ShadowIcon } from '@/components/icons';

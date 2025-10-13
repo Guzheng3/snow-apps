@@ -50,7 +50,6 @@ import { OcrBlocks, OcrBlocksActionType } from './components/ocrBlocks';
 import {
     executeScreenshot as executeScreenshotFunc,
     releaseDrawPage,
-    ScreenshotType,
 } from '@/functions/screenshot';
 import { setWindowRect, showWindow as showCurrentWindow } from '@/utils/window';
 import { captureAllMonitors, setDrawWindowStyle, switchAlwaysOnTop } from '@/commands/screenshot';
@@ -105,6 +104,7 @@ import { getImageBufferFromSharedBuffer, ImageSharedBufferData } from './tools';
 import { getCorrectHdrColorAlgorithm } from '@/utils/appSettings';
 import { CaptureHistorySource } from '@/utils/appStore';
 import { uploadToS3 } from '@/commands/httpServices';
+import { ScreenshotType } from '@/utils/types';
 
 const DrawCacheLayer = dynamic(
     async () => (await import('./components/drawCacheLayer')).DrawCacheLayer,

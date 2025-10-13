@@ -17,11 +17,8 @@ import {
     TranslationIcon,
     VideoRecordIcon,
 } from '@/components/icons';
-import {
-    executeScreenshot,
-    executeScreenshotFocusedWindow,
-    ScreenshotType,
-} from '@/functions/screenshot';
+import { executeScreenshot, executeScreenshotFocusedWindow } from '@/functions/screenshot';
+import { ScreenshotType } from '@/utils/types';
 import {
     isRegistered,
     register,

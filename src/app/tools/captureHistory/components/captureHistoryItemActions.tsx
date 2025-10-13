@@ -1,4 +1,5 @@
-import { executeScreenshot, ScreenshotType } from '@/functions/screenshot';
+import { executeScreenshot } from '@/functions/screenshot';
+import { ScreenshotType } from '@/utils/types';
 import { writeFilePathToClipboard } from '@/utils/clipboard';
 import { CopyOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { Button, Popconfirm, Space } from 'antd';

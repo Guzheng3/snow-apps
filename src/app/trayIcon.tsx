@@ -19,11 +19,7 @@ import {
 } from './contextWrap';
 import { debounce, isEqual } from 'es-toolkit';
 import { AppFunction, AppFunctionConfig } from './extra';
-import {
-    executeScreenshot,
-    executeScreenshotFocusedWindow,
-    ScreenshotType,
-} from '@/functions/screenshot';
+import { executeScreenshot, executeScreenshotFocusedWindow } from '@/functions/screenshot';
 import { useStateRef } from '@/hooks/useStateRef';
 import {
     executeChat,
@@ -48,6 +44,7 @@ import {
     usePluginService,
 } from '@/components/pluginService';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
+import { ScreenshotType } from '@/utils/types';
 
 export const TrayIconStatePublisher = createPublisher<{
     disableShortcut: boolean;
