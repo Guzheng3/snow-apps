@@ -28,11 +28,11 @@ export type ModalTranslatorActionType = {
     startTranslate: () => void;
 };
 
-export const ModalTranslator: React.FC<{
-    ocrResult: OcrDetectResult | undefined;
+export const ModalTranslatorCore: React.FC<{
+    getOcrResult: () => OcrDetectResult | undefined;
     actionRef: React.RefObject<ModalTranslatorActionType | undefined>;
     onReplace: (result: OcrDetectResult, ignoreScale?: boolean) => void;
-}> = ({ ocrResult, actionRef, onReplace: onReplaceCallback }) => {
+}> = ({ getOcrResult, actionRef, onReplace: onReplaceCallback }) => {
     const intl = useIntl();
     const { token } = theme.useToken();
     const { message } = useContext(AntdContext);
@@ -42,14 +42,16 @@ export const ModalTranslator: React.FC<{
 
     const [autoReplace, setAutoReplace, autoReplaceRef] = useStateRef(false);
     const [keepLayout, setKeepLayout, keepLayoutRef] = useStateRef(false);
+    const [showProcess, setShowProcess, showProcessRef] = useStateRef(false);
     useStateSubscriber(
         AppSettingsPublisher,
         useCallback(
             (appSettings: AppSettingsData) => {
                 setAutoReplace(appSettings[AppSettingsGroup.Cache].ocrTranslateAutoReplace);
                 setKeepLayout(appSettings[AppSettingsGroup.Cache].ocrTranslateKeepLayout);
+                setShowProcess(appSettings[AppSettingsGroup.Cache].ocrTranslateShowProcess);
             },
-            [setAutoReplace, setKeepLayout],
+            [setAutoReplace, setKeepLayout, setShowProcess],
         ),
     );
     const { updateAppSettings } = useContext(AppSettingsActionContext);
@@ -58,8 +60,32 @@ export const ModalTranslator: React.FC<{
 
     const requestIdRef = useRef<number>(0);
     const lastSourceContentRef = useRef<string>(undefined);
+
+    const hideTranslateLoadingRef = useRef<() => void>(undefined);
     const startTranslate = useCallback(() => {
-        setOpen(true);
+        const ocrResult = getOcrResult();
+
+        if (showProcessRef.current) {
+            setOpen(true);
+        } else if (translateResult.current) {
+            setOpen(true);
+
+            if (hideTranslateLoadingRef.current) {
+                return;
+            }
+        } else {
+            if (hideTranslateLoadingRef.current) {
+                setOpen(true);
+                return;
+            }
+
+            hideTranslateLoadingRef.current = message.loading({
+                content: intl.formatMessage({
+                    id: 'draw.ocrDetect.translate.showProcess.loading',
+                }),
+                duration: 30,
+            });
+        }
 
         let sourceContent = '';
         if (keepLayoutRef.current) {
@@ -83,7 +109,7 @@ export const ModalTranslator: React.FC<{
         const currentRequestId = requestIdRef.current;
 
         translatorActionRef.current?.setSourceContent(sourceContent, undefined, currentRequestId);
-    }, [keepLayoutRef, ocrResult?.text_blocks]);
+    }, [intl, keepLayoutRef, message, getOcrResult, showProcessRef]);
 
     // 切换工具时重置请求 ID
     useStateSubscriber(
@@ -91,6 +117,9 @@ export const ModalTranslator: React.FC<{
         useCallback(() => {
             lastSourceContentRef.current = undefined;
             requestIdRef.current = 0;
+            hideTranslateLoadingRef.current?.();
+            hideTranslateLoadingRef.current = undefined;
+            translateResult.current = undefined;
         }, []),
     );
 
@@ -114,6 +143,8 @@ export const ModalTranslator: React.FC<{
 
     const translateResult = useRef<string>(undefined);
     const replaceOcrResult = useCallback(() => {
+        const ocrResult = getOcrResult();
+
         if (!translateResult.current || !ocrResult) {
             return;
         }
@@ -222,7 +253,7 @@ export const ModalTranslator: React.FC<{
         };
 
         onReplaceCallback(result);
-    }, [intl, keepLayoutRef, message, ocrResult, onReplaceCallback]);
+    }, [intl, keepLayoutRef, message, getOcrResult, onReplaceCallback]);
 
     useEffect(() => {
         if (open) {
@@ -246,6 +277,8 @@ export const ModalTranslator: React.FC<{
             if (autoReplaceRef.current) {
                 replaceOcrResult();
                 setOpen(false);
+                hideTranslateLoadingRef.current?.();
+                hideTranslateLoadingRef.current = undefined;
             }
         },
         [autoReplaceRef, replaceOcrResult],
@@ -259,6 +292,9 @@ export const ModalTranslator: React.FC<{
         return () => {
             getTranslatorAction()?.stopTranslate();
             lastSourceContentRef.current = undefined;
+            hideTranslateLoadingRef.current?.();
+            hideTranslateLoadingRef.current = undefined;
+            translateResult.current = undefined;
         };
     }, []);
 
@@ -273,12 +309,33 @@ export const ModalTranslator: React.FC<{
                 translatorActionRef.current?.stopTranslate();
             }}
             centered
-            forceRender={!!ocrResult}
+            forceRender={true}
             title={<FormattedMessage id="draw.ocrDetect.translate" />}
         >
             <div className="draw-modal-body">
                 <Form style={{ margin: token.margin }}>
-                    <Space size={token.margin}>
+                    <Space size={token.margin} wrap>
+                        <Form.Item
+                            label={<FormattedMessage id="draw.ocrDetect.translate.showProcess" />}
+                            name="result"
+                            layout="horizontal"
+                        >
+                            <Switch
+                                checked={showProcess}
+                                onChange={(checked) => {
+                                    updateAppSettings(
+                                        AppSettingsGroup.Cache,
+                                        { ocrTranslateKeepLayout: checked },
+                                        true,
+                                        true,
+                                        false,
+                                        true,
+                                        true,
+                                    );
+                                    setShowProcess(checked);
+                                }}
+                            />
+                        </Form.Item>
                         <Form.Item
                             label={<FormattedMessage id="draw.ocrDetect.translate.autoReplace" />}
                             name="result"
@@ -324,15 +381,15 @@ export const ModalTranslator: React.FC<{
                     </Space>
                 </Form>
 
-                {ocrResult && (
-                    <Translator
-                        disableInput
-                        actionRef={translatorActionRef}
-                        onTranslateComplete={onTranslateComplete}
-                        tryCatchTranslation
-                    />
-                )}
+                <Translator
+                    disableInput
+                    actionRef={translatorActionRef}
+                    onTranslateComplete={onTranslateComplete}
+                    tryCatchTranslation
+                />
             </div>
         </Modal>
     );
 };
+
+export const ModalTranslator = React.memo(ModalTranslatorCore);

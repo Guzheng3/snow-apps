@@ -205,6 +205,10 @@ const MenuSiderCore: React.FC<{
                     flex-direction: column;
                 }
 
+                .menu-sider-wrap :global(.ScrollbarsCustom-Wrapper) {
+                    inset: 0 0 0 0 !important;
+                }
+
                 .menu-wrap {
                     overflow: auto;
                 }

@@ -174,6 +174,8 @@ export type AppSettingsData = {
         targetLanguage: string;
         ocrTranslateAutoReplace: boolean;
         ocrTranslateKeepLayout: boolean;
+        /** 翻译时显示进度 */
+        ocrTranslateShowProcess: boolean;
         colorPickerColorFormatIndex: number;
         prevImageFormat: ImageFormat;
         prevSelectRect: ElementRect;
@@ -431,6 +433,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         targetLanguage: '',
         ocrTranslateAutoReplace: true,
         ocrTranslateKeepLayout: false,
+        ocrTranslateShowProcess: false,
         colorPickerColorFormatIndex: 0,
         prevImageFormat: ImageFormat.PNG,
         prevSelectRect: {
@@ -887,6 +890,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.ocrTranslateAutoReplace === 'boolean'
                             ? newSettings.ocrTranslateAutoReplace
                             : (prevSettings?.ocrTranslateAutoReplace ?? true),
+                    ocrTranslateShowProcess:
+                        typeof newSettings?.ocrTranslateShowProcess === 'boolean'
+                            ? newSettings.ocrTranslateShowProcess
+                            : (prevSettings?.ocrTranslateShowProcess ??
+                              defaultAppSettingsData[group].ocrTranslateShowProcess),
                     ocrTranslateKeepLayout:
                         typeof newSettings?.ocrTranslateKeepLayout === 'boolean'
                             ? newSettings.ocrTranslateKeepLayout

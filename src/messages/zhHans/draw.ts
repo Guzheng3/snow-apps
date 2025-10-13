@@ -102,6 +102,8 @@ export const draw = {
     'draw.scrollScreenshot.changeDirection': '切换滚动方向',
     'draw.scrollScreenshot.scrollError': '部分滚动失效，请检查应用权限',
     'draw.ocrDetect.translate': '翻译',
+    'draw.ocrDetect.translate.showProcess': '显示翻译进度',
+    'draw.ocrDetect.translate.showProcess.loading': '翻译中',
     'draw.ocrDetect.translate.autoReplace': '自动替换识别结果',
     'draw.ocrDetect.translate.keepLayout': '保留排版',
     'draw.ocrDetect.translate.error': '翻译结果的格式错误',

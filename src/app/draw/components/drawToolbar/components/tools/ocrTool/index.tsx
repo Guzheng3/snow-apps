@@ -8,6 +8,7 @@ import { OcrDetectResult } from '@/commands/ocr';
 import { OcrTranslateIcon } from '@/components/icons';
 import { useIntl } from 'react-intl';
 import { ModalTranslator, ModalTranslatorActionType } from './components/modalTranslator';
+import { useStateRef } from '@/hooks/useStateRef';
 
 export const isOcrTool = (drawState: DrawState) => {
     return drawState === DrawState.OcrDetect || drawState === DrawState.OcrTranslate;
@@ -21,19 +22,27 @@ const OcrTool: React.FC<{
     const modalTranslatorActionRef = useRef<ModalTranslatorActionType>(undefined);
 
     const [enabled, setEnabled] = useState(false);
-    const [ocrResult, setOcrResult] = useState<OcrDetectResult>();
+    const [ocrResult, setOcrResult, ocrResultRef] = useStateRef<OcrDetectResult | undefined>(
+        undefined,
+    );
+    const getOcrResult = useCallback(() => {
+        return ocrResultRef.current;
+    }, [ocrResultRef]);
 
     const [getDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
     useStateSubscriber(
         DrawStatePublisher,
-        useCallback((drawState: DrawState) => {
-            if (isOcrTool(drawState)) {
-                setEnabled(true);
-            } else {
-                setEnabled(false);
-                setOcrResult(undefined);
-            }
-        }, []),
+        useCallback(
+            (drawState: DrawState) => {
+                if (isOcrTool(drawState)) {
+                    setEnabled(true);
+                } else {
+                    setEnabled(false);
+                    setOcrResult(undefined);
+                }
+            },
+            [setOcrResult],
+        ),
     );
     useStateSubscriber(
         DrawEventPublisher,
@@ -44,13 +53,11 @@ const OcrTool: React.FC<{
 
                     // 自动进行翻译
                     if (getDrawState() === DrawState.OcrTranslate) {
-                        setTimeout(() => {
-                            modalTranslatorActionRef.current?.startTranslate();
-                        }, 0);
+                        modalTranslatorActionRef.current?.startTranslate();
                     }
                 }
             },
-            [getDrawState],
+            [getDrawState, setOcrResult],
         ),
     );
 
@@ -76,7 +83,7 @@ const OcrTool: React.FC<{
             />
             <ModalTranslator
                 actionRef={modalTranslatorActionRef}
-                ocrResult={ocrResult}
+                getOcrResult={getOcrResult}
                 onReplace={onReplace}
             />
         </>
