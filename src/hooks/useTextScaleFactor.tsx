@@ -49,13 +49,16 @@ export const TextScaleFactorProvider: React.FC<{
         useTextScaleFactorDataCache_devicePixelRatio,
     );
 
-    const initTextScaleFactor = async (devicePixelRatio: number) => {
-        const scaleFactor = await getCurrentWindow().scaleFactor();
-        useTextScaleFactorDataCache_textScaleFactor = devicePixelRatio / scaleFactor;
-        useTextScaleFactorDataCache_devicePixelRatio = devicePixelRatio;
-        setTextScaleFactor(useTextScaleFactorDataCache_textScaleFactor);
-        setDevicePixelRatio(useTextScaleFactorDataCache_devicePixelRatio);
-    };
+    const initTextScaleFactor = useCallback(
+        async (devicePixelRatio: number) => {
+            const scaleFactor = await getCurrentWindow().scaleFactor();
+            useTextScaleFactorDataCache_textScaleFactor = devicePixelRatio / scaleFactor;
+            useTextScaleFactorDataCache_devicePixelRatio = devicePixelRatio;
+            setTextScaleFactor(useTextScaleFactorDataCache_textScaleFactor);
+            setDevicePixelRatio(useTextScaleFactorDataCache_devicePixelRatio);
+        },
+        [setTextScaleFactor],
+    );
 
     useEffect(() => {
         initTextScaleFactor(window.devicePixelRatio);
@@ -65,7 +68,7 @@ export const TextScaleFactorProvider: React.FC<{
         return () => {
             stopListen();
         };
-    }, []);
+    }, [initTextScaleFactor]);
 
     return (
         <TextScaleFactorContext.Provider

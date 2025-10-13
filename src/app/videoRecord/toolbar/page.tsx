@@ -58,7 +58,7 @@ import { getMonitorsBoundingBox, MonitorBoundingBox } from '@/commands/core';
 import { setWindowRect } from '@/utils/window';
 import { Window as AppWindow } from '@tauri-apps/api/window';
 import { useStateRef } from '@/hooks/useStateRef';
-import { appError } from '@/utils/log';
+import { appError, appInfo } from '@/utils/log';
 import { PLUGIN_ID_FFMPEG, usePluginService } from '@/components/pluginService';
 
 dayjs.extend(duration);
@@ -155,6 +155,10 @@ export default function VideoRecordToolbar() {
             const targetX = Math.round(selectRect.min_x + centerX);
             targetY = Math.round(targetY);
 
+            appInfo(
+                `targetX: ${targetX}, targetY: ${targetY}, physicalWidth: ${physicalWidth}, physicalHeight: ${physicalHeight}`,
+            );
+
             await setWindowRect(appWindow, {
                 min_x: targetX,
                 min_y: targetY,
@@ -167,6 +171,7 @@ export default function VideoRecordToolbar() {
 
     const init = useCallback(
         async (selectRect: ElementRect) => {
+            appInfo(`init videoRecordState: ${videoRecordStateRef.current}`);
             if (videoRecordStateRef.current !== VideoRecordState.Idle) {
                 return;
             }
@@ -367,8 +372,10 @@ export default function VideoRecordToolbar() {
     );
 
     useEffect(() => {
+        appInfo(`useEffect window.location.search: ${JSON.stringify(window.location.search)}`);
         const { selectRect } = getVideoRecordParams();
 
+        appInfo(`selectRect: ${JSON.stringify(selectRect)}`);
         init(selectRect);
 
         const listenerId = addListener('reload-video-record', (params) => {

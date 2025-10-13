@@ -472,13 +472,13 @@ pub async fn create_video_record_window(
     .minimizable(false)
     .title("Snow Shot - Video Record - Toolbar")
     .position(0.0, 0.0)
-    .inner_size(1.0, 1.0)
+    .inner_size(500.0, 500.0)
     .decorations(false)
     .shadow(false)
     .transparent(true)
     .skip_taskbar(true)
     .resizable(false)
-    .visible(false)
+    .visible(true)
     .build()
     .unwrap();
 }

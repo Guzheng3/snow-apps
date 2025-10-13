@@ -21,6 +21,7 @@ class BaseStore<Value> {
     public async init() {
         this.instance = await load(`${await getAppConfigBaseDir()}/stores/${this.name}.json`, {
             autoSave: this.autoSave,
+            defaults: {},
         });
     }
 
