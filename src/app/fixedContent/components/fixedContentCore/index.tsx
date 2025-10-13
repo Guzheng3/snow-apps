@@ -66,6 +66,7 @@ import { HandleFocusMode } from './components/handleFocusMode';
 import Color from 'color';
 import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { getHtmlContent } from './extra';
 
 export type FixedContentInitDrawParams = {
     captureBoundingBoxInfo: CaptureBoundingBoxInfo;
@@ -218,7 +219,7 @@ export const FixedContentCore: React.FC<{
         return 1;
     }, [canvasImageUrl, imageUrl, textScaleFactor]);
 
-    const [htmlBlobUrl, setHtmlBlobUrl] = useState<string | undefined>(undefined);
+    const [htmlContent, setHtmlContent] = useState<string | undefined>(undefined);
     const originHtmlContentRef = useRef<string | undefined>(undefined);
     const htmlContentContainerRef = useRef<HTMLIFrameElement>(null);
     const initHtml = useCallback(
@@ -231,129 +232,14 @@ export const FixedContentCore: React.FC<{
             ]);
 
             originHtmlContentRef.current = htmlContent;
-            const baseHtmlContent = `
-               <html>
-                  <head>
-                  <style>
-                        body {
-                            width: fit-content;
-                            height: fit-content;
-                            margin: 0;
-                            padding: ${token.padding}px;
-                            overflow: hidden;
-                            box-sizing: border-box;
-                            background-color: ${token.colorBgContainer};
-                        }
-                    </style>
-                    <script>
-                         window.addEventListener('load', () => {
-                            window.parent.postMessage({
-                                type: 'bodySize',
-                                width: document.body.offsetWidth,
-                                height: document.body.offsetHeight,
-                                clientWidth: document.body.clientWidth,
-                                clientHeight: document.body.clientHeight,
-                            }, '*');
-                        });
-
-                        window.addEventListener('resize', () => {
-                            window.parent.postMessage({
-                                type: 'resize',
-                                width: document.body.offsetWidth,
-                                height: document.body.offsetHeight,
-                                clientWidth: document.body.clientWidth,
-                                clientHeight: document.body.clientHeight,
-                            }, '*');
-                        });
-
-                        document.addEventListener('contextmenu', (e) => {
-                            e.preventDefault();
-                            window.parent.postMessage({
-                                type: 'contextMenu',
-                                x: e.clientX,
-                                y: e.clientY
-                            }, '*');
-                        });
-
-                        document.addEventListener('wheel', (e) => {
-                            e.preventDefault();
-                            window.parent.postMessage({
-                                type: 'wheel',
-                                eventData: {
-                                    deltaY: e.deltaY,
-                                    clientX: e.clientX,
-                                    clientY: e.clientY,
-                                    ctrlKey: e.ctrlKey,
-                                    shiftKey: e.shiftKey,
-                                    altKey: e.altKey,
-                                },
-                            }, '*');
-                        });
-
-                        // 转发键盘事件到父窗口
-                        document.addEventListener('keydown', (e) => {
-                            window.parent.postMessage({
-                                type: 'keydown',
-                                key: e.key,
-                                code: e.code,
-                                keyCode: e.keyCode,
-                                ctrlKey: e.ctrlKey,
-                                shiftKey: e.shiftKey,
-                                altKey: e.altKey,
-                                metaKey: e.metaKey,
-                                repeat: e.repeat,
-                            }, '*');
-                        });
-
-                        document.addEventListener('keyup', (e) => {
-                            window.parent.postMessage({
-                                type: 'keyup',
-                                key: e.key,
-                                code: e.code,
-                                keyCode: e.keyCode,
-                                ctrlKey: e.ctrlKey,
-                                shiftKey: e.shiftKey,
-                                altKey: e.altKey,
-                                metaKey: e.metaKey,
-                            }, '*');
-                        });
-
-                        // 拦截 a 标签的跳转操作
-                        document.addEventListener('click', (e) => {
-                            const target = e.target;
-                            
-                            // 检查点击的是否是 a 标签或其子元素
-                            const linkElement = target.closest ? target.closest('a') : null;
-                            
-                            if (linkElement && linkElement.href) {
-                                e.preventDefault(); // 阻止默认跳转行为
-                                
-                                window.parent.postMessage({
-                                    type: 'linkClick',
-                                    href: linkElement.href,
-                                    text: linkElement.textContent || linkElement.innerText || '',
-                                    target: linkElement.target || '_self'
-                                }, '*');
-                            }
-                        });
-                    </script>
-                    </head>
-                    <body>
-                    </body>
-                </html>`;
-
             const parser = new DOMParser();
-            const htmlDom = parser.parseFromString(baseHtmlContent, 'text/html');
             const contentHtmlDom = parser.parseFromString(htmlContent, 'text/html');
-            htmlDom.body.innerHTML = contentHtmlDom.body.innerHTML;
-            htmlContent = htmlDom.documentElement.outerHTML;
+            htmlContent = contentHtmlDom.body.innerHTML;
             setFixedContentType(FixedContentType.Html);
 
-            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-            const blobUrl = URL.createObjectURL(blob);
-            setHtmlBlobUrl(blobUrl);
+            setHtmlContent(htmlContent);
         },
-        [setFixedContentType, token.colorBgContainer, token.padding],
+        [setFixedContentType],
     );
 
     const [textContent, setTextContent, textContentRef] = useStateRef<
@@ -719,16 +605,6 @@ export const FixedContentCore: React.FC<{
             URL.revokeObjectURL(url);
         };
     }, [canvasImageUrl]);
-
-    useEffect(() => {
-        const blobUrl = htmlBlobUrl;
-
-        return () => {
-            if (blobUrl) {
-                URL.revokeObjectURL(blobUrl);
-            }
-        };
-    }, [htmlBlobUrl]);
 
     const [scrollAction, setscrollAction, scrollActionRef] = useStateRef<FixedContentScrollAction>(
         FixedContentScrollAction.Zoom,
@@ -1461,8 +1337,8 @@ export const FixedContentCore: React.FC<{
                 htmlContentContainerRef.current &&
                 canvasPropsRef.current.width == 0
             ) {
-                if (width === 200 && type !== 'resize') {
-                    htmlContentContainerRef.current!.style.width = `${800}px`;
+                if (width === 800 && type !== 'resize') {
+                    htmlContentContainerRef.current!.style.width = `${1000}px`;
                     return;
                 }
 
@@ -1731,7 +1607,7 @@ export const FixedContentCore: React.FC<{
                 height: `${documentSize.height}px`,
                 zIndex: zIndexs.Draw_FixedImage,
                 pointerEvents:
-                    canvasImageUrl || htmlBlobUrl || textContent || imageUrl ? 'auto' : 'none',
+                    canvasImageUrl || htmlContent || textContent || imageUrl ? 'auto' : 'none',
                 opacity: isThumbnail ? 0.72 : contentOpacity,
                 userSelect: isThumbnail || !enableSelectText ? 'none' : undefined,
             }}
@@ -1798,16 +1674,17 @@ export const FixedContentCore: React.FC<{
                     </>
                 )}
 
-                {htmlBlobUrl && (
+                {htmlContent && (
                     <iframe
                         style={{
                             transformOrigin: 'top left',
                             transform: `scale(${scale.x / 100 / contentScaleFactor}, ${scale.y / 100 / contentScaleFactor})`,
                             zIndex: enableSelectText ? 1 : 'unset',
                             position: 'absolute',
+                            backgroundColor: token.colorBgContainer,
                         }}
                         ref={htmlContentContainerRef}
-                        src={htmlBlobUrl}
+                        srcDoc={getHtmlContent(token, htmlContent)}
                         className="fixed-html-content"
                     />
                 )}
@@ -1956,6 +1833,7 @@ export const FixedContentCore: React.FC<{
                     transformorigin: center center;
                     transform: rotateX(${rotateAngles.x}deg) rotateY(${rotateAngles.y}deg)
                         rotateZ(${rotateAngles.z}deg);
+                    background-color: ${token.colorBgContainer};
                 }
 
                 .fixed-image-container:hover :global(.ant-btn.fixed-image-close-button) {
@@ -2014,7 +1892,7 @@ export const FixedContentCore: React.FC<{
                 }
 
                 .fixed-html-content {
-                    width: 200px;
+                    width: 800px;
                     height: 0px;
                     user-select: none;
                 }
