@@ -1,10 +1,11 @@
 use half::prelude::f16;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use snow_shot_app_shared::ElementRect;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Sender, channel};
-use windows_capture::capture::{Context, GraphicsCaptureApiHandler};
+use windows_capture::capture::{Context, GraphicsCaptureApiError, GraphicsCaptureApiHandler};
 use windows_capture::frame::Frame;
-use windows_capture::graphics_capture_api::InternalCaptureControl;
+use windows_capture::graphics_capture_api::{self, InternalCaptureControl};
 use windows_capture::monitor::Monitor;
 use windows_capture::settings::{
     CursorCaptureSettings, DirtyRegionSettings, DrawBorderSettings, MinimumUpdateIntervalSettings,
@@ -12,6 +13,10 @@ use windows_capture::settings::{
 };
 
 use crate::monitor_info::{ColorFormat, MonitorInfo};
+
+/// 全局标志：标记系统是否支持 DrawBorderSettings::WithoutBorder
+/// 默认值为 true，当遇到 BorderConfigUnsupported 错误时会设置为 false
+static SUPPORTS_WITHOUT_BORDER: AtomicBool = AtomicBool::new(true);
 
 struct CaptureFlags {
     on_frame_arrived: Sender<(Vec<u8>, usize, usize)>,
@@ -211,45 +216,17 @@ pub fn write_rgba16f_linear_to_rgba8(
     }
 }
 
-pub fn capture_monitor_image(
+/// 处理捕获的图像数据
+fn process_captured_image(
+    receiver: std::sync::mpsc::Receiver<(Vec<u8>, usize, usize)>,
     monitor: &MonitorInfo,
-    crop_area: Option<ElementRect>,
     color_format: ColorFormat,
 ) -> Result<image::DynamicImage, String> {
-    let capture_monitor =
-        Monitor::from_raw_hmonitor(MonitorInfo::get_monitor_handle(&monitor.monitor).0);
-
-    let (sender, receiver) = channel();
-
-    let settings = Settings::new(
-        capture_monitor,
-        CursorCaptureSettings::WithoutCursor,
-        DrawBorderSettings::WithoutBorder,
-        SecondaryWindowSettings::Default,
-        MinimumUpdateIntervalSettings::Default,
-        DirtyRegionSettings::Default,
-        windows_capture::settings::ColorFormat::Rgba16F,
-        CaptureFlags {
-            on_frame_arrived: sender,
-            crop_area,
-        },
-    );
-
-    match WindowsCaptureImage::start(settings) {
-        Ok(capturer) => capturer,
-        Err(e) => {
-            return Err(format!(
-                "[windows_capture_image::capture_monitor_image] failed to start capturer: {:?}",
-                e
-            ));
-        }
-    };
-
     let (rgba16f_image, image_width, image_height) = match receiver.recv() {
         Ok(image) => image,
         Err(e) => {
             return Err(format!(
-                "[windows_capture_image::capture_monitor_image] failed to receive image: {:?}",
+                "[windows_capture_image::process_captured_image] failed to receive image: {:?}",
                 e
             ));
         }
@@ -291,7 +268,7 @@ pub fn capture_monitor_image(
             ) {
                 Some(rgb8_image) => Ok(image::DynamicImage::ImageRgb8(rgb8_image)),
                 None => Err(format!(
-                    "[windows_capture_image::capture_monitor_image] Failed to create rgb8 image"
+                    "[windows_capture_image::process_captured_image] Failed to create rgb8 image"
                 )),
             }
         }
@@ -314,9 +291,96 @@ pub fn capture_monitor_image(
             ) {
                 Some(rgba8_image) => Ok(image::DynamicImage::ImageRgba8(rgba8_image)),
                 None => Err(format!(
-                    "[windows_capture_image::capture_monitor_image] Failed to create rgba8 image"
+                    "[windows_capture_image::process_captured_image] Failed to create rgba8 image"
                 )),
             }
         }
+    }
+}
+
+pub fn capture_monitor_image(
+    monitor: &MonitorInfo,
+    crop_area: Option<ElementRect>,
+    color_format: ColorFormat,
+) -> Result<image::DynamicImage, String> {
+    let (sender, receiver) = channel();
+
+    // 根据全局标志选择边框设置
+    let draw_border_setting = if SUPPORTS_WITHOUT_BORDER.load(Ordering::Relaxed) {
+        DrawBorderSettings::WithoutBorder
+    } else {
+        DrawBorderSettings::Default
+    };
+
+    let capture_monitor =
+        Monitor::from_raw_hmonitor(MonitorInfo::get_monitor_handle(&monitor.monitor).0);
+
+    let settings = Settings::new(
+        capture_monitor.clone(),
+        CursorCaptureSettings::WithoutCursor,
+        draw_border_setting,
+        SecondaryWindowSettings::Default,
+        MinimumUpdateIntervalSettings::Default,
+        DirtyRegionSettings::Default,
+        windows_capture::settings::ColorFormat::Rgba16F,
+        CaptureFlags {
+            on_frame_arrived: sender,
+            crop_area,
+        },
+    );
+
+    // 尝试启动捕获器
+    let start_result = WindowsCaptureImage::start(settings);
+
+    match start_result {
+        Ok(_capturer) => {
+            // 启动成功，处理捕获的图像
+            process_captured_image(receiver, monitor, color_format)
+        }
+        Err(e) => match e {
+            GraphicsCaptureApiError::GraphicsCaptureApiError(
+                graphics_capture_api::Error::BorderConfigUnsupported,
+            ) => {
+                log::warn!(
+                    "[windows_capture_image::capture_monitor_image] BorderConfigUnsupported detected, falling back to Default border setting"
+                );
+
+                // 标记系统不支持 WithoutBorder，后续请求将直接使用 Default
+                SUPPORTS_WITHOUT_BORDER.store(false, Ordering::Relaxed);
+
+                // 使用 Default 设置重试
+                let (retry_sender, retry_receiver) = channel();
+
+                let retry_settings = Settings::new(
+                    capture_monitor.clone(),
+                    CursorCaptureSettings::WithoutCursor,
+                    DrawBorderSettings::Default,
+                    SecondaryWindowSettings::Default,
+                    MinimumUpdateIntervalSettings::Default,
+                    DirtyRegionSettings::Default,
+                    windows_capture::settings::ColorFormat::Rgba16F,
+                    CaptureFlags {
+                        on_frame_arrived: retry_sender,
+                        crop_area,
+                    },
+                );
+
+                // 重试启动捕获器
+                match WindowsCaptureImage::start(retry_settings) {
+                    Ok(_capturer) => {
+                        // 重试成功，处理捕获的图像
+                        process_captured_image(retry_receiver, monitor, color_format)
+                    }
+                    Err(retry_e) => Err(format!(
+                        "[windows_capture_image::capture_monitor_image] failed to start capturer after retry: {:?}",
+                        retry_e
+                    )),
+                }
+            }
+            _ => Err(format!(
+                "[windows_capture_image::capture_monitor_image] failed to start capturer: {:?}",
+                e
+            )),
+        },
     }
 }
