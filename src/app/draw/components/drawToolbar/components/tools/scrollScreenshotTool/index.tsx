@@ -620,8 +620,8 @@ export const ScrollScreenshot: React.FC<{
 
     const thumbnailListTransform =
         scrollDirection === ScrollDirection.Horizontal
-            ? `translate(${positionRect.min_x}px, ${positionRect.min_y - token.marginXXS - monitorThumbnailWidth}px) rotateX(180deg)`
-            : `translate(${positionRect.max_x + token.marginXXS}px, ${positionRect.min_y}px)`;
+            ? `translate(${positionRect.min_x}px, ${positionRect.min_y - token.marginXS - monitorThumbnailWidth}px) rotateX(180deg)`
+            : `translate(${positionRect.max_x + token.marginXS}px, ${positionRect.min_y}px)`;
 
     return (
         <>
