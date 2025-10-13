@@ -1,5 +1,5 @@
 import { ExcalidrawPropsCustomOptions } from '@mg-chao/excalidraw/types';
-import { Slider } from 'antd';
+import { Flex, InputNumber, Slider, theme } from 'antd';
 import { useGetPopupContainer } from '.';
 import { useChangeFontSizeProps } from './radioSelection';
 import { useMemo } from 'react';
@@ -10,6 +10,7 @@ export const FONT_SIZE_MAX_VALUE = 128;
 export const ChangeStrokeWidthSlider: NonNullable<
     NonNullable<ExcalidrawPropsCustomOptions['pickerRenders']>['ChangeStrokeWidthSlider']
 > = ({ value, onChange, group }) => {
+    const { token } = theme.useToken();
     const maxValue = useMemo(() => {
         if (group === 'stroke-width') {
             return STROKE_WIDTH_MAX_VALUE;
@@ -30,14 +31,33 @@ export const ChangeStrokeWidthSlider: NonNullable<
     const getPopupContainer = useGetPopupContainer();
 
     return (
-        <Slider
-            min={1}
-            max={maxValue}
-            step={1}
-            value={value ?? 1}
-            onChange={onChange}
-            tooltip={{ getPopupContainer }}
-        />
+        <Flex gap={token.margin}>
+            <Slider
+                min={1}
+                max={maxValue}
+                step={1}
+                value={value ?? 1}
+                onChange={onChange}
+                tooltip={{ getPopupContainer }}
+                style={{ flex: 1 }}
+            />
+            <InputNumber
+                min={1}
+                max={maxValue}
+                value={value ?? 1}
+                style={{ width: 52, height: '100%' }}
+                controls={false}
+                changeOnBlur
+                onChange={(value) => {
+                    if (value === null) {
+                        return;
+                    }
+
+                    onChange(value);
+                }}
+                changeOnWheel
+            />
+        </Flex>
     );
 };
 
