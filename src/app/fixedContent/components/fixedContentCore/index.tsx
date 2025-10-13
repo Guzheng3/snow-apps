@@ -65,6 +65,7 @@ import {
 import { HandleFocusMode } from './components/handleFocusMode';
 import Color from 'color';
 import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
 
 export type FixedContentInitDrawParams = {
     captureBoundingBoxInfo: CaptureBoundingBoxInfo;
@@ -224,7 +225,10 @@ export const FixedContentCore: React.FC<{
         async (htmlContent: string) => {
             // 通过设置窗口大小的位置，来激活窗口，触发窗口的 laod 事件
             await getCurrentWindow().setPosition(new PhysicalPosition(0, 0));
-            await getCurrentWindow().setSize(new PhysicalSize(600, 600));
+            await Promise.all([
+                getCurrentWindow().setSize(new PhysicalSize(600, 600)),
+                getCurrentWebview().setSize(new PhysicalSize(600, 600)),
+            ]);
 
             originHtmlContentRef.current = htmlContent;
             const baseHtmlContent = `

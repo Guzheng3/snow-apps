@@ -257,16 +257,38 @@ export class CaptureHistory {
             return;
         }
 
-        try {
-            await this.store.delete(id);
-        } catch (error) {
-            appWarn('[CaptureHistory] delete captureHistoryItem failed', error);
-        }
-        try {
-            await removeFile(await getCaptureHistoryImageAbsPath(item.file_name));
-        } catch (error) {
-            appWarn('[CaptureHistory] remove captureHistoryItem image failed', error);
-        }
+        await Promise.all([
+            (async () => {
+                try {
+                    await this.store.delete(id);
+                } catch (error) {
+                    appWarn('[CaptureHistory] delete captureHistoryItem failed', error);
+                }
+            })(),
+            (async () => {
+                try {
+                    await removeFile(await getCaptureHistoryImageAbsPath(item.file_name));
+                } catch (error) {
+                    appWarn('[CaptureHistory] remove captureHistoryItem image failed', error);
+                }
+            })(),
+            (async () => {
+                if (!item.capture_result_file_name) {
+                    return;
+                }
+
+                try {
+                    await removeFile(
+                        await getCaptureHistoryImageAbsPath(item.capture_result_file_name),
+                    );
+                } catch (error) {
+                    appWarn(
+                        '[CaptureHistory] remove captureHistoryItem captureResult image failed',
+                        error,
+                    );
+                }
+            })(),
+        ]);
     }
 
     async clearAll() {
