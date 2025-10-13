@@ -113,7 +113,7 @@ export const useContentScale = (
     monitorScaleFactor: number,
     isToolbar?: boolean,
 ): [number, Dispatch<SetStateAction<number>>, RefObject<number>] => {
-    const [textScaleFactor, devicePixelRatio, textScaleFactorRef] = useTextScaleFactor();
+    const [textScaleFactor, devicePixelRatio] = useTextScaleFactor();
     const [contentScale, setContentScale, contentScaleRef] = useStateRef(1);
 
     const [uiScale, setUiScale] = useState<number>();
