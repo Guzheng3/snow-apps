@@ -1217,6 +1217,10 @@ const DrawPageCore: React.FC<{
     }, [unsetLatestExcalidrawNewElement]);
     const onDoubleClick = useCallback<React.MouseEventHandler<HTMLDivElement>>(
         (e) => {
+            if (!getAppSettings()[AppSettingsGroup.FunctionScreenshot].doubleClickCopyToClipboard) {
+                return;
+            }
+
             if (
                 e.button === 0 &&
                 // 如果存在创建时间大于 300ms 的在编辑中的元素，则认为是对箭头的双击
@@ -1231,7 +1235,7 @@ const DrawPageCore: React.FC<{
                 onCopyToClipboard();
             }
         },
-        [onCopyToClipboard],
+        [getAppSettings, onCopyToClipboard],
     );
 
     useEffect(() => {

@@ -622,6 +622,16 @@ export default function SystemSettings() {
                     <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSwitch
+                                name="doubleClickCopyToClipboard"
+                                layout="horizontal"
+                                label={<FormattedMessage id="draw.doubleClickCopyToClipboard" />}
+                            />
+                        </Col>
+                    </Row>
+
+                    <Row gutter={token.marginLG}>
+                        <Col span={12}>
+                            <ProFormSwitch
                                 name="focusedWindowCopyToClipboard"
                                 layout="horizontal"
                                 label={

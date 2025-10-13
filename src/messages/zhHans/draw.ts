@@ -170,4 +170,5 @@ export const draw = {
     'draw.saveToCloudTool': '保存到云端',
     'draw.saveToCloud.loading': '保存到云端中',
     'draw.saveToCloud.error': '保存到云端失败',
+    'draw.doubleClickCopyToClipboard': '双击复制到剪贴板',
 };

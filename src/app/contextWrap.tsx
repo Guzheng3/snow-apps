@@ -242,6 +242,8 @@ export type AppSettingsData = {
         focusedWindowCopyToClipboard: boolean;
         /** 截取全屏时复制到剪贴板 */
         fullScreenCopyToClipboard: boolean;
+        /** 双击复制到剪贴板 */
+        doubleClickCopyToClipboard: boolean;
         /** 保存到云端 */
         saveToCloud: boolean;
         /** 云端保存协议 */
@@ -480,6 +482,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         findChildrenElements: true,
         shortcutCanleTip: true,
         autoSaveOnCopy: false,
+        doubleClickCopyToClipboard: true,
         focusedWindowCopyToClipboard: true,
         fullScreenCopyToClipboard: true,
         fastSave: false,
@@ -1346,6 +1349,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.fastSave === 'boolean'
                             ? newSettings.fastSave
                             : (prevSettings?.fastSave ?? false),
+                    doubleClickCopyToClipboard:
+                        typeof newSettings?.doubleClickCopyToClipboard === 'boolean'
+                            ? newSettings.doubleClickCopyToClipboard
+                            : (prevSettings?.doubleClickCopyToClipboard ??
+                              defaultAppSettingsData[group].doubleClickCopyToClipboard),
                     saveToCloud:
                         typeof newSettings?.saveToCloud === 'boolean'
                             ? newSettings.saveToCloud
