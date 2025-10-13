@@ -36,8 +36,8 @@ body {
     width: 100%;
 }
 
-.ant-app .ant-modal-title div {
-    display: inline;
+.ant-modal-title div {
+    display: inline !important;
 }
 
 .draw-core-layer .excalidraw .Island.App-toolbar {
