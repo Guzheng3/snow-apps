@@ -173,4 +173,7 @@ export const draw = {
     'draw.saveToCloud.loading': '保存到云端中',
     'draw.saveToCloud.error': '保存到云端失败',
     'draw.doubleClickCopyToClipboard': '双击复制到剪贴板',
+    'draw.cloudSaveUrlFormat': '云端链接格式',
+    'draw.cloudSaveUrlFormat.origin': '原始链接',
+    'draw.cloudSaveUrlFormat.markdown': 'Markdown 链接',
 };

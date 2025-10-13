@@ -19,6 +19,7 @@ import {
     AppSettingsData,
     AppSettingsFixedContentInitialPosition,
     AppSettingsGroup,
+    CloudSaveUrlFormat,
     CloudSaveUrlType,
     TrayIconClickAction,
 } from '../../contextWrap';
@@ -530,6 +531,19 @@ export default function SystemSettings() {
         ];
     }, [intl]);
 
+    const cloudSaveUrlFormatOptions = useMemo(() => {
+        return [
+            {
+                label: intl.formatMessage({ id: 'draw.cloudSaveUrlFormat.origin' }),
+                value: CloudSaveUrlFormat.Origin,
+            },
+            {
+                label: intl.formatMessage({ id: 'draw.cloudSaveUrlFormat.markdown' }),
+                value: CloudSaveUrlFormat.Markdown,
+            },
+        ];
+    }, [intl]);
+
     return (
         <ContentWrap>
             <GroupTitle
@@ -761,6 +775,16 @@ export default function SystemSettings() {
                                 <Row gutter={token.marginLG}>
                                     <Col span={12}>
                                         <ProFormSelect
+                                            name="cloudSaveUrlFormat"
+                                            layout="horizontal"
+                                            label={
+                                                <FormattedMessage id="draw.cloudSaveUrlFormat" />
+                                            }
+                                            options={cloudSaveUrlFormatOptions}
+                                        />
+                                    </Col>
+                                    <Col span={12}>
+                                        <ProFormSelect
                                             name="cloudSaveUrlType"
                                             layout="horizontal"
                                             label={
@@ -769,7 +793,6 @@ export default function SystemSettings() {
                                             options={cloudSaveUrlTypeOptions}
                                         />
                                     </Col>
-                                    <Col span={12}> </Col>
                                     <Col span={12}>
                                         <ProFormText
                                             name="s3Endpoint"

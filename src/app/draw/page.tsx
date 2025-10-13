@@ -65,7 +65,7 @@ import {
     showImageDialog,
 } from '@/utils/file';
 import { scrollScreenshotSaveToFile } from '@/commands/scrollScreenshot';
-import { AppSettingsActionContext, AppSettingsGroup } from '../contextWrap';
+import { AppSettingsActionContext, AppSettingsGroup, CloudSaveUrlFormat } from '../contextWrap';
 import { AppSettingsPublisher } from '../contextWrap';
 import {
     closeWindowAfterDelay,
@@ -754,7 +754,7 @@ const DrawPageCore: React.FC<{
 
         const hideLoading = message.loading(<FormattedMessage id="draw.saveToCloud.loading" />);
         try {
-            const result = await uploadToS3(
+            let result = await uploadToS3(
                 getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3Endpoint,
                 getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3Region,
                 getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3AccessKeyId,
@@ -768,6 +768,15 @@ const DrawPageCore: React.FC<{
                 ),
                 'image/png',
             );
+
+            if (
+                getAppSettings()[AppSettingsGroup.FunctionScreenshot].cloudSaveUrlFormat ===
+                CloudSaveUrlFormat.Markdown
+            ) {
+                result = `![${result}](${result})`;
+            } else {
+                result = result;
+            }
 
             await writeTextToClipboard(result);
             finishCapture();

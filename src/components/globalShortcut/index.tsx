@@ -131,12 +131,15 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
                                     title={
                                         <FormattedMessage id="home.screenshotFunction.screenshotDelay.tip" />
                                     }
+                                    key="screenshot-delay"
                                 >
                                     <div>
                                         <FormattedMessage
                                             id="home.screenshotFunction.screenshotDelay"
                                             values={{
-                                                seconds: <ChangeDelaySeconds />,
+                                                seconds: (
+                                                    <ChangeDelaySeconds key="screenshot-delay-seconds" />
+                                                ),
                                             }}
                                         />
                                     </div>

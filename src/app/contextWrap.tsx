@@ -110,6 +110,11 @@ export enum TrayIconDefaultIcon {
     SnowDark = 'snow-dark',
 }
 
+export enum CloudSaveUrlFormat {
+    Origin = 'origin',
+    Markdown = 'markdown',
+}
+
 export type AppSettingsData = {
     [AppSettingsGroup.Common]: {
         theme: AppSettingsTheme;
@@ -248,6 +253,8 @@ export type AppSettingsData = {
         doubleClickCopyToClipboard: boolean;
         /** 保存到云端 */
         saveToCloud: boolean;
+        /** 云端链接格式 */
+        cloudSaveUrlFormat: CloudSaveUrlFormat;
         /** 云端保存协议 */
         cloudSaveUrlType: CloudSaveUrlType;
         /** S3 访问密钥 ID */
@@ -493,6 +500,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         saveToCloud: false,
         /** 云端保存协议 */
         cloudSaveUrlType: CloudSaveUrlType.S3,
+        cloudSaveUrlFormat: CloudSaveUrlFormat.Origin,
         s3AccessKeyId: '',
         s3SecretAccessKey: '',
         s3Region: '',
@@ -1349,6 +1357,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? newSettings.shortcutCanleTip
                             : (prevSettings?.shortcutCanleTip ??
                               defaultAppSettingsData[group].shortcutCanleTip),
+                    cloudSaveUrlFormat:
+                        typeof newSettings?.cloudSaveUrlFormat === 'string'
+                            ? (newSettings.cloudSaveUrlFormat as CloudSaveUrlFormat)
+                            : (prevSettings?.cloudSaveUrlFormat ??
+                              defaultAppSettingsData[group].cloudSaveUrlFormat),
                     autoSaveOnCopy:
                         typeof newSettings?.autoSaveOnCopy === 'boolean'
                             ? newSettings.autoSaveOnCopy
