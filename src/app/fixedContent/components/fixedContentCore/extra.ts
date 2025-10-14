@@ -18,7 +18,47 @@ export const getHtmlContent = (token: GlobalToken, bodyContent: string) => {
                         }
                     </style>
                     <script>
-                         window.addEventListener('load', () => {
+                        window.addEventListener('load', () => {
+                            // 检测并应用主背景色
+                            const colorMap = {};
+                            let resultColor = "";
+                            let maxAmount = 0;
+                            
+                            // 创建 TreeWalker，从 <body> 开始，忽略注释节点和文本节点
+                            const walker = document.createTreeWalker(
+                                document.body, 
+                                NodeFilter.SHOW_ELEMENT, 
+                                (node) => {
+                                    const { width, height } = node.getBoundingClientRect();
+                                    const { backgroundColor, opacity } = getComputedStyle(node);
+                                    const pixelAmount = width * height;
+                                    
+                                    // 跳过透明(背景)元素或无尺寸元素(display:contents)继续遍历后代元素
+                                    if (backgroundColor === "rgba(0, 0, 0, 0)" || opacity === "0" || pixelAmount === 0) {
+                                        return NodeFilter.FILTER_ACCEPT;
+                                    }
+                                    
+                                    colorMap[backgroundColor] = (colorMap[backgroundColor] || 0) + pixelAmount;
+                                    const amount = colorMap[backgroundColor];
+                                    
+                                    if (amount > maxAmount) {
+                                        resultColor = backgroundColor;
+                                        maxAmount = amount;
+                                    }
+                                    
+                                    return NodeFilter.FILTER_REJECT; // 跳过当前节点及其后代
+                                }, 
+                                false
+                            );
+                            
+                            while (walker.nextNode()); // 开启遍历
+                            
+                            // 如果检测到有效背景色，应用到 body 并重置文字颜色
+                            if (resultColor && resultColor !== "rgba(0, 0, 0, 0)") {
+                                document.body.style.backgroundColor = resultColor;
+                                document.body.style.color = ""; // 重置为默认颜色
+                            }
+                            
                             window.parent.postMessage({
                                 type: 'bodySize',
                                 width: document.body.offsetWidth,
