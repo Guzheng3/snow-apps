@@ -195,6 +195,12 @@ export type AppSettingsData = {
         selectRectShadowWidth: number;
         /** 截图选区阴影颜色 */
         selectRectShadowColor: string;
+        // 记录上一次使用的矩形工具
+        lastRectTool: DrawState;
+        // 记录上一次使用的箭头工具
+        lastArrowTool: DrawState;
+        // 记录上一次使用的滤镜工具
+        lastFilterTool: DrawState;
         // 记录上一次使用的额外工具
         lastExtraTool: ExtraToolList;
         // 记录上一次使用的绘制额外工具
@@ -455,6 +461,9 @@ export const defaultAppSettingsData: AppSettingsData = {
         selectRectRadius: 0,
         selectRectShadowWidth: 0,
         selectRectShadowColor: '#595959',
+        lastRectTool: DrawState.Rect,
+        lastArrowTool: DrawState.Arrow,
+        lastFilterTool: DrawState.Blur,
         lastExtraTool: ExtraToolList.None,
         lastDrawExtraTool: DrawState.Idle,
         lastWatermarkText: '',
@@ -943,6 +952,18 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? newSettings.selectRectShadowColor
                             : (prevSettings?.selectRectShadowColor ??
                               defaultAppSettingsData[group].selectRectShadowColor),
+                    lastRectTool:
+                        typeof newSettings?.lastRectTool === 'number'
+                            ? newSettings.lastRectTool
+                            : (prevSettings?.lastRectTool ?? DrawState.Rect),
+                    lastArrowTool:
+                        typeof newSettings?.lastArrowTool === 'number'
+                            ? newSettings.lastArrowTool
+                            : (prevSettings?.lastArrowTool ?? DrawState.Arrow),
+                    lastFilterTool:
+                        typeof newSettings?.lastFilterTool === 'number'
+                            ? newSettings.lastFilterTool
+                            : (prevSettings?.lastFilterTool ?? DrawState.Blur),
                     lastWatermarkText:
                         typeof newSettings?.lastWatermarkText === 'string'
                             ? newSettings.lastWatermarkText

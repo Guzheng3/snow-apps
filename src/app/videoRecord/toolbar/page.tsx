@@ -54,7 +54,7 @@ import { getMonitorsBoundingBox, MonitorBoundingBox } from '@/commands/core';
 import { setWindowRect } from '@/utils/window';
 import { Window as AppWindow } from '@tauri-apps/api/window';
 import { useStateRef } from '@/hooks/useStateRef';
-import { appError, appInfo } from '@/utils/log';
+import { appError } from '@/utils/log';
 import { PLUGIN_ID_FFMPEG, usePluginService } from '@/components/pluginService';
 import { VideoRecordWindowInfo } from '@/utils/types';
 

@@ -59,6 +59,7 @@ const ToolButtonCore: React.FC<{
             type={buttonType}
             onClick={onClick}
             disabled={disable}
+            key={componentKey}
         />
     );
 

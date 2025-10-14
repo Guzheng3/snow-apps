@@ -18,8 +18,12 @@ export const ButtonIcon = React.forwardRef<
             type={getButtonTypeByState(active ?? false)}
             data-testid={testId}
             onClick={onClick}
+            style={{
+                marginLeft: 'auto',
+                paddingInline: '8px',
+            }}
         >
-            {icon}
+            <div className="radio-button-icon">{icon}</div>
         </Button>
     );
 });

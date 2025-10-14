@@ -1,10 +1,9 @@
 import { FormattedMessage } from 'react-intl';
 import { ExcalidrawPropsCustomOptions } from '@mg-chao/excalidraw/types';
 import { useCallback, useContext, useEffect, useMemo } from 'react';
-import { DrawState, ExcalidrawEventPublisher } from '../extra';
+import { ExcalidrawEventPublisher } from '../extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { Input, Radio } from 'antd';
-import { ArrowIcon, DiamondIcon, LineIcon, PenIcon, RectIcon } from '@/components/icons';
+import { Input } from 'antd';
 import { DrawContext } from '@/app/fullScreenDraw/extra';
 import { debounce } from 'es-toolkit';
 import { useStateRef } from '@/hooks/useStateRef';
@@ -56,119 +55,7 @@ const WatermarkTextInput = () => {
 
 const SubToolEditor: NonNullable<
     NonNullable<ExcalidrawPropsCustomOptions['pickerRenders']>['SubToolEditor']
-> = ({ appState, targetElements, isSerialNumberTool }) => {
-    const { setTool } = useContext(DrawContext);
-
-    const drawStyleSubTools = useMemo(() => {
-        let drawState: DrawState | undefined = undefined;
-        switch (appState.activeTool.type) {
-            case 'rectangle':
-                drawState = DrawState.Rect;
-                break;
-            case 'diamond':
-                drawState = DrawState.Diamond;
-                break;
-            case 'arrow':
-                drawState = DrawState.Arrow;
-                break;
-            case 'line':
-                drawState = DrawState.Line;
-                break;
-            case 'blur':
-                drawState = DrawState.Blur;
-                break;
-            case 'blur_freedraw':
-                drawState = DrawState.BlurFreeDraw;
-                break;
-        }
-
-        if (drawState === DrawState.Rect || drawState === DrawState.Diamond) {
-            return (
-                <Radio.Group value={drawState}>
-                    <Radio.Button value={DrawState.Rect}>
-                        <div
-                            className="subtool-radio-button-icon"
-                            onClick={() => {
-                                setTool(DrawState.Rect);
-                            }}
-                        >
-                            <RectIcon style={{ fontSize: '1em' }} />
-                        </div>
-                    </Radio.Button>
-                    <Radio.Button value={DrawState.Diamond}>
-                        <div
-                            className="subtool-radio-button-icon"
-                            onClick={() => {
-                                setTool(DrawState.Diamond);
-                            }}
-                        >
-                            <DiamondIcon style={{ fontSize: '1em' }} />
-                        </div>
-                    </Radio.Button>
-                </Radio.Group>
-            );
-        }
-
-        if (
-            !isSerialNumberTool &&
-            (drawState === DrawState.Arrow || drawState === DrawState.Line)
-        ) {
-            return (
-                <Radio.Group value={drawState} style={{ display: 'flex' }}>
-                    <Radio.Button value={DrawState.Arrow}>
-                        <div
-                            className="subtool-radio-button-icon"
-                            onClick={() => {
-                                setTool(DrawState.Arrow);
-                            }}
-                        >
-                            <ArrowIcon style={{ fontSize: '0.83em' }} />
-                        </div>
-                    </Radio.Button>
-                    <Radio.Button value={DrawState.Line}>
-                        <div
-                            className="subtool-radio-button-icon"
-                            onClick={() => {
-                                setTool(DrawState.Line);
-                            }}
-                        >
-                            <LineIcon style={{ fontSize: '1.16em' }} />
-                        </div>
-                    </Radio.Button>
-                </Radio.Group>
-            );
-        }
-
-        if (drawState === DrawState.Blur || drawState === DrawState.BlurFreeDraw) {
-            return (
-                <Radio.Group value={drawState} style={{ display: 'flex' }}>
-                    <Radio.Button value={DrawState.Blur}>
-                        <div
-                            className="subtool-radio-button-icon"
-                            onClick={() => {
-                                setTool(DrawState.Blur);
-                            }}
-                        >
-                            <RectIcon style={{ fontSize: '1em' }} />
-                        </div>
-                    </Radio.Button>
-                    <Radio.Button value={DrawState.BlurFreeDraw}>
-                        <div
-                            className="subtool-radio-button-icon"
-                            onClick={() => {
-                                setTool(DrawState.BlurFreeDraw);
-                            }}
-                        >
-                            <PenIcon style={{ fontSize: '1.1em' }} />
-                        </div>
-                    </Radio.Button>
-                </Radio.Group>
-            );
-        }
-
-        return undefined;
-    }, [appState.activeTool.type, isSerialNumberTool, setTool]);
-
+> = ({ appState, targetElements }) => {
     const watermarkSubTools = useMemo(() => {
         if (appState.activeTool.type !== 'watermark') {
             return undefined;
@@ -176,17 +63,6 @@ const SubToolEditor: NonNullable<
 
         return <WatermarkTextInput />;
     }, [appState.activeTool.type]);
-
-    if (drawStyleSubTools && targetElements.length === 0) {
-        return (
-            <fieldset>
-                <legend>
-                    <FormattedMessage id="draw.drawStyleTool" />
-                </legend>
-                <div>{drawStyleSubTools}</div>
-            </fieldset>
-        );
-    }
 
     if (watermarkSubTools && targetElements.length === 0) {
         return (

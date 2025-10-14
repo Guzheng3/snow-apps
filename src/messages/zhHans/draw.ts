@@ -176,4 +176,5 @@ export const draw = {
     'draw.cloudSaveUrlFormat': '云端链接格式',
     'draw.cloudSaveUrlFormat.origin': '原始链接',
     'draw.cloudSaveUrlFormat.markdown': 'Markdown 链接',
+    'draw.blurFreeDrawTool': '滤镜绘制',
 };

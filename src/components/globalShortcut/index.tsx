@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useMemo, useRef, useState } from 'react';
 import { FormattedMessage } from 'react-intl';
 import {
     ChatIcon,
@@ -55,6 +55,7 @@ import {
     PLUGIN_ID_RAPID_OCR,
     usePluginService,
 } from '../pluginService';
+import { useDeepCompareEffect } from '@ant-design/pro-components';
 
 export type GlobalShortcutContextType = {
     disableShortcutKeyRef: React.RefObject<boolean>;
@@ -336,10 +337,6 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
 
     const updateShortcutKeyStatus = useCallback(
         async (settings: Record<AppFunction, AppFunctionConfig>) => {
-            if (!isReadyStatus) {
-                return;
-            }
-
             setUpdateShortcutKeyStatusLoading(true);
             const keyStatus: Record<AppFunction, ShortcutKeyStatus> = {} as Record<
                 AppFunction,
@@ -382,7 +379,7 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
             previousAppFunctionSettingsRef.current = settings;
             setUpdateShortcutKeyStatusLoading(false);
         },
-        [appFunctionComponentConfigsKeys, defaultAppFunctionComponentConfigs, isReadyStatus],
+        [appFunctionComponentConfigsKeys, defaultAppFunctionComponentConfigs],
     );
 
     const [appFunctionSettings, setAppFunctionSettings] =
@@ -400,8 +397,8 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
     );
 
     const updateShortcutKeyStatusPendingRef = useRef(false);
-    useEffect(() => {
-        if (!appFunctionSettings) {
+    useDeepCompareEffect(() => {
+        if (!appFunctionSettings || !isReadyStatus) {
             return;
         }
 
@@ -413,7 +410,7 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
         updateShortcutKeyStatus(appFunctionSettings).then(() => {
             updateShortcutKeyStatusPendingRef.current = false;
         });
-    }, [appFunctionSettings, updateShortcutKeyStatus]);
+    }, [appFunctionSettings, isReadyStatus, updateShortcutKeyStatus]);
 
     const contextValue = useMemo((): GlobalShortcutContextType => {
         return {

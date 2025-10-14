@@ -40,6 +40,13 @@ body {
     display: inline !important;
 }
 
+
+.popover-toolbar .ant-btn .ant-btn-icon {
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+}
+
 .draw-core-layer .excalidraw .Island.App-toolbar {
     opacity: 0;
     display: none !important;

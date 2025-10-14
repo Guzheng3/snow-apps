@@ -17,7 +17,7 @@ import { formatKey } from '@/utils/format';
 import { HotkeyCallback } from 'react-hotkeys-hook';
 
 const KeyEventHandleCore: React.FC<{
-    keyEventValue: KeyEventValue;
+    keyEventValue: KeyEventValue | undefined;
     onKeyDownChildren: HotkeyCallback;
     onKeyUpChildren: HotkeyCallback;
     componentKey: KeyEventKey;
@@ -33,7 +33,7 @@ const KeyEventHandleCore: React.FC<{
 }) => {
     const intl = useIntl();
     useHotkeysApp(
-        keyEventValue.hotKey,
+        keyEventValue?.hotKey ?? '',
         onKeyDownChildren,
         useMemo(
             () => ({
@@ -45,7 +45,7 @@ const KeyEventHandleCore: React.FC<{
         ),
     );
     useHotkeysApp(
-        keyEventValue.hotKey,
+        keyEventValue?.hotKey ?? '',
         onKeyUpChildren,
         useMemo(
             () => ({
@@ -66,10 +66,10 @@ const KeyEventHandleCore: React.FC<{
                 message: intl.formatMessage({
                     id: defaultDrawToolbarKeyEventComponentConfig[componentKey].messageId,
                 }),
-                key: formatKey(keyEventValue.hotKey),
+                key: formatKey(keyEventValue?.hotKey),
             },
         );
-    }, [componentKey, intl, keyEventValue.hotKey]);
+    }, [componentKey, intl, keyEventValue?.hotKey]);
 
     return (
         <>
@@ -195,10 +195,6 @@ const KeyEventWrapCore: React.FC<{
         },
         [children, isEnable, keyEvent, onKeyUp, onKeyUpEventPropName],
     );
-
-    if (!keyEventValue) {
-        return null;
-    }
 
     return (
         <>

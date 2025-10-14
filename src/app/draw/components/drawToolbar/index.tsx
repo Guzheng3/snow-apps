@@ -10,17 +10,14 @@ import { DrawToolbarContext } from './extra';
 import { KeyEventKey } from './components/keyEventWrap/extra';
 import { CloseOutlined, CopyOutlined, DragOutlined, LockOutlined } from '@ant-design/icons';
 import {
-    ArrowIcon,
     ArrowSelectIcon,
     CircleIcon,
     EraserIcon,
     FastSaveIcon,
-    FilterIcon,
     FixedIcon,
     OcrDetectIcon,
     OcrTranslateIcon,
     PenIcon,
-    RectIcon,
     SaveIcon,
     SaveToCloudIcon,
     ScrollScreenshotIcon,
@@ -70,6 +67,9 @@ import { DrawExtraTool } from './components/tools/drawExtraTool';
 import { HighlightTool } from './components/tools/highlightTool';
 import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
 import { ScreenshotType } from '@/utils/types';
+import { RectTool } from './components/tools/rectTool';
+import { ArrowTool } from './components/tools/arrowTool';
+import { BlurGroupTool } from './components/tools/blurGroupTool';
 
 export type DrawToolbarProps = {
     actionRef: React.RefObject<DrawToolbarActionType | undefined>;
@@ -730,16 +730,10 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                             <div className="draw-toolbar-splitter" />
 
                             {/* 矩形 */}
-                            <ToolButton
-                                hidden={customToolbarToolHiddenMap?.[DrawState.Rect]}
-                                componentKey={KeyEventKey.RectTool}
-                                icon={<RectIcon style={{ fontSize: '1em' }} />}
+                            <RectTool
+                                customToolbarToolHiddenMap={customToolbarToolHiddenMap}
+                                onToolClickAction={onToolClick}
                                 disable={disableNormalScreenshotTool}
-                                extraDrawState={[DrawState.Diamond]}
-                                drawState={DrawState.Rect}
-                                onClick={() => {
-                                    onToolClick(DrawState.Rect);
-                                }}
                             />
 
                             {/* 椭圆 */}
@@ -755,16 +749,10 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                             />
 
                             {/* 箭头 */}
-                            <ToolButton
-                                hidden={customToolbarToolHiddenMap?.[DrawState.Arrow]}
-                                componentKey={KeyEventKey.ArrowTool}
-                                icon={<ArrowIcon style={{ fontSize: '0.83em' }} />}
-                                drawState={DrawState.Arrow}
-                                extraDrawState={[DrawState.Line]}
+                            <ArrowTool
+                                customToolbarToolHiddenMap={customToolbarToolHiddenMap}
+                                onToolClickAction={onToolClick}
                                 disable={disableNormalScreenshotTool}
-                                onClick={() => {
-                                    onToolClick(DrawState.Arrow);
-                                }}
                             />
 
                             {/* 画笔 */}
@@ -804,16 +792,10 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                             />
 
                             {/* 模糊 */}
-                            <ToolButton
-                                hidden={customToolbarToolHiddenMap?.[DrawState.Blur]}
-                                componentKey={KeyEventKey.BlurTool}
-                                extraDrawState={[DrawState.BlurFreeDraw]}
-                                icon={<FilterIcon />}
-                                drawState={DrawState.Blur}
+                            <BlurGroupTool
+                                customToolbarToolHiddenMap={customToolbarToolHiddenMap}
+                                onToolClickAction={onToolClick}
                                 disable={disableNormalScreenshotTool}
-                                onClick={() => {
-                                    onToolClick(DrawState.Blur);
-                                }}
                             />
 
                             {/* 橡皮擦 */}
@@ -1060,7 +1042,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     margin-left: -3px;
                 }
 
-                :global(.popover-toolbar) :global(.ant-btn) :global(.ant-btn-icon),
                 .draw-toolbar-container :global(.ant-btn) :global(.ant-btn-icon) {
                     font-size: 24px;
                     display: flex;

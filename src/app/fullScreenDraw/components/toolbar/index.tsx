@@ -1,14 +1,12 @@
 import { KeyEventKey } from '@/app/draw/components/drawToolbar/components/keyEventWrap/extra';
 import { ToolButton } from '@/app/draw/components/drawToolbar/components/toolButton';
 import {
-    ArrowIcon,
     ArrowSelectIcon,
     CircleIcon,
     EraserIcon,
     LaserPointerIcon,
     MouseThroughIcon,
     PenIcon,
-    RectIcon,
     SerialNumberIcon,
     TextIcon,
 } from '@/components/icons';
@@ -40,6 +38,8 @@ import * as tauriOs from '@tauri-apps/plugin-os';
 import { useDrawContext } from '../../extra';
 import { HistoryControls } from '@/app/draw/components/drawToolbar/components/historyControls';
 import { closeFullScreenDrawWindow } from '@/commands/core';
+import { RectTool } from '@/app/draw/components/drawToolbar/components/tools/rectTool';
+import { ArrowTool } from '@/app/draw/components/drawToolbar/components/tools/arrowTool';
 
 export type DrawToolbarActionType = {
     setTool: (drawState: DrawState) => void;
@@ -357,15 +357,10 @@ export const FullScreenDrawToolbar: React.FC<{
 
                     <div className="draw-toolbar-splitter" />
 
-                    <ToolButton
-                        componentKey={KeyEventKey.RectTool}
-                        icon={<RectIcon style={{ fontSize: '1.08em' }} />}
-                        drawState={DrawState.Rect}
-                        buttonProps={toolButtonProps}
-                        extraDrawState={[DrawState.Diamond]}
-                        onClick={() => {
-                            onToolClick(DrawState.Rect);
-                        }}
+                    <RectTool
+                        customToolbarToolHiddenMap={undefined}
+                        onToolClickAction={onToolClick}
+                        disable={false}
                     />
 
                     {/* 椭圆 */}
@@ -386,21 +381,10 @@ export const FullScreenDrawToolbar: React.FC<{
                     />
 
                     {/* 箭头 */}
-                    <ToolButton
-                        componentKey={KeyEventKey.ArrowTool}
-                        icon={
-                            <ArrowIcon
-                                style={{
-                                    fontSize: '0.9em',
-                                }}
-                            />
-                        }
-                        buttonProps={toolButtonProps}
-                        drawState={DrawState.Arrow}
-                        extraDrawState={[DrawState.Line]}
-                        onClick={() => {
-                            onToolClick(DrawState.Arrow);
-                        }}
+                    <ArrowTool
+                        customToolbarToolHiddenMap={undefined}
+                        onToolClickAction={onToolClick}
+                        disable={false}
                     />
 
                     {/* 画笔 */}
@@ -538,6 +522,10 @@ export const FullScreenDrawToolbar: React.FC<{
                     font-size: 24px;
                     display: flex;
                     align-items: center;
+                }
+
+                :global(.full-screen-draw-toolbar > div) {
+                    line-height: 0;
                 }
 
                 .full-screen-draw-toolbar {
