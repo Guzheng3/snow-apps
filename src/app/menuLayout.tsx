@@ -714,6 +714,12 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
                                 label: intl.formatMessage({ id: 'settings.chatSettings' }),
                             },
                             {
+                                key: 'coreSettings',
+                                label: intl.formatMessage({
+                                    id: 'settings.systemSettings.coreSettings',
+                                }),
+                            },
+                            {
                                 key: 'dataFile',
                                 label: intl.formatMessage({
                                     id: 'settings.systemSettings.dataFile',

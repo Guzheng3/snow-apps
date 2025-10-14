@@ -112,6 +112,10 @@ impl HotLoadPageService {
             current_page_list
         };
 
+        if page_limit <= current_page_count {
+            return Ok(());
+        }
+
         for _ in 0..(page_limit - current_page_count) {
             match self.create_idle_window_core().await {
                 Ok(_) => (),
