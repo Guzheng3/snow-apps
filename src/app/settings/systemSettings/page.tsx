@@ -28,7 +28,12 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import { ContentWrap } from '@/components/contentWrap';
 import { IconLabel } from '@/components/iconLable';
 import { ResetSettingsButton } from '@/components/resetSettingsButton';
-import ProForm, { ProFormSelect, ProFormSlider, ProFormSwitch } from '@ant-design/pro-form';
+import ProForm, {
+    ProFormDigit,
+    ProFormSelect,
+    ProFormSlider,
+    ProFormSwitch,
+} from '@ant-design/pro-form';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { AntdContext } from '@/components/globalLayoutExtra';
 import { clearAllAppStore } from '@/utils/appStore';
@@ -54,6 +59,7 @@ export default function SystemSettings() {
 
     const { updateAppSettings } = useContext(AppSettingsActionContext);
     const [commonForm] = Form.useForm<AppSettingsData[AppSettingsGroup.SystemCommon]>();
+    const [coreForm] = Form.useForm<AppSettingsData[AppSettingsGroup.SystemCore]>();
     // const [renderForm] = Form.useForm<AppSettingsData[AppSettingsGroup.Render]>();
     const [scrollScreenshotForm] =
         Form.useForm<AppSettingsData[AppSettingsGroup.SystemScrollScreenshot]>();
@@ -115,8 +121,16 @@ export default function SystemSettings() {
                 ) {
                     screenshotForm.setFieldsValue(settings[AppSettingsGroup.SystemScreenshot]);
                 }
+
+                if (
+                    preSettings === undefined ||
+                    preSettings[AppSettingsGroup.SystemCore] !==
+                        settings[AppSettingsGroup.SystemCore]
+                ) {
+                    coreForm.setFieldsValue(settings[AppSettingsGroup.SystemCore]);
+                }
             },
-            [commonForm, chatForm, networkForm, scrollScreenshotForm, screenshotForm],
+            [commonForm, chatForm, networkForm, scrollScreenshotForm, screenshotForm, coreForm],
         ),
         true,
     );
@@ -951,6 +965,66 @@ export default function SystemSettings() {
                             8192: '8192',
                         }}
                     />
+                </ProForm>
+            </Spin>
+
+            <Divider />
+
+            <GroupTitle
+                id="coreSettings"
+                extra={
+                    <ResetSettingsButton
+                        title={
+                            <FormattedMessage
+                                key="coreSettings"
+                                id="settings.systemSettings.coreSettings"
+                            />
+                        }
+                        appSettingsGroup={AppSettingsGroup.SystemCore}
+                    />
+                }
+            >
+                <FormattedMessage id="settings.systemSettings.coreSettings" />
+            </GroupTitle>
+
+            <Spin spinning={appSettingsLoading}>
+                <ProForm
+                    form={coreForm}
+                    onValuesChange={(_, values) => {
+                        updateAppSettings(
+                            AppSettingsGroup.SystemCore,
+                            values,
+                            true,
+                            true,
+                            false,
+                            true,
+                        );
+                    }}
+                    submitter={false}
+                    layout="horizontal"
+                >
+                    <Row gutter={token.marginLG}>
+                        <Col span={12}>
+                            <ProFormDigit
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.systemSettings.coreSettings.hotLoadPageCount" />
+                                        }
+                                        tooltipTitle={
+                                            <FormattedMessage id="settings.systemSettings.coreSettings.hotLoadPageCount.tip" />
+                                        }
+                                    />
+                                }
+                                name="hotLoadPageCount"
+                                min={0}
+                                max={3}
+                                fieldProps={{
+                                    precision: 0,
+                                }}
+                            />
+                        </Col>
+                    </Row>
                 </ProForm>
             </Spin>
 

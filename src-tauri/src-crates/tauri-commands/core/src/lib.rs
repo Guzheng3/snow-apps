@@ -3,6 +3,7 @@ use futures::stream::StreamExt;
 use serde::Serialize;
 use std::{
     path::PathBuf,
+    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 use tauri::Emitter;
@@ -10,7 +11,11 @@ use tauri::Manager;
 use tokio::{fs, sync::Mutex, time};
 
 use snow_shot_app_os::notification;
-use snow_shot_app_services::free_drag_window_service::FreeDragWindowService;
+use snow_shot_app_services::hot_load_page_service::HotLoadPageService;
+use snow_shot_app_services::{
+    free_drag_window_service::FreeDragWindowService,
+    hot_load_page_service::HotLoadPageRoutePushEvent,
+};
 use snow_shot_app_shared::{ElementRect, EnigoManager};
 use snow_shot_app_utils::{get_target_monitor, monitor_info::MonitorRect};
 
@@ -120,6 +125,7 @@ pub async fn click_through(window: tauri::Window) -> Result<(), ()> {
 /// 创建内容固定到屏幕的窗口
 pub async fn create_fixed_content_window(
     app: tauri::AppHandle,
+    hot_load_page_service: tauri::State<'_, Arc<HotLoadPageService>>,
     scroll_screenshot: bool,
 ) -> Result<(), String> {
     let (_, _, monitor) = get_target_monitor()?;
@@ -141,6 +147,40 @@ pub async fn create_fixed_content_window(
         window_y = monitor_y / monitor_scale_factor;
     }
 
+    let url = format!("/fixedContent?scroll_screenshot={}", scroll_screenshot);
+
+    if let Some(window) = hot_load_page_service.pop_page().await {
+        window.set_always_on_top(true).unwrap();
+        window
+            .set_size(tauri::PhysicalSize::new(500.0, 500.0))
+            .unwrap();
+
+        match window.emit(
+            "hot-load-page-route-push",
+            HotLoadPageRoutePushEvent {
+                label: window.label().to_owned(),
+                url,
+            },
+        ) {
+            Ok(_) => (),
+            Err(e) => {
+                log::error!("[create_fixed_content_window] Failed to emit event: {}", e);
+            }
+        }
+
+        match hot_load_page_service.create_idle_windows().await {
+            Ok(_) => (),
+            Err(e) => {
+                log::error!(
+                    "[create_fixed_content_window] Failed to create idle windows: {}",
+                    e
+                );
+            }
+        }
+
+        return Ok(());
+    }
+
     let window = tauri::WebviewWindowBuilder::new(
         &app,
         format!(
@@ -150,10 +190,7 @@ pub async fn create_fixed_content_window(
                 .unwrap()
                 .as_secs()
         ),
-        tauri::WebviewUrl::App(PathBuf::from(format!(
-            "/fixedContent?scroll_screenshot={}",
-            scroll_screenshot
-        ))),
+        tauri::WebviewUrl::App(PathBuf::from(url)),
     )
     .always_on_top(true)
     .resizable(false)
@@ -178,20 +215,23 @@ pub async fn create_fixed_content_window(
     Ok(())
 }
 
+pub struct FullScreenDrawWindowLabels {
+    full_screen_draw_window_label: String,
+    switch_mouse_through_window_label: String,
+}
+
 /// 创建全屏绘制窗口
 pub async fn create_full_screen_draw_window(
     app: tauri::AppHandle,
-    full_screen_draw_window_id: tauri::State<'_, Mutex<i32>>,
+    full_screen_draw_window_labels: tauri::State<'_, Mutex<Option<FullScreenDrawWindowLabels>>>,
+    hot_load_page_service: tauri::State<'_, Arc<HotLoadPageService>>,
 ) -> Result<(), String> {
-    let full_screen_draw_window_id = full_screen_draw_window_id.lock().await;
-    let window_label = format!("full-screen-draw-{}", full_screen_draw_window_id);
+    let mut full_screen_draw_window_labels = full_screen_draw_window_labels.lock().await;
 
-    // 首先先查询是否存在窗口
-    let window = app.get_webview_window(window_label.as_str());
-
-    if let Some(window) = window {
+    if let Some(labels) = full_screen_draw_window_labels.as_ref() {
         // 发送改变鼠标穿透的消息
-        window
+        app.get_webview_window(labels.full_screen_draw_window_label.as_str())
+            .unwrap()
             .emit("full-screen-draw-change-mouse-through", ())
             .unwrap();
 
@@ -205,51 +245,117 @@ pub async fn create_full_screen_draw_window(
     let monitor_width = monitor.width().unwrap() as f64;
     let monitor_height = monitor.height().unwrap() as f64;
 
-    let main_window = tauri::WebviewWindowBuilder::new(
-        &app,
-        window_label.as_str(),
-        tauri::WebviewUrl::App(PathBuf::from(format!("/fullScreenDraw"))),
-    )
-    .always_on_top(true)
-    .resizable(false)
-    .maximizable(false)
-    .minimizable(false)
-    .title("Snow Shot - Full Screen Draw")
-    .position(0.0, 0.0)
-    .inner_size(1.0, 1.0)
-    .decorations(false)
-    .shadow(false)
-    .transparent(true)
-    .skip_taskbar(true)
-    .resizable(false)
-    .build()
-    .unwrap();
+    // 先从服务中获取两个窗口（必须串行以避免竞态条件）
+    let main_window_opt = hot_load_page_service.pop_page().await;
+    let switch_window_opt = hot_load_page_service.pop_page().await;
 
-    tauri::WebviewWindowBuilder::new(
-        &app,
-        format!("{}_switch_mouse_through", window_label.as_str()),
-        tauri::WebviewUrl::App(PathBuf::from(format!(
-            "/fullScreenDraw/switchMouseThrough?monitor_x={}&monitor_y={}&monitor_width={}&monitor_height={}",
-            monitor_x,
-            monitor_y,
-            monitor_width,
-            monitor_height
-        ))),
-    )
-    .always_on_top(true)
-    .resizable(false)
-    .maximizable(false)
-    .minimizable(false)
-    .title("Snow Shot - Full Screen Draw - Switch Mouse Through")
-    .position(0.0, 0.0)
-    .inner_size(1.0, 1.0)
-    .decorations(false)
-    .shadow(false)
-    .transparent(true)
-    .skip_taskbar(true)
-    .resizable(false)
-    .build()
-    .unwrap();
+    let has_hot_load = main_window_opt.is_some() || switch_window_opt.is_some();
+
+    let main_window_url = format!("/fullScreenDraw");
+    let switch_mouse_through_window_url = format!(
+        "/fullScreenDraw/switchMouseThrough?monitor_x={}&monitor_y={}&monitor_width={}&monitor_height={}",
+        monitor_x, monitor_y, monitor_width, monitor_height
+    );
+
+    // 并行创建/配置两个窗口
+    let (main_window, switch_mouse_through_window) = tokio::join!(
+        async {
+            match main_window_opt {
+                Some(window) => {
+                    window.set_always_on_top(true).unwrap();
+                    window.set_title("Snow Shot - Full Screen Draw").unwrap();
+                    window.show().unwrap();
+                    window.set_focus().unwrap();
+
+                    match window.emit(
+                        "hot-load-page-route-push",
+                        HotLoadPageRoutePushEvent {
+                            label: window.label().to_owned(),
+                            url: main_window_url.clone(),
+                        },
+                    ) {
+                        Ok(_) => (),
+                        Err(e) => {
+                            log::error!(
+                                "[create_full_screen_draw_window] Failed to emit event: {}",
+                                e
+                            );
+                        }
+                    }
+
+                    window
+                }
+                None => tauri::WebviewWindowBuilder::new(
+                    &app,
+                    format!("full-screen-draw"),
+                    tauri::WebviewUrl::App(PathBuf::from(main_window_url.clone())),
+                )
+                .always_on_top(true)
+                .resizable(false)
+                .maximizable(false)
+                .minimizable(false)
+                .title("Snow Shot - Full Screen Draw")
+                .position(0.0, 0.0)
+                .inner_size(1.0, 1.0)
+                .decorations(false)
+                .shadow(false)
+                .transparent(true)
+                .skip_taskbar(true)
+                .resizable(false)
+                .focused(true)
+                .build()
+                .unwrap(),
+            }
+        },
+        async {
+            match switch_window_opt {
+                Some(window) => {
+                    window.set_always_on_top(true).unwrap();
+                    window
+                        .set_title("Snow Shot - Full Screen Draw - Switch Mouse Through")
+                        .unwrap();
+                    window.show().unwrap();
+
+                    match window.emit(
+                        "hot-load-page-route-push",
+                        HotLoadPageRoutePushEvent {
+                            label: window.label().to_owned(),
+                            url: switch_mouse_through_window_url.clone(),
+                        },
+                    ) {
+                        Ok(_) => (),
+                        Err(e) => {
+                            log::error!(
+                                "[create_full_screen_draw_window] Failed to emit event: {}",
+                                e
+                            );
+                        }
+                    }
+
+                    window
+                }
+                None => tauri::WebviewWindowBuilder::new(
+                    &app,
+                    format!("full-screen-draw-switch-mouse-through"),
+                    tauri::WebviewUrl::App(PathBuf::from(switch_mouse_through_window_url.clone())),
+                )
+                .always_on_top(true)
+                .resizable(false)
+                .maximizable(false)
+                .minimizable(false)
+                .title("Snow Shot - Full Screen Draw - Switch Mouse Through")
+                .position(0.0, 0.0)
+                .inner_size(1.0, 1.0)
+                .decorations(false)
+                .shadow(false)
+                .transparent(true)
+                .skip_taskbar(true)
+                .resizable(false)
+                .build()
+                .unwrap(),
+            }
+        }
+    );
 
     #[cfg(target_os = "macos")]
     {
@@ -271,29 +377,46 @@ pub async fn create_full_screen_draw_window(
             .unwrap();
     }
 
+    if has_hot_load {
+        match hot_load_page_service.create_idle_windows().await {
+            Ok(_) => (),
+            Err(e) => {
+                log::error!(
+                    "[create_full_screen_draw_window] Failed to create idle windows: {}",
+                    e
+                );
+            }
+        }
+    }
+
+    *full_screen_draw_window_labels = Some(FullScreenDrawWindowLabels {
+        full_screen_draw_window_label: main_window.label().to_owned(),
+        switch_mouse_through_window_label: switch_mouse_through_window.label().to_owned(),
+    });
+
     Ok(())
 }
 
 pub async fn close_full_screen_draw_window(
     app: tauri::AppHandle,
-    full_screen_draw_window_id: tauri::State<'_, Mutex<i32>>,
+    full_screen_draw_window_labels: tauri::State<'_, Mutex<Option<FullScreenDrawWindowLabels>>>,
 ) -> Result<(), String> {
-    let mut full_screen_draw_window_id = full_screen_draw_window_id.lock().await;
-    let window_label = format!("full-screen-draw-{}", full_screen_draw_window_id);
+    let mut full_screen_draw_window_labels = full_screen_draw_window_labels.lock().await;
+    let FullScreenDrawWindowLabels {
+        full_screen_draw_window_label,
+        switch_mouse_through_window_label,
+    } = full_screen_draw_window_labels.take().unwrap();
 
-    let window = app.get_webview_window(window_label.as_str());
+    let window = app.get_webview_window(full_screen_draw_window_label.as_str());
 
     if let Some(window) = window {
         window.destroy().unwrap();
     }
 
-    let window_label = format!("{}_switch_mouse_through", window_label.as_str());
-    let window = app.get_webview_window(window_label.as_str());
+    let window = app.get_webview_window(switch_mouse_through_window_label.as_str());
     if let Some(window) = window {
         window.destroy().unwrap();
     }
-
-    *full_screen_draw_window_id += 1;
 
     Ok(())
 }
@@ -392,95 +515,194 @@ pub async fn has_video_record_window(app: tauri::AppHandle) -> Result<bool, Stri
     Ok(window.is_some())
 }
 
+pub struct VideoRecordWindowLabels {
+    video_record_window_label: String,
+    toolbar_window_label: String,
+}
+
 /// 创建屏幕录制窗口
 pub async fn create_video_record_window(
     app: tauri::AppHandle,
+    video_record_window_label: tauri::State<'_, Mutex<Option<VideoRecordWindowLabels>>>,
+    hot_load_page_service: tauri::State<'_, Arc<HotLoadPageService>>,
     select_rect_min_x: i32,
     select_rect_min_y: i32,
     select_rect_max_x: i32,
     select_rect_max_y: i32,
 ) {
-    let window_label = "video-recording";
+    let mut video_record_window_labels = video_record_window_label.lock().await;
+    if let Some(video_record_window_labels) = video_record_window_labels.as_ref() {
+        let window = app.get_webview_window(
+            video_record_window_labels
+                .video_record_window_label
+                .as_str(),
+        );
 
-    let window = app.get_webview_window(window_label);
+        if let Some(window) = window {
+            window
+                .emit(
+                    "reload-video-record",
+                    VideoRecordWindowInfo {
+                        select_rect_min_x,
+                        select_rect_min_y,
+                        select_rect_max_x,
+                        select_rect_max_y,
+                    },
+                )
+                .unwrap();
 
-    if let Some(window) = window {
-        window
-            .emit(
-                "reload-video-record",
-                VideoRecordWindowInfo {
-                    select_rect_min_x,
-                    select_rect_min_y,
-                    select_rect_max_x,
-                    select_rect_max_y,
-                },
-            )
-            .unwrap();
-
-        return;
+            return;
+        }
     }
 
-    tauri::WebviewWindowBuilder::new(
-        &app,
-        window_label,
-        tauri::WebviewUrl::App(PathBuf::from(format!(
-            "/videoRecord?select_rect_min_x={}&select_rect_min_y={}&select_rect_max_x={}&select_rect_max_y={}",
-            select_rect_min_x,
-            select_rect_min_y,
-            select_rect_max_x,
-            select_rect_max_y
-        ))),
-    )
-    .always_on_top(true)
-    .resizable(false)
-    .maximizable(false)
-    .minimizable(false)
-    .title("Snow Shot - Video Record")
-    .position(0.0, 0.0)
-    .inner_size(10.0, 10.0)
-    .decorations(false)
-    .shadow(false)
-    .transparent(true)
-    .skip_taskbar(true)
-    .resizable(false)
-    .visible(false)
-    .build()
-    .unwrap();
+    // 先从服务中获取两个窗口（必须串行以避免竞态条件）
+    let main_window_opt = hot_load_page_service.pop_page().await;
+    let toolbar_window_opt = hot_load_page_service.pop_page().await;
 
-    let window_label = "video-recording-toolbar";
+    let has_hot_load = main_window_opt.is_some() || toolbar_window_opt.is_some();
 
-    let window = app.get_webview_window(window_label);
+    let main_window_url = format!(
+        "/videoRecord?select_rect_min_x={}&select_rect_min_y={}&select_rect_max_x={}&select_rect_max_y={}",
+        select_rect_min_x, select_rect_min_y, select_rect_max_x, select_rect_max_y
+    );
+    let toolbar_window_url = format!(
+        "/videoRecord/toolbar?select_rect_min_x={}&select_rect_min_y={}&select_rect_max_x={}&select_rect_max_y={}",
+        select_rect_min_x, select_rect_min_y, select_rect_max_x, select_rect_max_y
+    );
 
+    // 并行创建/配置两个窗口
+    let (main_window, toolbar_window) = tokio::join!(
+        async {
+            match main_window_opt {
+                Some(window) => {
+                    window.set_always_on_top(true).unwrap();
+                    window.set_title("Snow Shot - Video Record").unwrap();
+                    window.hide().unwrap();
+
+                    match window.emit(
+                        "hot-load-page-route-push",
+                        HotLoadPageRoutePushEvent {
+                            label: window.label().to_owned(),
+                            url: main_window_url.clone(),
+                        },
+                    ) {
+                        Ok(_) => (),
+                        Err(e) => {
+                            log::error!("[create_video_record_window] Failed to emit event: {}", e);
+                        }
+                    }
+
+                    window
+                }
+                None => tauri::WebviewWindowBuilder::new(
+                    &app,
+                    "video-recording",
+                    tauri::WebviewUrl::App(PathBuf::from(main_window_url.clone())),
+                )
+                .always_on_top(true)
+                .resizable(false)
+                .maximizable(false)
+                .minimizable(false)
+                .title("Snow Shot - Video Record")
+                .position(0.0, 0.0)
+                .inner_size(10.0, 10.0)
+                .decorations(false)
+                .shadow(false)
+                .transparent(true)
+                .skip_taskbar(true)
+                .resizable(false)
+                .visible(false)
+                .build()
+                .unwrap(),
+            }
+        },
+        async {
+            match toolbar_window_opt {
+                Some(window) => {
+                    window.set_always_on_top(true).unwrap();
+                    window
+                        .set_title("Snow Shot - Video Record - Toolbar")
+                        .unwrap();
+                    window.hide().unwrap();
+
+                    match window.emit(
+                        "hot-load-page-route-push",
+                        HotLoadPageRoutePushEvent {
+                            label: window.label().to_owned(),
+                            url: toolbar_window_url.clone(),
+                        },
+                    ) {
+                        Ok(_) => (),
+                        Err(e) => {
+                            log::error!("[create_video_record_window] Failed to emit event: {}", e);
+                        }
+                    }
+
+                    window
+                }
+                None => tauri::WebviewWindowBuilder::new(
+                    &app,
+                    "video-recording-toolbar",
+                    tauri::WebviewUrl::App(PathBuf::from(toolbar_window_url.clone())),
+                )
+                .always_on_top(true)
+                .resizable(false)
+                .maximizable(false)
+                .minimizable(false)
+                .title("Snow Shot - Video Record - Toolbar")
+                .position(0.0, 0.0)
+                .inner_size(10.0, 10.0)
+                .decorations(false)
+                .shadow(false)
+                .transparent(true)
+                .skip_taskbar(true)
+                .resizable(false)
+                .visible(false)
+                .build()
+                .unwrap(),
+            }
+        }
+    );
+
+    if has_hot_load {
+        match hot_load_page_service.create_idle_windows().await {
+            Ok(_) => (),
+            Err(e) => {
+                log::error!(
+                    "[create_video_record_window] Failed to create idle windows: {}",
+                    e
+                );
+            }
+        }
+    }
+
+    *video_record_window_labels = Some(VideoRecordWindowLabels {
+        video_record_window_label: main_window.label().to_owned(),
+        toolbar_window_label: toolbar_window.label().to_owned(),
+    });
+}
+
+pub async fn close_video_record_window(
+    app: tauri::AppHandle,
+    video_record_window_label: tauri::State<'_, Mutex<Option<VideoRecordWindowLabels>>>,
+) -> Result<(), String> {
+    let mut video_record_window_labels = video_record_window_label.lock().await;
+    let VideoRecordWindowLabels {
+        video_record_window_label,
+        toolbar_window_label,
+    } = video_record_window_labels.take().unwrap();
+
+    let window = app.get_webview_window(video_record_window_label.as_str());
     if let Some(window) = window {
         window.destroy().unwrap();
     }
 
-    tauri::WebviewWindowBuilder::new(
-        &app,
-        window_label,
-        tauri::WebviewUrl::App(PathBuf::from(format!(
-            "/videoRecord/toolbar?select_rect_min_x={}&select_rect_min_y={}&select_rect_max_x={}&select_rect_max_y={}",
-            select_rect_min_x,
-            select_rect_min_y,
-            select_rect_max_x,
-            select_rect_max_y
-        ))),
-    )
-    .always_on_top(true)
-    .resizable(false)
-    .maximizable(false)
-    .minimizable(false)
-    .title("Snow Shot - Video Record - Toolbar")
-    .position(0.0, 0.0)
-    .inner_size(10.0, 10.0)
-    .decorations(false)
-    .shadow(false)
-    .transparent(true)
-    .skip_taskbar(true)
-    .resizable(false)
-    .visible(false)
-    .build()
-    .unwrap();
+    let window = app.get_webview_window(toolbar_window_label.as_str());
+    if let Some(window) = window {
+        window.destroy().unwrap();
+    }
+
+    Ok(())
 }
 
 pub async fn start_free_drag(

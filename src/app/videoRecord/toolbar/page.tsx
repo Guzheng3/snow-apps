@@ -32,7 +32,7 @@ import {
     videoRecordStart,
     videoRecordStop,
 } from '@/commands/videoRecord';
-import { changeVideoRecordState, closeVideoRecordWindow } from '@/functions/videoRecord';
+import { changeVideoRecordState } from '@/functions/videoRecord';
 import { EventListenerContext } from '@/components/eventListener';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
@@ -50,7 +50,11 @@ import clipboard from 'tauri-plugin-clipboard-api';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { createDir } from '@/commands/file';
 import { getPlatformValue } from '@/utils';
-import { getMonitorsBoundingBox, MonitorBoundingBox } from '@/commands/core';
+import {
+    closeVideoRecordWindow,
+    getMonitorsBoundingBox,
+    MonitorBoundingBox,
+} from '@/commands/core';
 import { setWindowRect } from '@/utils/window';
 import { Window as AppWindow } from '@tauri-apps/api/window';
 import { useStateRef } from '@/hooks/useStateRef';
@@ -592,9 +596,7 @@ export default function VideoRecordToolbar() {
                         <Button
                             onClick={() => {
                                 stopRecord(false).then(() => {
-                                    closeVideoRecordWindow().then(() => {
-                                        getCurrentWindow().close();
-                                    });
+                                    closeVideoRecordWindow();
                                 });
                             }}
                             icon={

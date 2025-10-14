@@ -110,6 +110,11 @@ export const createVideoRecordWindow = async (
     return result;
 };
 
+export const closeVideoRecordWindow = async () => {
+    const result = await invoke<void>('close_video_record_window');
+    return result;
+};
+
 export const hasVideoRecordWindow = async () => {
     const result = await invoke<boolean>('has_video_record_window');
     return result;

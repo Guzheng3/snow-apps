@@ -3,6 +3,7 @@
 import { EventListenerContext } from '@/components/eventListener';
 import { MouseThroughIcon } from '@/components/icons';
 import { fullScreenDrawChangeMouseThrough } from '@/functions/fullScreenDraw';
+import { appInfo } from '@/utils/log';
 import { setWindowRect } from '@/utils/window';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Button, theme } from 'antd';

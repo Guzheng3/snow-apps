@@ -4,10 +4,6 @@ import { emit } from '@tauri-apps/api/event';
 import { executeScreenshot } from './screenshot';
 import { ScreenshotType } from '@/utils/types';
 
-export const closeVideoRecordWindow = async () => {
-    await emit('close-video-record-window');
-};
-
 export const changeVideoRecordState = async (state: VideoRecordState) => {
     await emit('change-video-record-state', {
         state,

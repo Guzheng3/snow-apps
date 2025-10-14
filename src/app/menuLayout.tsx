@@ -847,7 +847,8 @@ export const MenuLayoutProvider = ({ children }: { children: React.ReactNode }) 
             pathname === '/fullScreenDraw' ||
             pathname === '/fullScreenDraw/switchMouseThrough' ||
             pathname === '/videoRecord' ||
-            pathname === '/videoRecord/toolbar',
+            pathname === '/videoRecord/toolbar' ||
+            pathname === '/idle',
         [pathname],
     );
     const mainWindow = !noLayout;

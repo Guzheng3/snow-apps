@@ -65,6 +65,7 @@ export enum AppSettingsGroup {
     SystemChat = 'systemChat',
     SystemNetwork = 'systemNetwork',
     SystemScreenshot = 'systemScreenshot_20250627',
+    SystemCore = 'systemCore',
     SystemScrollScreenshot = 'systemScrollScreenshot_20250628',
     FunctionChat = 'functionChat',
     FunctionTranslation = 'functionTranslation',
@@ -390,6 +391,10 @@ export type AppSettingsData = {
         /** 托盘点击后 */
         iconClickAction: TrayIconClickAction;
     };
+    [AppSettingsGroup.SystemCore]: {
+        /** 热加载页面数量 */
+        hotLoadPageCount: number;
+    };
 };
 
 export const CanHiddenToolSet: Set<DrawState> = new Set([
@@ -598,6 +603,10 @@ export const defaultAppSettingsData: AppSettingsData = {
     },
     [AppSettingsGroup.FunctionTrayIcon]: {
         iconClickAction: TrayIconClickAction.Screenshot,
+    },
+    [AppSettingsGroup.SystemCore]: {
+        /// 热加载页面数量
+        hotLoadPageCount: 2,
     },
 };
 
@@ -1758,6 +1767,19 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? (newSettings.correctHdrColorAlgorithm as HdrColorAlgorithm)
                             : (prevSettings?.correctHdrColorAlgorithm ??
                               defaultAppSettingsData[group].correctHdrColorAlgorithm),
+                };
+            } else if (group === AppSettingsGroup.SystemCore) {
+                newSettings = newSettings as AppSettingsData[typeof group];
+                const prevSettings = appSettingsRef.current[group] as
+                    | AppSettingsData[typeof group]
+                    | undefined;
+
+                settings = {
+                    hotLoadPageCount:
+                        typeof newSettings?.hotLoadPageCount === 'number'
+                            ? Math.max(Math.min(3, newSettings.hotLoadPageCount), 0)
+                            : (prevSettings?.hotLoadPageCount ??
+                              defaultAppSettingsData[group].hotLoadPageCount),
                 };
             } else {
                 return defaultAppSettingsData[group];

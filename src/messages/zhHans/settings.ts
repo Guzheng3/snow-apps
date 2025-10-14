@@ -403,4 +403,8 @@ export const settings = {
     'settings.systemSettings.macosPermissionsSettings.request.tip':
         '当重装应用后，需要在 MacOS 的系统设置里删除应用授权记录后再重新启用权限，参见 {link}',
     'settings.systemSettings.macosPermissionsSettings.request.tip.link': '删除授权记录',
+    'settings.systemSettings.coreSettings': '核心',
+    'settings.systemSettings.coreSettings.hotLoadPageCount': '热加载页面数量',
+    'settings.systemSettings.coreSettings.hotLoadPageCount.tip':
+        '通过热加载页面，实现固定剪贴板内容到屏幕、视频录制、全屏画布等功能的快速加载，但同时提高了内存的占用',
 };

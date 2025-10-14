@@ -104,10 +104,6 @@ export default function VideoRecordPage() {
             });
         });
 
-        const closeVideoRecordWindowListenerId = addListener('close-video-record-window', () => {
-            getCurrentWindow().close();
-        });
-
         const changeVideoRecordStateListenerId = addListener(
             'change-video-record-state',
             (params) => {
@@ -119,7 +115,6 @@ export default function VideoRecordPage() {
 
         return () => {
             removeListener(listenerId);
-            removeListener(closeVideoRecordWindowListenerId);
             removeListener(changeVideoRecordStateListenerId);
         };
     }, [addListener, init, removeListener, setVideoRecordState]);

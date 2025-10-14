@@ -101,6 +101,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
         isFullScreenDraw,
         isFullScreenDrawSwitchMouseThrough,
         isVideoRecordPage,
+        isIdlePage,
         isVideoRecordToolbarPage,
         isCaptureHistoryPage,
     } = useMemo(() => {
@@ -110,6 +111,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
         let isVideoRecordPage = false;
         let isVideoRecordToolbarPage = false;
         let isCaptureHistoryPage = false;
+        let isIdlePage = false;
         if (pathname === '/draw') {
             isDrawPage = true;
         } else if (pathname === '/fullScreenDraw') {
@@ -122,7 +124,10 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
             isVideoRecordToolbarPage = true;
         } else if (pathname === '/tools/captureHistory') {
             isCaptureHistoryPage = true;
+        } else if (pathname === '/idle') {
+            isIdlePage = true;
         }
+
         return {
             isDrawPage,
             isFullScreenDraw,
@@ -130,6 +135,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
             isVideoRecordPage,
             isVideoRecordToolbarPage,
             isCaptureHistoryPage,
+            isIdlePage,
         };
     }, [pathname]);
 
@@ -145,7 +151,9 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
         if (inited.current) {
             return;
         }
-        inited.current = true;
+        if (!isIdlePage) {
+            inited.current = true;
+        }
 
         let detach: UnlistenFn;
         attachConsole().then((d) => {
@@ -360,11 +368,14 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
 
             if (isVideoRecordPage) {
                 defaultListener.push({
-                    event: 'close-video-record-window',
+                    event: 'change-video-record-state',
                     callback: async () => {},
                 });
+            }
+
+            if (isIdlePage) {
                 defaultListener.push({
-                    event: 'change-video-record-state',
+                    event: 'hot-load-page-route-push',
                     callback: async () => {},
                 });
             }
@@ -429,6 +440,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
         message,
         releaseOcrSessionAction,
         refreshPluginStatusThrottle,
+        isIdlePage,
     ]);
 
     const eventListenerContextValue = useMemo(() => {

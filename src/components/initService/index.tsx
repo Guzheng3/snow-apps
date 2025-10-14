@@ -4,6 +4,7 @@ import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
 import { initUiElements } from '@/commands';
 import { autoStartDisable, autoStartEnable, setEnableProxy, setRunLog } from '@/commands/core';
 import { ocrInit } from '@/commands/ocr';
+import { hotLoadPageInit } from '@/commands/hotLoadPage';
 import { videoRecordInit } from '@/commands/videoRecord';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import {
@@ -27,6 +28,7 @@ export const InitService = () => {
     const hasInitAutoStart = useRef(false);
     const hasInitEnableProxy = useRef(false);
     const hasInitRunLog = useRef(false);
+    const hasInitHotLoadPage = useRef(false);
 
     const [appSettings, setAppSettings] = useState<AppSettingsData | undefined>(undefined);
     const [prevAppSettings, setPrevAppSettings] = useState<AppSettingsData | undefined>(undefined);
@@ -102,6 +104,17 @@ export const InitService = () => {
             hasInitRunLog.current = true;
 
             setRunLog(appSettings[AppSettingsGroup.SystemCommon].runLog);
+        }
+
+        if (
+            !hasInitHotLoadPage.current ||
+            (prevAppSettings &&
+                appSettings[AppSettingsGroup.SystemCore].hotLoadPageCount !==
+                    prevAppSettings[AppSettingsGroup.SystemCore].hotLoadPageCount)
+        ) {
+            hasInitHotLoadPage.current = true;
+
+            hotLoadPageInit(appSettings[AppSettingsGroup.SystemCore].hotLoadPageCount);
         }
     }, [appSettings, clearCaptureHistory, pluginConfigRef, isReadyStatus, prevAppSettings]);
 

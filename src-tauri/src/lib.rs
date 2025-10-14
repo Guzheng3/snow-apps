@@ -1,5 +1,7 @@
 pub mod core;
 pub mod file;
+pub mod hot_load_page;
+pub mod http_services;
 pub mod listen_key;
 pub mod ocr;
 pub mod plugin;
@@ -7,9 +9,9 @@ pub mod screenshot;
 pub mod scroll_screenshot;
 pub mod video_record;
 pub mod webview;
-pub mod http_services;
 
 use snow_shot_app_services::listen_mouse_service;
+use snow_shot_tauri_commands_core::{FullScreenDrawWindowLabels, VideoRecordWindowLabels};
 use std::sync::Arc;
 use tauri::Emitter;
 use tokio::sync::Mutex;
@@ -22,6 +24,7 @@ use snow_shot_app_scroll_screenshot_service::scroll_screenshot_image_service;
 use snow_shot_app_scroll_screenshot_service::scroll_screenshot_service;
 use snow_shot_app_services::file_cache_service;
 use snow_shot_app_services::free_drag_window_service;
+use snow_shot_app_services::hot_load_page_service;
 use snow_shot_app_services::listen_key_service;
 use snow_shot_app_services::ocr_service::OcrService;
 use snow_shot_app_services::video_record_service;
@@ -36,7 +39,7 @@ pub static PROFILER: std::sync::LazyLock<Mutex<Option<dhat::Profiler>>> =
 pub fn run() {
     let ocr_instance = Mutex::new(OcrService::new());
     let video_record_service = Mutex::new(video_record_service::VideoRecordService::new());
-
+    let hot_load_page_service = Arc::new(hot_load_page_service::HotLoadPageService::new());
     let enigo_instance = Mutex::new(EnigoManager::new());
 
     let ui_elements = Mutex::new(UIElements::new());
@@ -61,7 +64,8 @@ pub fn run() {
 
     let plugin_service = Arc::new(plugin_service::PluginService::new());
 
-    let full_screen_draw_window_id = Mutex::new(0);
+    let full_screen_draw_window_labels = Mutex::new(Option::<FullScreenDrawWindowLabels>::None);
+    let video_record_window_label = Mutex::new(Option::<VideoRecordWindowLabels>::None);
 
     let support_webview_shared_buffer = Mutex::new(false);
 
@@ -190,8 +194,10 @@ pub fn run() {
         .manage(file_cache_service)
         .manage(enable_run_log_clone)
         .manage(plugin_service)
-        .manage(full_screen_draw_window_id)
+        .manage(full_screen_draw_window_labels)
         .manage(support_webview_shared_buffer)
+        .manage(hot_load_page_service)
+        .manage(video_record_window_label)
         .invoke_handler(tauri::generate_handler![
             screenshot::capture_current_monitor,
             screenshot::capture_all_monitors,
@@ -233,6 +239,7 @@ pub fn run() {
             core::get_monitors_bounding_box,
             core::send_new_version_notification,
             core::create_video_record_window,
+            core::close_video_record_window,
             core::has_video_record_window,
             core::set_current_window_always_on_top,
             core::auto_start_enable,
@@ -275,6 +282,8 @@ pub fn run() {
             webview::create_webview_shared_buffer,
             webview::set_support_webview_shared_buffer,
             http_services::upload_to_s3,
+            hot_load_page::hot_load_page_init,
+            hot_load_page::hot_load_page_add_page,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {

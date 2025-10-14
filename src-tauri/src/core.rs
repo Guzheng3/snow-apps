@@ -1,6 +1,8 @@
 use snow_shot_app_shared::{ElementRect, EnigoManager};
-use snow_shot_tauri_commands_core::MonitorsBoundingBox;
-use std::path::PathBuf;
+use snow_shot_tauri_commands_core::{
+    FullScreenDrawWindowLabels, MonitorsBoundingBox, VideoRecordWindowLabels,
+};
+use std::{path::PathBuf, sync::Arc};
 use tauri::{Manager, command, ipc::Response};
 use tauri_plugin_autostart::ManagerExt;
 use tokio::sync::Mutex;
@@ -53,9 +55,18 @@ pub async fn click_through(window: tauri::Window) -> Result<(), ()> {
 #[command]
 pub async fn create_fixed_content_window(
     app: tauri::AppHandle,
+    hot_load_page_service: tauri::State<
+        '_,
+        Arc<snow_shot_app_services::hot_load_page_service::HotLoadPageService>,
+    >,
     scroll_screenshot: bool,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::create_fixed_content_window(app, scroll_screenshot).await
+    snow_shot_tauri_commands_core::create_fixed_content_window(
+        app,
+        hot_load_page_service,
+        scroll_screenshot,
+    )
+    .await
 }
 
 #[command]
@@ -73,19 +84,30 @@ pub async fn read_image_from_clipboard(handle: tauri::AppHandle) -> Response {
 #[command]
 pub async fn create_full_screen_draw_window(
     app: tauri::AppHandle,
-    full_screen_draw_window_id: tauri::State<'_, Mutex<i32>>,
+    full_screen_draw_window_labels: tauri::State<'_, Mutex<Option<FullScreenDrawWindowLabels>>>,
+    hot_load_page_service: tauri::State<
+        '_,
+        Arc<snow_shot_app_services::hot_load_page_service::HotLoadPageService>,
+    >,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::create_full_screen_draw_window(app, full_screen_draw_window_id)
-        .await
+    snow_shot_tauri_commands_core::create_full_screen_draw_window(
+        app,
+        full_screen_draw_window_labels,
+        hot_load_page_service,
+    )
+    .await
 }
 
 #[command]
 pub async fn close_full_screen_draw_window(
     app: tauri::AppHandle,
-    full_screen_draw_window_id: tauri::State<'_, Mutex<i32>>,
+    full_screen_draw_window_labels: tauri::State<'_, Mutex<Option<FullScreenDrawWindowLabels>>>,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::close_full_screen_draw_window(app, full_screen_draw_window_id)
-        .await
+    snow_shot_tauri_commands_core::close_full_screen_draw_window(
+        app,
+        full_screen_draw_window_labels,
+    )
+    .await
 }
 
 #[command]
@@ -113,19 +135,35 @@ pub async fn send_new_version_notification(title: String, body: String) {
 #[command]
 pub async fn create_video_record_window(
     app: tauri::AppHandle,
+    video_record_window_label: tauri::State<'_, Mutex<Option<VideoRecordWindowLabels>>>,
+    hot_load_page_service: tauri::State<
+        '_,
+        Arc<snow_shot_app_services::hot_load_page_service::HotLoadPageService>,
+    >,
     select_rect_min_x: i32,
     select_rect_min_y: i32,
     select_rect_max_x: i32,
     select_rect_max_y: i32,
-) {
+) -> Result<(), String> {
     snow_shot_tauri_commands_core::create_video_record_window(
         app,
+        video_record_window_label,
+        hot_load_page_service,
         select_rect_min_x,
         select_rect_min_y,
         select_rect_max_x,
         select_rect_max_y,
     )
-    .await
+    .await;
+    Ok(())
+}
+
+#[command]
+pub async fn close_video_record_window(
+    app: tauri::AppHandle,
+    video_record_window_label: tauri::State<'_, Mutex<Option<VideoRecordWindowLabels>>>,
+) -> Result<(), String> {
+    snow_shot_tauri_commands_core::close_video_record_window(app, video_record_window_label).await
 }
 
 #[command]
