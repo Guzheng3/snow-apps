@@ -207,11 +207,11 @@ export const ResizeModal: React.FC<{
                                           minX: currentSelectRect?.min_x ?? 0,
                                           minY: currentSelectRect?.min_y ?? 0,
                                           width:
-                                              currentSelectRect?.max_x ??
-                                              0 - (currentSelectRect?.min_x ?? 0),
+                                              (currentSelectRect?.max_x ?? 0) -
+                                              (currentSelectRect?.min_x ?? 0),
                                           height:
-                                              currentSelectRect?.max_y ??
-                                              0 - (currentSelectRect?.min_y ?? 0),
+                                              (currentSelectRect?.max_y ?? 0) -
+                                              (currentSelectRect?.min_y ?? 0),
                                           radius: defaultAppSettingsData[AppSettingsGroup.Cache]
                                               .selectRectRadius,
                                           shadowWidth:
@@ -283,7 +283,14 @@ export const ResizeModal: React.FC<{
         <ModalForm
             form={form}
             open={open}
-            onOpenChange={(value) => setOpen(value)}
+            onOpenChange={(value) => {
+                if (!value && enableAddPreset) {
+                    setQuickSet(null);
+                    return;
+                }
+
+                setOpen(value);
+            }}
             modalProps={{ centered: true }}
             width={500}
             title={<FormattedMessage id="draw.resizeModal" />}
@@ -431,11 +438,11 @@ export const ResizeModal: React.FC<{
                                     minX: currentSelectRect?.min_x ?? 0,
                                     minY: currentSelectRect?.min_y ?? 0,
                                     width:
-                                        currentSelectRect?.max_x ??
-                                        0 - (currentSelectRect?.min_x ?? 0),
+                                        (currentSelectRect?.max_x ?? 0) -
+                                        (currentSelectRect?.min_x ?? 0),
                                     height:
-                                        currentSelectRect?.max_y ??
-                                        0 - (currentSelectRect?.min_y ?? 0),
+                                        (currentSelectRect?.max_y ?? 0) -
+                                        (currentSelectRect?.min_y ?? 0),
                                     radius: defaultAppSettingsData[AppSettingsGroup.Cache]
                                         .selectRectRadius,
                                     shadowWidth:
