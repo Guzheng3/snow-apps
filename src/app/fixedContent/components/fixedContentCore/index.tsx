@@ -991,12 +991,12 @@ export const FixedContentCore: React.FC<{
             // 获取旋转前窗口的位置和大小，用于计算中心点
             const appWindow = appWindowRef.current;
             if (!appWindow) return;
-            
+
             const [oldWindowSize, oldWindowPosition] = await Promise.all([
                 appWindow.outerSize(),
                 appWindow.outerPosition(),
             ]);
-            
+
             // 计算旋转前窗口的中心点
             const centerX = oldWindowPosition.x + oldWindowSize.width / 2;
             const centerY = oldWindowPosition.y + oldWindowSize.height / 2;
@@ -1012,16 +1012,16 @@ export const FixedContentCore: React.FC<{
                 height: canvasPropsRef.current.width,
             };
             const currentWindowSize = getWindowPhysicalSize(scaleRef.current.x);
-            
+
             // 先设置新的窗口大小
             await appWindow.setSize(
                 new PhysicalSize(currentWindowSize.width, currentWindowSize.height),
             );
-            
+
             // 根据新的窗口大小和原中心点，计算新的窗口位置
             const newX = Math.round(centerX - currentWindowSize.width / 2);
             const newY = Math.round(centerY - currentWindowSize.height / 2);
-            
+
             // 设置新的窗口位置，保持中心点不变
             await appWindow.setPosition(new PhysicalPosition(newX, newY));
         },
@@ -1808,6 +1808,8 @@ export const FixedContentCore: React.FC<{
                                     },
                                 },
                             ),
+                            width: undefined,
+                            height: undefined,
                             zIndex: enableSelectText ? 1 : 'unset',
                             position: 'absolute',
                             backgroundColor: token.colorBgContainer,
@@ -1832,6 +1834,8 @@ export const FixedContentCore: React.FC<{
                                     },
                                 },
                             ),
+                            width: undefined,
+                            height: undefined,
                             zIndex: enableSelectText ? 1 : 'unset',
                             position: 'absolute',
                         }}
