@@ -75,21 +75,32 @@ type BubbleDataType = AntdBubbleDataType & {
 const getMessageContent = (msg: ChatMessage | BubbleDataType, ignoreReasoningContent = false) => {
     const message = msg as ChatMessage;
 
-    const content =
-        typeof message.content === 'string'
-            ? message.content
-            : `${
-                  !ignoreReasoningContent && message.content.reasoning_content
-                      ? `${message.content.reasoning_content
-                            .split('\n')
-                            .map((line) => {
-                                return `> ${line}`;
-                            })
-                            .join('\n')}\n\n`
-                      : ''
-              }${message.content.content}`;
+    if (!message.content) {
+        return '';
+    }
 
-    return content;
+    if (typeof message.content === 'string') {
+        return message.content;
+    }
+
+    if (
+        typeof message.content === 'object' &&
+        'reasoning_content' in message.content &&
+        'content' in message.content
+    ) {
+        return `${
+            !ignoreReasoningContent && message.content.reasoning_content
+                ? `${message.content.reasoning_content
+                      .split('\n')
+                      .map((line) => {
+                          return `> ${line}`;
+                      })
+                      .join('\n')}\n\n`
+                : ''
+        }${message.content.content}`;
+    }
+
+    return '';
 };
 
 const CodeCard: React.FC<{
@@ -531,11 +542,17 @@ const Chat = () => {
                 };
             }
 
-            const messageContent = (originMessage?.content ?? {
-                reasoning_content: '',
-                content: '',
-                response_error: false,
-            }) as ChatMessage['content'];
+            const messageContent = (
+                originMessage?.content
+                    ? {
+                          ...originMessage.content,
+                      }
+                    : {
+                          reasoning_content: '',
+                          content: '',
+                          response_error: false,
+                      }
+            ) as ChatMessage['content'];
             if (typeof messageContent === 'string') {
                 throw new Error('messageContent is string');
             }
@@ -578,7 +595,12 @@ const Chat = () => {
                 role: 'assistant',
             };
 
-            return newestMessage.current;
+            return {
+                content: {
+                    ...messageContent,
+                },
+                role: 'assistant',
+            };
         },
         resolveAbortController: (controller) => {
             abortController.current = controller;
@@ -765,33 +787,39 @@ const Chat = () => {
                 fontSize: '2em',
             },
         };
-        const list = messages.map((i): BubbleDataType => {
-            const content = getMessageContent(i.message);
+        const list = messages
+            .map((i): BubbleDataType | undefined => {
+                const content = getMessageContent(i.message);
 
-            return {
-                role: i.message.role,
-                placement: i.message.role === 'assistant' ? 'start' : 'end',
-                content,
-                classNames: {
-                    content: i.status === 'loading' ? 'loadingMessage' : '',
-                },
-                variant: i.message.role === 'assistant' ? 'borderless' : 'filled',
-                messageRender:
-                    i.message.role === 'assistant'
-                        ? () => {
-                              return (
-                                  <MarkdownContent
-                                      darkMode={currentTheme === AppSettingsTheme.Dark}
-                                      content={content}
-                                      clipboardContent={content}
-                                  />
-                              );
-                          }
-                        : undefined,
-                avatar: i.message.role === 'assistant' ? botAvatar : undefined,
-                // typing: i.status === 'loading' ? { step: 2, interval: 50 } : false,
-            };
-        });
+                if (!content) {
+                    return undefined;
+                }
+
+                return {
+                    role: i.message.role,
+                    placement: i.message.role === 'assistant' ? 'start' : 'end',
+                    content,
+                    classNames: {
+                        content: i.status === 'loading' ? 'loadingMessage' : '',
+                    },
+                    variant: i.message.role === 'assistant' ? 'borderless' : 'filled',
+                    messageRender:
+                        i.message.role === 'assistant'
+                            ? () => {
+                                  return (
+                                      <MarkdownContent
+                                          darkMode={currentTheme === AppSettingsTheme.Dark}
+                                          content={content}
+                                          clipboardContent={content}
+                                      />
+                                  );
+                              }
+                            : undefined,
+                    avatar: i.message.role === 'assistant' ? botAvatar : undefined,
+                    // typing: i.status === 'loading' ? { step: 2, interval: 50 } : false,
+                };
+            })
+            .filter((i) => i !== undefined);
 
         if (loading && last(list)?.role !== 'assistant') {
             list.push({
