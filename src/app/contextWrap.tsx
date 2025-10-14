@@ -115,6 +115,19 @@ export enum CloudSaveUrlFormat {
     Markdown = 'markdown',
 }
 
+export type SelectRectPreset = {
+    name: string;
+    selectParams: {
+        minX: number;
+        minY: number;
+        width: number;
+        height: number;
+        radius: number;
+        shadowWidth: number;
+        shadowColor: string;
+    };
+};
+
 export type AppSettingsData = {
     [AppSettingsGroup.Common]: {
         theme: AppSettingsTheme;
@@ -285,6 +298,8 @@ export type AppSettingsData = {
         ocrAfterAction: OcrDetectAfterAction;
         /** OCR 复制时复制文本 */
         ocrCopyText: boolean;
+        /** 选区预设 */
+        selectRectPresetList: SelectRectPreset[];
     };
     [AppSettingsGroup.FunctionOutput]: {
         /** 手动保存文件名格式 */
@@ -521,6 +536,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         saveFileFormat: ImageFormat.PNG,
         ocrAfterAction: OcrDetectAfterAction.None,
         ocrCopyText: true,
+        selectRectPresetList: [],
     },
     [AppSettingsGroup.SystemScrollScreenshot]: {
         tryRollback: true,
@@ -1462,6 +1478,10 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.fullScreenCopyToClipboard === 'boolean'
                             ? newSettings.fullScreenCopyToClipboard
                             : (prevSettings?.fullScreenCopyToClipboard ?? true),
+                    selectRectPresetList:
+                        typeof newSettings?.selectRectPresetList === 'object'
+                            ? newSettings.selectRectPresetList
+                            : (prevSettings?.selectRectPresetList ?? []),
                 };
             } else if (group === AppSettingsGroup.FunctionOutput) {
                 newSettings = newSettings as AppSettingsData[typeof group];

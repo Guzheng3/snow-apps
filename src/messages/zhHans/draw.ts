@@ -177,4 +177,11 @@ export const draw = {
     'draw.cloudSaveUrlFormat.origin': '原始链接',
     'draw.cloudSaveUrlFormat.markdown': 'Markdown 链接',
     'draw.blurFreeDrawTool': '滤镜绘制',
+    'draw.selectRectParams.quickSet': '快速设置',
+    'draw.selectRectParams.quickSet.selectRectSet': '选区设置',
+    'draw.selectRectParams.quickSet.previousSelectRect': '上一次选区',
+    'draw.selectRectParams.quickSet.currentSelectRect': '当前选区',
+    'draw.selectRectParams.quickSet.preset': '预设',
+    'draw.selectRectParams.quickSet.addPreset': '添加预设',
+    'draw.selectRectParams.quickSet.presetName': '预设名称',
 };
