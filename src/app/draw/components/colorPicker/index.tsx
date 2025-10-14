@@ -259,14 +259,23 @@ const ColorPickerCore: React.FC<{
     const previewCanvasCtxRef = useRef<CanvasRenderingContext2D | null>(null);
     const decoderWasmModuleArrayBufferRef = useRef<ArrayBuffer | null>(null);
     const pickerPositionRef = useRef<MousePosition>(new MousePosition(0, 0));
-    const updatePickerPosition = useCallback((x: number, y: number) => {
-        pickerPositionRef.current.mouseX = x;
-        pickerPositionRef.current.mouseY = y;
+    const updatePickerPosition = useCallback(
+        (x: number, y: number, dragPosition: { x: number; y: number } | undefined) => {
+            pickerPositionRef.current.mouseX = x;
+            pickerPositionRef.current.mouseY = y;
 
-        if (pickerPositionElementRef.current) {
-            pickerPositionElementRef.current.textContent = `X: ${x} Y: ${y}`;
-        }
-    }, []);
+            if (!pickerPositionElementRef.current) {
+                return;
+            }
+
+            if (dragPosition) {
+                pickerPositionElementRef.current.textContent = `X: ${dragPosition.x} Y: ${dragPosition.y}`;
+            } else {
+                pickerPositionElementRef.current.textContent = `X: ${x} Y: ${y}`;
+            }
+        },
+        [],
+    );
     const renderWorker = useMemo(() => {
         if (supportOffscreenCanvas()) {
             return new Worker(new URL('./workers/renderWorker.ts', import.meta.url));
@@ -467,7 +476,7 @@ const ColorPickerCore: React.FC<{
             // 计算和绘制错开 1 帧率
             if (dragPosition) {
                 // 将数据绘制到预览画布
-                updatePickerPosition(dragPosition.x, dragPosition.y);
+                updatePickerPosition(mouseX, mouseY, dragPosition);
                 updateImageDataPutImageRender(
                     dragPosition.x - halfPickerSize,
                     dragPosition.y - halfPickerSize,
@@ -475,7 +484,7 @@ const ColorPickerCore: React.FC<{
                     dragPosition.y,
                 );
             } else {
-                updatePickerPosition(mouseX, mouseY);
+                updatePickerPosition(mouseX, mouseY, undefined);
                 updateImageDataPutImageRender(
                     mouseX - halfPickerSize,
                     mouseY - halfPickerSize,
@@ -527,41 +536,47 @@ const ColorPickerCore: React.FC<{
         [contentScaleRef, textScaleFactorRef, updateOpacity],
     );
     const updateTransformRender = useCallbackRender(updateTransform);
+
+    const getDragPosition = useCallback(() => {
+        let dragPosition: { x: number; y: number } | undefined = undefined;
+        if (
+            selectLayerActionRef.current &&
+            selectLayerActionRef.current.getSelectState() === SelectState.Drag &&
+            (selectLayerActionRef.current.getDragMode() === DragMode.TopLeft ||
+                selectLayerActionRef.current?.getDragMode() === DragMode.TopRight ||
+                selectLayerActionRef.current.getDragMode() === DragMode.BottomLeft ||
+                selectLayerActionRef.current.getDragMode() === DragMode.BottomRight)
+        ) {
+            const selectRect = selectLayerActionRef.current.getSelectRect()!;
+            dragPosition = {
+                x: 0,
+                y: 0,
+            };
+            if (selectLayerActionRef.current.getDragMode() === DragMode.TopLeft) {
+                dragPosition.x = selectRect.min_x;
+                dragPosition.y = selectRect.min_y;
+            } else if (selectLayerActionRef.current.getDragMode() === DragMode.TopRight) {
+                dragPosition.x = selectRect.max_x;
+                dragPosition.y = selectRect.min_y;
+            } else if (selectLayerActionRef.current.getDragMode() === DragMode.BottomLeft) {
+                dragPosition.x = selectRect.min_x;
+                dragPosition.y = selectRect.max_y;
+            } else if (selectLayerActionRef.current.getDragMode() === DragMode.BottomRight) {
+                dragPosition.x = selectRect.max_x;
+                dragPosition.y = selectRect.max_y;
+            }
+        }
+        return dragPosition;
+    }, [selectLayerActionRef]);
+
     const update = useCallback(
         (mouseX: number, mouseY: number, physicalX?: number, physicalY?: number) => {
-            let dragPosition: { x: number; y: number } | undefined = undefined;
-            if (
-                selectLayerActionRef.current &&
-                selectLayerActionRef.current.getSelectState() === SelectState.Drag &&
-                (selectLayerActionRef.current.getDragMode() === DragMode.TopLeft ||
-                    selectLayerActionRef.current?.getDragMode() === DragMode.TopRight ||
-                    selectLayerActionRef.current.getDragMode() === DragMode.BottomLeft ||
-                    selectLayerActionRef.current.getDragMode() === DragMode.BottomRight)
-            ) {
-                const selectRect = selectLayerActionRef.current.getSelectRect()!;
-                dragPosition = {
-                    x: 0,
-                    y: 0,
-                };
-                if (selectLayerActionRef.current.getDragMode() === DragMode.TopLeft) {
-                    dragPosition.x = selectRect.min_x;
-                    dragPosition.y = selectRect.min_y;
-                } else if (selectLayerActionRef.current.getDragMode() === DragMode.TopRight) {
-                    dragPosition.x = selectRect.max_x;
-                    dragPosition.y = selectRect.min_y;
-                } else if (selectLayerActionRef.current.getDragMode() === DragMode.BottomLeft) {
-                    dragPosition.x = selectRect.min_x;
-                    dragPosition.y = selectRect.max_y;
-                } else if (selectLayerActionRef.current.getDragMode() === DragMode.BottomRight) {
-                    dragPosition.x = selectRect.max_x;
-                    dragPosition.y = selectRect.max_y;
-                }
-            }
+            const dragPosition = getDragPosition();
 
             updateTransformRender(mouseX, mouseY, dragPosition);
             updateImageRender(mouseX, mouseY, physicalX, physicalY, dragPosition);
         },
-        [selectLayerActionRef, updateImageRender, updateTransformRender],
+        [getDragPosition, updateImageRender, updateTransformRender],
     );
 
     const initedPreviewCanvasRef = useRef(false);
@@ -670,8 +685,10 @@ const ColorPickerCore: React.FC<{
                 return;
             }
 
-            let mouseX = pickerPositionRef.current.mouseX + offsetX;
-            let mouseY = pickerPositionRef.current.mouseY + offsetY;
+            let mouseX = 0;
+            let mouseY = 0;
+            mouseX = pickerPositionRef.current.mouseX + offsetX;
+            mouseY = pickerPositionRef.current.mouseY + offsetY;
 
             if (mouseX < 0) {
                 mouseX = 0;
@@ -710,8 +727,8 @@ const ColorPickerCore: React.FC<{
             }
 
             update(
-                mouseX / window.devicePixelRatio,
-                mouseY / window.devicePixelRatio,
+                Math.round(mouseX / window.devicePixelRatio),
+                Math.round(mouseY / window.devicePixelRatio),
                 mouseX,
                 mouseY,
             );
