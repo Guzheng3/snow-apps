@@ -787,51 +787,42 @@ const Chat = () => {
                 fontSize: '2em',
             },
         };
-        const list = messages
-            .map((i): BubbleDataType | undefined => {
-                const content = getMessageContent(i.message);
-
-                if (!content) {
-                    return undefined;
-                }
-
+        const list = messages.map((i): BubbleDataType => {
+            if (i.status === 'loading') {
                 return {
-                    role: i.message.role,
-                    placement: i.message.role === 'assistant' ? 'start' : 'end',
-                    content,
-                    classNames: {
-                        content: i.status === 'loading' ? 'loadingMessage' : '',
-                    },
-                    variant: i.message.role === 'assistant' ? 'borderless' : 'filled',
-                    messageRender:
-                        i.message.role === 'assistant'
-                            ? () => {
-                                  return (
-                                      <MarkdownContent
-                                          darkMode={currentTheme === AppSettingsTheme.Dark}
-                                          content={content}
-                                          clipboardContent={content}
-                                      />
-                                  );
-                              }
-                            : undefined,
-                    avatar: i.message.role === 'assistant' ? botAvatar : undefined,
-                    // typing: i.status === 'loading' ? { step: 2, interval: 50 } : false,
+                    loading: true,
+                    role: 'assistant',
+                    avatar: botAvatar,
+                    variant: 'borderless',
                 };
-            })
-            .filter((i) => i !== undefined);
+            }
 
-        if (loading && last(list)?.role !== 'assistant') {
-            list.push({
-                loading: true,
-                role: 'assistant',
-                avatar: botAvatar,
-                variant: 'borderless',
-            });
-        }
+            const content = getMessageContent(i.message);
+
+            return {
+                role: i.message.role,
+                placement: i.message.role === 'assistant' ? 'start' : 'end',
+                content,
+                variant: i.message.role === 'assistant' ? 'borderless' : 'filled',
+                messageRender:
+                    i.message.role === 'assistant'
+                        ? () => {
+                              return (
+                                  <MarkdownContent
+                                      darkMode={currentTheme === AppSettingsTheme.Dark}
+                                      content={content}
+                                      clipboardContent={content}
+                                  />
+                              );
+                          }
+                        : undefined,
+                avatar: i.message.role === 'assistant' ? botAvatar : undefined,
+                // typing: i.status === 'loading' ? { step: 2, interval: 50 } : false,
+            };
+        });
 
         return list;
-    }, [currentTheme, loading, messages, token.colorPrimary]);
+    }, [currentTheme, messages, token.colorPrimary]);
 
     useEffect(() => {
         if (chatHistoryStoreRef.current) {
