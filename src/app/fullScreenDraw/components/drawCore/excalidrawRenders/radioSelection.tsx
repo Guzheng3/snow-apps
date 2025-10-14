@@ -288,6 +288,10 @@ export const FilterTypeRadioSelection = (
                 value: 'ascii',
             },
             {
+                label: intl.formatMessage({ id: `draw.filterType.negative` }),
+                value: 'negative',
+            },
+            {
                 label: intl.formatMessage({ id: `draw.filterType.crossHatch` }),
                 value: 'crossHatch',
             },

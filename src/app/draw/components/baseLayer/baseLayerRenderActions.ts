@@ -422,6 +422,13 @@ export const renderUpdateBlurSpriteAction = (
             } else {
                 blurSprite.spriteBlurFliter.noise = noise;
             }
+        } else if (blurProps.filterType === 'negative') {
+            if (!(blurSprite.spriteBlurFliter instanceof PIXI.ColorMatrixFilter)) {
+                const negativeFilter = new PIXI.ColorMatrixFilter();
+                negativeFilter.negative(false);
+                blurSprite.spriteBlurFliter = negativeFilter;
+                blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
+            }
         } else {
             const strength = Math.max(1, (blurProps.blur / 100) * 42);
             if (!(blurSprite.spriteBlurFliter instanceof PIXI.BlurFilter)) {
