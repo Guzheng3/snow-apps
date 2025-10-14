@@ -83,7 +83,7 @@ const BlurGroupToolCore: React.FC<{
     const blurFreeDrawButton = useMemo(() => {
         return (
             <Button
-                icon={<FilterFreeDrawIcon style={{ fontSize: '1.08em' }} />}
+                icon={<FilterFreeDrawIcon style={{ fontSize: '1em' }} />}
                 title={intl.formatMessage({ id: 'draw.blurFreeDrawTool' })}
                 type={getButtonTypeByState(drawState === DrawState.BlurFreeDraw)}
                 key="blurFreeDraw"

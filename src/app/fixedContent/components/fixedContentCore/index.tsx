@@ -234,6 +234,33 @@ export const FixedContentCore: React.FC<{
             originHtmlContentRef.current = htmlContent;
             const parser = new DOMParser();
             const contentHtmlDom = parser.parseFromString(htmlContent, 'text/html');
+
+            // 移除危险标签
+            contentHtmlDom
+                .querySelectorAll('iframe,object,embed,script,fencedframe')
+                .forEach((el) => el.remove());
+
+            // 移除所有危险的事件处理器属性和危险链接
+            contentHtmlDom.querySelectorAll('*').forEach((el) => {
+                // 移除所有 on* 事件属性
+                Array.from(el.attributes).forEach((attr) => {
+                    if (attr.name.toLowerCase().startsWith('on')) {
+                        el.removeAttribute(attr.name);
+                    }
+                });
+
+                // 移除危险的 href 和 src 属性中的 javascript: 和 data: 协议
+                ['href', 'src', 'action', 'formaction'].forEach((attrName) => {
+                    const attrValue = el.getAttribute(attrName);
+                    if (attrValue) {
+                        const lowerValue = attrValue.toLowerCase().trim();
+                        if (lowerValue.startsWith('javascript:')) {
+                            el.removeAttribute(attrName);
+                        }
+                    }
+                });
+            });
+
             htmlContent = contentHtmlDom.body.innerHTML;
             setFixedContentType(FixedContentType.Html);
 
