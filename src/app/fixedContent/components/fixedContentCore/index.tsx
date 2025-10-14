@@ -38,7 +38,6 @@ import {
     startFreeDrag,
 } from '@/commands/core';
 import { setDrawWindowStyle } from '@/commands/screenshot';
-import * as htmlToImage from 'html-to-image';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import {
     writeHtmlToClipboard,
@@ -66,7 +65,8 @@ import { HandleFocusMode } from './components/handleFocusMode';
 import Color from 'color';
 import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
-import { getHtmlContent } from './extra';
+import { getHtmlContent, getStyleProps } from './extra';
+import { renderToCanvasAction } from './actions';
 
 export type FixedContentInitDrawParams = {
     captureBoundingBoxInfo: CaptureBoundingBoxInfo;
@@ -141,6 +141,12 @@ export enum FixedContentScrollAction {
     RotateY = 'rotateY',
     RotateZ = 'rotateZ',
 }
+
+export type FixedContentProcessImageConfig = {
+    angle: number;
+    horizontalFlip: boolean;
+    verticalFlip: boolean;
+};
 
 export const FixedContentCore: React.FC<{
     actionRef: React.RefObject<FixedContentActionType | undefined>;
@@ -370,59 +376,33 @@ export const FixedContentCore: React.FC<{
         [setFixedContentType],
     );
 
+    const drawActionRef = useRef<FixedContentCoreDrawActionType | undefined>(undefined);
+    const [processImageConfig, setProcessImageConfig, processImageConfigRef] =
+        useStateRef<FixedContentProcessImageConfig>({
+            angle: 0,
+            horizontalFlip: false,
+            verticalFlip: false,
+        });
     const renderToCanvas = useCallback(
         async (ignoreDrawCanvas: boolean = false) => {
-            let canvas: HTMLCanvasElement | undefined = undefined;
-
-            if (
-                fixedContentTypeRef.current === FixedContentType.DrawCanvas ||
-                fixedContentTypeRef.current === FixedContentType.Image
-            ) {
-                if (!imageRef.current) {
-                    appError('[renderToCanvas] imageRef.current is undefined');
-                    return;
-                }
-
-                canvas = document.createElement('canvas');
-                canvas.width = imageRef.current.naturalWidth;
-                canvas.height = imageRef.current.naturalHeight;
-
-                const context = canvas.getContext('2d');
-                if (!context) {
-                    return;
-                }
-
-                context.drawImage(imageRef.current, 0, 0);
-            } else {
-                let htmlElement: HTMLElement | undefined | null;
-                if (fixedContentTypeRef.current === FixedContentType.Html) {
-                    htmlElement = htmlContentContainerRef.current?.contentWindow?.document.body;
-                } else if (fixedContentTypeRef.current === FixedContentType.Text) {
-                    htmlElement = textContentContainerRef.current;
-                }
-
-                if (!htmlElement) {
-                    appError('[renderToCanvas] htmlElement is undefined');
-                    return;
-                }
-
-                canvas = await htmlToImage.toCanvas(htmlElement);
-            }
-
-            const context = canvas.getContext('2d');
-            if (!context) {
-                appError('[renderToCanvas] context is undefined');
-                return;
-            }
-
-            const drawCanvas = drawActionRef.current?.getCanvas();
-            if (drawCanvas && !ignoreDrawCanvas) {
-                context.drawImage(drawCanvas, 0, 0, canvas.width, canvas.height);
-            }
-
-            return canvas;
+            return renderToCanvasAction(
+                fixedContentTypeRef,
+                imageRef,
+                htmlContentContainerRef,
+                textContentContainerRef,
+                drawActionRef,
+                processImageConfigRef,
+                ignoreDrawCanvas,
+            );
         },
-        [fixedContentTypeRef],
+        [
+            fixedContentTypeRef,
+            imageRef,
+            htmlContentContainerRef,
+            textContentContainerRef,
+            drawActionRef,
+            processImageConfigRef,
+        ],
     );
 
     const renderToBlob = useCallback(
@@ -996,6 +976,43 @@ export const FixedContentCore: React.FC<{
     );
     const scaleWindowRender = useCallbackRender(scaleWindow);
 
+    const rotateImage = useCallback(
+        async (angle: number) => {
+            // 将角度映射到 0 到 3 之间
+            let currentAngle = (processImageConfigRef.current.angle + angle) % 4;
+            if (currentAngle < 0) {
+                currentAngle += 4;
+            }
+            setProcessImageConfig((prev) => ({
+                ...prev,
+                angle: currentAngle,
+            }));
+
+            // 如果角度为 1 或 3，则需要交换宽高，刚好和上一次旋转的结果相反
+            setWindowSize({
+                width: windowSizeRef.current.height,
+                height: windowSizeRef.current.width,
+            });
+            canvasPropsRef.current = {
+                ...canvasPropsRef.current,
+                width: canvasPropsRef.current.height,
+                height: canvasPropsRef.current.width,
+            };
+            const currentWindowSize = getWindowPhysicalSize(scaleRef.current.x);
+            appWindowRef.current?.setSize(
+                new PhysicalSize(currentWindowSize.width, currentWindowSize.height),
+            );
+        },
+        [
+            getWindowPhysicalSize,
+            processImageConfigRef,
+            scaleRef,
+            setProcessImageConfig,
+            setWindowSize,
+            windowSizeRef,
+        ],
+    );
+
     const initMenuCore = useCallback(async () => {
         if (!isReadyStatus) {
             return;
@@ -1061,6 +1078,49 @@ export const FixedContentCore: React.FC<{
                     disabled: enableSelectText,
                     accelerator: formatKey(hotkeys?.[KeyEventKey.FixedContentEnableDraw]?.hotKey),
                     action: switchDraw,
+                },
+                {
+                    id: `${appWindow.label}-processImageTool`,
+                    text: intl.formatMessage({ id: 'draw.processImage' }),
+                    items: [
+                        {
+                            id: `${appWindow.label}-processImageToolRotateLeft`,
+                            text: `${intl.formatMessage({ id: 'draw.processImage.rotateLeft' })} 🔄`,
+                            action: () => {
+                                rotateImage(-1);
+                            },
+                        },
+                        {
+                            id: `${appWindow.label}-processImageToolRotateRight`,
+                            text: `${intl.formatMessage({ id: 'draw.processImage.rotateRight' })} 🔃`,
+                            action: () => {
+                                rotateImage(1);
+                            },
+                        },
+                        {
+                            id: `${appWindow.label}-processImageToolHorizontalFlip`,
+                            text: `${intl.formatMessage({ id: 'draw.processImage.horizontalFlip' })} ↔️`,
+                            action: () => {
+                                setProcessImageConfig((prev) => ({
+                                    ...prev,
+                                    horizontalFlip: !prev.horizontalFlip,
+                                }));
+                            },
+                        },
+                        {
+                            id: `${appWindow.label}-processImageToolVerticalFlip`,
+                            text: `${intl.formatMessage({ id: 'draw.processImage.verticalFlip' })} ↕️`,
+                            action: () => {
+                                setProcessImageConfig((prev) => ({
+                                    ...prev,
+                                    verticalFlip: !prev.verticalFlip,
+                                }));
+                            },
+                        },
+                    ],
+                },
+                {
+                    item: 'Separator',
                 },
                 enableDraw
                     ? undefined
@@ -1258,27 +1318,29 @@ export const FixedContentCore: React.FC<{
         });
         rightClickMenu = menu;
     }, [
-        changeContentOpacity,
-        copyRawToClipboard,
-        copyToClipboard,
-        disabled,
-        enableDraw,
-        enableSelectText,
-        fixedContentType,
-        hotkeys,
-        intl,
-        isAlwaysOnTop,
         isReadyStatus,
-        isThumbnail,
+        disabled,
+        intl,
+        hotkeys,
+        copyToClipboard,
+        copyRawToClipboard,
         saveToFile,
-        scaleRef,
-        scaleWindow,
-        scrollAction,
-        setscrollAction,
-        switchAlwaysOnTop,
-        switchDraw,
+        fixedContentType,
+        enableSelectText,
         switchSelectText,
+        enableDraw,
+        switchDraw,
+        isThumbnail,
+        isAlwaysOnTop,
+        switchAlwaysOnTop,
+        scrollAction,
+        rotateImage,
+        setProcessImageConfig,
         switchThumbnail,
+        changeContentOpacity,
+        scaleWindow,
+        scaleRef,
+        setscrollAction,
     ]);
     const initMenu = useCallbackRender(initMenuCore);
 
@@ -1575,7 +1637,6 @@ export const FixedContentCore: React.FC<{
         dragRegionMouseDownMousePositionRef.current = undefined;
     }, []);
 
-    const drawActionRef = useRef<FixedContentCoreDrawActionType | undefined>(undefined);
     const updateDrawWindowSize = useCallback(async () => {
         if (!appWindowRef.current || !drawActionRef.current) {
             return;
@@ -1657,6 +1718,13 @@ export const FixedContentCore: React.FC<{
                     onMouseDown={onDragRegionMouseDown}
                     onMouseMove={onDragRegionMouseMove}
                     onMouseUp={onDragRegionMouseUp}
+                    style={{
+                        ...getStyleProps(
+                            (windowSize.width * scale.x) / 100 / contentScaleFactor,
+                            (windowSize.height * scale.y) / 100 / contentScaleFactor,
+                            processImageConfig,
+                        ),
+                    }}
                 />
 
                 {(canvasImageUrl || imageUrl) && (
@@ -1667,8 +1735,11 @@ export const FixedContentCore: React.FC<{
                             ref={imageRef}
                             style={{
                                 objectFit: 'contain',
-                                width: `${(windowSize.width * scale.x) / 100 / contentScaleFactor}px`,
-                                height: `${(windowSize.height * scale.y) / 100 / contentScaleFactor}px`,
+                                ...getStyleProps(
+                                    (windowSize.width * scale.x) / 100 / contentScaleFactor,
+                                    (windowSize.height * scale.y) / 100 / contentScaleFactor,
+                                    processImageConfig,
+                                ),
                             }}
                             crossOrigin="anonymous"
                             alt="fixed-canvas-image"
@@ -1704,8 +1775,17 @@ export const FixedContentCore: React.FC<{
                 {htmlContent && (
                     <iframe
                         style={{
-                            transformOrigin: 'top left',
-                            transform: `scale(${scale.x / 100 / contentScaleFactor}, ${scale.y / 100 / contentScaleFactor})`,
+                            ...getStyleProps(
+                                (windowSize.width * scale.x) / 100 / contentScaleFactor,
+                                (windowSize.height * scale.y) / 100 / contentScaleFactor,
+                                processImageConfig,
+                                {
+                                    scale: {
+                                        x: scale.x / 100 / contentScaleFactor,
+                                        y: scale.y / 100 / contentScaleFactor,
+                                    },
+                                },
+                            ),
                             zIndex: enableSelectText ? 1 : 'unset',
                             position: 'absolute',
                             backgroundColor: token.colorBgContainer,
@@ -1719,8 +1799,17 @@ export const FixedContentCore: React.FC<{
                 {textContent && (
                     <div
                         style={{
-                            transformOrigin: 'top left',
-                            transform: `scale(${scale.x / 100 / contentScaleFactor}, ${scale.y / 100 / contentScaleFactor})`,
+                            ...getStyleProps(
+                                (windowSize.width * scale.x) / 100 / contentScaleFactor,
+                                (windowSize.height * scale.y) / 100 / contentScaleFactor,
+                                processImageConfig,
+                                {
+                                    scale: {
+                                        x: scale.x / 100 / contentScaleFactor,
+                                        y: scale.y / 100 / contentScaleFactor,
+                                    },
+                                },
+                            ),
                             zIndex: enableSelectText ? 1 : 'unset',
                             position: 'absolute',
                         }}

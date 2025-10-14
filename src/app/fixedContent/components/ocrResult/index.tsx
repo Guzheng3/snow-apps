@@ -79,6 +79,7 @@ export const OcrResult: React.FC<{
     onMouseDown?: (event: React.MouseEvent<HTMLDivElement>) => void;
     onMouseMove?: (event: React.MouseEvent<HTMLDivElement>) => void;
     onMouseUp?: (event: React.MouseEvent<HTMLDivElement>) => void;
+    style?: React.CSSProperties;
 }> = ({
     zIndex,
     actionRef,
@@ -90,6 +91,7 @@ export const OcrResult: React.FC<{
     onMouseDown,
     onMouseMove,
     onMouseUp,
+    style,
 }) => {
     const intl = useIntl();
     const { token } = theme.useToken();
@@ -616,6 +618,7 @@ export const OcrResult: React.FC<{
                     left: 0,
                     width: '100%',
                     height: '100%',
+                    ...style,
                 }}
                 className="ocr-result-container"
                 ref={containerElementRef}

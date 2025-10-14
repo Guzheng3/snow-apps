@@ -1,4 +1,5 @@
 import { GlobalToken } from 'antd';
+import { FixedContentProcessImageConfig } from '.';
 
 export const getHtmlContent = (token: GlobalToken, bodyContent: string) => {
     return `
@@ -155,4 +156,90 @@ export const getHtmlContent = (token: GlobalToken, bodyContent: string) => {
                     </body>
                 </html>
     `;
+};
+
+/**
+ * 是否需要交换宽高
+ * @param angle 角度
+ * @returns 是否需要交换宽高
+ */
+export const needSwapWidthAndHeight = (angle: number) => {
+    return angle === 1 || angle === 3;
+};
+
+export const getStyleProps = (
+    width: number,
+    height: number,
+    processImageConfig: FixedContentProcessImageConfig,
+    options?: {
+        scale?: {
+            x: number;
+            y: number;
+        };
+    },
+): React.CSSProperties => {
+    if (needSwapWidthAndHeight(processImageConfig.angle)) {
+        const temp = width;
+        width = height;
+        height = temp;
+    }
+
+    return {
+        width: `${width}px`,
+        height: `${height}px`,
+        ...getTransformProps(width, height, processImageConfig, options),
+    };
+};
+
+export const getTransformProps = (
+    width: number,
+    height: number,
+    processImageConfig: FixedContentProcessImageConfig,
+    options?: {
+        scale?: {
+            x: number;
+            y: number;
+        };
+    },
+): React.CSSProperties => {
+    // 角度相关的位移+旋转（保持与现有逻辑一致：先写 translate 再写 rotate，依赖 CSS 右到左的应用顺序）
+    let angleTransformValue = '';
+    switch (processImageConfig.angle) {
+        case 1:
+            angleTransformValue = `translateX(${height}px) translateY(${0}px) rotateZ(${90}deg)`;
+            break;
+        case 2:
+            angleTransformValue = `translateX(${width}px) translateY(${height}px) rotateZ(${180}deg)`;
+            break;
+        case 3:
+            angleTransformValue = `translateX(${0}px) translateY(${width}px) rotateZ(${270}deg)`;
+            break;
+    }
+
+    // 计算翻转的 scale 值
+    const flipScaleX = processImageConfig.horizontalFlip ? -1 : 1;
+    const flipScaleY = processImageConfig.verticalFlip ? -1 : 1;
+
+    // 合并翻转和缩放（外部缩放 options 与翻转叠加）
+    const finalScaleX = (options?.scale?.x || 1) * flipScaleX;
+    const finalScaleY = (options?.scale?.y || 1) * flipScaleY;
+
+    // 翻转补偿所用尺寸：此处直接使用传入的 width/height（已在 getStyleProps 中根据角度交换过）
+    const currentWidth = width;
+    const currentHeight = height;
+
+    // 翻转补偿：在 scale 之前对坐标系做正向平移，避免内容被镜像到负半轴
+    // 组合顺序（右到左生效）：angleTransform -> flipTranslate -> scale
+    let flipTranslateValue = '';
+    if (processImageConfig.horizontalFlip) {
+        flipTranslateValue += ` translateX(${currentWidth}px)`;
+    }
+    if (processImageConfig.verticalFlip) {
+        flipTranslateValue += ` translateY(${currentHeight}px)`;
+    }
+
+    return {
+        transform: `${angleTransformValue}${flipTranslateValue} scale(${finalScaleX}, ${finalScaleY})`,
+        transformOrigin: 'top left',
+    };
 };

@@ -148,6 +148,7 @@ export const draw = {
     'draw.color': '颜色',
     'draw.filterType.blur': '模糊',
     'draw.filterType.pixelate': '像素化',
+    'draw.filterType.negative': '反色',
     'draw.filterType.ascii': 'ASCII 字符',
     'draw.filterType.crossHatch': '交叉线',
     'draw.filterType.crt': 'CRT 电视',
@@ -184,4 +185,9 @@ export const draw = {
     'draw.selectRectParams.quickSet.preset': '预设',
     'draw.selectRectParams.quickSet.addPreset': '添加预设',
     'draw.selectRectParams.quickSet.presetName': '预设名称',
+    'draw.processImage': '处理图像',
+    'draw.processImage.rotateRight': '向右旋转',
+    'draw.processImage.rotateLeft': '向左旋转',
+    'draw.processImage.horizontalFlip': '水平翻转',
+    'draw.processImage.verticalFlip': '垂直翻转',
 };

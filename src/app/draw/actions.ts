@@ -175,28 +175,39 @@ export const saveToFile = async (
 };
 
 export const fixedToScreen = async (
-    canvas: HTMLCanvasElement,
     captureBoundingBoxInfo: CaptureBoundingBoxInfo,
     appWindow: AppWindow,
     layerContainerElement: HTMLDivElement,
     selectLayerAction: SelectLayerActionType,
     fixedContentAction: FixedContentActionType,
+    drawLayerAction: DrawLayerActionType,
+    drawCacheLayerAction: DrawCacheLayerActionType,
     setCaptureStep: (step: CaptureStep) => void,
     /** 已有的 OCR 结果 */
     ocrResult: AppOcrResult | undefined,
+    saveCaptureHistory: (canvas: HTMLCanvasElement) => void,
 ) => {
+    // 创建一个固定的图片
     const selectRectParams = selectLayerAction.getSelectRectParams();
     if (!selectRectParams) {
         return;
     }
 
+    layerContainerElement.style.opacity = '0';
+    layerContainerElement.style.width = '100%';
+    layerContainerElement.style.height = '100%';
+
+    const canvas = await getCanvas(selectRectParams, drawLayerAction, drawCacheLayerAction);
+    if (!canvas) {
+        return;
+    }
+
+    saveCaptureHistory(canvas);
+
     setCaptureStep(CaptureStep.Fixed);
     createDrawWindow();
 
     await Promise.all([appWindow.hide(), appWindow.setTitle('Snow Shot - Fixed Content')]);
-    layerContainerElement.style.opacity = '0';
-    layerContainerElement.style.width = '100%';
-    layerContainerElement.style.height = '100%';
 
     await setWindowRect(
         appWindow,

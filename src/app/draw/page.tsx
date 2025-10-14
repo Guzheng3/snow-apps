@@ -814,36 +814,27 @@ const DrawPageCore: React.FC<{
             return;
         }
 
-        // 创建一个固定的图片
-        const selectRectParams = selectLayerActionRef.current.getSelectRectParams();
-        const canvas = await getCanvas(
-            selectRectParams,
-            drawLayerActionRef.current,
-            drawCacheLayerActionRef.current,
-        );
-        if (!canvas) {
-            return;
-        }
-
-        saveCaptureHistory(
-            getAppSettings()[AppSettingsGroup.SystemScreenshot].historySaveEditResult
-                ? canvas
-                : undefined,
-            CaptureHistorySource.Fixed,
-        );
-
         await fixedToScreen(
-            canvas,
             captureBoundingBoxInfoRef.current,
             appWindowRef.current,
             layerContainerRef.current,
             selectLayerActionRef.current,
             fixedContentAction,
+            drawLayerActionRef.current,
+            drawCacheLayerActionRef.current,
             setCaptureStep,
             // 如果当前是 OCR 识别状态，则使用已有的 OCR 结果
             isOcrTool(getDrawState())
                 ? ocrBlocksActionRef.current?.getOcrResultAction()?.getOcrResult()
                 : undefined,
+            (canvas: HTMLCanvasElement) => {
+                saveCaptureHistory(
+                    getAppSettings()[AppSettingsGroup.SystemScreenshot].historySaveEditResult
+                        ? canvas
+                        : undefined,
+                    CaptureHistorySource.Fixed,
+                );
+            },
         );
 
         switchLayer(undefined, drawLayerActionRef.current, selectLayerActionRef.current);
