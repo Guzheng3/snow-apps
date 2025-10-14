@@ -20,6 +20,14 @@ export const getHtmlContent = (token: GlobalToken, bodyContent: string) => {
                     </style>
                     <script>
                         window.addEventListener('load', () => {
+                            window.parent.postMessage({
+                                type: 'bodySize',
+                                width: document.body.offsetWidth,
+                                height: document.body.offsetHeight,
+                                clientWidth: document.body.clientWidth,
+                                clientHeight: document.body.clientHeight,
+                            }, '*');
+
                             // 检测并应用主背景色
                             const colorMap = {};
                             let resultColor = "";
@@ -59,14 +67,6 @@ export const getHtmlContent = (token: GlobalToken, bodyContent: string) => {
                                 document.body.style.backgroundColor = resultColor;
                                 document.body.style.color = ""; // 重置为默认颜色
                             }
-                            
-                            window.parent.postMessage({
-                                type: 'bodySize',
-                                width: document.body.offsetWidth,
-                                height: document.body.offsetHeight,
-                                clientWidth: document.body.clientWidth,
-                                clientHeight: document.body.clientHeight,
-                            }, '*');
                         });
 
                         window.addEventListener('resize', () => {
