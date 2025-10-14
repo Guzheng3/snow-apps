@@ -1,3 +1,3 @@
-pub fn create_shared_buffer() {
-
+pub fn create_shared_buffer() -> Result<(), String> {
+    Ok(())
 }
