@@ -988,6 +988,19 @@ export const FixedContentCore: React.FC<{
                 angle: currentAngle,
             }));
 
+            // 获取旋转前窗口的位置和大小，用于计算中心点
+            const appWindow = appWindowRef.current;
+            if (!appWindow) return;
+            
+            const [oldWindowSize, oldWindowPosition] = await Promise.all([
+                appWindow.outerSize(),
+                appWindow.outerPosition(),
+            ]);
+            
+            // 计算旋转前窗口的中心点
+            const centerX = oldWindowPosition.x + oldWindowSize.width / 2;
+            const centerY = oldWindowPosition.y + oldWindowSize.height / 2;
+
             // 如果角度为 1 或 3，则需要交换宽高，刚好和上一次旋转的结果相反
             setWindowSize({
                 width: windowSizeRef.current.height,
@@ -999,9 +1012,18 @@ export const FixedContentCore: React.FC<{
                 height: canvasPropsRef.current.width,
             };
             const currentWindowSize = getWindowPhysicalSize(scaleRef.current.x);
-            appWindowRef.current?.setSize(
+            
+            // 先设置新的窗口大小
+            await appWindow.setSize(
                 new PhysicalSize(currentWindowSize.width, currentWindowSize.height),
             );
+            
+            // 根据新的窗口大小和原中心点，计算新的窗口位置
+            const newX = Math.round(centerX - currentWindowSize.width / 2);
+            const newY = Math.round(centerY - currentWindowSize.height / 2);
+            
+            // 设置新的窗口位置，保持中心点不变
+            await appWindow.setPosition(new PhysicalPosition(newX, newY));
         },
         [
             getWindowPhysicalSize,
