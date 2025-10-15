@@ -23,7 +23,7 @@ import {
     renderSwitchCaptureHistoryAction,
 } from './renderActions';
 import { RefType } from '../baseLayer/baseLayerRenderActions';
-import { ImageBuffer } from '@/commands';
+import { ImageBuffer } from '@/types/commands/screenshot';
 import { ImageSharedBufferData } from '../../tools';
 
 export const initPreviewCanvasAction = async (

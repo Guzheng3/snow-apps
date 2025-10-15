@@ -8,10 +8,10 @@ import {
 } from '@tauri-apps/plugin-notification';
 import { useIntl } from 'react-intl';
 import { sendNewVersionNotification } from '@/commands/core';
-import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { compare } from 'compare-versions';
-import { getPlatform } from '@/utils';
+import { getPlatform } from '@/utils/platform';
 import { appError } from '@/utils/log';
 
 const WEBSITE_URL = 'https://snowshot.top/';

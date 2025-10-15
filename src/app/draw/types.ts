@@ -1,7 +1,7 @@
 import React from 'react';
 import { DrawLayerActionType } from './components/drawLayer';
 import { SelectLayerActionType } from './components/selectLayer';
-import { ImageBuffer } from '@/commands';
+import { ImageBuffer } from '@/types/commands/screenshot';
 import { DrawToolbarActionType } from './components/drawToolbar';
 import { MousePosition } from '@/utils/mousePosition';
 import { DrawCacheLayerActionType } from './components/drawCacheLayer/extra';

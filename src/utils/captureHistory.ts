@@ -1,6 +1,6 @@
-import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
 import { CaptureHistoryItem, CaptureHistorySource, CaptureHistoryStore } from './appStore';
-import { ElementRect, ImageBuffer, ImageEncoder } from '@/commands';
+import { ElementRect, ImageBuffer, ImageEncoder } from '@/types/commands/screenshot';
 import { join as joinPath } from '@tauri-apps/api/path';
 import path from 'path';
 import { NonDeletedExcalidrawElement, Ordered } from '@mg-chao/excalidraw/element/types';
@@ -15,6 +15,8 @@ import {
     writeFile,
 } from '@/commands/file';
 import { retainDirFiles } from '@/commands/core';
+import { EncodeImageData } from '@/types/utils/captureHistory';
+import { HistoryValidDuration } from '@/types/appSettings';
 
 const captureHistoryImagesDir = 'captureHistoryImages';
 
@@ -33,21 +35,6 @@ export const getCaptureHistoryImageAbsPath = async (fileName: string) => {
     getCaptureHistoryImageAbsPathCache.set(fileName, path);
 
     return path;
-};
-
-const dayDuration = 24 * 60 * 60 * 1000;
-export enum HistoryValidDuration {
-    /** 用于测试，不对外暴露 */
-    Test = 1,
-    Day = dayDuration,
-    Three = 3 * dayDuration,
-    Week = 7 * dayDuration,
-    Month = 30 * dayDuration,
-    Forever = 0,
-}
-
-export type EncodeImageData = {
-    encodeData: ArrayBuffer;
 };
 
 export class CaptureHistory {

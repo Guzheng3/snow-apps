@@ -1,4 +1,4 @@
-import { supportOffscreenCanvas } from '@/utils';
+import { supportOffscreenCanvas } from '@/utils/environment';
 
 export type DecodeResult = {
     data: ImageData;

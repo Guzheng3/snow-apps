@@ -1,11 +1,13 @@
 'use client';
 
 import {
-    AppSettingsActionContext,
     AppSettingsData,
     AppSettingsGroup,
     AppSettingsLanguage,
-} from '@/app/contextWrap';
+    ChatApiConfig,
+    TranslationApiConfig,
+    TranslationApiType,
+} from '@/types/appSettings';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { useStateRef } from '@/hooks/useStateRef';
 import {
@@ -13,9 +15,6 @@ import {
     translate,
     translateTextDeepL,
     translateTextGoogleWeb,
-    TranslationDomain,
-    TranslationType,
-    TranslationTypeOption,
 } from '@/services/tools/translation';
 import { CloseOutlined, CopyOutlined, SwapOutlined } from '@ant-design/icons';
 import { Button, Col, Flex, Form, InputRef, Row, Select, SelectProps, Spin, theme } from 'antd';
@@ -32,19 +31,23 @@ import {
 } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import {
-    ChatApiConfig,
     convertLanguageCodeToDeepLSourceLanguageCode,
     convertLanguageCodeToDeepLTargetLanguageCode,
     convertLanguageCodeToGoogleLanguageCode,
-    TranslationApiConfig,
-    TranslationApiType,
 } from '@/app/settings/functionSettings/extra';
 import OpenAI from 'openai';
-import { defaultTranslationPrompt, getTranslationPrompt } from '@/app/tools/translation/extra';
-import { ModelSelectLabel } from '@/app/tools/chat/components/modelSelectLabel';
 import React from 'react';
 import { appFetch } from '@/services/tools';
 import { writeTextToClipboard } from '@/utils/clipboard';
+import { AppSettingsActionContext } from '@/contexts/appSettingsActionContext';
+import {
+    TranslationDomain,
+    TranslationType,
+    TranslationTypeOption,
+} from '@/types/servies/translation';
+import { getTranslationPrompt } from '@/app/tools/translation/extra';
+import { defaultTranslationPrompt } from '@/constants/components/translation';
+import { ModelSelectLabel } from '@/app/tools/chat/components/modelSelectLabel';
 
 const SelectLabel: React.FC<{
     label: React.ReactNode;

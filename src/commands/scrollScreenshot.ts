@@ -1,7 +1,7 @@
-import { formatErrorDetails } from '@/app/contextWrap';
+import { formatErrorDetails } from '@/utils/log';
 import { appError } from '@/utils/log';
 import { invoke } from '@tauri-apps/api/core';
-import { HdrColorAlgorithm } from './screenshot';
+import { HdrColorAlgorithm } from '@/types/appSettings';
 
 export enum ScrollDirection {
     /// 垂直滚动

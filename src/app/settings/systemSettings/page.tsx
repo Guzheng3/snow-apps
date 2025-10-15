@@ -16,12 +16,11 @@ import {
     Typography,
 } from 'antd';
 import {
-    AppSettingsActionContext,
     AppSettingsData,
     AppSettingsGroup,
-    clearAllConfig,
-    getConfigDirPath,
-} from '../../contextWrap';
+    HistoryValidDuration,
+    OcrModel,
+} from '@/types/appSettings';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -35,11 +34,9 @@ import ProForm, {
     ProFormSwitch,
 } from '@ant-design/pro-form';
 import { openPath } from '@tauri-apps/plugin-opener';
-import { AntdContext } from '@/components/globalLayoutExtra';
+import { AntdContext } from '@/contexts/antdContext';
 import { clearAllAppStore } from '@/utils/appStore';
 import { relaunch } from '@tauri-apps/plugin-process';
-import { OcrModel } from '@/commands/ocr';
-import { CaptureHistory, HistoryValidDuration } from '@/utils/captureHistory';
 import { usePlatform } from '@/hooks/usePlatform';
 import { MacOSPermissionsSettings } from './components/macosPermissionsSettings';
 import { appLogDir } from '@tauri-apps/api/path';
@@ -47,10 +44,14 @@ import { createLocalConfigDir, getAppConfigBaseDir } from '@/commands/file';
 import { appError } from '@/utils/log';
 import * as dialog from '@tauri-apps/plugin-dialog';
 import { restartWithAdmin } from '@/commands/core';
-import { isAdminWithCache } from '@/utils';
+import { getConfigDirPath, isAdminWithCache } from '@/utils/environment';
 import { useStateRef } from '@/hooks/useStateRef';
-import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
-import { HdrColorAlgorithm } from '@/commands/screenshot';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
+import { PLUGIN_ID_RAPID_OCR } from '@/constants/pluginService';
+import { HdrColorAlgorithm } from '@/types/appSettings';
+import { AppSettingsActionContext } from '@/contexts/appSettingsActionContext';
+import { clearAllConfig } from '@/utils/appConfig';
+import { CaptureHistory } from '@/utils/captureHistory';
 
 export default function SystemSettings() {
     const intl = useIntl();
@@ -243,7 +244,7 @@ export default function SystemSettings() {
         });
     }, [setIsAdmin]);
 
-    const { isReadyStatus } = usePluginService();
+    const { isReadyStatus } = usePluginServiceContext();
 
     return (
         <ContentWrap>

@@ -1,4 +1,4 @@
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { getAppConfigBaseDir } from '@/commands/file';
 import { BubbleDataType } from '@ant-design/x/es/bubble/BubbleList';
 import { Conversation } from '@ant-design/x/es/conversations';

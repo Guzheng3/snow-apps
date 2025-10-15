@@ -1,366 +1,41 @@
 'use client';
 
-import React, {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from 'react';
+import React, { useCallback, useContext, useEffect, useMemo } from 'react';
 import {
     AppstoreOutlined,
-    CloseOutlined,
     InfoCircleOutlined,
-    MinusOutlined,
     SettingOutlined,
     ToolOutlined,
 } from '@ant-design/icons';
-import { Button, Layout, Menu, Space, TabsProps, theme } from 'antd';
+import { Layout, theme } from 'antd';
 import { useRouter } from 'next/navigation';
-const { Content, Sider } = Layout;
 import { usePathname } from 'next/navigation';
-import RSC from 'react-scrollbars-custom';
-import {
-    AppContext,
-    AppSettingsActionContext,
-    AppSettingsData,
-    AppSettingsGroup,
-    AppSettingsLanguage,
-    AppSettingsTheme,
-} from './contextWrap';
-import { Header } from 'antd/es/layout/layout';
-import { getCurrentWindow, Window as AppWindow } from '@tauri-apps/api/window';
-import '@ant-design/v5-patch-for-react-19';
+import { AppSettingsGroup, AppSettingsLanguage, AppSettingsTheme } from '@/types/appSettings';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { zhHans } from '@/messages/zhHans';
 import { useIntl } from 'react-intl';
-import { TrayIconLoader, TrayIconStatePublisher } from './trayIcon';
+import { TrayIconLoader, TrayIconStatePublisher } from '@/app/trayIcon';
 import { zhHant } from '@/messages/zhHant';
 import { en } from '@/messages/en';
 import { ItemType, MenuItemType } from 'antd/es/menu/interface';
-import { PageNav, PageNavActionType } from './components/pageNav';
-import { GlobalEventHandler } from './components/globalEventHandler';
+import { GlobalEventHandler } from '@/app/components/globalEventHandler';
 import { withStatePublisher } from '@/hooks/useStatePublisher';
 import { CheckVersion } from '@/components/checkVersion';
 import { InitService } from '@/components/initService';
-import * as tauriOs from '@tauri-apps/plugin-os';
-import { getPlatformValue } from '@/utils';
+import { getPlatformValue } from '@/utils/platform';
 import { GlobalShortcut } from '@/components/globalShortcut';
 import { PersonalizationIcon } from '@/components/icons';
-import { EventListener } from '@/components/eventListener';
-import { PLUGIN_ID_AI_CHAT, PLUGIN_ID_FFMPEG, usePluginService } from '@/components/pluginService';
-import { CheckEnvironment } from './components/checkEnvironment';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
+import { CheckEnvironment } from '@/app/components/checkEnvironment';
+import { MenuLayoutContext } from '@/contexts/menuLayoutContext';
+import { MenuSider } from './components/menuSider';
+import { RouteItem, RouteMapItem } from '@/types/components/menuLayout';
+import { MenuContent } from './components/menuContent';
+import { PLUGIN_ID_AI_CHAT, PLUGIN_ID_FFMPEG } from '@/constants/pluginService';
+import { AppSettingsActionContext } from '@/contexts/appSettingsActionContext';
+import { AppContext } from '@/contexts/appContext';
 
 type MenuItem = ItemType<MenuItemType>;
-
-export type RouteMapItem = {
-    items: TabsProps['items'];
-    hideTabs?: boolean;
-};
-
-export const MenuLayoutContext = createContext<{
-    noLayout: boolean;
-    mainWindow: boolean;
-    pathname: string;
-}>({
-    noLayout: false,
-    mainWindow: false,
-    pathname: '/',
-});
-
-type RouteItem = {
-    key: string;
-    path: string | undefined;
-    label: string;
-    icon?: React.ReactNode;
-    hideTabs?: boolean;
-    children?: RouteItem[];
-    tabs?: TabsProps['items'];
-};
-
-const MenuSiderCore: React.FC<{
-    menuItems: MenuItem[];
-    darkMode: boolean;
-    pathname: string;
-}> = ({ menuItems, darkMode, pathname }) => {
-    const { token } = theme.useToken();
-    const [collapsed, setCollapsed] = useState(false);
-    useAppSettingsLoad(
-        useCallback((settings: AppSettingsData) => {
-            setCollapsed(settings[AppSettingsGroup.Cache].menuCollapsed);
-        }, []),
-    );
-    const { updateAppSettings } = useContext(AppSettingsActionContext);
-
-    useEffect(() => {
-        if (process.env.NODE_ENV === 'development') {
-            return;
-        }
-
-        window.oncontextmenu = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-        };
-
-        return () => {
-            window.oncontextmenu = null;
-        };
-    }, []);
-
-    const [currentPlatform, setCurrentPlatform] = useState<tauriOs.Platform | undefined>(undefined);
-    useEffect(() => {
-        setCurrentPlatform(tauriOs.platform());
-    }, []);
-
-    return (
-        <Sider
-            theme={darkMode ? 'dark' : 'light'}
-            collapsed={collapsed}
-            collapsible
-            onCollapse={(value) => {
-                setCollapsed(value);
-                updateAppSettings(
-                    AppSettingsGroup.Cache,
-                    { menuCollapsed: value },
-                    true,
-                    true,
-                    false,
-                );
-            }}
-        >
-            <div className="menu-sider-wrap">
-                {currentPlatform === 'macos' && (
-                    <div className="macos-title-bar-margin app-tauri-drag-region"></div>
-                )}
-
-                {currentPlatform !== 'macos' && (
-                    <div className="logo-wrap">
-                        <div className="logo-text">
-                            {collapsed ? (
-                                <>
-                                    <div className="logo-text-highlight">S</div>
-                                    <div>now</div>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="logo-text-highlight">Snow</div>
-                                    <div>Shot</div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
-                <RSC>
-                    <Menu
-                        defaultSelectedKeys={[menuItems[0]!.key?.toString() ?? '/']}
-                        selectedKeys={[pathname]}
-                        mode="inline"
-                        theme={darkMode ? 'dark' : 'light'}
-                        items={menuItems}
-                        defaultOpenKeys={menuItems
-                            .map((item) => item?.key as string)
-                            .filter((key) => !!key)}
-                    />
-                </RSC>
-            </div>
-            <style jsx>{`
-                .logo-wrap {
-                    margin-top: 16px;
-                    margin-bottom: 10px;
-                    font-weight: 600;
-                    font-size: 21px;
-                    text-align: center;
-                    font-style: italic;
-                }
-
-                .logo-wrap .logo-text {
-                    color: var(--snow-shot-text-color);
-                    display: inline-block;
-                    padding: 0px 12px;
-                }
-
-                :global(body) {
-                    --snow-shot-purple-color: ${darkMode ? token['purple-7'] : token['purple-5']};
-                    --snow-shot-text-color: ${darkMode ? '#fff' : '#000'};
-                }
-
-                .logo-wrap .logo-text .logo-text-highlight {
-                    color: var(--snow-shot-purple-color);
-                }
-
-                .logo-wrap .logo-text div {
-                    display: inline;
-                }
-
-                .macos-title-bar-margin {
-                    width: 100%;
-                    height: 32px;
-                }
-
-                .menu-sider-wrap {
-                    height: 100%;
-                    display: flex;
-                    flex-direction: column;
-                }
-
-                .menu-sider-wrap :global(.ScrollbarsCustom-Wrapper) {
-                    inset: 0 0 0 0 !important;
-                }
-
-                .menu-wrap {
-                    overflow: auto;
-                }
-            `}</style>
-        </Sider>
-    );
-};
-
-const MenuSider = React.memo(MenuSiderCore);
-
-const MenuContentCore: React.FC<{
-    pathname: string;
-    routeTabsMap: Record<string, RouteMapItem>;
-    children: React.ReactNode;
-}> = ({ pathname, routeTabsMap, children }) => {
-    const { token } = theme.useToken();
-    const appWindowRef = useRef<AppWindow | undefined>(undefined);
-    useEffect(() => {
-        appWindowRef.current = getCurrentWindow();
-    }, []);
-
-    const tabItems = useMemo(() => {
-        return routeTabsMap[pathname] ?? routeTabsMap['/'] ?? [];
-    }, [pathname, routeTabsMap]);
-
-    const pageNavActionRef = useRef<PageNavActionType | null>(null);
-    const contentRef = useRef<HTMLDivElement>(null);
-
-    const [currentPlatform, setCurrentPlatform] = useState<tauriOs.Platform | undefined>(undefined);
-    useEffect(() => {
-        setCurrentPlatform(tauriOs.platform());
-    }, []);
-
-    return (
-        <Layout>
-            <Header data-tauri-drag-region className="app-tauri-drag-region">
-                {currentPlatform !== 'macos' && (
-                    <Space>
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<MinusOutlined />}
-                            onClick={() => {
-                                appWindowRef.current?.minimize();
-                            }}
-                        />
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<CloseOutlined />}
-                            onClick={() => {
-                                appWindowRef.current?.hide();
-                                appWindowRef.current?.emit('on-hide-main-window');
-                            }}
-                        />
-                    </Space>
-                )}
-
-                {currentPlatform === 'macos' && (
-                    <div data-tauri-drag-region className="logo-text">
-                        <div data-tauri-drag-region className="logo-text-highlight">
-                            Snow
-                        </div>
-                        <div data-tauri-drag-region>Shot</div>
-                    </div>
-                )}
-            </Header>
-            <Content>
-                <div className="content-wrap">
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                    <div className="center">
-                        <PageNav tabItems={tabItems} actionRef={pageNavActionRef} />
-                        <RSC
-                            onScroll={(e) => {
-                                if ('scrollTop' in e && typeof e.scrollTop === 'number') {
-                                    pageNavActionRef.current?.updateActiveKey(e.scrollTop);
-                                }
-                            }}
-                        >
-                            <div ref={contentRef} className="content-container">
-                                {children}
-                            </div>
-                        </RSC>
-                    </div>
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                </div>
-            </Content>
-
-            <style jsx>{`
-                .content-wrap {
-                    display: grid;
-                    grid-template-columns: ${token.padding}px auto ${token.padding}px;
-                    grid-template-rows: ${token.padding}px auto ${token.padding}px;
-                    height: 100%;
-                }
-
-                .center {
-                    grid-column: 2;
-                    grid-row: 2;
-                    overflow-y: hidden;
-                    overflow-x: hidden;
-                    border-radius: ${token.borderRadiusLG}px;
-                    background-color: ${token.colorBgContainer} !important;
-                    padding: ${token.padding}px ${token.borderRadiusLG}px;
-                    display: flex;
-                    flex-direction: column;
-                    transform: translateY(0px);
-                }
-
-                .center::-webkit-scrollbar {
-                    display: none;
-                }
-
-                .content-container {
-                    padding: 0 ${token.padding}px;
-                    width: 100%;
-                    height: 100%;
-                    overflow-x: hidden;
-                }
-
-                .logo-text {
-                    position: absolute;
-                    line-height: initial;
-                    display: flex;
-                    height: 32px;
-                    align-items: center;
-                    justify-content: center;
-                    color: var(--snow-shot-text-color);
-                    font-style: italic;
-                    font-weight: 600;
-                    user-select: none;
-                    /* 对齐系统里的 title 位置 */
-                    position: absolute;
-                    left: 0;
-                    right: 0;
-                }
-
-                .logo-text-highlight {
-                    color: var(--snow-shot-purple-color);
-                }
-            `}</style>
-        </Layout>
-    );
-};
-
-const MenuContent = React.memo(MenuContentCore);
 
 const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     useEffect(() => {
@@ -430,7 +105,7 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
 
     const { token } = theme.useToken();
-    const { isReadyStatus } = usePluginService();
+    const { isReadyStatus } = usePluginServiceContext();
     const router = useRouter();
     const routes = useMemo(() => {
         const routes: RouteItem[] = [
@@ -844,31 +519,10 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const ML = React.memo(withStatePublisher(MenuLayoutCore, TrayIconStatePublisher));
 
-export const MenuLayoutProvider = ({ children }: { children: React.ReactNode }) => {
-    const pathname = usePathname();
-    const noLayout = useMemo(
-        () =>
-            pathname === '/draw' ||
-            pathname === '/fixedContent' ||
-            pathname === '/fullScreenDraw' ||
-            pathname === '/fullScreenDraw/switchMouseThrough' ||
-            pathname === '/videoRecord' ||
-            pathname === '/videoRecord/toolbar' ||
-            pathname === '/idle',
-        [pathname],
-    );
-    const mainWindow = !noLayout;
-    return (
-        <MenuLayoutContext.Provider value={{ noLayout, pathname, mainWindow }}>
-            {children}
-        </MenuLayoutContext.Provider>
-    );
-};
-
 export const MenuLayout = ({ children }: { children: React.ReactNode }) => {
     const { noLayout } = useContext(MenuLayoutContext);
     return (
-        <EventListener>
+        <>
             {noLayout ? (
                 children
             ) : (
@@ -877,6 +531,6 @@ export const MenuLayout = ({ children }: { children: React.ReactNode }) => {
                     <ML>{children}</ML>
                 </>
             )}
-        </EventListener>
+        </>
     );
 };

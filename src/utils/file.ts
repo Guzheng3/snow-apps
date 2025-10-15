@@ -1,8 +1,9 @@
 import dayjs from 'dayjs';
 import * as dialog from '@tauri-apps/plugin-dialog';
-import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
 import { join as joinPath, pictureDir, videoDir } from '@tauri-apps/api/path';
 import { createDir } from '@/commands/file';
+import { ImageFormat, ImagePath } from '@/types/utils/file';
 
 const parseTemplate = (template: string): string => {
     const regex = /\{\{([^}]+)\}\}/g;
@@ -26,19 +27,6 @@ export const generateImageFileName = (format: string) => {
     }
 
     return parseTemplate(format);
-};
-
-export enum ImageFormat {
-    PNG = 'image/png',
-    JPEG = 'image/jpeg',
-    WEBP = 'image/webp',
-    AVIF = 'image/avif',
-    JPEG_XL = 'image/jpeg-xl',
-}
-
-export type ImagePath = {
-    filePath: string;
-    imageFormat: ImageFormat;
 };
 
 export const joinImagePath = (filePath: string, imageFormat: ImageFormat) => {

@@ -1,6 +1,6 @@
 import { DrawEvent, DrawEventPublisher } from '@/app/draw/extra';
 import { DrawContext } from '@/app/draw/types';
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { autoScrollThrough, clickThrough, scrollThrough } from '@/commands/core';
 import {
     SCROLL_SCREENSHOT_CAPTURE_RESULT_EXTRA_DATA_SIZE,
@@ -30,21 +30,19 @@ import {
 import { FormattedMessage, useIntl } from 'react-intl';
 import { SubTools, SubToolsActionType } from '../../subTools';
 import { RotateIcon } from '@/components/icons';
-import { AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
-import { AntdContext } from '@/components/globalLayoutExtra';
-import { DrawState } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { AppSettingsGroup } from '@/types/appSettings';
+import { AntdContext } from '@/contexts/antdContext';
+import { DrawState } from '@/types/draw';
 import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { MessageType } from 'antd/es/message/interface';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { appError } from '@/utils/log';
 import { useMonitorRect } from '@/app/draw/components/statusBar';
 import { EventListenerContext } from '@/components/eventListener';
-import {
-    LISTEN_KEY_SERVICE_MOUSE_DOWN_EMIT_KEY,
-    listenMouseStart,
-    listenMouseStop,
-} from '@/commands/listenKey';
+import { listenMouseStart, listenMouseStop } from '@/commands/listenKey';
 import { getCorrectHdrColorAlgorithm } from '@/utils/appSettings';
+import { AppSettingsPublisher } from '@/contexts/appSettingsActionContext';
+import { LISTEN_KEY_SERVICE_MOUSE_DOWN_EMIT_KEY } from '@/constants/eventListener';
 
 const THUMBNAIL_WIDTH = 128;
 

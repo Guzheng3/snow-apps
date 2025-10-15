@@ -6,14 +6,15 @@ import { Window as AppWindow } from '@tauri-apps/api/window';
 import { CaptureStep } from './types';
 import { FixedContentActionType } from '../fixedContent/components/fixedContentCore';
 import { OcrBlocksActionType } from './components/ocrBlocks';
-import { showImageDialog, ImageFormat, ImagePath } from '@/utils/file';
-import { AppSettingsData, AppSettingsGroup } from '../contextWrap';
+import { showImageDialog } from '@/utils/file';
+import { ImageFormat, ImagePath } from '@/types/utils/file';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
 import { writeImageToClipboard } from '@/utils/clipboard';
 import { AppOcrResult } from '../fixedContent/components/ocrResult';
 import { CaptureBoundingBoxInfo } from './extra';
 import { setWindowRect } from '@/utils/window';
 import { appError, appWarn } from '@/utils/log';
-import { getPlatform } from '@/utils';
+import { getPlatform } from '@/utils/platform';
 import { writeBitmapImageToClipboard } from '@/commands/core';
 import { setExcludeFromCapture } from '@/commands/videoRecord';
 

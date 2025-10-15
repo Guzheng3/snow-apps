@@ -4,9 +4,9 @@ import { SelectLayerActionType, SelectRectParams } from './components/selectLaye
 import { createPublisher } from '@/hooks/useStatePublisher';
 import { BaseLayerEventActionType } from './components/baseLayer';
 import { ScreenshotType } from '@/utils/types';
-import { OcrDetectResult } from '@/commands/ocr';
+import { OcrDetectResult } from '@/types/commands/ocr';
 import { MonitorInfo } from '@/commands/core';
-import { ElementRect, ImageBuffer } from '@/commands';
+import { ElementRect, ImageBuffer } from '@/types/commands/screenshot';
 import { MousePosition } from '@/utils/mousePosition';
 import Flatbush from 'flatbush';
 import { last } from 'es-toolkit';

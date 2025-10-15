@@ -3,13 +3,14 @@ import { Spin, theme, Typography } from 'antd';
 import { DrawContext } from '@/app/draw/types';
 import { zIndexs } from '@/utils/zIndex';
 import * as QrCodeScanner from 'qr-scanner-wechat';
-import { AntdContext } from '@/components/globalLayoutExtra';
+import { AntdContext } from '@/contexts/antdContext';
 import { useIntl } from 'react-intl';
 import { useHotkeysApp } from '@/hooks/useHotkeysApp';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { getPlatformValue } from '@/utils';
+import { getPlatformValue } from '@/utils/platform';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { DrawState } from '@/types/draw';
+import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useMonitorRect } from '../../../statusBar';
 
 const ScanQrcodeToolCore: React.FC<{}> = ({}) => {

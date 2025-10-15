@@ -1,4 +1,3 @@
-import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
 import { saveFile, getMousePosition } from '@/commands';
 import { useStateRef } from '@/hooks/useStateRef';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
@@ -17,7 +16,8 @@ import {
 } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import * as dialog from '@tauri-apps/plugin-dialog';
-import { generateImageFileName, ImageFormat } from '@/utils/file';
+import { generateImageFileName } from '@/utils/file';
+import { ImageFormat } from '@/types/utils/file';
 import { closeWindowComplete } from '@/utils/window';
 import { useCallbackRender } from '@/hooks/useCallbackRender';
 import { zIndexs } from '@/utils/zIndex';
@@ -29,7 +29,6 @@ import {
     OcrResultInitDrawCanvasParams,
 } from '../ocrResult';
 import * as clipboard from '@tauri-apps/plugin-clipboard-manager';
-import { KeyEventKey, KeyEventValue } from '@/core/hotKeys';
 import { isHotkeyPressed, useHotkeys } from 'react-hotkeys-hook';
 import {
     getCurrentMonitorInfo,
@@ -49,7 +48,7 @@ import * as TWEEN from '@tweenjs/tween.js';
 import { MousePosition } from '@/utils/mousePosition';
 import { CaptureBoundingBoxInfo } from '@/app/draw/extra';
 import { useTextScaleFactor } from '@/hooks/useTextScaleFactor';
-import { AntdContext } from '@/components/globalLayoutExtra';
+import { AntdContext } from '@/contexts/antdContext';
 import { appError } from '@/utils/log';
 import { formatKey } from '@/utils/format';
 import { useTempInfo } from '@/hooks/useTempInfo';
@@ -63,11 +62,15 @@ import {
 } from '@/functions/fixedContent';
 import { HandleFocusMode } from './components/handleFocusMode';
 import Color from 'color';
-import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
+import { PLUGIN_ID_RAPID_OCR } from '@/constants/pluginService';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getHtmlContent, getStyleProps } from './extra';
 import { renderToCanvasAction } from './actions';
 import { ResizeWindow } from './components/resizeWindow';
+import { CommonKeyEventKey, CommonKeyEventValue } from '@/types/core/commonKeyEvent';
+import { AppSettingsPublisher } from '@/contexts/appSettingsActionContext';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
 
 export type FixedContentInitDrawParams = {
     captureBoundingBoxInfo: CaptureBoundingBoxInfo;
@@ -163,15 +166,15 @@ export const FixedContentCore: React.FC<{
     const intl = useIntl();
     const { token } = theme.useToken();
     const { message } = useContext(AntdContext);
-    const [hotkeys, setHotkeys] = useState<Record<KeyEventKey, KeyEventValue> | undefined>(
-        undefined,
-    );
+    const [hotkeys, setHotkeys] = useState<
+        Record<CommonKeyEventKey, CommonKeyEventValue> | undefined
+    >(undefined);
     const [fixedBorderColor, setFixedBorderColor] = useState<string | undefined>(undefined);
     useStateSubscriber(
         AppSettingsPublisher,
         useCallback((settings: AppSettingsData) => {
             setFixedBorderColor(settings[AppSettingsGroup.FixedContent].borderColor);
-            setHotkeys(settings[AppSettingsGroup.KeyEvent]);
+            setHotkeys(settings[AppSettingsGroup.CommonKeyEvent]);
         }, []),
     );
 
@@ -450,7 +453,7 @@ export const FixedContentCore: React.FC<{
         }
     }, [fixedContentTypeRef, textContentRef, renderToBlob]);
 
-    const { isReady, isReadyStatus } = usePluginService();
+    const { isReady, isReadyStatus } = usePluginServiceContext();
     const initDraw = useCallback(
         async (params: FixedContentInitDrawParams) => {
             ocrResultActionRef.current?.setEnable(false);
@@ -1063,7 +1066,7 @@ export const FixedContentCore: React.FC<{
                     id: `${appWindow.label}-copyTool`,
                     text: intl.formatMessage({ id: 'draw.copyTool' }),
                     accelerator: formatKey(
-                        hotkeys?.[KeyEventKey.FixedContentCopyToClipboard]?.hotKey,
+                        hotkeys?.[CommonKeyEventKey.FixedContentCopyToClipboard]?.hotKey,
                     ),
                     action: copyToClipboard,
                 },
@@ -1075,7 +1078,9 @@ export const FixedContentCore: React.FC<{
                 {
                     id: `${appWindow.label}-saveTool`,
                     text: intl.formatMessage({ id: 'draw.saveTool' }),
-                    accelerator: formatKey(hotkeys?.[KeyEventKey.FixedContentSaveToFile]?.hotKey),
+                    accelerator: formatKey(
+                        hotkeys?.[CommonKeyEventKey.FixedContentSaveToFile]?.hotKey,
+                    ),
                     action: saveToFile,
                 },
                 isReadyStatus(PLUGIN_ID_RAPID_OCR) || getSelectTextMode(fixedContentType) !== 'ocr'
@@ -1086,7 +1091,7 @@ export const FixedContentCore: React.FC<{
                                   ? intl.formatMessage({ id: 'draw.showOrHideOcrResult' })
                                   : intl.formatMessage({ id: 'draw.selectText' }),
                           accelerator: formatKey(
-                              hotkeys?.[KeyEventKey.FixedContentSelectText]?.hotKey,
+                              hotkeys?.[CommonKeyEventKey.FixedContentSelectText]?.hotKey,
                           ),
                           checked: enableSelectText,
                           action: switchSelectText,
@@ -1102,7 +1107,9 @@ export const FixedContentCore: React.FC<{
                     }),
                     checked: enableDraw,
                     disabled: enableSelectText,
-                    accelerator: formatKey(hotkeys?.[KeyEventKey.FixedContentEnableDraw]?.hotKey),
+                    accelerator: formatKey(
+                        hotkeys?.[CommonKeyEventKey.FixedContentEnableDraw]?.hotKey,
+                    ),
                     action: switchDraw,
                 },
                 {
@@ -1155,7 +1162,7 @@ export const FixedContentCore: React.FC<{
                           text: intl.formatMessage({ id: 'draw.switchThumbnail' }),
                           checked: isThumbnail,
                           accelerator: formatKey(
-                              hotkeys?.[KeyEventKey.FixedContentSwitchThumbnail]?.hotKey,
+                              hotkeys?.[CommonKeyEventKey.FixedContentSwitchThumbnail]?.hotKey,
                           ),
                           action: async () => {
                               switchThumbnail();
@@ -1193,7 +1200,9 @@ export const FixedContentCore: React.FC<{
                         id: 'settings.hotKeySettings.fixedContent.fixedContentAlwaysOnTop',
                     }),
                     checked: isAlwaysOnTop,
-                    accelerator: formatKey(hotkeys?.[KeyEventKey.FixedContentAlwaysOnTop]?.hotKey),
+                    accelerator: formatKey(
+                        hotkeys?.[CommonKeyEventKey.FixedContentAlwaysOnTop]?.hotKey,
+                    ),
                     action: switchAlwaysOnTop,
                 },
                 {
@@ -1335,7 +1344,9 @@ export const FixedContentCore: React.FC<{
                 {
                     id: `${appWindow.label}-closeTool`,
                     text: intl.formatMessage({ id: 'draw.close' }),
-                    accelerator: formatKey(hotkeys?.[KeyEventKey.FixedContentCloseWindow]?.hotKey),
+                    accelerator: formatKey(
+                        hotkeys?.[CommonKeyEventKey.FixedContentCloseWindow]?.hotKey,
+                    ),
                     action: async () => {
                         await closeWindowComplete();
                     },
@@ -1386,7 +1397,9 @@ export const FixedContentCore: React.FC<{
 
             const { deltaY } = event;
 
-            if (isHotkeyPressed(hotkeys?.[KeyEventKey.FixedContentSetOpacity]?.hotKey ?? '')) {
+            if (
+                isHotkeyPressed(hotkeys?.[CommonKeyEventKey.FixedContentSetOpacity]?.hotKey ?? '')
+            ) {
                 if (deltaY > 0) {
                     changeContentOpacity(contentOpacityRef.current - 0.05);
                 } else {
@@ -1534,7 +1547,7 @@ export const FixedContentCore: React.FC<{
     ]);
 
     useHotkeys(
-        hotkeys?.[KeyEventKey.FixedContentSwitchThumbnail]?.hotKey ?? '',
+        hotkeys?.[CommonKeyEventKey.FixedContentSwitchThumbnail]?.hotKey ?? '',
         switchThumbnail,
         useMemo(
             () => ({
@@ -1547,7 +1560,7 @@ export const FixedContentCore: React.FC<{
         ),
     );
     useHotkeys(
-        hotkeys?.[KeyEventKey.FixedContentCloseWindow]?.hotKey ?? '',
+        hotkeys?.[CommonKeyEventKey.FixedContentCloseWindow]?.hotKey ?? '',
         closeWindowComplete,
         useMemo(
             () => ({
@@ -1560,7 +1573,7 @@ export const FixedContentCore: React.FC<{
         ),
     );
     useHotkeys(
-        hotkeys?.[KeyEventKey.FixedContentCopyToClipboard]?.hotKey ?? '',
+        hotkeys?.[CommonKeyEventKey.FixedContentCopyToClipboard]?.hotKey ?? '',
         copyToClipboard,
         useMemo(
             () => ({
@@ -1573,7 +1586,7 @@ export const FixedContentCore: React.FC<{
         ),
     );
     useHotkeys(
-        hotkeys?.[KeyEventKey.FixedContentEnableDraw]?.hotKey ?? '',
+        hotkeys?.[CommonKeyEventKey.FixedContentEnableDraw]?.hotKey ?? '',
         switchDraw,
         useMemo(
             () => ({
@@ -1586,7 +1599,7 @@ export const FixedContentCore: React.FC<{
         ),
     );
     useHotkeys(
-        hotkeys?.[KeyEventKey.FixedContentSelectText]?.hotKey ?? '',
+        hotkeys?.[CommonKeyEventKey.FixedContentSelectText]?.hotKey ?? '',
         switchSelectText,
         useMemo(
             () => ({
@@ -1599,7 +1612,7 @@ export const FixedContentCore: React.FC<{
         ),
     );
     useHotkeys(
-        hotkeys?.[KeyEventKey.FixedContentSaveToFile]?.hotKey ?? '',
+        hotkeys?.[CommonKeyEventKey.FixedContentSaveToFile]?.hotKey ?? '',
         saveToFile,
         useMemo(
             () => ({
@@ -1612,7 +1625,7 @@ export const FixedContentCore: React.FC<{
         ),
     );
     useHotkeys(
-        hotkeys?.[KeyEventKey.FixedContentAlwaysOnTop]?.hotKey ?? '',
+        hotkeys?.[CommonKeyEventKey.FixedContentAlwaysOnTop]?.hotKey ?? '',
         switchAlwaysOnTop,
         useMemo(
             () => ({

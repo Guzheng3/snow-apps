@@ -1,14 +1,14 @@
 import { ModalForm } from '@ant-design/pro-form';
 import { Alert, Spin, theme } from 'antd';
 import React, { useCallback, useState } from 'react';
-import { ChatApiConfig } from '../extra';
 import OpenAI from 'openai';
 import { FormattedMessage } from 'react-intl';
 import { TestChatIcon } from '@/components/icons';
 import { appFetch } from '@/services/tools';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
 import { appError } from '@/utils/log';
+import { AppSettingsGroup, ChatApiConfig } from '@/types/appSettings';
+import { AppSettingsPublisher } from '@/contexts/appSettingsActionContext';
 
 export const TestChat: React.FC<{ config: ChatApiConfig }> = ({ config }) => {
     const { token } = theme.useToken();

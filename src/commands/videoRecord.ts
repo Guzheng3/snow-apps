@@ -1,24 +1,6 @@
-import { getPlatform } from '@/utils';
+import { GifFormat, VideoFormat } from '@/types/appSettings';
+import { getPlatform } from '@/utils/platform';
 import { invoke } from '@tauri-apps/api/core';
-
-export enum VideoFormat {
-    Mp4 = 'Mp4',
-    Gif = 'Gif',
-}
-
-export enum VideoMaxSize {
-    P2160 = '2160p',
-    P1440 = '1440p',
-    P1080 = '1080p',
-    P720 = '720p',
-    P480 = '480p',
-}
-
-export enum GifFormat {
-    Gif = 'gif',
-    Apng = 'apng',
-    Webp = 'webp',
-}
 
 export const videoRecordStart = async (
     minX: number,

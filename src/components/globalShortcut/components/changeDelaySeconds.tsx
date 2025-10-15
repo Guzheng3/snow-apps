@@ -1,15 +1,14 @@
-import {
-    AppSettingsActionContext,
-    AppSettingsData,
-    AppSettingsGroup,
-    AppSettingsPublisher,
-} from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
 import { useStateRef } from '@/hooks/useStateRef';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { theme } from 'antd';
 import { debounce } from 'es-toolkit';
 import React, { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { FormattedMessage } from 'react-intl';
+import {
+    AppSettingsActionContext,
+    AppSettingsPublisher,
+} from '@/contexts/appSettingsActionContext';
 
 const ChangeDelaySecondsCore = () => {
     const { token } = theme.useToken();

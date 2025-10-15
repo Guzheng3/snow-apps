@@ -1,8 +1,8 @@
-import { KeyEventKey } from '../keyEventWrap/extra';
+import { DrawToolbarKeyEventKey } from '@/types/components/drawToolbar';
 import { RedoOutlined, UndoOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import React from 'react';
-import { DrawState } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { DrawState } from '@/types/draw';
 import { ToolButton } from '../toolButton';
 import { useHistory } from '@/app/fullScreenDraw/components/drawCore/components/historyContext';
 
@@ -30,7 +30,7 @@ const HistoryControlsCore: React.FC<{ disable: boolean; hidden?: boolean }> = ({
             {/* 撤销 */}
             <ToolButton
                 hidden={hidden}
-                componentKey={KeyEventKey.UndoTool}
+                componentKey={DrawToolbarKeyEventKey.UndoTool}
                 icon={<UndoOutlined />}
                 drawState={DrawState.Undo}
                 disable={!canUndo || disable}
@@ -42,7 +42,7 @@ const HistoryControlsCore: React.FC<{ disable: boolean; hidden?: boolean }> = ({
             {/* 重做 */}
             <ToolButton
                 hidden={hidden}
-                componentKey={KeyEventKey.RedoTool}
+                componentKey={DrawToolbarKeyEventKey.RedoTool}
                 icon={<RedoOutlined />}
                 drawState={DrawState.Redo}
                 disable={!canRedo || disable}

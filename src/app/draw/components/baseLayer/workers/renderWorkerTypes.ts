@@ -1,4 +1,4 @@
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { ApplicationOptions } from 'pixi.js';
 import {
     BlurSpriteProps,

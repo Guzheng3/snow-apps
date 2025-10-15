@@ -15,7 +15,7 @@ import { INIT_CONTAINER_KEY } from '../baseLayer/actions';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
 import { ImageSharedBufferData } from '../../tools';
-import { ImageBuffer } from '@/commands';
+import { ImageBuffer } from '@/types/commands/screenshot';
 
 export type DrawLayerActionType = BaseLayerActionType & {
     switchCaptureHistory: (item: CaptureHistoryItem | undefined) => Promise<void>;

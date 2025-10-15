@@ -1,4 +1,3 @@
-import { KeyEventKey } from '@/app/draw/components/drawToolbar/components/keyEventWrap/extra';
 import { ToolButton } from '@/app/draw/components/drawToolbar/components/toolButton';
 import {
     ArrowSelectIcon,
@@ -11,7 +10,6 @@ import {
 } from '@/components/icons';
 import { Button, ButtonProps, Flex, theme } from 'antd';
 import {
-    DrawState,
     DrawStatePublisher,
     ExcalidrawEventPublisher,
     ExcalidrawEventParams,
@@ -28,7 +26,8 @@ import {
 } from 'react';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { CheckOutlined, HolderOutlined, LockOutlined } from '@ant-design/icons';
-import { AppSettingsActionContext, AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
+import { AppSettingsActionContext } from '@/contexts/appSettingsActionContext';
 import { useStateRef } from '@/hooks/useStateRef';
 import { zIndexs } from '@/utils/zIndex';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
@@ -43,6 +42,8 @@ import { useDragElement } from '@/app/draw/components/drawToolbar/components/dra
 import { startFreeDrag } from '@/commands/core';
 import { RectTool } from '@/app/draw/components/drawToolbar/components/tools/rectTool';
 import { ArrowTool } from '@/app/draw/components/drawToolbar/components/tools/arrowTool';
+import { DrawState } from '@/types/draw';
+import { DrawToolbarKeyEventKey } from '@/types/components/drawToolbar';
 
 export type FixedContentCoreDrawToolbarActionType = {
     getSize: () => { width: number; height: number };
@@ -338,7 +339,7 @@ export const FixedContentCoreDrawToolbar: React.FC<{
                 // 是否启用锁定绘制工具
                 setEnableLockDrawTool(settings[AppSettingsGroup.Cache].enableLockDrawTool);
                 setSwitchDrawHotKey(
-                    settings[AppSettingsGroup.KeyEvent].fixedContentEnableDraw.hotKey,
+                    settings[AppSettingsGroup.CommonKeyEvent].fixedContentEnableDraw.hotKey,
                 );
             },
             [setEnableLockDrawTool, setShowLockDrawTool, setSwitchDrawHotKey],
@@ -437,7 +438,7 @@ export const FixedContentCoreDrawToolbar: React.FC<{
 
                     {/* 选择状态 */}
                     <ToolButton
-                        componentKey={KeyEventKey.SelectTool}
+                        componentKey={DrawToolbarKeyEventKey.SelectTool}
                         icon={<ArrowSelectIcon style={{ fontSize: '1.2em' }} />}
                         drawState={DrawState.Select}
                         buttonProps={toolButtonProps}
@@ -450,7 +451,7 @@ export const FixedContentCoreDrawToolbar: React.FC<{
                         <>
                             {/* 锁定绘制工具 */}
                             <ToolButton
-                                componentKey={KeyEventKey.LockDrawTool}
+                                componentKey={DrawToolbarKeyEventKey.LockDrawTool}
                                 icon={<LockOutlined />}
                                 drawState={DrawState.Lock}
                                 enableState={enableLockDrawTool}
@@ -471,7 +472,7 @@ export const FixedContentCoreDrawToolbar: React.FC<{
 
                     {/* 椭圆 */}
                     <ToolButton
-                        componentKey={KeyEventKey.EllipseTool}
+                        componentKey={DrawToolbarKeyEventKey.EllipseTool}
                         icon={
                             <CircleIcon
                                 style={{
@@ -495,7 +496,7 @@ export const FixedContentCoreDrawToolbar: React.FC<{
 
                     {/* 画笔 */}
                     <ToolButton
-                        componentKey={KeyEventKey.PenTool}
+                        componentKey={DrawToolbarKeyEventKey.PenTool}
                         icon={<PenIcon style={{ fontSize: '1.15em' }} />}
                         buttonProps={toolButtonProps}
                         drawState={DrawState.Pen}
@@ -506,7 +507,7 @@ export const FixedContentCoreDrawToolbar: React.FC<{
 
                     {/* 文本 */}
                     <ToolButton
-                        componentKey={KeyEventKey.TextTool}
+                        componentKey={DrawToolbarKeyEventKey.TextTool}
                         icon={<TextIcon style={{ fontSize: '1.15em' }} />}
                         drawState={DrawState.Text}
                         buttonProps={toolButtonProps}
@@ -517,7 +518,7 @@ export const FixedContentCoreDrawToolbar: React.FC<{
 
                     {/* 序列号 */}
                     <ToolButton
-                        componentKey={KeyEventKey.SerialNumberTool}
+                        componentKey={DrawToolbarKeyEventKey.SerialNumberTool}
                         icon={
                             <SerialNumberIcon
                                 style={{
@@ -534,7 +535,7 @@ export const FixedContentCoreDrawToolbar: React.FC<{
 
                     {/* 橡皮擦 */}
                     <ToolButton
-                        componentKey={KeyEventKey.EraserTool}
+                        componentKey={DrawToolbarKeyEventKey.EraserTool}
                         icon={
                             <EraserIcon
                                 style={{

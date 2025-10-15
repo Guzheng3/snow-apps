@@ -1,20 +1,6 @@
+import { OcrModel } from '@/types/appSettings';
+import { OcrDetectResult } from '@/types/commands/ocr';
 import { invoke } from '@tauri-apps/api/core';
-
-export interface OcrDetectResultTextPoint {
-    x: number;
-    y: number;
-}
-
-export interface OcrDetectResultTextBlock {
-    box_points: OcrDetectResultTextPoint[];
-    text: string;
-    text_score: number;
-}
-
-export interface OcrDetectResult {
-    text_blocks: OcrDetectResultTextBlock[];
-    scale_factor: number;
-}
 
 export const ocrDetect = async (
     data: ArrayBuffer | Uint8Array,
@@ -28,11 +14,6 @@ export const ocrDetect = async (
         },
     });
 };
-
-export enum OcrModel {
-    RapidOcrV4 = 'RapidOcrV4',
-    RapidOcrV5 = 'RapidOcrV5',
-}
 
 export const ocrInit = async (
     orcPluginPath: string,

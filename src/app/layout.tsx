@@ -3,15 +3,19 @@
 import './globals.css';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 import StyledJsxRegistry from './registry';
-import { ContextWrap } from './contextWrap';
-import { MenuLayout, MenuLayoutProvider } from './menuLayout';
+import { MenuLayout } from '@/components/menuLayout';
 import Script from 'next/dist/client/script';
 import { App as AntdApp } from 'antd';
 import React, { useEffect } from 'react';
-import { AntdContextWrap, FetchErrorHandler } from '@/components/globalLayoutExtra';
+import { FetchErrorHandler } from '@/components/fetchErrorHandler';
 import { HotkeysProvider } from 'react-hotkeys-hook';
-import { TextScaleFactorProvider } from '@/hooks/useTextScaleFactor';
-import { PluginServiceProvider } from '@/components/pluginService';
+import { PluginServiceContextProvider } from '@/components/pluginServiceContextProvider';
+import '@ant-design/v5-patch-for-react-19';
+import { MenuLayoutContextProvider } from '@/components/menuLayoutContextProvider';
+import { EventListener } from '@/components/eventListener';
+import { AppSettingsContextProvider } from '@/components/appSettingsContextProvider';
+import { TextScaleFactorProvider } from '@/components/textScaleFactorContextProvider';
+import { AntdContextProvider } from '@/components/antdContextProvider';
 
 export default function RootLayout({
     children,
@@ -57,21 +61,23 @@ export default function RootLayout({
                 <AntdApp>
                     <StyledJsxRegistry>
                         <AntdRegistry>
-                            <MenuLayoutProvider>
-                                <PluginServiceProvider>
-                                    <ContextWrap>
+                            <MenuLayoutContextProvider>
+                                <PluginServiceContextProvider>
+                                    <AppSettingsContextProvider>
                                         <TextScaleFactorProvider>
-                                            <AntdContextWrap>
+                                            <AntdContextProvider>
                                                 <FetchErrorHandler>
                                                     <HotkeysProvider>
-                                                        <MenuLayout>{children}</MenuLayout>
+                                                        <EventListener>
+                                                            <MenuLayout>{children}</MenuLayout>
+                                                        </EventListener>
                                                     </HotkeysProvider>
                                                 </FetchErrorHandler>
-                                            </AntdContextWrap>
+                                            </AntdContextProvider>
                                         </TextScaleFactorProvider>
-                                    </ContextWrap>
-                                </PluginServiceProvider>
-                            </MenuLayoutProvider>
+                                    </AppSettingsContextProvider>
+                                </PluginServiceContextProvider>
+                            </MenuLayoutContextProvider>
                         </AntdRegistry>
                     </StyledJsxRegistry>
                 </AntdApp>

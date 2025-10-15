@@ -11,20 +11,13 @@ import {
 } from 'react';
 import React from 'react';
 import { BaseLayerEventActionType } from '../baseLayer';
+import { getElementFromPosition, getWindowElements, initUiElementsCache } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
+import { AppSettingsData, AppSettingsGroup, AppSettingsTheme } from '@/types/appSettings';
 import {
-    ElementRect,
-    getElementFromPosition,
-    getWindowElements,
-    initUiElementsCache,
-} from '@/commands';
-import {
-    AppContext,
     AppSettingsActionContext,
-    AppSettingsData,
-    AppSettingsGroup,
     AppSettingsPublisher,
-    AppSettingsTheme,
-} from '@/app/contextWrap';
+} from '@/contexts/appSettingsActionContext';
 import Flatbush from 'flatbush';
 import { useCallbackRender, useCallbackRenderSlow } from '@/hooks/useCallbackRender';
 import { TweenAnimation } from '@/utils/tweenAnimation';
@@ -59,15 +52,17 @@ import { ResizeToolbar, ResizeToolbarActionType } from './components/resizeToolb
 import { ScreenshotType } from '@/utils/types';
 import { zIndexs } from '@/utils/zIndex';
 import { isHotkeyPressed } from 'react-hotkeys-hook';
-import { KeyEventKey } from '../drawToolbar/components/keyEventWrap/extra';
-import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
-import { getPlatform } from '@/utils';
+import { DrawState } from '@/types/draw';
+import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { getPlatform } from '@/utils/platform';
 import { useMoveCursor } from '../colorPicker/extra';
 import { CaptureHistoryItem } from '@/utils/appStore';
 import { useStateRef } from '@/hooks/useStateRef';
 import Color from 'color';
 import { debounce } from 'es-toolkit';
 import { useMonitorRect } from '../statusBar';
+import { AppContext } from '@/contexts/appContext';
+import { DrawToolbarKeyEventKey } from '@/types/components/drawToolbar';
 
 export type SelectRectParams = {
     rect: ElementRect;
@@ -904,7 +899,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         () =>
             isHotkeyPressed(
                 getAppSettings()[AppSettingsGroup.DrawToolbarKeyEvent][
-                    KeyEventKey.LockWidthHeightPicker
+                    DrawToolbarKeyEventKey.LockWidthHeightPicker
                 ].hotKey,
             ),
         [getAppSettings],
@@ -912,8 +907,9 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
     const enableDragAllSelectRect = useCallback(
         () =>
             isHotkeyPressed(
-                getAppSettings()[AppSettingsGroup.DrawToolbarKeyEvent][KeyEventKey.DragSelectRect]
-                    .hotKey,
+                getAppSettings()[AppSettingsGroup.DrawToolbarKeyEvent][
+                    DrawToolbarKeyEventKey.DragSelectRect
+                ].hotKey,
             ),
         [getAppSettings],
     );
@@ -1356,8 +1352,9 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
             if (
                 isHotkeyPressed(
-                    getAppSettings()[AppSettingsGroup.DrawToolbarKeyEvent][KeyEventKey.CancelTool]
-                        .hotKey,
+                    getAppSettings()[AppSettingsGroup.DrawToolbarKeyEvent][
+                        DrawToolbarKeyEventKey.CancelTool
+                    ].hotKey,
                 ) &&
                 selectStateRef.current !== SelectState.Selected
             ) {
@@ -1370,7 +1367,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             if (
                 isHotkeyPressed(
                     getAppSettings()[AppSettingsGroup.DrawToolbarKeyEvent][
-                        KeyEventKey.SelectPrevRectTool
+                        DrawToolbarKeyEventKey.SelectPrevRectTool
                     ].hotKey,
                 )
             ) {

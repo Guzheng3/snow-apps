@@ -1,6 +1,6 @@
 import { AppState, ExcalidrawActionType } from '@mg-chao/excalidraw/types';
 import { ExcalidrawImperativeAPI } from '@mg-chao/excalidraw/types';
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { DrawCoreActionType } from '@/app/fullScreenDraw/components/drawCore/extra';
 
 export type DrawCacheLayerActionType = {

@@ -2,7 +2,7 @@ import { Application, ApplicationOptions } from 'pixi.js';
 import * as PIXI from 'pixi.js';
 import { RefWrap } from './workers/renderWorkerTypes';
 import { RefObject } from 'react';
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { SelectRectParams } from '../selectLayer';
 import * as PIXIFilters from 'pixi-filters';
 import { ImageSharedBufferData } from '../../tools';

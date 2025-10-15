@@ -1,20 +1,21 @@
 import { useCallback, useImperativeHandle, useRef } from 'react';
-import { ElementRect } from '@/commands';
-import { OcrDetectResult } from '@/commands/ocr';
+import { ElementRect } from '@/types/commands/screenshot';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { CaptureBoundingBoxInfo, DrawEvent, DrawEventPublisher } from '../../extra';
-import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { DrawState } from '@/types/draw';
+import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import OcrTool, { isOcrTool } from '../drawToolbar/components/tools/ocrTool';
 import {
     AppOcrResult,
     covertOcrResultToText,
-    OcrDetectAfterAction,
     OcrResult,
     OcrResultActionType,
 } from '@/app/fixedContent/components/ocrResult';
 import { zIndexs } from '@/utils/zIndex';
 import { writeTextToClipboard } from '@/utils/clipboard';
-import { AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
+import { AppSettingsGroup, OcrDetectAfterAction } from '@/types/appSettings';
+import { AppSettingsPublisher } from '@/contexts/appSettingsActionContext';
+import { OcrDetectResult } from '@/types/commands/ocr';
 
 export type OcrBlocksActionType = {
     init: (

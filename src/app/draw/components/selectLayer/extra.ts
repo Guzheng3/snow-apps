@@ -1,4 +1,4 @@
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { MousePosition } from '@/utils/mousePosition';
 import Color from 'color';
 

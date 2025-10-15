@@ -39,27 +39,27 @@ import {
 } from '@/functions/tools';
 import { createFullScreenDrawWindow } from '@/commands/core';
 import { IconLabel } from '@/components/iconLable';
-import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup, ShortcutKeyStatus } from '@/types/appSettings';
+import { AppSettingsPublisher } from '@/contexts/appSettingsActionContext';
 import { TrayIconStatePublisher } from '@/app/trayIcon';
+import { FieldTimeOutlined } from '@ant-design/icons';
+import { ChangeDelaySeconds } from './components/changeDelaySeconds';
+import { Tooltip } from 'antd';
+import { startOrCopyVideo } from '@/functions/videoRecord';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
+import {
+    PLUGIN_ID_AI_CHAT,
+    PLUGIN_ID_FFMPEG,
+    PLUGIN_ID_RAPID_OCR,
+} from '@/constants/pluginService';
+import { useDeepCompareEffect } from '@ant-design/pro-components';
 import {
     AppFunction,
     AppFunctionComponentConfig,
     AppFunctionConfig,
     AppFunctionGroup,
-    defaultAppFunctionConfigs,
-    ShortcutKeyStatus,
-} from '@/app/extra';
-import { FieldTimeOutlined } from '@ant-design/icons';
-import { ChangeDelaySeconds } from './components/changeDelaySeconds';
-import { Tooltip } from 'antd';
-import { startOrCopyVideo } from '@/functions/videoRecord';
-import {
-    PLUGIN_ID_AI_CHAT,
-    PLUGIN_ID_FFMPEG,
-    PLUGIN_ID_RAPID_OCR,
-    usePluginService,
-} from '../pluginService';
-import { useDeepCompareEffect } from '@ant-design/pro-components';
+} from '@/types/components/appFunction';
+import { defaultAppFunctionConfigs } from '@/constants/appFunction';
 
 export type GlobalShortcutContextType = {
     disableShortcutKeyRef: React.RefObject<boolean>;
@@ -92,7 +92,7 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
         undefined,
     );
 
-    const { isReadyStatus } = usePluginService();
+    const { isReadyStatus } = usePluginServiceContext();
     const {
         configs: defaultAppFunctionComponentConfigs,
         groupConfigs: defaultAppFunctionComponentGroupConfigs,

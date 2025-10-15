@@ -1,25 +1,13 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Base64 } from 'js-base64';
-import { ImageFormat } from '@/utils/file';
-
-export enum ImageEncoder {
-    Png = 'png',
-    WebP = 'webp',
-}
-
-export enum ImageBufferType {
-    // 原始的像素数据
-    Pixels = 'pixels',
-    // 通过 SharedBuffer 传输的特殊标记
-    SharedBuffer = 'shared-buffer',
-}
-
-export type ImageBuffer = {
-    encoder: ImageEncoder;
-    data: Blob;
-    bufferType: ImageBufferType;
-    buffer: ArrayBuffer;
-};
+import { ImageFormat } from '@/types/utils/file';
+import {
+    ElementRect,
+    ImageBuffer,
+    ImageBufferType,
+    ImageEncoder,
+    WindowElement,
+} from '@/types/commands/screenshot';
 
 /**
  * 捕获鼠标所在位置的屏幕图像
@@ -41,18 +29,6 @@ export const captureCurrentMonitor = async (
         bufferType: ImageBufferType.Pixels,
         buffer: result,
     };
-};
-
-export type ElementRect = {
-    min_x: number;
-    min_y: number;
-    max_x: number;
-    max_y: number;
-};
-
-export type WindowElement = {
-    element_rect: ElementRect;
-    window_id: number;
 };
 
 export const getWindowElements = async () => {

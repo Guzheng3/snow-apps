@@ -1,17 +1,11 @@
-import {
-    AppSettingsActionContext,
-    AppSettingsData,
-    AppSettingsGroup,
-    AppSettingsPublisher,
-} from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
 import {
     DrawCoreContext,
-    DrawState,
     DrawStatePublisher,
     ExcalidrawEventParams,
     ExcalidrawEventPublisher,
 } from '@/app/fullScreenDraw/components/drawCore/extra';
-import { HotkeysScope } from '@/components/globalLayoutExtra';
+import { HotkeysScope } from '@/types/core/appHotKeys';
 import { useHotkeysApp } from '@/hooks/useHotkeysApp';
 import { useStateRef } from '@/hooks/useStateRef';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
@@ -22,6 +16,11 @@ import {
 } from '@mg-chao/excalidraw/element/types';
 import { AppState } from '@mg-chao/excalidraw/types';
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    AppSettingsActionContext,
+    AppSettingsPublisher,
+} from '@/contexts/appSettingsActionContext';
+import { DrawState } from '@/types/draw';
 
 export const isSerialNumberElement = (element: ExcalidrawElement | undefined) => {
     if (!element) {

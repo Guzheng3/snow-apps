@@ -1,5 +1,11 @@
 import { invoke } from '@tauri-apps/api/core';
-import { ElementRect, ImageBuffer, ImageBufferType, ImageEncoder } from '.';
+import {
+    CaptureFullScreenResult,
+    ImageBuffer,
+    ImageBufferType,
+    ImageEncoder,
+} from '@/types/commands/screenshot';
+import { HdrColorAlgorithm } from '@/types/appSettings';
 
 export const switchAlwaysOnTop = async (windowId: number) => {
     const result = await invoke<string>('switch_always_on_top', {
@@ -31,11 +37,6 @@ export const captureFocusedWindow = async (
     return result;
 };
 
-export enum HdrColorAlgorithm {
-    Linear = 'Linear',
-    None = 'None',
-}
-
 export const captureAllMonitors = async (
     enableMultipleMonitor: boolean,
     correctHdrColorAlgorithm: HdrColorAlgorithm,
@@ -64,10 +65,6 @@ export const captureAllMonitors = async (
         buffer: result,
         bufferType: type,
     };
-};
-
-export type CaptureFullScreenResult = {
-    monitor_rect: ElementRect;
 };
 
 export const captureFullScreen = async (

@@ -1,14 +1,15 @@
 import { useCallback, useRef, useState } from 'react';
 import { SubTools } from '../../subTools';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { DrawState } from '@/types/draw';
 import { DrawEvent, DrawEventParams, DrawEventPublisher } from '@/app/draw/extra';
 import { Button } from 'antd';
-import { OcrDetectResult } from '@/commands/ocr';
+import { OcrDetectResult } from '@/types/commands/ocr';
 import { OcrTranslateIcon } from '@/components/icons';
 import { useIntl } from 'react-intl';
 import { ModalTranslator, ModalTranslatorActionType } from './components/modalTranslator';
 import { useStateRef } from '@/hooks/useStateRef';
+import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 
 export const isOcrTool = (drawState: DrawState) => {
     return drawState === DrawState.OcrDetect || drawState === DrawState.OcrTranslate;

@@ -4,12 +4,8 @@ import { Descriptions, Space, theme } from 'antd';
 import { CaptureStep, DrawContext } from '../../types';
 import Color from 'color';
 import { FormattedMessage } from 'react-intl';
-import {
-    AppContext,
-    AppSettingsGroup,
-    AppSettingsPublisher,
-    AppSettingsTheme,
-} from '@/app/contextWrap';
+import { AppSettingsGroup, AppSettingsTheme } from '@/types/appSettings';
+import { AppSettingsPublisher } from '@/contexts/appSettingsActionContext';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardIcon, MouseIcon } from '@/components/icons';
 import { DescriptionsItemType } from 'antd/es/descriptions';
@@ -29,13 +25,15 @@ import { MousePosition } from '@/utils/mousePosition';
 import { useCallbackRender } from '@/hooks/useCallbackRender';
 import { debounce } from 'es-toolkit';
 import { ScreenshotType } from '@/utils/types';
-import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { DrawState } from '@/types/draw';
+import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
-import { getPlatformValue } from '@/utils';
+import { getPlatformValue } from '@/utils/platform';
 import { formatKey } from '@/utils/format';
 import { useContentScale } from '@/hooks/useTextScaleFactor';
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { useStateRef } from '@/hooks/useStateRef';
+import { AppContext } from '@/contexts/appContext';
 
 const KeyLabel: React.FC<{
     messageId?: string;

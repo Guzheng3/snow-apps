@@ -1,6 +1,4 @@
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import {
-    createContext,
     Dispatch,
     RefObject,
     SetStateAction,
@@ -10,74 +8,9 @@ import {
     useState,
 } from 'react';
 import { useStateRef } from './useStateRef';
-import { AppSettingsGroup } from '@/app/contextWrap';
+import { AppSettingsGroup } from '@/types/appSettings';
 import { useAppSettingsLoad } from './useAppSettingsLoad';
-
-function listenDevicePixelRatio(callback: (ratio: number) => void) {
-    const media = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-
-    function handleChange() {
-        callback(window.devicePixelRatio);
-    }
-
-    media.addEventListener('change', handleChange);
-
-    return function stopListen() {
-        media.removeEventListener('change', handleChange);
-    };
-}
-
-const TextScaleFactorContext = createContext<{
-    textScaleFactor: number;
-    textScaleFactorRef: RefObject<number>;
-    devicePixelRatio: number;
-}>({
-    textScaleFactor: 1,
-    textScaleFactorRef: { current: 1 },
-    devicePixelRatio: 1,
-});
-
-let useTextScaleFactorDataCache_textScaleFactor = 1;
-let useTextScaleFactorDataCache_devicePixelRatio = 1;
-export const TextScaleFactorProvider: React.FC<{
-    children: React.ReactNode;
-}> = ({ children }) => {
-    const [textScaleFactor, setTextScaleFactor, textScaleFactorRef] = useStateRef(
-        useTextScaleFactorDataCache_textScaleFactor,
-    );
-    const [devicePixelRatio, setDevicePixelRatio] = useState(
-        useTextScaleFactorDataCache_devicePixelRatio,
-    );
-
-    const initTextScaleFactor = useCallback(
-        async (devicePixelRatio: number) => {
-            const scaleFactor = await getCurrentWindow().scaleFactor();
-            useTextScaleFactorDataCache_textScaleFactor = devicePixelRatio / scaleFactor;
-            useTextScaleFactorDataCache_devicePixelRatio = devicePixelRatio;
-            setTextScaleFactor(useTextScaleFactorDataCache_textScaleFactor);
-            setDevicePixelRatio(useTextScaleFactorDataCache_devicePixelRatio);
-        },
-        [setTextScaleFactor],
-    );
-
-    useEffect(() => {
-        initTextScaleFactor(window.devicePixelRatio);
-        const stopListen = listenDevicePixelRatio((ratio) => {
-            initTextScaleFactor(ratio);
-        });
-        return () => {
-            stopListen();
-        };
-    }, [initTextScaleFactor]);
-
-    return (
-        <TextScaleFactorContext.Provider
-            value={{ textScaleFactor, textScaleFactorRef, devicePixelRatio }}
-        >
-            {children}
-        </TextScaleFactorContext.Provider>
-    );
-};
+import { TextScaleFactorContext } from '@/contexts/textScaleFactorContext';
 
 /**
  * 获取文本缩放比例
@@ -96,7 +29,7 @@ export const useTextScaleFactor = (): [number, number, RefObject<number>] => {
  * @param devicePixelRatio 设备像素比
  * @returns 内容缩放比例
  */
-export const calculateContentScale = (
+const calculateContentScale = (
     monitorScaleFactor: number,
     textScaleFactor: number,
     devicePixelRatio: number,

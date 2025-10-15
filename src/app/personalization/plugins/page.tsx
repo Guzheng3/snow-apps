@@ -1,11 +1,7 @@
 'use client';
 
-import {
-    PLUGIN_ID_FFMPEG,
-    PLUGIN_ID_RAPID_OCR,
-    PluginStatus,
-    usePluginService,
-} from '@/components/pluginService';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
+import { PLUGIN_ID_FFMPEG, PLUGIN_ID_RAPID_OCR } from '@/constants/pluginService';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { useMemo } from 'react';
 import { Badge, Button, List } from 'antd';
@@ -13,10 +9,11 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { DeleteOutlined, PlusOutlined, SyncOutlined } from '@ant-design/icons';
 import { pluginInstallPlugin, pluginUninstallPlugin } from '@/commands/plugin';
 import { appError } from '@/utils/log';
+import { PluginStatus } from '@/types/commands/plugin';
 
 const PluginsPage = () => {
     const intl = useIntl();
-    const { pluginConfig, pluginStatus } = usePluginService();
+    const { pluginConfig, pluginStatus } = usePluginServiceContext();
 
     const pluginList = useMemo(() => {
         return Array.from(pluginConfig?.plugins.values() || []).map((plugin) => {

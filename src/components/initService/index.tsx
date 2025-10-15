@@ -1,17 +1,14 @@
 'use client';
 
-import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
 import { initUiElements } from '@/commands';
 import { autoStartDisable, autoStartEnable, setEnableProxy, setRunLog } from '@/commands/core';
 import { ocrInit } from '@/commands/ocr';
 import { hotLoadPageInit } from '@/commands/hotLoadPage';
 import { videoRecordInit } from '@/commands/videoRecord';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
-import {
-    PLUGIN_ID_FFMPEG,
-    PLUGIN_ID_RAPID_OCR,
-    usePluginService,
-} from '@/components/pluginService';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
+import { PLUGIN_ID_FFMPEG, PLUGIN_ID_RAPID_OCR } from '@/constants/pluginService';
 import { CaptureHistory } from '@/utils/captureHistory';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -33,7 +30,7 @@ export const InitService = () => {
     const [appSettings, setAppSettings] = useState<AppSettingsData | undefined>(undefined);
     const [prevAppSettings, setPrevAppSettings] = useState<AppSettingsData | undefined>(undefined);
 
-    const { isReadyStatus, pluginConfigRef } = usePluginService();
+    const { isReadyStatus, pluginConfigRef } = usePluginServiceContext();
 
     const initServices = useCallback(async () => {
         if (!appSettings || !isReadyStatus) {

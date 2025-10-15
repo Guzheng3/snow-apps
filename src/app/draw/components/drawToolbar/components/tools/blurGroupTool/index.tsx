@@ -3,19 +3,18 @@ import { useIntl } from 'react-intl';
 import { useState, useCallback, useContext, useMemo } from 'react';
 import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { DrawState } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { DrawState } from '@/types/draw';
 import { getButtonTypeByState } from '../../../extra';
 import { FilterFreeDrawIcon, FilterIcon } from '@/components/icons';
-import {
-    AppSettingsActionContext,
-    AppSettingsData,
-    AppSettingsGroup,
-    AppSettingsPublisher,
-} from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
 import { ToolbarPopover } from '@/app/draw/components/drawToolbar/components/toolbarPopover';
 import React from 'react';
-import { KeyEventKey } from '../../keyEventWrap/extra';
 import { ToolButton } from '../../toolButton';
+import {
+    AppSettingsActionContext,
+    AppSettingsPublisher,
+} from '@/contexts/appSettingsActionContext';
+import { DrawToolbarKeyEventKey } from '@/types/components/drawToolbar';
 
 const BlurGroupToolCore: React.FC<{
     customToolbarToolHiddenMap: Partial<Record<DrawState, boolean>> | undefined;
@@ -67,7 +66,7 @@ const BlurGroupToolCore: React.FC<{
         return (
             <ToolButton
                 hidden={customToolbarToolHiddenMap?.[DrawState.Blur]}
-                componentKey={KeyEventKey.BlurTool}
+                componentKey={DrawToolbarKeyEventKey.BlurTool}
                 icon={<FilterIcon />}
                 drawState={DrawState.Blur}
                 disable={disable}

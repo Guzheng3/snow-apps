@@ -1,11 +1,11 @@
-import {
-    AppSettingsData,
-    AppSettingsLoadingPublisher,
-    AppSettingsPublisher,
-} from '@/app/contextWrap';
+import { AppSettingsData } from '@/types/appSettings';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useStateSubscriber } from './useStateSubscriber';
 import { debounce } from 'es-toolkit';
+import {
+    AppSettingsLoadingPublisher,
+    AppSettingsPublisher,
+} from '@/contexts/appSettingsActionContext';
 
 /**
  * 应用设置加载完毕后执行

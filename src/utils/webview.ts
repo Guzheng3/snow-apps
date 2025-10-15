@@ -1,6 +1,6 @@
 'use client';
 
-import { getPlatform } from '.';
+import { getPlatform } from './platform';
 
 export const getWebViewSharedBuffer = (): Promise<ArrayBuffer | undefined> => {
     if (getPlatform() !== 'windows' || !('chrome' in window)) {

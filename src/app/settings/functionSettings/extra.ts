@@ -1,30 +1,9 @@
-export const FOCUS_WINDOW_APP_NAME_ENV_VARIABLE = '{{FOCUS_WINDOW_APP_NAME}}';
-
-export type ChatApiConfig = {
-    api_uri: string;
-    api_key: string;
-    api_model: string;
-    model_name: string;
-    support_thinking: boolean;
-};
+import { ChatApiConfig } from '@/types/appSettings';
 
 export const fliterChatApiConfig = (configList: ChatApiConfig[]) => {
     return configList.filter(
         (item) => item.api_key && item.api_uri && item.api_model && item.model_name,
     );
-};
-
-export enum TranslationApiType {
-    DeepL = 'translation_api_deepl',
-    /** 使用 Google 公开的 API 进行免费翻译 */
-    GoogleWeb = 'translation_api_google_web',
-}
-
-export type TranslationApiConfig = {
-    api_type: TranslationApiType;
-    api_uri: string;
-    api_key: string;
-    deepl_prefer_quality_optimized?: boolean;
 };
 
 export const convertLanguageCodeToDeepLSourceLanguageCode = (

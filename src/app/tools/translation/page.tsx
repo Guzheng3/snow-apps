@@ -1,11 +1,10 @@
 'use client';
 
-import { AppSettingsGroup } from '@/app/contextWrap';
+import { AppSettingsGroup } from '@/types/appSettings';
 import { HotkeysMenu } from '@/components/hotkeysMenu';
-import { KeyEventKey, KeyEventValue } from '@/core/hotKeys';
 import { finishScreenshot } from '@/functions/screenshot';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
-import { copyText, copyTextAndHide, decodeParamsValue } from '@/utils';
+import { copyText, copyTextAndHide } from '@/utils/clipboard';
 import { theme } from 'antd';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, Suspense } from 'react';
@@ -14,6 +13,8 @@ import { FormattedMessage } from 'react-intl';
 import { ContentWrap } from '@/components/contentWrap';
 import { Translator, TranslatorActionType } from '@/components/translator';
 import { formatKey } from '@/utils/format';
+import { decodeParamsValue } from '@/utils/base64';
+import { CommonKeyEventKey, CommonKeyEventValue } from '@/types/core/commonKeyEvent';
 
 const TranslationCore = () => {
     const { token } = theme.useToken();
@@ -52,10 +53,10 @@ const TranslationCore = () => {
         updateSourceContentBySelectedText();
     }, [updateSourceContentBySelectedText]);
 
-    const [hotKeys, setHotKeys] = useState<Record<KeyEventKey, KeyEventValue>>();
+    const [hotKeys, setHotKeys] = useState<Record<CommonKeyEventKey, CommonKeyEventValue>>();
     useAppSettingsLoad(
         useCallback((appSettings) => {
-            setHotKeys(appSettings[AppSettingsGroup.KeyEvent]);
+            setHotKeys(appSettings[AppSettingsGroup.CommonKeyEvent]);
         }, []),
         true,
     );
@@ -75,13 +76,13 @@ const TranslationCore = () => {
         copyTextAndHide(translatorActionRef.current.getTranslatedContentRef());
     }, [translatorActionRef]);
 
-    useHotkeys(hotKeys?.[KeyEventKey.CopyAndHide]?.hotKey ?? '', onCopyAndHide, {
+    useHotkeys(hotKeys?.[CommonKeyEventKey.CopyAndHide]?.hotKey ?? '', onCopyAndHide, {
         keyup: false,
         keydown: true,
         preventDefault: true,
         enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
     });
-    useHotkeys(hotKeys?.[KeyEventKey.Copy]?.hotKey ?? '', onCopy, {
+    useHotkeys(hotKeys?.[CommonKeyEventKey.Copy]?.hotKey ?? '', onCopy, {
         keyup: false,
         keydown: true,
         preventDefault: true,
@@ -105,7 +106,9 @@ const TranslationCore = () => {
                                             message: (
                                                 <FormattedMessage id="tools.translation.copy" />
                                             ),
-                                            key: formatKey(hotKeys?.[KeyEventKey.Copy]?.hotKey),
+                                            key: formatKey(
+                                                hotKeys?.[CommonKeyEventKey.Copy]?.hotKey,
+                                            ),
                                         }}
                                     />
                                 ),
@@ -121,7 +124,7 @@ const TranslationCore = () => {
                                                 <FormattedMessage id="tools.translation.copyAndHide" />
                                             ),
                                             key: formatKey(
-                                                hotKeys?.[KeyEventKey.CopyAndHide]?.hotKey,
+                                                hotKeys?.[CommonKeyEventKey.CopyAndHide]?.hotKey,
                                             ),
                                         }}
                                     />

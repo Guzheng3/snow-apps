@@ -1,8 +1,4 @@
-import {
-    AppSettingsActionContext,
-    AppSettingsGroup,
-    AppSettingsPublisher,
-} from '@/app/contextWrap';
+import { AppSettingsGroup } from '@/types/appSettings';
 import { WatermarkProps } from '@/app/draw/components/baseLayer/baseLayerRenderActions';
 import {
     CaptureEvent,
@@ -14,7 +10,6 @@ import {
 } from '@/app/draw/extra';
 import { DrawContext } from '@/app/draw/types';
 import {
-    DrawState,
     DrawStatePublisher,
     ExcalidrawEventParams,
     ExcalidrawEventPublisher,
@@ -24,6 +19,11 @@ import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { ExcalidrawWatermarkElement } from '@mg-chao/excalidraw/element/types';
 import { AppState } from '@mg-chao/excalidraw/types';
 import { useCallback, useContext, useRef } from 'react';
+import {
+    AppSettingsActionContext,
+    AppSettingsPublisher,
+} from '@/contexts/appSettingsActionContext';
+import { DrawState } from '@/types/draw';
 
 const generateWatermarkElement = (text: string, appState: AppState): ExcalidrawWatermarkElement => {
     return {

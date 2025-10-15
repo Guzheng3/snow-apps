@@ -1,13 +1,8 @@
-import {
-    AppSettingsActionContext,
-    AppSettingsData,
-    AppSettingsGroup,
-    AppSettingsPublisher,
-} from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup, TranslationApiType } from '@/types/appSettings';
 import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
-import { TranslationApiType } from '@/app/settings/functionSettings/extra';
-import { OcrDetectResult } from '@/commands/ocr';
-import { AntdContext, HotkeysScope } from '@/components/globalLayoutExtra';
+import { OcrDetectResult } from '@/types/commands/ocr';
+import { HotkeysScope } from '@/types/core/appHotKeys';
+import { AntdContext } from '@/contexts/antdContext';
 import { Translator, TranslatorActionType } from '@/components/translator';
 import { useStateRef } from '@/hooks/useStateRef';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
@@ -23,6 +18,10 @@ import React, {
 } from 'react';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { FormattedMessage, useIntl } from 'react-intl';
+import {
+    AppSettingsActionContext,
+    AppSettingsPublisher,
+} from '@/contexts/appSettingsActionContext';
 
 export type ModalTranslatorActionType = {
     startTranslate: () => void;

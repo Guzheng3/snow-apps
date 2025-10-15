@@ -1,4 +1,4 @@
-import { HotkeysScope } from '@/components/globalLayoutExtra';
+import { HotkeysScope } from '@/types/core/appHotKeys';
 import { useEffect, useState } from 'react';
 import { HotkeyCallback, Keys, useHotkeys, useHotkeysContext } from 'react-hotkeys-hook';
 import { OptionsOrDependencyArray } from 'react-hotkeys-hook/packages/react-hotkeys-hook/dist/types';

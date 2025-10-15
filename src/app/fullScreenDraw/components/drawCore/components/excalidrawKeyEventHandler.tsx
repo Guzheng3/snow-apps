@@ -2,14 +2,12 @@ import { useCallback, useMemo, useState } from 'react';
 import React from 'react';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { ExcalidrawKeyEvent, ExcalidrawKeyEventPublisher } from '../extra';
-import { AppSettingsGroup } from '@/app/contextWrap';
+import { AppSettingsGroup } from '@/types/appSettings';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
-import { HotkeysScope } from '@/components/globalLayoutExtra';
+import { HotkeysScope } from '@/types/core/appHotKeys';
 import { useHotkeysApp } from '@/hooks/useHotkeysApp';
-import {
-    defaultDrawToolbarKeyEventSettings,
-    KeyEventKey,
-} from '@/app/draw/components/drawToolbar/components/keyEventWrap/extra';
+import { defaultDrawToolbarKeyEventSettings } from '@/constants/drawToolbarKeyEvent';
+import { DrawToolbarKeyEventKey } from '@/types/components/drawToolbar';
 
 type HotKeys = {
     [key in keyof ExcalidrawKeyEvent]: string;
@@ -17,11 +15,13 @@ type HotKeys = {
 
 const defaultHotKeys: HotKeys = {
     rotateWithDiscreteAngle:
-        defaultDrawToolbarKeyEventSettings[KeyEventKey.RotateWithDiscreteAnglePicker].hotKey,
-    resizeFromCenter: defaultDrawToolbarKeyEventSettings[KeyEventKey.ResizeFromCenterPicker].hotKey,
+        defaultDrawToolbarKeyEventSettings[DrawToolbarKeyEventKey.RotateWithDiscreteAnglePicker]
+            .hotKey,
+    resizeFromCenter:
+        defaultDrawToolbarKeyEventSettings[DrawToolbarKeyEventKey.ResizeFromCenterPicker].hotKey,
     maintainAspectRatio:
-        defaultDrawToolbarKeyEventSettings[KeyEventKey.MaintainAspectRatioPicker].hotKey,
-    autoAlign: defaultDrawToolbarKeyEventSettings[KeyEventKey.AutoAlignPicker].hotKey,
+        defaultDrawToolbarKeyEventSettings[DrawToolbarKeyEventKey.MaintainAspectRatioPicker].hotKey,
+    autoAlign: defaultDrawToolbarKeyEventSettings[DrawToolbarKeyEventKey.AutoAlignPicker].hotKey,
 };
 
 const ExcalidrawKeyEventHandlerCore = () => {

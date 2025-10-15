@@ -7,22 +7,25 @@ import {
     useRef,
     useState,
 } from 'react';
-import { ElementRect } from '@/commands';
-import { ocrDetect, OcrDetectResult } from '@/commands/ocr';
+import { ElementRect } from '@/types/commands/screenshot';
+import { OcrDetectResult } from '@/types/commands/ocr';
+import { ocrDetect } from '@/commands/ocr';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { theme } from 'antd';
 import Color from 'color';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Menu } from '@tauri-apps/api/menu';
 import { useHotkeysApp } from '@/hooks/useHotkeysApp';
-import { AntdContext } from '@/components/globalLayoutExtra';
+import { AntdContext } from '@/contexts/antdContext';
 import { CaptureBoundingBoxInfo, ElementDraggingPublisher } from '@/app/draw/extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
+import { AppSettingsGroup } from '@/types/appSettings';
+import { AppSettingsPublisher } from '@/contexts/appSettingsActionContext';
 import { writeTextToClipboard } from '@/utils/clipboard';
-import { getPlatformValue } from '@/utils';
+import { getPlatformValue } from '@/utils/platform';
 import { releaseOcrSession } from '@/functions/ocr';
-import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
+import { PLUGIN_ID_RAPID_OCR } from '@/constants/pluginService';
 
 // 定义角度阈值常量（以度为单位）
 const ROTATION_THRESHOLD = 3; // 小于3度的旋转被视为误差，不进行旋转
@@ -58,15 +61,6 @@ export type OcrResultActionType = {
 export const covertOcrResultToText = (ocrResult: OcrDetectResult) => {
     return ocrResult.text_blocks.map((block) => block.text).join('\n');
 };
-
-export enum OcrDetectAfterAction {
-    /** 不执行任何操作 */
-    None = 'none',
-    /** 复制文本 */
-    CopyText = 'copyText',
-    /** 复制文本并关闭窗口 */
-    CopyTextAndCloseWindow = 'copyTextAndCloseWindow',
-}
 
 export const OcrResult: React.FC<{
     zIndex: number;
@@ -304,7 +298,7 @@ export const OcrResult: React.FC<{
 
     /** 请求 ID，避免 OCR 检测中切换工具后任然触发 OCR 结果 */
     const requestIdRef = useRef<number>(0);
-    const { isReady } = usePluginService();
+    const { isReady } = usePluginServiceContext();
     const initDrawCanvas = useCallback(
         async (params: OcrResultInitDrawCanvasParams) => {
             requestIdRef.current++;

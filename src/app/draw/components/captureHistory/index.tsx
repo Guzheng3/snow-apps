@@ -2,15 +2,14 @@ import { useCallback, useContext, useImperativeHandle, useRef } from 'react';
 import { DrawContext } from '../../types';
 import { CaptureHistory, getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
 import { CaptureHistoryItem, CaptureHistorySource } from '@/utils/appStore';
-import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { KeyEventWrap } from '../drawToolbar/components/keyEventWrap';
-import { KeyEventKey } from '../drawToolbar/components/keyEventWrap/extra';
 import React from 'react';
 import { withStatePublisher } from '@/hooks/useStatePublisher';
 import { EnableKeyEventPublisher } from '../drawToolbar/components/keyEventWrap/extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import {
     CaptureEvent,
     CaptureEventParams,
@@ -21,20 +20,23 @@ import {
 } from '../../extra';
 import { Ordered } from '@mg-chao/excalidraw/element/types';
 import { NonDeletedExcalidrawElement } from '@mg-chao/excalidraw/element/types';
-import { AntdContext } from '@/components/globalLayoutExtra';
 import { FormattedMessage } from 'react-intl';
 import { appError } from '@/utils/log';
-import { ImageBuffer } from '@/commands';
+import { CaptureFullScreenResult, ImageBuffer } from '@/types/commands/screenshot';
 import { onCaptureHistoryChange } from '@/functions/screenshot';
 import { ScreenshotType } from '@/utils/types';
-import { captureFullScreen, CaptureFullScreenResult } from '@/commands/screenshot';
+import { captureFullScreen } from '@/commands/screenshot';
 import { getImagePathFromSettings } from '@/utils/file';
 import { playCameraShutterSound } from '@/utils/audio';
 import { ImageSharedBufferData } from '../../tools';
 import { encodeImage } from './workers/encodeImage';
 import { AppState } from '@mg-chao/excalidraw/types';
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { getCorrectHdrColorAlgorithm } from '@/utils/appSettings';
+import { AppSettingsPublisher } from '@/contexts/appSettingsActionContext';
+import { DrawState } from '@/types/draw';
+import { DrawToolbarKeyEventKey } from '@/types/components/drawToolbar';
+import { AntdContext } from '@/contexts/antdContext';
 
 export type CaptureHistoryActionType = {
     saveCurrentCapture: (
@@ -396,7 +398,7 @@ const CaptureHistoryControllerCore: React.FC<{
     return (
         <>
             <KeyEventWrap
-                componentKey={KeyEventKey.PreviousCapture}
+                componentKey={DrawToolbarKeyEventKey.PreviousCapture}
                 onKeyDown={() => {
                     changeCurrentIndex(-1);
                 }}
@@ -404,7 +406,7 @@ const CaptureHistoryControllerCore: React.FC<{
                 <div />
             </KeyEventWrap>
             <KeyEventWrap
-                componentKey={KeyEventKey.NextCapture}
+                componentKey={DrawToolbarKeyEventKey.NextCapture}
                 onKeyDown={() => {
                     changeCurrentIndex(1);
                 }}

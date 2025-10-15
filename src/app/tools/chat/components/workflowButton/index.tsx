@@ -8,7 +8,7 @@ import {
 } from '../updateOrCreateWorkflow';
 import { FormattedMessage } from 'react-intl';
 import { useContext, useRef } from 'react';
-import { AntdContext } from '@/components/globalLayoutExtra';
+import { AntdContext } from '@/contexts/antdContext';
 import { SendMessageActionType } from '../workflowList';
 
 export const WorkflowButton: React.FC<{

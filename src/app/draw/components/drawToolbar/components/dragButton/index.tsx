@@ -13,10 +13,11 @@ import React, {
 } from 'react';
 import { useIntl } from 'react-intl';
 import { DrawToolbarContext, isEnableSubToolbar } from '../../extra';
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { updateElementPosition, UpdateElementPositionResult } from './extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { DrawState } from '@/types/draw';
 import { useMonitorRect } from '../../../statusBar';
 import { ElementDraggingPublisher } from '@/app/draw/extra';
 

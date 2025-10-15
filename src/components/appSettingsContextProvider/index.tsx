@@ -1,740 +1,65 @@
-'use client';
-
-import { createContext, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ConfigProvider, theme } from 'antd';
+import {
+    AppSettingsControlNode,
+    AppSettingsData,
+    AppSettingsFixedContentInitialPosition,
+    AppSettingsGroup,
+    AppSettingsLanguage,
+    AppSettingsTheme,
+    CloudSaveUrlFormat,
+    CloudSaveUrlType,
+    ExtraToolList,
+    HdrColorAlgorithm,
+    HistoryValidDuration,
+    OcrDetectAfterAction,
+    OcrModel,
+    TrayIconClickAction,
+    TrayIconDefaultIcon,
+    VideoMaxSize,
+} from '@/types/appSettings';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Window as AppWindow, getCurrentWindow } from '@tauri-apps/api/window';
+import { defaultAppSettingsData } from '@/constants/appSettings';
+import {
+    AppSettingsActionContext,
+    AppSettingsLoadingPublisher,
+    AppSettingsPublisher,
+} from '@/contexts/appSettingsActionContext';
+import { useStateSubscriber } from '@/hooks/useStateSubscriber';
+import { getConfigDirPath } from '@/utils/environment';
+import { createDir, textFileRead, textFileWrite } from '@/commands/file';
+import { appError, appWarn } from '@/utils/log';
+import { emit } from '@tauri-apps/api/event';
 import { debounce, isEqual, trim } from 'es-toolkit';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
+import { TranslationDomain, TranslationType } from '@/types/servies/translation';
+import { DrawState } from '@/types/draw';
+import { ImageFormat } from '@/types/utils/file';
+import { DrawToolbarKeyEventKey, DrawToolbarKeyEventValue } from '@/types/components/drawToolbar';
+import { defaultDrawToolbarKeyEventSettings } from '@/constants/drawToolbarKeyEvent';
+import { PLUGIN_ID_RAPID_OCR } from '@/constants/pluginService';
+import { defaultCommonKeyEventSettings } from '@/constants/commonKeyEvent';
+import { CommonKeyEventKey, CommonKeyEventValue } from '@/types/core/commonKeyEvent';
+import { AppFunction, AppFunctionConfig } from '@/types/components/appFunction';
+import { defaultAppFunctionConfigs } from '@/constants/appFunction';
+import { releaseDrawPage } from '@/functions/screenshot';
+import { createDrawWindow } from '@/commands';
 import zhCN from 'antd/es/locale/zh_CN';
 import zhTW from 'antd/es/locale/zh_TW';
 import enUS from 'antd/es/locale/en_US';
+import { formatErrorDetails } from '@/utils/log';
+import { ConfigProvider, theme } from 'antd';
+import { withStatePublisher } from '@/hooks/useStatePublisher';
+import React from 'react';
 import { IntlProvider } from 'react-intl';
 import { messages } from '@/messages/map';
-import { createDrawWindow, ElementRect, ImageBuffer } from '@/commands';
-import { emit } from '@tauri-apps/api/event';
-import { getCurrentWindow, Window as AppWindow } from '@tauri-apps/api/window';
-import { AppFunction, AppFunctionConfig, defaultAppFunctionConfigs } from './extra';
-import { createPublisher, withStatePublisher } from '@/hooks/useStatePublisher';
-import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import {
-    defaultDrawToolbarKeyEventSettings,
-    KeyEventKey as DrawToolbarKeyEventKey,
-    KeyEventValue as DrawToolbarKeyEventValue,
-} from './draw/components/drawToolbar/components/keyEventWrap/extra';
-import React from 'react';
-import { defaultKeyEventSettings, KeyEventKey, KeyEventValue } from '@/core/hotKeys';
-import { TranslationDomain, TranslationType } from '@/services/tools/translation';
-import {
-    ChatApiConfig,
-    FOCUS_WINDOW_APP_NAME_ENV_VARIABLE,
-    TranslationApiConfig,
-} from './settings/functionSettings/extra';
-import { defaultTranslationPrompt } from './tools/translation/extra';
-import { ColorPickerShowMode } from './draw/components/colorPicker';
-import { ImageFormat } from '@/utils/file';
-import { DrawState } from './fullScreenDraw/components/drawCore/extra';
-import { OcrDetectAfterAction } from './fixedContent/components/ocrResult';
-import { OcrModel } from '@/commands/ocr';
-import { HistoryValidDuration } from '@/utils/captureHistory';
-import { getPlatformValue } from '@/utils';
-import { GifFormat, VideoMaxSize } from '@/commands/videoRecord';
-import { appError, appWarn } from '@/utils/log';
-import {
-    createDir,
-    getAppConfigDir,
-    removeDir,
-    textFileClear,
-    textFileRead,
-    textFileWrite,
-} from '@/commands/file';
-import { releaseDrawPage } from '@/functions/screenshot';
-import { ExtraToolList } from './draw/components/drawToolbar/components/tools/extraTool';
-import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
-import { HdrColorAlgorithm } from '@/commands/screenshot';
-
-export enum AppSettingsGroup {
-    Common = 'common',
-    CommonTrayIcon = 'commonTrayIcon',
-    FunctionDraw = 'functionDraw',
-    Cache = 'cache_20250731',
-    Screenshot = 'screenshot',
-    FixedContent = 'fixedContent',
-    DrawToolbarKeyEvent = 'drawToolbarKeyEvent_20250526',
-    KeyEvent = 'KeyEvent',
-    AppFunction = 'appFunction',
-    Render = 'render',
-    SystemCommon = 'systemCommon',
-    SystemChat = 'systemChat',
-    SystemNetwork = 'systemNetwork',
-    SystemScreenshot = 'systemScreenshot_20250627',
-    SystemCore = 'systemCore',
-    SystemScrollScreenshot = 'systemScrollScreenshot_20250628',
-    FunctionChat = 'functionChat',
-    FunctionTranslation = 'functionTranslation',
-    FunctionScreenshot = 'functionScreenshot',
-    FunctionFullScreenDraw = 'functionFullScreenDraw',
-    FunctionOutput = 'functionOutput_20250908',
-    FunctionFixedContent = 'functionFixedContent',
-    FunctionVideoRecord = 'functionVideoRecord',
-    FunctionTrayIcon = 'functionTrayIcon',
-}
-
-export enum AppSettingsLanguage {
-    ZHHans = 'zh-Hans',
-    ZHHant = 'zh-Hant',
-    EN = 'en',
-}
-
-export enum AppSettingsControlNode {
-    Circle = 'circle',
-    Polyline = 'polyline',
-}
-
-export enum AppSettingsFixedContentInitialPosition {
-    MonitorCenter = 'monitorCenter',
-    MousePosition = 'mousePosition',
-}
-
-export enum TrayIconClickAction {
-    ShowMainWindow = 'showMainWindow',
-    Screenshot = 'screenshot',
-}
-
-export enum CloudSaveUrlType {
-    S3 = 's3',
-}
-
-export enum TrayIconDefaultIcon {
-    Default = 'default',
-    Light = 'light',
-    Dark = 'dark',
-    SnowDefault = 'snow-default',
-    SnowLight = 'snow-light',
-    SnowDark = 'snow-dark',
-}
-
-export enum CloudSaveUrlFormat {
-    Origin = 'origin',
-    Markdown = 'markdown',
-}
-
-export type SelectRectPreset = {
-    name: string;
-    selectParams: {
-        minX: number;
-        minY: number;
-        width: number;
-        height: number;
-        radius: number;
-        shadowWidth: number;
-        shadowColor: string;
-        lockAspectRatio: boolean | undefined;
-    };
-};
-
-export type AppSettingsData = {
-    [AppSettingsGroup.Common]: {
-        theme: AppSettingsTheme;
-        /** 紧凑布局 */
-        enableCompactLayout: boolean;
-        language: AppSettingsLanguage;
-        /** 浏览器语言，用于自动切换语言 */
-        browserLanguage: string;
-    };
-    [AppSettingsGroup.Screenshot]: {
-        /** 界面缩放比例 */
-        uiScale: number;
-        /** 工具栏缩放比例 */
-        toolbarUiScale: number;
-        /** 选区控件样式 */
-        controlNode: AppSettingsControlNode;
-        /** 颜色选择器模式 */
-        colorPickerShowMode: ColorPickerShowMode;
-        /** 超出选区范围的元素透明度 */
-        beyondSelectRectElementOpacity: number;
-        /** 选区遮罩颜色 */
-        selectRectMaskColor: string;
-        /** 快捷键提示透明度 */
-        hotKeyTipOpacity: number;
-        /** 全屏辅助线颜色 */
-        fullScreenAuxiliaryLineColor: string;
-        /** 显示器中心辅助线颜色 */
-        monitorCenterAuxiliaryLineColor: string;
-        /** 颜色选择器中心辅助线颜色 */
-        colorPickerCenterAuxiliaryLineColor: string;
-        /** 禁用动画 */
-        disableAnimation: boolean;
-        /** 隐藏工具栏工具 */
-        toolbarHiddenToolList: DrawState[];
-    };
-    [AppSettingsGroup.FixedContent]: {
-        /** 边框颜色 */
-        borderColor: string;
-    };
-    [AppSettingsGroup.CommonTrayIcon]: {
-        /** 自定义托盘图标 */
-        iconPath: string;
-        defaultIcons: TrayIconDefaultIcon;
-        /** 启用托盘 */
-        enableTrayIcon: boolean;
-    };
-    [AppSettingsGroup.FunctionDraw]: {
-        /** 锁定绘制工具 */
-        lockDrawTool: boolean;
-        /** 启用更精细的大小控制 */
-        enableSliderChangeWidth: boolean;
-        /** 独立的工具样式 */
-        toolIndependentStyle: boolean;
-        /** 禁用快速选择元素 */
-        disableQuickSelectElementToolList: DrawState[];
-    };
-    [AppSettingsGroup.Cache]: {
-        menuCollapsed: boolean;
-        chatModel: string;
-        translationType: TranslationType | string;
-        translationDomain: TranslationDomain;
-        targetLanguage: string;
-        ocrTranslateAutoReplace: boolean;
-        ocrTranslateKeepLayout: boolean;
-        /** 翻译时显示进度 */
-        ocrTranslateShowProcess: boolean;
-        colorPickerColorFormatIndex: number;
-        prevImageFormat: ImageFormat;
-        prevSelectRect: ElementRect;
-        enableMicrophone: boolean;
-        /** 是否启用锁定绘制工具 */
-        enableLockDrawTool: boolean;
-        /** 序列号工具是否禁用箭头 */
-        disableArrowPicker: boolean;
-        /** 截图选区圆角 */
-        selectRectRadius: number;
-        /** 截图选区阴影宽度 */
-        selectRectShadowWidth: number;
-        /** 截图选区阴影颜色 */
-        selectRectShadowColor: string;
-        // 记录上一次使用的矩形工具
-        lastRectTool: DrawState;
-        // 记录上一次使用的箭头工具
-        lastArrowTool: DrawState;
-        // 记录上一次使用的滤镜工具
-        lastFilterTool: DrawState;
-        // 记录上一次使用的额外工具
-        lastExtraTool: ExtraToolList;
-        // 记录上一次使用的绘制额外工具
-        lastDrawExtraTool: DrawState;
-        // 上一次水印内容
-        lastWatermarkText: string;
-        /** 延迟截图秒数 */
-        delayScreenshotSeconds: number;
-    };
-    [AppSettingsGroup.DrawToolbarKeyEvent]: Record<
-        DrawToolbarKeyEventKey,
-        DrawToolbarKeyEventValue
-    >;
-    [AppSettingsGroup.KeyEvent]: Record<KeyEventKey, KeyEventValue>;
-    [AppSettingsGroup.AppFunction]: Record<AppFunction, AppFunctionConfig>;
-    [AppSettingsGroup.Render]: {
-        antialias: boolean;
-    };
-    [AppSettingsGroup.SystemCommon]: {
-        autoStart: boolean;
-        autoCheckVersion: boolean;
-        runLog: boolean;
-    };
-    [AppSettingsGroup.SystemChat]: {
-        maxTokens: number;
-        temperature: number;
-        thinkingBudgetTokens: number;
-    };
-    [AppSettingsGroup.SystemNetwork]: {
-        enableProxy: boolean;
-    };
-    [AppSettingsGroup.FunctionChat]: {
-        autoCreateNewSession: boolean;
-        /** 关闭窗口时自动创建新会话 */
-        autoCreateNewSessionOnCloseWindow: boolean;
-        chatApiConfigList: ChatApiConfig[];
-    };
-    [AppSettingsGroup.FunctionTranslation]: {
-        chatPrompt: string;
-        translationApiConfigList: TranslationApiConfig[];
-    };
-    [AppSettingsGroup.FunctionScreenshot]: {
-        /** 选取窗口子元素 */
-        findChildrenElements: boolean;
-        /** 截图快捷键提示 */
-        shortcutCanleTip: boolean;
-        /** 复制后自动保存文件 */
-        autoSaveOnCopy: boolean;
-        /** 快速保存文件 */
-        fastSave: boolean;
-        /** 截图当前具有焦点的窗口时复制到剪贴板 */
-        focusedWindowCopyToClipboard: boolean;
-        /** 截取全屏时复制到剪贴板 */
-        fullScreenCopyToClipboard: boolean;
-        /** 双击复制到剪贴板 */
-        doubleClickCopyToClipboard: boolean;
-        /** 保存到云端 */
-        saveToCloud: boolean;
-        /** 云端链接格式 */
-        cloudSaveUrlFormat: CloudSaveUrlFormat;
-        /** 云端保存协议 */
-        cloudSaveUrlType: CloudSaveUrlType;
-        /** S3 访问密钥 ID */
-        s3AccessKeyId: string;
-        /** S3 访问密钥 */
-        s3SecretAccessKey: string;
-        /** S3 区域 */
-        s3Region: string;
-        /** S3 端点 */
-        s3Endpoint: string;
-        /** S3 桶名 */
-        s3BucketName: string;
-        /** S3 路径前缀 */
-        s3PathPrefix: string;
-        /** S3 强制路径样式 */
-        s3ForcePathStyle: boolean;
-        /** 保存文件路径 */
-        saveFileDirectory: string;
-        /** 保存文件格式 */
-        saveFileFormat: ImageFormat;
-        /** OCR 后自动执行 */
-        ocrAfterAction: OcrDetectAfterAction;
-        /** OCR 复制时复制文本 */
-        ocrCopyText: boolean;
-        /** 选区预设 */
-        selectRectPresetList: SelectRectPreset[];
-    };
-    [AppSettingsGroup.FunctionOutput]: {
-        /** 手动保存文件名格式 */
-        manualSaveFileNameFormat: string;
-        /** 自动保存文件名格式 */
-        autoSaveFileNameFormat: string;
-        /** 快速保存文件名格式 */
-        fastSaveFileNameFormat: string;
-        /** 截图当前具有焦点的窗口文件名格式 */
-        focusedWindowFileNameFormat: string;
-        /** 截取全屏文件名格式 */
-        fullScreenFileNameFormat: string;
-        /** 视频录制文件名格式 */
-        videoRecordFileNameFormat: string;
-    };
-    [AppSettingsGroup.FunctionFixedContent]: {
-        /** 以鼠标为中心缩放 */
-        zoomWithMouse: boolean;
-        /** 固定屏幕后自动 OCR */
-        autoOcr: boolean;
-        /** 固定截图后自动复制到剪贴板 */
-        autoCopyToClipboard: boolean;
-        /** 窗口初始位置 */
-        initialPosition: AppSettingsFixedContentInitialPosition;
-    };
-    [AppSettingsGroup.FunctionFullScreenDraw]: {
-        /** 默认工具 */
-        defaultTool: DrawState;
-    };
-    [AppSettingsGroup.FunctionVideoRecord]: {
-        /** 录制画面中隐藏工具栏 */
-        enableExcludeFromCapture: boolean;
-        /** 视频录制保存路径 */
-        saveDirectory: string;
-        /** 帧率 */
-        frameRate: number;
-        /** GIF 帧率 */
-        gifFrameRate: number;
-        /** 麦克风设备 */
-        microphoneDeviceName: string;
-        /** 硬件加速 */
-        hwaccel: boolean;
-        /** 编码器 */
-        encoder: string;
-        /** 编码器预设 */
-        encoderPreset: string;
-        /** 视频最大尺寸 */
-        videoMaxSize: VideoMaxSize;
-        /** GIF 最大尺寸 */
-        gifMaxSize: VideoMaxSize;
-        /** 动图格式 */
-        gifFormat: GifFormat;
-    };
-    [AppSettingsGroup.SystemScreenshot]: {
-        historyValidDuration: HistoryValidDuration;
-        /** 记录截图历史 */
-        recordCaptureHistory: boolean;
-        /** 截图历史保存编辑结果 */
-        historySaveEditResult: boolean;
-        ocrModel: OcrModel;
-        /** OCR 热启动 */
-        ocrHotStart: boolean;
-        /** OCR 模型写入内存 */
-        ocrModelWriteToMemory: boolean;
-        ocrDetectAngle: boolean;
-        /** 启用浏览器剪贴板 */
-        enableBrowserClipboard: boolean;
-        /** 尝试使用 Bitmap 格式写入到剪贴板 */
-        tryWriteBitmapImageToClipboard: boolean;
-        /** 启用多显示器截图 */
-        enableMultipleMonitor: boolean;
-        /** 更正颜色滤镜 */
-        correctColorFilter: boolean;
-        /** 更正 HDR 颜色 */
-        correctHdrColor: boolean;
-        /** HDR 颜色转换算法 */
-        correctHdrColorAlgorithm: HdrColorAlgorithm;
-    };
-    [AppSettingsGroup.SystemScrollScreenshot]: {
-        tryRollback: boolean;
-        minSide: number;
-        maxSide: number;
-        sampleRate: number;
-        imageFeatureDescriptionLength: number;
-        imageFeatureThreshold: number;
-    };
-    [AppSettingsGroup.FunctionTrayIcon]: {
-        /** 托盘点击后 */
-        iconClickAction: TrayIconClickAction;
-    };
-    [AppSettingsGroup.SystemCore]: {
-        /** 热加载页面数量 */
-        hotLoadPageCount: number;
-    };
-};
-
-export const CanHiddenToolSet: Set<DrawState> = new Set([
-    DrawState.Select,
-    DrawState.Ellipse,
-    DrawState.Arrow,
-    DrawState.Pen,
-    DrawState.Text,
-    DrawState.SerialNumber,
-    DrawState.Blur,
-    DrawState.BlurFreeDraw,
-    DrawState.Watermark,
-    DrawState.Highlight,
-    DrawState.Eraser,
-    DrawState.Redo,
-    DrawState.Fixed,
-    DrawState.OcrDetect,
-    DrawState.OcrTranslate,
-    DrawState.ScrollScreenshot,
-]);
-
-export enum AppSettingsTheme {
-    Light = 'light',
-    Dark = 'dark',
-    System = 'system',
-}
-
-export const defaultAppSettingsData: AppSettingsData = {
-    [AppSettingsGroup.Common]: {
-        theme: AppSettingsTheme.System,
-        enableCompactLayout: false,
-        language: AppSettingsLanguage.ZHHans,
-        browserLanguage: '',
-    },
-    [AppSettingsGroup.Screenshot]: {
-        uiScale: 100,
-        toolbarUiScale: 100,
-        controlNode: AppSettingsControlNode.Circle,
-        // 在 Mac 上禁用动画
-        disableAnimation: getPlatformValue(false, true),
-        colorPickerShowMode: ColorPickerShowMode.BeyondSelectRect,
-        beyondSelectRectElementOpacity: 100,
-        selectRectMaskColor: '#00000080',
-        fullScreenAuxiliaryLineColor: '#00000000',
-        monitorCenterAuxiliaryLineColor: '#00000000',
-        hotKeyTipOpacity: 100,
-        colorPickerCenterAuxiliaryLineColor: '#00000000',
-        toolbarHiddenToolList: [],
-    },
-    [AppSettingsGroup.FixedContent]: {
-        borderColor: '#dbdbdb',
-    },
-    [AppSettingsGroup.CommonTrayIcon]: {
-        iconPath: '',
-        defaultIcons: TrayIconDefaultIcon.Default,
-        enableTrayIcon: true,
-    },
-    [AppSettingsGroup.FunctionDraw]: {
-        lockDrawTool: true,
-        enableSliderChangeWidth: false,
-        toolIndependentStyle: true,
-        disableQuickSelectElementToolList: [],
-    },
-    [AppSettingsGroup.Cache]: {
-        menuCollapsed: false,
-        chatModel: 'deepseek-reasoner',
-        translationType: TranslationType.Youdao,
-        translationDomain: TranslationDomain.General,
-        targetLanguage: '',
-        ocrTranslateAutoReplace: true,
-        ocrTranslateKeepLayout: false,
-        ocrTranslateShowProcess: false,
-        colorPickerColorFormatIndex: 0,
-        prevImageFormat: ImageFormat.PNG,
-        prevSelectRect: {
-            min_x: 0,
-            min_y: 0,
-            max_x: 0,
-            max_y: 0,
-        },
-        enableMicrophone: false,
-        enableLockDrawTool: false,
-        disableArrowPicker: true,
-        selectRectRadius: 0,
-        selectRectShadowWidth: 0,
-        selectRectShadowColor: '#595959',
-        lastRectTool: DrawState.Rect,
-        lastArrowTool: DrawState.Arrow,
-        lastFilterTool: DrawState.Blur,
-        lastExtraTool: ExtraToolList.None,
-        lastDrawExtraTool: DrawState.Idle,
-        lastWatermarkText: '',
-        delayScreenshotSeconds: 0,
-    },
-    [AppSettingsGroup.DrawToolbarKeyEvent]: defaultDrawToolbarKeyEventSettings,
-    [AppSettingsGroup.KeyEvent]: defaultKeyEventSettings,
-    [AppSettingsGroup.AppFunction]: defaultAppFunctionConfigs,
-    [AppSettingsGroup.Render]: {
-        antialias: true,
-    },
-    [AppSettingsGroup.SystemCommon]: {
-        autoStart: true,
-        autoCheckVersion: true,
-        runLog: false,
-    },
-    [AppSettingsGroup.SystemChat]: {
-        maxTokens: 4096,
-        temperature: 1,
-        thinkingBudgetTokens: 4096,
-    },
-    [AppSettingsGroup.SystemNetwork]: {
-        enableProxy: false,
-    },
-    [AppSettingsGroup.FunctionChat]: {
-        autoCreateNewSession: true,
-        autoCreateNewSessionOnCloseWindow: true,
-        chatApiConfigList: [],
-    },
-    [AppSettingsGroup.FunctionTranslation]: {
-        chatPrompt: defaultTranslationPrompt,
-        translationApiConfigList: [],
-    },
-    [AppSettingsGroup.FunctionScreenshot]: {
-        findChildrenElements: true,
-        shortcutCanleTip: true,
-        autoSaveOnCopy: false,
-        doubleClickCopyToClipboard: true,
-        focusedWindowCopyToClipboard: true,
-        fullScreenCopyToClipboard: true,
-        fastSave: false,
-        /** 保存到云端 */
-        saveToCloud: false,
-        /** 云端保存协议 */
-        cloudSaveUrlType: CloudSaveUrlType.S3,
-        cloudSaveUrlFormat: CloudSaveUrlFormat.Origin,
-        s3AccessKeyId: '',
-        s3SecretAccessKey: '',
-        s3Region: '',
-        s3Endpoint: '',
-        s3BucketName: '',
-        s3PathPrefix: '',
-        s3ForcePathStyle: false,
-        saveFileDirectory: '',
-        saveFileFormat: ImageFormat.PNG,
-        ocrAfterAction: OcrDetectAfterAction.None,
-        ocrCopyText: true,
-        selectRectPresetList: [],
-    },
-    [AppSettingsGroup.SystemScrollScreenshot]: {
-        tryRollback: true,
-        imageFeatureThreshold: 24,
-        minSide: 128,
-        maxSide: 128,
-        sampleRate: 1,
-        imageFeatureDescriptionLength: 28,
-    },
-    [AppSettingsGroup.FunctionFixedContent]: {
-        zoomWithMouse: true,
-        autoOcr: true,
-        autoCopyToClipboard: false,
-        initialPosition: AppSettingsFixedContentInitialPosition.MousePosition,
-    },
-    [AppSettingsGroup.FunctionOutput]: {
-        manualSaveFileNameFormat: `SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
-        autoSaveFileNameFormat: `SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
-        fastSaveFileNameFormat: `SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
-        focusedWindowFileNameFormat: `${FOCUS_WINDOW_APP_NAME_ENV_VARIABLE}/SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
-        fullScreenFileNameFormat: `SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
-        videoRecordFileNameFormat: `SnowShot_Video_{{YYYY-MM-DD_HH-mm-ss}}`,
-    },
-    [AppSettingsGroup.FunctionFullScreenDraw]: {
-        defaultTool: DrawState.Select,
-    },
-    [AppSettingsGroup.FunctionVideoRecord]: {
-        enableExcludeFromCapture: true,
-        saveDirectory: '',
-        frameRate: 24,
-        gifFrameRate: 10,
-        microphoneDeviceName: '',
-        hwaccel: true,
-        encoder: 'libx264',
-        encoderPreset: 'ultrafast',
-        videoMaxSize: VideoMaxSize.P1080,
-        gifMaxSize: VideoMaxSize.P1080,
-        gifFormat: GifFormat.Gif,
-    },
-    [AppSettingsGroup.SystemScreenshot]: {
-        ocrModel: OcrModel.RapidOcrV4,
-        ocrHotStart: true,
-        ocrModelWriteToMemory: false,
-        ocrDetectAngle: false,
-        historyValidDuration: HistoryValidDuration.Week,
-        recordCaptureHistory: true,
-        historySaveEditResult: true,
-        enableBrowserClipboard: true,
-        /** 尝试使用 Bitmap 格式写入到剪贴板 */
-        tryWriteBitmapImageToClipboard: true,
-        /** 启用多显示器截图 */
-        enableMultipleMonitor: true,
-        /** 更正颜色滤镜 */
-        correctColorFilter: true,
-        /** 更正 HDR 颜色  */
-        correctHdrColor: true,
-        /** HDR 颜色转换算法 */
-        correctHdrColorAlgorithm: HdrColorAlgorithm.Linear,
-    },
-    [AppSettingsGroup.FunctionTrayIcon]: {
-        iconClickAction: TrayIconClickAction.Screenshot,
-    },
-    [AppSettingsGroup.SystemCore]: {
-        /// 热加载页面数量
-        hotLoadPageCount: 2,
-    },
-};
-
-export type AppSettingsActionContextType = {
-    updateAppSettings: (
-        group: AppSettingsGroup,
-        settings: Partial<AppSettingsData[typeof group]>,
-        debounce: boolean,
-        /** 是否保存到文件 */
-        saveToFile: boolean,
-        /** 是否同步到所有窗口 */
-        syncAllWindow: boolean,
-        /** 是否忽略状态更新 */
-        ignoreState?: boolean,
-        /** 是否忽略 publisher 更新 */
-        ignorePublisher?: boolean,
-    ) => void;
-    reloadAppSettings: () => void;
-};
-
-export const AppSettingsActionContext = createContext<AppSettingsActionContextType>({
-    updateAppSettings: () => {},
-    reloadAppSettings: () => {},
-});
-export const AppSettingsPublisher = createPublisher<AppSettingsData>(defaultAppSettingsData);
-
-export const AppSettingsLoadingPublisher = createPublisher<boolean>(true);
-
-export type ScreenshotContextType = {
-    imageBuffer: ImageBuffer | undefined;
-    setImageBuffer: (imageBuffer: ImageBuffer | undefined) => void;
-};
-
-let configDirPathCache: string | undefined = undefined;
-export const getConfigDirPath = async () => {
-    if (configDirPathCache) {
-        return configDirPathCache;
-    }
-
-    configDirPathCache = await getAppConfigDir();
-
-    return configDirPathCache;
-};
-export const clearAllConfig = async () => {
-    await Promise.all([textFileClear(), removeDir(await getConfigDirPath())]);
-};
-
-/**
- * 将各种类型的错误对象格式化为字符串和详细信息
- * @param error 错误对象，可以是 Error、string、object 等
- * @returns 包含格式化字符串和详细信息的对象
- */
-export const formatErrorDetails = (
-    error: unknown,
-): { message: string; details: Record<string, unknown> } => {
-    try {
-        const details: Record<string, unknown> = {};
-
-        if (!error) {
-            return { message: 'Unknown error', details };
-        }
-
-        if (error instanceof Error) {
-            details.stack = error.stack;
-            details.name = error.name;
-            details.message = error.message;
-            return { message: `${error.name}: ${error.message}`, details };
-        }
-
-        if (typeof error === 'string') {
-            return { message: error, details };
-        }
-
-        if (typeof error === 'object') {
-            const errorObj = error as Record<string, unknown>;
-
-            // 提取可能的错误属性
-            if ('stack' in errorObj) {
-                details.stack = errorObj.stack;
-            }
-            if ('name' in errorObj) {
-                details.name = errorObj.name;
-            }
-            if ('message' in errorObj && typeof errorObj.message === 'string') {
-                details.message = errorObj.message;
-                const name =
-                    'name' in errorObj && typeof errorObj.name === 'string'
-                        ? errorObj.name
-                        : 'Error';
-                return { message: `${name}: ${errorObj.message}`, details };
-            }
-
-            // 尝试 JSON 序列化以获取完整信息
-            try {
-                details.fullObject = JSON.stringify(error, Object.getOwnPropertyNames(error));
-                return { message: `Object: ${details.fullObject}`, details };
-            } catch {
-                details.type = error.constructor?.name || 'unknown';
-                return { message: `Object (${details.type})`, details };
-            }
-        }
-
-        // 对于其他类型，转换为字符串
-        return { message: String(error), details };
-    } catch {
-        return { message: 'Format error details failed', details: {} };
-    }
-};
+import { AppContext } from '@/contexts/appContext';
 
 const getFilePath = async (group: AppSettingsGroup) => {
     const configDirPath = await getConfigDirPath();
     return `${configDirPath}/${group}.json`;
 };
 
-export type AppContextType = {
-    appWindowRef: RefObject<AppWindow | undefined>;
-    currentTheme: AppSettingsTheme;
-    enableCompactLayout: boolean;
-};
-
-export const AppContext = createContext<AppContextType>({
-    appWindowRef: { current: undefined },
-    currentTheme: AppSettingsTheme.Light,
-    enableCompactLayout: false,
-});
-
-const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const AppSettingsContextProviderCore: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const appWindowRef = useRef<AppWindow>(undefined);
     const [currentSystemTheme, setCurrentSystemTheme] = useState<AppSettingsTheme>(
         AppSettingsTheme.Light,
@@ -822,7 +147,7 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
         [writeAppSettings],
     );
 
-    const { isReady } = usePluginService();
+    const { isReady } = usePluginServiceContext();
     const updateAppSettings = useCallback(
         (
             group: AppSettingsGroup,
@@ -1175,23 +500,27 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                     ...defaultDrawToolbarKeyEventSettings,
                     ...newSettings,
                 };
-            } else if (group === AppSettingsGroup.KeyEvent) {
+            } else if (group === AppSettingsGroup.CommonKeyEvent) {
                 newSettings = newSettings as AppSettingsData[typeof group];
                 const prevSettings = appSettingsRef.current[group] as
                     | AppSettingsData[typeof group]
                     | undefined;
 
                 const settingsKeySet = new Set<string>();
-                const settingKeys: KeyEventKey[] = Object.keys(
-                    defaultKeyEventSettings,
-                ) as KeyEventKey[];
+                const settingKeys: CommonKeyEventKey[] = Object.keys(
+                    defaultCommonKeyEventSettings,
+                ) as CommonKeyEventKey[];
                 settingKeys.forEach((key) => {
-                    const keyEventSettings = newSettings as Record<KeyEventKey, KeyEventValue>;
+                    const keyEventSettings = newSettings as Record<
+                        CommonKeyEventKey,
+                        CommonKeyEventValue
+                    >;
 
                     let keyEventSettingsKey =
                         typeof keyEventSettings[key]?.hotKey === 'string'
                             ? keyEventSettings[key].hotKey
-                            : (prevSettings?.[key]?.hotKey ?? defaultKeyEventSettings[key].hotKey);
+                            : (prevSettings?.[key]?.hotKey ??
+                              defaultCommonKeyEventSettings[key].hotKey);
 
                     // 格式化处理下
                     keyEventSettingsKey = keyEventSettingsKey
@@ -1202,7 +531,7 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                                 return false;
                             }
 
-                            if (defaultKeyEventSettings[key].unique) {
+                            if (defaultCommonKeyEventSettings[key].unique) {
                                 settingsKeySet.add(val);
                             }
 
@@ -1212,12 +541,12 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
                     keyEventSettings[key] = {
                         hotKey: keyEventSettingsKey,
-                        group: defaultKeyEventSettings[key].group,
+                        group: defaultCommonKeyEventSettings[key].group,
                     };
                 });
 
                 settings = {
-                    ...defaultDrawToolbarKeyEventSettings,
+                    ...defaultCommonKeyEventSettings,
                     ...newSettings,
                 };
             } else if (group === AppSettingsGroup.AppFunction) {
@@ -2009,9 +1338,9 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
     );
 };
 
-export const ContextWrap = React.memo(
+export const AppSettingsContextProvider = React.memo(
     withStatePublisher(
-        withStatePublisher(ContextWrapCore, AppSettingsPublisher),
+        withStatePublisher(AppSettingsContextProviderCore, AppSettingsPublisher),
         AppSettingsLoadingPublisher,
     ),
 );

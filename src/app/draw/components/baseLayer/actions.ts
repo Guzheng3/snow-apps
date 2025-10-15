@@ -46,7 +46,7 @@ import {
     BaseLayerRenderUpdateHighlightData,
     BaseLayerRenderClearContextData,
 } from './workers/renderWorkerTypes';
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { ImageSharedBufferData } from '../../tools';
 
 export const INIT_CONTAINER_KEY = 'init_container';

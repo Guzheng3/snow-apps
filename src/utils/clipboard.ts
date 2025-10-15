@@ -1,6 +1,22 @@
 import * as clipboard from '@tauri-apps/plugin-clipboard-manager';
 import extraClipboard from 'tauri-plugin-clipboard-api';
 import { appWarn } from './log';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+
+export const copyText = (text: string) => {
+    const selected = window.getSelection();
+    if (selected && selected.toString().trim()) {
+        writeTextToClipboard(selected.toString());
+        selected.removeAllRanges();
+    } else {
+        writeTextToClipboard(text);
+    }
+};
+
+export const copyTextAndHide = (text: string) => {
+    copyText(text);
+    getCurrentWindow().hide();
+};
 
 const supportClipboardApi = () => {
     if (typeof navigator !== 'undefined' && navigator.clipboard && window.ClipboardItem) {

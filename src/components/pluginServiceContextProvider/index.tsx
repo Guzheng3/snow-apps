@@ -1,96 +1,24 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
-import * as path from '@tauri-apps/api/path';
+import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { useStateRef } from '@/hooks/useStateRef';
-import {
-    pluginGetPluginsStatus,
-    pluginInit,
-    pluginRegisterPlugin,
-    PluginStatusResult,
-} from '@/commands/plugin';
-import { getAppConfigBaseDirWithCache } from '@/commands/file';
+import { pluginGetPluginsStatus, pluginInit, pluginRegisterPlugin } from '@/commands/plugin';
+import { getAppConfigBaseDirWithCache } from '@/utils/environment';
 import { isDeepEqualReact } from '@ant-design/pro-components';
 import { throttle } from 'es-toolkit';
-import { MenuLayoutContext } from '@/app/menuLayout';
-import { getPlatform } from '@/utils';
+import { getPlatform } from '@/utils/platform';
+import { MenuLayoutContext } from '@/contexts/menuLayoutContext';
+import { PluginItem, PluginConfig, PluginStatusRecord } from '@/types/components/pluginService';
+import {
+    PLUGIN_ID_AI_CHAT,
+    PLUGIN_ID_FFMPEG,
+    PLUGIN_ID_RAPID_OCR,
+} from '@/constants/pluginService';
+import { PluginStatus, PluginStatusResult } from '@/types/commands/plugin';
+import * as path from '@tauri-apps/api/path';
+import { PluginServiceContext } from '@/contexts/pluginServiceContext';
 
-export const PLUGIN_EVENT_PLUGIN_STATUS_CHANGE = 'plugin-status-change';
-
-export const PLUGIN_ID_RAPID_OCR = 'rapid_ocr';
-export const PLUGIN_ID_FFMPEG = 'ffmpeg';
-export const PLUGIN_ID_AI_CHAT = 'ai_chat';
-
-export type PluginItem = {
-    id: string;
-    file_list: string[];
-};
-
-export class PluginConfig {
-    plugins: Map<string, PluginItem> = new Map();
-    version: string = '';
-    plugin_install_dir: string = '';
-    plugin_download_dir: string = '';
-    plugin_download_service_url: string = '';
-
-    constructor(
-        plugins: PluginItem[],
-        version: string,
-        plugin_install_dir: string,
-        plugin_download_dir: string,
-        plugin_download_service_url: string,
-    ) {
-        this.plugins = new Map(plugins.map((plugin) => [plugin.id, plugin]));
-        this.version = version;
-        this.plugin_install_dir = plugin_install_dir;
-        this.plugin_download_dir = plugin_download_dir;
-        this.plugin_download_service_url = plugin_download_service_url;
-    }
-
-    async getPluginDirPath(name: string) {
-        return await path.join(this.plugin_install_dir, this.version, this.plugins.get(name)!.id);
-    }
-}
-
-export enum PluginStatus {
-    NotInstalled = 'NotInstalled',
-    Installed = 'Installed',
-    Downloading = 'Downloading',
-    Unzipping = 'Unzipping',
-    Uninstalling = 'Uninstalling',
-}
-
-export type PluginStatusRecord = Record<string, PluginStatusResult>;
-
-export type PluginServiceContextType = {
-    pluginConfig: PluginConfig | undefined;
-    pluginConfigRef: React.RefObject<PluginConfig | undefined>;
-    pluginStatus: PluginStatusRecord | undefined;
-    pluginStatusRef: React.RefObject<PluginStatusRecord | undefined>;
-    /** 通过 Ref 判断，避免组件重复渲染 */
-    isReady: ((pluginId: string) => boolean) | undefined;
-    /** 通过状态判断，触发组件重新渲染 */
-    isReadyStatus: ((pluginId: string) => boolean) | undefined;
-    refreshPluginStatus: () => void;
-    refreshPluginStatusThrottle: () => void;
-};
-
-export const PluginServiceContext = createContext<PluginServiceContextType>({
-    pluginConfig: new PluginConfig([], '', '', '', ''),
-    pluginConfigRef: { current: undefined },
-    pluginStatus: undefined,
-    pluginStatusRef: { current: undefined },
-    isReady: undefined,
-    isReadyStatus: undefined,
-    refreshPluginStatus: () => {},
-    refreshPluginStatusThrottle: () => {},
-});
-
-export const usePluginService = () => {
-    return useContext(PluginServiceContext);
-};
-
-export const PluginServiceProvider = ({ children }: { children: React.ReactNode }) => {
+export const PluginServiceContextProvider = ({ children }: { children: React.ReactNode }) => {
     const pluginList = useMemo<PluginItem[]>(() => {
         return [
             {

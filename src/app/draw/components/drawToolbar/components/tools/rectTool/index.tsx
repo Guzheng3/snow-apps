@@ -3,19 +3,18 @@ import { useIntl } from 'react-intl';
 import { useState, useCallback, useContext, useMemo } from 'react';
 import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { DrawState } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { DrawState } from '@/types/draw';
 import { getButtonTypeByState } from '../../../extra';
 import { DiamondIcon, RectIcon } from '@/components/icons';
-import {
-    AppSettingsActionContext,
-    AppSettingsData,
-    AppSettingsGroup,
-    AppSettingsPublisher,
-} from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
 import { ToolbarPopover } from '@/app/draw/components/drawToolbar/components/toolbarPopover';
 import { ToolButton } from '../../toolButton';
-import { KeyEventKey } from '../../keyEventWrap/extra';
+import { DrawToolbarKeyEventKey } from '@/types/components/drawToolbar';
 import React from 'react';
+import {
+    AppSettingsActionContext,
+    AppSettingsPublisher,
+} from '@/contexts/appSettingsActionContext';
 
 const RectToolCore: React.FC<{
     customToolbarToolHiddenMap: Partial<Record<DrawState, boolean>> | undefined;
@@ -66,7 +65,7 @@ const RectToolCore: React.FC<{
     const rectButton = useMemo(() => {
         return (
             <ToolButton
-                componentKey={KeyEventKey.RectTool}
+                componentKey={DrawToolbarKeyEventKey.RectTool}
                 hidden={customToolbarToolHiddenMap?.[DrawState.Rect]}
                 icon={<RectIcon style={{ fontSize: '1em' }} />}
                 disable={disable}

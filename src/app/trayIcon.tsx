@@ -10,15 +10,7 @@ import { useIntl } from 'react-intl';
 import { exitApp } from '@/commands';
 import { showWindow } from '@/utils/window';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import {
-    AppSettingsData,
-    AppSettingsGroup,
-    AppSettingsPublisher,
-    TrayIconClickAction,
-    TrayIconDefaultIcon,
-} from './contextWrap';
 import { debounce, isEqual } from 'es-toolkit';
-import { AppFunction, AppFunctionConfig } from './extra';
 import { executeScreenshot, executeScreenshotFocusedWindow } from '@/functions/screenshot';
 import { useStateRef } from '@/hooks/useStateRef';
 import {
@@ -28,24 +20,32 @@ import {
     executeTranslateSelectedText,
 } from '@/functions/tools';
 import { createPublisher } from '@/hooks/useStatePublisher';
-import { AntdContext } from '@/components/globalLayoutExtra';
+import { AntdContext } from '@/contexts/antdContext';
 import { Image } from '@tauri-apps/api/image';
 import { createFixedContentWindow, createFullScreenDrawWindow } from '@/commands/core';
-import { getPlatformValue } from '@/utils';
+import { getPlatformValue } from '@/utils/platform';
 import { join, resourceDir } from '@tauri-apps/api/path';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { appError } from '@/utils/log';
 import { formatKey } from '@/utils/format';
 import { startOrCopyVideo } from '@/functions/videoRecord';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
 import {
     PLUGIN_ID_AI_CHAT,
     PLUGIN_ID_FFMPEG,
     PLUGIN_ID_RAPID_OCR,
-    usePluginService,
-} from '@/components/pluginService';
+} from '@/constants/pluginService';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { ScreenshotType } from '@/utils/types';
 import { sendErrorMessage } from '@/functions/sendMessage';
+import {
+    AppSettingsData,
+    AppSettingsGroup,
+    TrayIconClickAction,
+    TrayIconDefaultIcon,
+} from '@/types/appSettings';
+import { AppFunction, AppFunctionConfig } from '@/types/components/appFunction';
+import { AppSettingsPublisher } from '@/contexts/appSettingsActionContext';
 
 export const TrayIconStatePublisher = createPublisher<{
     disableShortcut: boolean;
@@ -136,7 +136,7 @@ const TrayIconLoaderComponent = () => {
         }
     }, []);
 
-    const { isReadyStatus } = usePluginService();
+    const { isReadyStatus } = usePluginServiceContext();
     const initTrayIcon = useCallback(async () => {
         if (!isReadyStatus) {
             return;

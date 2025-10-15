@@ -9,7 +9,6 @@ import {
     DrawCoreActionType,
     DrawCoreContext,
     DrawCoreContextValue,
-    DrawState,
     DrawStatePublisher,
     ExcalidrawEventPublisher,
 } from '@/app/fullScreenDraw/components/drawCore/extra';
@@ -17,11 +16,12 @@ import React from 'react';
 import { useHistory } from '@/app/fullScreenDraw/components/drawCore/components/historyContext';
 import { zIndexs } from '@/utils/zIndex';
 import { DrawContext } from '../../types';
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { theme } from 'antd';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { ExcalidrawPropsCustomOptions, NormalizedZoomValue } from '@mg-chao/excalidraw/types';
 import { useMonitorRect } from '../statusBar';
+import { DrawState } from '@/types/draw';
 
 const DrawCacheLayerCore: React.FC<{
     actionRef: React.RefObject<DrawCacheLayerActionType | undefined>;

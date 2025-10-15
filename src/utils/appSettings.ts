@@ -1,6 +1,6 @@
-import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
-import { HdrColorAlgorithm } from '@/commands/screenshot';
-import { getPlatform } from '.';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
+import { HdrColorAlgorithm } from '@/types/appSettings';
+import { getPlatform } from './platform';
 
 export const getCorrectHdrColorAlgorithm = (appSettings: AppSettingsData) => {
     return getPlatform() === 'windows' &&

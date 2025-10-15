@@ -3,19 +3,18 @@ import { useIntl } from 'react-intl';
 import { useState, useCallback, useContext, useMemo } from 'react';
 import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { DrawState } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { DrawState } from '@/types/draw';
 import { getButtonTypeByState } from '../../../extra';
 import { ArrowIcon, LineIcon } from '@/components/icons';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
 import {
     AppSettingsActionContext,
-    AppSettingsData,
-    AppSettingsGroup,
     AppSettingsPublisher,
-} from '@/app/contextWrap';
+} from '@/contexts/appSettingsActionContext';
 import { ToolbarPopover } from '@/app/draw/components/drawToolbar/components/toolbarPopover';
 import React from 'react';
-import { KeyEventKey } from '../../keyEventWrap/extra';
 import { ToolButton } from '../../toolButton';
+import { DrawToolbarKeyEventKey } from '@/types/components/drawToolbar';
 
 const ArrowToolCore: React.FC<{
     customToolbarToolHiddenMap: Partial<Record<DrawState, boolean>> | undefined;
@@ -67,7 +66,7 @@ const ArrowToolCore: React.FC<{
         return (
             <ToolButton
                 hidden={customToolbarToolHiddenMap?.[DrawState.Arrow]}
-                componentKey={KeyEventKey.ArrowTool}
+                componentKey={DrawToolbarKeyEventKey.ArrowTool}
                 icon={<ArrowIcon style={{ fontSize: '0.83em' }} />}
                 drawState={DrawState.Arrow}
                 disable={disable}

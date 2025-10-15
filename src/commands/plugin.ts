@@ -1,4 +1,4 @@
-import { PluginStatus } from '@/components/pluginService';
+import { PluginStatusResult } from '@/types/commands/plugin';
 import { invoke } from '@tauri-apps/api/core';
 
 export const pluginInit = async (
@@ -13,11 +13,6 @@ export const pluginInit = async (
         pluginDownloadDir,
         pluginDownloadServiceUrl,
     });
-};
-
-export type PluginStatusResult = {
-    name: string;
-    status: PluginStatus;
 };
 
 export const pluginGetPluginsStatus = async () => {

@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { ElementRect } from '.';
+import { ElementRect } from '@/types/commands/screenshot';
 import { MonitorRect } from '@/app/draw/extra';
 import { ResizeWindowSide } from '@/utils/types';
 

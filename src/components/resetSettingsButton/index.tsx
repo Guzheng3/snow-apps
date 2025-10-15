@@ -1,12 +1,10 @@
 import { Button, Popconfirm } from 'antd';
 import { ResetIcon } from '../icons';
 import { FormattedMessage } from 'react-intl';
-import {
-    AppSettingsActionContext,
-    AppSettingsGroup,
-    defaultAppSettingsData,
-} from '@/app/contextWrap';
+import { AppSettingsGroup } from '@/types/appSettings';
 import { useContext } from 'react';
+import { AppSettingsActionContext } from '@/contexts/appSettingsActionContext';
+import { defaultAppSettingsData } from '@/constants/appSettings';
 
 export const ResetSettingsButton: React.FC<{
     onReset?: () => void;

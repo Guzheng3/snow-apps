@@ -11,14 +11,13 @@ import {
     DrawCoreActionType,
     DrawCoreContext,
     DrawCoreContextValue,
-    DrawState,
     DrawStatePublisher,
     ExcalidrawEventPublisher,
 } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { zIndexs } from '@/utils/zIndex';
 import { FixedContentWindowSize } from '../..';
 import { theme } from 'antd';
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { MousePosition } from '@/utils/mousePosition';
 import {
     BOX_SHADOW_WIDTH,
@@ -33,6 +32,7 @@ import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { NormalizedZoomValue } from '@mg-chao/excalidraw/types';
 import { getCurrentWindow, PhysicalPosition, PhysicalSize } from '@tauri-apps/api/window';
 import { getMonitorsBoundingBox, MonitorBoundingBox } from '@/commands/core';
+import { DrawState } from '@/types/draw';
 
 const DrawCore = dynamic(
     async () => (await import('../../../../../fullScreenDraw/components/drawCore')).DrawCore,

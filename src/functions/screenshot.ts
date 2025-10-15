@@ -1,11 +1,11 @@
-import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
 import { captureFocusedWindow } from '@/commands/screenshot';
 import { getImagePathFromSettings } from '@/utils/file';
 import { playCameraShutterSound } from '@/utils/audio';
 import { emit } from '@tauri-apps/api/event';
 import * as tauriLog from '@tauri-apps/plugin-log';
-import { FOCUS_WINDOW_APP_NAME_ENV_VARIABLE } from '@/app/settings/functionSettings/extra';
 import { ScreenshotType } from '@/utils/types';
+import { FOCUS_WINDOW_APP_NAME_ENV_VARIABLE } from '@/constants/components/chat';
 
 export const executeScreenshot = async (
     type: ScreenshotType = ScreenshotType.Default,

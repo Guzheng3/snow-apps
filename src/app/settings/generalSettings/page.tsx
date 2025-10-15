@@ -16,14 +16,13 @@ import {
     theme,
 } from 'antd';
 import {
-    AppSettingsActionContext,
     AppSettingsControlNode,
     AppSettingsData,
     AppSettingsGroup,
     AppSettingsLanguage,
     AppSettingsTheme,
     TrayIconDefaultIcon,
-} from '../../contextWrap';
+} from '@/types/appSettings';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -40,11 +39,13 @@ import ProForm, {
 } from '@ant-design/pro-form';
 import { AggregationColor } from 'antd/es/color-picker/color';
 import { PathInput } from '@/components/pathInput';
-import { ColorPickerShowMode } from '@/app/draw/components/colorPicker';
-import { DrawState } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { ColorPickerShowMode } from '@/types/appSettings';
+import { DrawState } from '@/types/draw';
 import { resourceDir } from '@tauri-apps/api/path';
 import { getDefaultIconPath } from '@/app/trayIcon';
-import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginService';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
+import { PLUGIN_ID_RAPID_OCR } from '@/constants/pluginService';
+import { AppSettingsActionContext } from '@/contexts/appSettingsActionContext';
 
 const { Option } = Select;
 
@@ -99,7 +100,7 @@ export default function GeneralSettings() {
         true,
     );
 
-    const { isReadyStatus } = usePluginService();
+    const { isReadyStatus } = usePluginServiceContext();
 
     const customToolbarToolListOptions = useMemo(() => {
         if (!isReadyStatus) {

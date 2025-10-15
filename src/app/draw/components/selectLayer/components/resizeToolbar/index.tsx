@@ -3,7 +3,7 @@ import { zIndexs } from '@/utils/zIndex';
 import { Flex, Space, theme } from 'antd';
 import React, { useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { updateElementPosition } from '../../../drawToolbar/components/dragButton/extra';
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import {
     CaptureBoundingBoxInfo,
     CaptureEvent,
@@ -13,7 +13,8 @@ import {
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { ScreenshotType } from '@/utils/types';
 import { debounce } from 'es-toolkit';
-import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { DrawState } from '@/types/draw';
+import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { RadiusIcon, ShadowIcon } from '@/components/icons';
 import { useStateRef } from '@/hooks/useStateRef';
 import { useCallbackRender } from '@/hooks/useCallbackRender';

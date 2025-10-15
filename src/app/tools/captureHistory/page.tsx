@@ -1,6 +1,6 @@
 'use client';
 
-import { AppSettingsData, AppSettingsPublisher } from '@/app/contextWrap';
+import { AppSettingsData } from '@/types/appSettings';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { CaptureHistoryItem, CaptureHistorySource } from '@/utils/appStore';
 import { CaptureHistory, getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
@@ -19,6 +19,7 @@ import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { CaptureHistoryRecordItem } from './extra';
 import { CaptureHistoryItemActions } from './components/captureHistoryItemActions';
 import { CaptureHistoryItemPreview } from './components/captureHistoryItemPreview';
+import { AppSettingsPublisher } from '@/contexts/appSettingsActionContext';
 
 const CaptureHistoryPage = () => {
     const [loading, setLoading] = useState(true);

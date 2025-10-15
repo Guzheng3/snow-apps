@@ -1,6 +1,6 @@
 'use client';
 
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useContext, useEffect, useRef } from 'react';
 import { getVideoRecordParams, VideoRecordState } from './extra';
@@ -9,7 +9,8 @@ import { VideoRecordWindowInfo } from '@/utils/types';
 import { setCurrentWindowAlwaysOnTop } from '@/commands/core';
 import { setWindowRect } from '@/utils/window';
 import { useStateRef } from '@/hooks/useStateRef';
-import { PLUGIN_ID_FFMPEG, usePluginService } from '@/components/pluginService';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
+import { PLUGIN_ID_FFMPEG } from '@/constants/pluginService';
 
 const PENDING_STROKE_COLOR = '#4096ff';
 const RECORDING_STROKE_COLOR = '#f5222d';
@@ -119,7 +120,7 @@ export default function VideoRecordPage() {
         };
     }, [addListener, init, removeListener, setVideoRecordState]);
 
-    const { isReadyStatus } = usePluginService();
+    const { isReadyStatus } = usePluginServiceContext();
 
     useEffect(() => {
         if (!isReadyStatus) {

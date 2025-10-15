@@ -1,11 +1,11 @@
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import {
     getCurrentWindow,
     PhysicalPosition,
     PhysicalSize,
     Window as TauriWindow,
 } from '@tauri-apps/api/window';
-import { getPlatform } from '.';
+import { getPlatform } from './platform';
 
 export const showWindow = async (ignoreFocus = false) => {
     const appWindow = getCurrentWindow();

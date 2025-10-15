@@ -6,28 +6,23 @@ import { Space, Spin, Tooltip } from 'antd';
 import { ContentWrap } from '@/components/contentWrap';
 import { FunctionButton } from '@/components/functionButton';
 import { KeyButton } from '@/components/keyButton';
-import { AppSettingsActionContext, AppSettingsData, AppSettingsGroup } from './contextWrap';
 import { InfoCircleOutlined } from '@ant-design/icons';
-import {
-    AppFunction,
-    AppFunctionConfig,
-    AppFunctionGroup,
-    convertShortcutKeyStatusToButtonColor,
-    convertShortcutKeyStatusToTip,
-    ShortcutKeyStatus,
-} from './extra';
 import { GroupTitle } from '@/components/groupTitle';
 import { theme } from 'antd';
 import { ResetSettingsButton } from '@/components/resetSettingsButton';
 import { usePlatform } from '@/hooks/usePlatform';
 import { CheckPermissions } from '@/components/checkPermissions';
 import { GlobalShortcutContext } from '@/components/globalShortcut';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
 import {
     PLUGIN_ID_AI_CHAT,
     PLUGIN_ID_FFMPEG,
     PLUGIN_ID_RAPID_OCR,
-    usePluginService,
-} from '@/components/pluginService';
+} from '@/constants/pluginService';
+import { AppSettingsActionContext } from '@/contexts/appSettingsActionContext';
+import { AppFunction, AppFunctionConfig, AppFunctionGroup } from '@/types/components/appFunction';
+import { AppSettingsData, AppSettingsGroup, ShortcutKeyStatus } from '@/types/appSettings';
+import { convertShortcutKeyStatusToButtonColor, convertShortcutKeyStatusToTip } from './extra';
 
 export default function Home() {
     const { token } = theme.useToken();
@@ -61,7 +56,7 @@ export default function Home() {
         disableShortcutKeyRef,
     } = useContext(GlobalShortcutContext);
 
-    const { isReadyStatus } = usePluginService();
+    const { isReadyStatus } = usePluginServiceContext();
     return (
         <ContentWrap className="home-wrap">
             <CheckPermissions />

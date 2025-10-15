@@ -1,7 +1,7 @@
+import { RouteMapItem } from '@/types/components/menuLayout';
 import { Tabs, TabsProps, theme } from 'antd';
 import { debounce } from 'es-toolkit';
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { RouteMapItem } from '../menuLayout';
 
 export type PageNavActionType = {
     updateActiveKey: (scrollTop: number) => void;

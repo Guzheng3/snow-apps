@@ -15,14 +15,17 @@ import {
     Typography,
 } from 'antd';
 import {
-    AppSettingsActionContext,
     AppSettingsData,
     AppSettingsFixedContentInitialPosition,
     AppSettingsGroup,
     CloudSaveUrlFormat,
     CloudSaveUrlType,
+    GifFormat,
+    OcrDetectAfterAction,
+    TranslationApiType,
     TrayIconClickAction,
-} from '../../contextWrap';
+    VideoMaxSize,
+} from '@/types/appSettings';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -37,34 +40,31 @@ import ProForm, {
     ProFormText,
     ProFormTextArea,
 } from '@ant-design/pro-form';
-import {
-    SOURCE_LANGUAGE_ENV_VARIABLE,
-    TARGET_LANGUAGE_ENV_VARIABLE,
-    TRANSLATION_DOMAIN_ENV_VARIABLE,
-} from '@/app/tools/translation/extra';
+
 import { DirectoryInput } from '@/components/directoryInput';
 import {
     generateImageFileName,
     getImageSaveDirectory,
     getVideoRecordSaveDirectory,
-    ImageFormat,
 } from '@/utils/file';
-import { FOCUS_WINDOW_APP_NAME_ENV_VARIABLE, TranslationApiType } from './extra';
+import { ImageFormat } from '@/types/utils/file';
 import { TestChat } from './components/testChat';
-import { DrawState } from '@/app/fullScreenDraw/components/drawCore/extra';
-import {
-    GifFormat,
-    VideoMaxSize,
-    videoRecordGetMicrophoneDeviceNames,
-} from '@/commands/videoRecord';
-import { OcrDetectAfterAction } from '@/app/fixedContent/components/ocrResult';
+import { DrawState } from '@/types/draw';
 import { usePlatform } from '@/hooks/usePlatform';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
 import {
     PLUGIN_ID_AI_CHAT,
     PLUGIN_ID_FFMPEG,
     PLUGIN_ID_RAPID_OCR,
-    usePluginService,
-} from '@/components/pluginService';
+} from '@/constants/pluginService';
+import { AppSettingsActionContext } from '@/contexts/appSettingsActionContext';
+import { videoRecordGetMicrophoneDeviceNames } from '@/commands/videoRecord';
+import {
+    SOURCE_LANGUAGE_ENV_VARIABLE,
+    TARGET_LANGUAGE_ENV_VARIABLE,
+    TRANSLATION_DOMAIN_ENV_VARIABLE,
+} from '@/constants/components/translation';
+import { FOCUS_WINDOW_APP_NAME_ENV_VARIABLE } from '@/constants/components/chat';
 
 export default function SystemSettings() {
     const intl = useIntl();
@@ -220,7 +220,7 @@ export default function SystemSettings() {
         [currentPlatform],
     );
 
-    const { isReadyStatus } = usePluginService();
+    const { isReadyStatus } = usePluginServiceContext();
 
     const initedMicrophoneDeviceNameOptions = useRef(false);
     useEffect(() => {

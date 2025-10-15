@@ -5,17 +5,16 @@ import { useIntl } from 'react-intl';
 import { useState, useCallback, useContext, useMemo } from 'react';
 import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { DrawState } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { DrawState } from '@/types/draw';
 import { getButtonTypeByState } from '../../../extra';
 import { HighlightIcon, WatermarkIcon } from '@/components/icons';
-import {
-    AppSettingsActionContext,
-    AppSettingsData,
-    AppSettingsGroup,
-    AppSettingsPublisher,
-} from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
 import { WatermarkTool } from './components/watermarkTool';
 import { ToolbarPopover } from '@/app/draw/components/drawToolbar/components/toolbarPopover';
+import {
+    AppSettingsActionContext,
+    AppSettingsPublisher,
+} from '@/contexts/appSettingsActionContext';
 
 export const DrawExtraTool: React.FC<{
     customToolbarToolHiddenMap: Partial<Record<DrawState, boolean>> | undefined;

@@ -5,14 +5,13 @@ import {
     DrawCoreActionType,
     DrawCoreContext,
     DrawCoreContextValue,
-    DrawState,
     DrawStatePublisher,
     ExcalidrawEventPublisher,
 } from './components/drawCore/extra';
 import { zIndexs } from '@/utils/zIndex';
 import dynamic from 'next/dynamic';
 import { debounce } from 'es-toolkit';
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { theme } from 'antd';
 import { DrawToolbarActionType, FullScreenDrawToolbar } from './components/toolbar';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
@@ -22,6 +21,7 @@ import { MousePosition } from '@/utils/mousePosition';
 import { EnableKeyEventPublisher } from '../draw/components/drawToolbar/components/keyEventWrap/extra';
 import { EventListenerContext } from '@/components/eventListener';
 import { DrawContext, DrawContextType } from './extra';
+import { DrawState } from '@/types/draw';
 
 const DrawCore = dynamic(
     async () => (await import('../fullScreenDraw/components/drawCore')).DrawCore,

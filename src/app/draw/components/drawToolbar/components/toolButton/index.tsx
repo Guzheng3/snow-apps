@@ -1,16 +1,16 @@
-import { DrawState } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { KeyEventWrap } from '@/app/draw/components/drawToolbar/components/keyEventWrap';
 import React, { useCallback, useState } from 'react';
 import { Button } from 'antd';
 import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { getButtonTypeByState } from '../../extra';
-import { KeyEventKey } from '../keyEventWrap/extra';
-import { HotkeysScope } from '@/components/globalLayoutExtra';
+import { DrawToolbarKeyEventKey } from '@/types/components/drawToolbar';
+import { HotkeysScope } from '@/types/core/appHotKeys';
+import { DrawState } from '@/types/draw';
 
 const ToolButtonCore: React.FC<{
     hidden?: boolean;
-    componentKey?: KeyEventKey;
+    componentKey?: DrawToolbarKeyEventKey;
     icon: React.ReactNode;
     onClick: () => void;
     drawState: DrawState;

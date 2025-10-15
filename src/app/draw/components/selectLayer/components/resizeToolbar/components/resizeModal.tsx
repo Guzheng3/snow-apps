@@ -1,14 +1,11 @@
+import { AppSettingsData, AppSettingsGroup, SelectRectPreset } from '@/types/appSettings';
 import {
     AppSettingsActionContext,
-    AppSettingsData,
-    AppSettingsGroup,
     AppSettingsPublisher,
-    defaultAppSettingsData,
-    SelectRectPreset,
-} from '@/app/contextWrap';
+} from '@/contexts/appSettingsActionContext';
 import { CaptureBoundingBoxInfo } from '@/app/draw/extra';
-import { ElementRect } from '@/commands';
-import { HotkeysScope } from '@/components/globalLayoutExtra';
+import { ElementRect } from '@/types/commands/screenshot';
+import { HotkeysScope } from '@/types/core/appHotKeys';
 import { useStateRef } from '@/hooks/useStateRef';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { PlusOutlined } from '@ant-design/icons';
@@ -34,6 +31,7 @@ import {
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { FormattedMessage, useIntl } from 'react-intl';
 import RSC from 'react-scrollbars-custom';
+import { defaultAppSettingsData } from '@/constants/appSettings';
 
 export type ResizeModalActionType = {
     show: (

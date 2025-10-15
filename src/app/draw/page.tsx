@@ -1,12 +1,7 @@
 'use client';
 
-import {
-    createDrawWindow,
-    ElementRect,
-    getMousePosition,
-    ImageBuffer,
-    ImageBufferType,
-} from '@/commands';
+import { createDrawWindow, getMousePosition } from '@/commands';
+import { ElementRect, ImageBuffer, ImageBufferType } from '@/types/commands/screenshot';
 import { EventListenerContext } from '@/components/eventListener';
 import React, { useMemo, useState } from 'react';
 import { useCallback, useContext, useEffect, useRef } from 'react';
@@ -65,24 +60,27 @@ import {
     showImageDialog,
 } from '@/utils/file';
 import { scrollScreenshotSaveToFile } from '@/commands/scrollScreenshot';
-import { AppSettingsActionContext, AppSettingsGroup, CloudSaveUrlFormat } from '../contextWrap';
-import { AppSettingsPublisher } from '../contextWrap';
+import { AppSettingsGroup, CloudSaveUrlFormat } from '@/types/appSettings';
+import {
+    AppSettingsActionContext,
+    AppSettingsPublisher,
+} from '@/contexts/appSettingsActionContext';
 import {
     closeWindowAfterDelay,
     createFixedContentWindow,
     getMonitorsBoundingBox,
     setCurrentWindowAlwaysOnTop,
 } from '@/commands/core';
+import { DrawState } from '@/types/draw';
+import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import {
-    DrawState,
-    DrawStatePublisher,
     ExcalidrawEventPublisher,
     ExcalidrawOnHandleEraserPublisher,
-} from '../fullScreenDraw/components/drawCore/extra';
+} from '@/app/fullScreenDraw/components/drawCore/extra';
 import {
     HistoryContext,
     withCanvasHistory,
-} from '../fullScreenDraw/components/drawCore/components/historyContext';
+} from '@/app/fullScreenDraw/components/drawCore/components/historyContext';
 import { covertOcrResultToText } from '../fixedContent/components/ocrResult';
 import { writeTextToClipboard } from '@/utils/clipboard';
 import { listenKeyStart, listenKeyStop } from '@/commands/listenKey';
@@ -91,7 +89,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import Flatbush from 'flatbush';
 import { isOcrTool } from './components/drawToolbar/components/tools/ocrTool';
 import { CaptureHistoryActionType, CaptureHistoryController } from './components/captureHistory';
-import { AntdContext } from '@/components/globalLayoutExtra';
+import { AntdContext } from '@/contexts/antdContext';
 import { appError, appInfo } from '@/utils/log';
 import { NonDeletedExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 import {
@@ -486,7 +484,11 @@ const DrawPageCore: React.FC<{
                 return undefined;
             });
 
-            if (result?.bufferType === ImageBufferType.SharedBuffer) {
+            if (
+                result &&
+                'bufferType' in result &&
+                result.bufferType === ImageBufferType.SharedBuffer
+            ) {
                 result = await imageBufferFromSharedBufferPromise;
             }
 
@@ -1051,15 +1053,16 @@ const DrawPageCore: React.FC<{
         const fixedClipboardContentListenerId = addListener(
             'execute-fixed-clipboard-content',
             () => {
-                appInfo('execute-fixed-clipboard-content', {
-                    c: capturingRef.current,
-                    d: drawPageStateRef.current,
-                });
                 if (capturingRef.current) {
                     return;
                 }
 
-                if (drawPageStateRef.current !== DrawPageState.Active) {
+                if (
+                    !(
+                        drawPageStateRef.current === DrawPageState.Active ||
+                        drawPageStateRef.current === DrawPageState.WaitRelease
+                    )
+                ) {
                     return;
                 }
 

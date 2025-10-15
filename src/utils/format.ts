@@ -1,4 +1,4 @@
-import { getPlatform } from './index';
+import { getPlatform } from './platform';
 
 /**
  * 格式化快捷键

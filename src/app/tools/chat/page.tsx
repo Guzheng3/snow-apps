@@ -1,6 +1,6 @@
 'use client';
 
-import { AntdContext } from '@/components/globalLayoutExtra';
+import { AntdContext } from '@/contexts/antdContext';
 import { BotIcon, SidebarIcon } from '@/components/icons';
 import { useStateRef } from '@/hooks/useStateRef';
 import { ChatHistoryStore } from '@/utils/appStore';
@@ -35,13 +35,15 @@ import RSC, { Scrollbar } from 'react-scrollbars-custom';
 import { appFetch, getUrl, ServiceResponse } from '@/services/tools';
 import { ChatModel, getChatModels } from '@/services/tools/chat';
 import {
-    AppContext,
-    AppSettingsActionContext,
     AppSettingsData,
     AppSettingsGroup,
-    AppSettingsPublisher,
     AppSettingsTheme,
-} from '@/app/contextWrap';
+    ChatApiConfig,
+} from '@/types/appSettings';
+import {
+    AppSettingsActionContext,
+    AppSettingsPublisher,
+} from '@/contexts/appSettingsActionContext';
 import Markdown, { ExtraProps } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useSearchParams } from 'next/navigation';
@@ -50,16 +52,13 @@ import { SenderRef } from '@ant-design/x/es/sender';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight, oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { copyText, copyTextAndHide, decodeParamsValue } from '@/utils';
+import { copyText, copyTextAndHide } from '@/utils/clipboard';
 import { HotkeysMenu } from '@/components/hotkeysMenu';
-import { KeyEventValue } from '@/core/hotKeys';
-import { KeyEventKey } from '@/core/hotKeys';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { SendQueueMessageList } from './components/sendQueueMessageList';
 import { ChatMessage, ChatMessageFlowConfig, SendQueueMessage } from './types';
 import { WorkflowList } from './components/workflowList';
-import { ChatApiConfig } from '@/app/settings/functionSettings/extra';
 import { ModelSelectLabel } from './components/modelSelectLabel';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { writeTextToClipboard } from '@/utils/clipboard';
@@ -67,6 +66,9 @@ import { formatKey } from '@/utils/format';
 import urlJoin from 'url-join';
 import { appError } from '@/utils/log';
 import { EventListenerContext } from '@/components/eventListener';
+import { decodeParamsValue } from '@/utils/base64';
+import { CommonKeyEventKey, CommonKeyEventValue } from '@/types/core/commonKeyEvent';
+import { AppContext } from '@/contexts/appContext';
 
 type BubbleDataType = AntdBubbleDataType & {
     flow_config?: ChatMessageFlowConfig;
@@ -276,10 +278,10 @@ const CUSTOM_MODEL_PREFIX = 'snow_shot_custom_';
 const Chat = () => {
     const intl = useIntl();
 
-    const [hotKeys, setHotKeys] = useState<Record<KeyEventKey, KeyEventValue>>();
+    const [hotKeys, setHotKeys] = useState<Record<CommonKeyEventKey, CommonKeyEventValue>>();
     useAppSettingsLoad(
         useCallback((appSettings) => {
-            setHotKeys(appSettings[AppSettingsGroup.KeyEvent]);
+            setHotKeys(appSettings[AppSettingsGroup.CommonKeyEvent]);
         }, []),
         true,
     );
@@ -766,7 +768,7 @@ const Chat = () => {
                         },
                         {
                             message: intl.formatMessage({ id: 'tools.chat.newSession' }),
-                            key: formatKey(hotKeys?.[KeyEventKey.ChatNewSession]?.hotKey),
+                            key: formatKey(hotKeys?.[CommonKeyEventKey.ChatNewSession]?.hotKey),
                         },
                     )}
                 >
@@ -957,21 +959,21 @@ const Chat = () => {
         copyTextAndHide(lastMessage ? getMessageContent(lastMessage.message) : '');
     }, []);
 
-    useHotkeys(hotKeys?.[KeyEventKey.ChatCopyAndHide]?.hotKey ?? '', onCopyAndHide, {
+    useHotkeys(hotKeys?.[CommonKeyEventKey.ChatCopyAndHide]?.hotKey ?? '', onCopyAndHide, {
         keyup: false,
         keydown: true,
         preventDefault: true,
         enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
     });
 
-    useHotkeys(hotKeys?.[KeyEventKey.ChatCopy]?.hotKey ?? '', onCopy, {
+    useHotkeys(hotKeys?.[CommonKeyEventKey.ChatCopy]?.hotKey ?? '', onCopy, {
         keyup: false,
         keydown: true,
         preventDefault: true,
         enableOnFormTags: ['INPUT', 'TEXTAREA', 'SELECT'],
     });
 
-    useHotkeys(hotKeys?.[KeyEventKey.ChatNewSession]?.hotKey ?? '', onNewSessionClick, {
+    useHotkeys(hotKeys?.[CommonKeyEventKey.ChatNewSession]?.hotKey ?? '', onNewSessionClick, {
         keyup: false,
         keydown: true,
         preventDefault: true,
@@ -1086,7 +1088,9 @@ const Chat = () => {
                                         id="settings.hotKeySettings.keyEventTooltip"
                                         values={{
                                             message: <FormattedMessage id="tools.chat.chatCopy" />,
-                                            key: formatKey(hotKeys?.[KeyEventKey.ChatCopy]?.hotKey),
+                                            key: formatKey(
+                                                hotKeys?.[CommonKeyEventKey.ChatCopy]?.hotKey,
+                                            ),
                                         }}
                                     />
                                 ),
@@ -1102,7 +1106,8 @@ const Chat = () => {
                                                 <FormattedMessage id="tools.chat.chatCopyAndHide" />
                                             ),
                                             key: formatKey(
-                                                hotKeys?.[KeyEventKey.ChatCopyAndHide]?.hotKey,
+                                                hotKeys?.[CommonKeyEventKey.ChatCopyAndHide]
+                                                    ?.hotKey,
                                             ),
                                         }}
                                     />

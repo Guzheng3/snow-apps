@@ -19,7 +19,6 @@ import { ExcalidrawKeyEventHandler } from './components/excalidrawKeyEventHandle
 import {
     convertLocalToLocalCode,
     DrawCoreActionType,
-    DrawState,
     DrawStatePublisher,
     ExcalidrawEventCallbackPublisher,
     ExcalidrawEventCallbackType,
@@ -31,7 +30,7 @@ import { useIntl } from 'react-intl';
 import { theme } from 'antd';
 import { layoutRenders } from './excalidrawRenders';
 import { generatePickerRenders } from './excalidrawRenders';
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { ExcalidrawAppStateStore } from '@/utils/appStore';
 import { debounce } from 'es-toolkit';
 import { useHistory } from './components/historyContext';
@@ -42,9 +41,10 @@ import {
 import { ExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 import { usePlatform } from '@/hooks/usePlatform';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
-import { AppSettingsGroup } from '@/app/contextWrap';
+import { AppSettingsGroup } from '@/types/appSettings';
 import { useStateRef } from '@/hooks/useStateRef';
 import { FONT_SIZE_MAX_VALUE, STROKE_WIDTH_MAX_VALUE } from './excalidrawRenders/radioSlider';
+import { DrawState } from '@/types/draw';
 
 const strokeWidthList = [1, 2, 4];
 const fontSizeList = [16, 20, 28, 36];

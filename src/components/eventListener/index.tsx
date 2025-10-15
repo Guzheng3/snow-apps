@@ -5,25 +5,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef } fr
 import { attachConsole } from '@tauri-apps/plugin-log';
 import { appLog, LogMessageEvent } from '@/utils/appLog';
 import React from 'react';
-import { MenuLayoutContext } from '@/app/menuLayout';
+import { MenuLayoutContext } from '@/contexts/menuLayoutContext';
 import { getCurrentWindow, Window as AppWindow } from '@tauri-apps/api/window';
-import { AppSettingsActionContext } from '@/app/contextWrap';
 import {
-    LISTEN_KEY_SERVICE_KEY_DOWN_EMIT_KEY,
-    LISTEN_KEY_SERVICE_KEY_UP_EMIT_KEY,
-    LISTEN_KEY_SERVICE_MOUSE_DOWN_EMIT_KEY,
-    LISTEN_KEY_SERVICE_MOUSE_STOP_EMIT_KEY,
-    LISTEN_KEY_SERVICE_MOUSE_UP_EMIT_KEY,
-    LISTEN_KEY_SERVICE_STOP_EMIT_KEY,
-    ListenKeyCode,
-    ListenKeyDownEvent,
     listenKeyStop,
     listenKeyStopByWindowLabel,
-    ListenKeyUpEvent,
     listenMouseStopByWindowLabel,
 } from '@/commands/listenKey';
 import { showWindow } from '@/utils/window';
-import { AntdContext } from '../globalLayoutExtra';
 import { appError } from '@/utils/log';
 import { debounce } from 'es-toolkit';
 import { ocrRelease } from '@/commands/ocr';
@@ -33,8 +22,19 @@ import {
     FIXED_CONTENT_FOCUS_MODE_HIDE_OTHER_WINDOW,
     FIXED_CONTENT_FOCUS_MODE_SHOW_ALL_WINDOW,
 } from '@/functions/fixedContent';
-import { PLUGIN_EVENT_PLUGIN_STATUS_CHANGE } from '../pluginService';
-import { usePluginService } from '../pluginService';
+import { PLUGIN_EVENT_PLUGIN_STATUS_CHANGE } from '@/constants/pluginService';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
+import { AppSettingsActionContext } from '@/contexts/appSettingsActionContext';
+import { AntdContext } from '@/contexts/antdContext';
+import {
+    LISTEN_KEY_SERVICE_KEY_DOWN_EMIT_KEY,
+    LISTEN_KEY_SERVICE_KEY_UP_EMIT_KEY,
+    LISTEN_KEY_SERVICE_MOUSE_DOWN_EMIT_KEY,
+    LISTEN_KEY_SERVICE_MOUSE_STOP_EMIT_KEY,
+    LISTEN_KEY_SERVICE_MOUSE_UP_EMIT_KEY,
+    LISTEN_KEY_SERVICE_STOP_EMIT_KEY,
+} from '@/constants/eventListener';
+import { ListenKeyCode, ListenKeyDownEvent, ListenKeyUpEvent } from '@/types/commands/listenKey';
 
 type Listener = {
     event: string;
@@ -152,7 +152,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
         }, 16 * 1000);
     }, []);
 
-    const { refreshPluginStatusThrottle } = usePluginService();
+    const { refreshPluginStatusThrottle } = usePluginServiceContext();
 
     useEffect(() => {
         if (inited.current) {

@@ -1,4 +1,4 @@
-import { KeyEventKey } from '@/app/draw/components/drawToolbar/components/keyEventWrap/extra';
+import { DrawToolbarKeyEventKey } from '@/types/components/drawToolbar';
 import { ToolButton } from '@/app/draw/components/drawToolbar/components/toolButton';
 import {
     ArrowSelectIcon,
@@ -12,7 +12,6 @@ import {
 } from '@/components/icons';
 import { ButtonProps, Flex, theme } from 'antd';
 import {
-    DrawState,
     DrawStatePublisher,
     ExcalidrawEventPublisher,
     ExcalidrawEventParams,
@@ -29,7 +28,8 @@ import {
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { CloseOutlined, LockOutlined } from '@ant-design/icons';
 import { useIntl } from 'react-intl';
-import { AppSettingsActionContext, AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
+import { AppSettingsActionContext } from '@/contexts/appSettingsActionContext';
 import { fullScreenDrawChangeMouseThrough } from '@/functions/fullScreenDraw';
 import { useStateRef } from '@/hooks/useStateRef';
 import { zIndexs } from '@/utils/zIndex';
@@ -40,6 +40,7 @@ import { HistoryControls } from '@/app/draw/components/drawToolbar/components/hi
 import { closeFullScreenDrawWindow } from '@/commands/core';
 import { RectTool } from '@/app/draw/components/drawToolbar/components/tools/rectTool';
 import { ArrowTool } from '@/app/draw/components/drawToolbar/components/tools/arrowTool';
+import { DrawState } from '@/types/draw';
 
 export type DrawToolbarActionType = {
     setTool: (drawState: DrawState) => void;
@@ -331,7 +332,7 @@ export const FullScreenDrawToolbar: React.FC<{
                 <Flex align="center" gap={token.paddingXS}>
                     {/* 选择状态 */}
                     <ToolButton
-                        componentKey={KeyEventKey.SelectTool}
+                        componentKey={DrawToolbarKeyEventKey.SelectTool}
                         icon={<ArrowSelectIcon style={{ fontSize: '1.2em' }} />}
                         drawState={DrawState.Select}
                         buttonProps={toolButtonProps}
@@ -344,7 +345,7 @@ export const FullScreenDrawToolbar: React.FC<{
                         <>
                             {/* 锁定绘制工具 */}
                             <ToolButton
-                                componentKey={KeyEventKey.LockDrawTool}
+                                componentKey={DrawToolbarKeyEventKey.LockDrawTool}
                                 icon={<LockOutlined />}
                                 drawState={DrawState.Lock}
                                 enableState={enableLockDrawTool}
@@ -365,7 +366,7 @@ export const FullScreenDrawToolbar: React.FC<{
 
                     {/* 椭圆 */}
                     <ToolButton
-                        componentKey={KeyEventKey.EllipseTool}
+                        componentKey={DrawToolbarKeyEventKey.EllipseTool}
                         icon={
                             <CircleIcon
                                 style={{
@@ -389,7 +390,7 @@ export const FullScreenDrawToolbar: React.FC<{
 
                     {/* 画笔 */}
                     <ToolButton
-                        componentKey={KeyEventKey.PenTool}
+                        componentKey={DrawToolbarKeyEventKey.PenTool}
                         icon={<PenIcon style={{ fontSize: '1.15em' }} />}
                         buttonProps={toolButtonProps}
                         drawState={DrawState.Pen}
@@ -400,7 +401,7 @@ export const FullScreenDrawToolbar: React.FC<{
 
                     {/* 文本 */}
                     <ToolButton
-                        componentKey={KeyEventKey.TextTool}
+                        componentKey={DrawToolbarKeyEventKey.TextTool}
                         icon={<TextIcon style={{ fontSize: '1.15em' }} />}
                         drawState={DrawState.Text}
                         buttonProps={toolButtonProps}
@@ -411,7 +412,7 @@ export const FullScreenDrawToolbar: React.FC<{
 
                     {/* 序列号 */}
                     <ToolButton
-                        componentKey={KeyEventKey.SerialNumberTool}
+                        componentKey={DrawToolbarKeyEventKey.SerialNumberTool}
                         icon={
                             <SerialNumberIcon
                                 style={{
@@ -428,7 +429,7 @@ export const FullScreenDrawToolbar: React.FC<{
 
                     {/* 橡皮擦 */}
                     <ToolButton
-                        componentKey={KeyEventKey.EraserTool}
+                        componentKey={DrawToolbarKeyEventKey.EraserTool}
                         icon={
                             <EraserIcon
                                 style={{
@@ -445,7 +446,7 @@ export const FullScreenDrawToolbar: React.FC<{
 
                     {/* 激光笔 */}
                     <ToolButton
-                        componentKey={KeyEventKey.LaserPointerTool}
+                        componentKey={DrawToolbarKeyEventKey.LaserPointerTool}
                         icon={
                             <LaserPointerIcon
                                 style={{
@@ -464,7 +465,7 @@ export const FullScreenDrawToolbar: React.FC<{
 
                     {/* 取消截图 */}
                     <ToolButton
-                        componentKey={KeyEventKey.CancelTool}
+                        componentKey={DrawToolbarKeyEventKey.CancelTool}
                         icon={
                             <CloseOutlined
                                 style={{

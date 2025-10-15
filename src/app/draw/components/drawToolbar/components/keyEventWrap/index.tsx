@@ -3,24 +3,21 @@ import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } 
 import { JSX } from 'react';
 import { useIntl } from 'react-intl';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import {
-    defaultDrawToolbarKeyEventComponentConfig,
-    defaultDrawToolbarKeyEventSettings,
-    EnableKeyEventPublisher,
-    KeyEventKey,
-    KeyEventValue,
-} from './extra';
-import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
-import { AntdContext, HotkeysScope } from '@/components/globalLayoutExtra';
+import { EnableKeyEventPublisher } from './extra';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
+import { HotkeysScope } from '@/types/core/appHotKeys';
+import { AntdContext } from '@/contexts/antdContext';
 import { useHotkeysApp } from '@/hooks/useHotkeysApp';
 import { formatKey } from '@/utils/format';
 import { HotkeyCallback } from 'react-hotkeys-hook';
+import { DrawToolbarKeyEventKey, DrawToolbarKeyEventValue } from '@/types/components/drawToolbar';
+import { defaultDrawToolbarKeyEventComponentConfig } from '@/constants/drawToolbarKeyEvent';
 
 const KeyEventHandleCore: React.FC<{
-    keyEventValue: KeyEventValue | undefined;
+    keyEventValue: DrawToolbarKeyEventValue | undefined;
     onKeyDownChildren: HotkeyCallback;
     onKeyUpChildren: HotkeyCallback;
-    componentKey: KeyEventKey;
+    componentKey: DrawToolbarKeyEventKey;
     children: JSX.Element;
     hotkeyScope?: HotkeysScope;
 }> = ({
@@ -89,7 +86,7 @@ const KeyEventWrapCore: React.FC<{
     onKeyDown?: () => void;
     onKeyUp?: () => void;
     children: JSX.Element;
-    componentKey: KeyEventKey;
+    componentKey: DrawToolbarKeyEventKey;
     confirmTip?: React.ReactNode;
     enable?: boolean;
     hotkeyScope?: HotkeysScope;
@@ -111,7 +108,9 @@ const KeyEventWrapCore: React.FC<{
 
     const { modal, isConfirmingRef } = useContext(AntdContext);
 
-    const [keyEventValue, setKeyEventValue] = useState<KeyEventValue | undefined>(undefined);
+    const [keyEventValue, setKeyEventValue] = useState<DrawToolbarKeyEventValue | undefined>(
+        undefined,
+    );
     const [getEnableKeyEvent] = useStateSubscriber(EnableKeyEventPublisher, undefined);
     const isEnable = useCallback(() => {
         if (enableRef.current !== undefined) {
@@ -129,7 +128,7 @@ const KeyEventWrapCore: React.FC<{
             (appSettings: AppSettingsData) => {
                 setKeyEventValue(
                     appSettings[AppSettingsGroup.DrawToolbarKeyEvent][componentKey] ??
-                        defaultDrawToolbarKeyEventSettings[componentKey],
+                        defaultDrawToolbarKeyEventComponentConfig[componentKey],
                 );
             },
             [componentKey],

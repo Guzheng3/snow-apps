@@ -10,7 +10,7 @@ import React, {
     useState,
 } from 'react';
 import * as PIXI from 'pixi.js';
-import { ElementRect, ImageBuffer } from '@/commands';
+import { ElementRect, ImageBuffer } from '@/types/commands/screenshot';
 import styles from './index.module.css';
 import { releaseDrawPage } from '@/functions/screenshot';
 import { CaptureBoundingBoxInfo } from '../../extra';
@@ -34,7 +34,7 @@ import {
     updateHighlightAction,
     clearContextAction,
 } from './actions';
-import { supportOffscreenCanvas } from '@/utils';
+import { supportOffscreenCanvas } from '@/utils/environment';
 import {
     BlurSprite,
     BlurSpriteProps,

@@ -4,7 +4,7 @@ import { EventListenerContext } from '@/components/eventListener';
 import { showWindow } from '@/utils/window';
 import { useContext, useEffect, useRef } from 'react';
 import { getSelectedText } from '@/commands/core';
-import { encodeParamsValue } from '@/utils';
+import { encodeParamsValue } from '@/utils/base64';
 import { useRouter } from 'next/navigation';
 import React from 'react';
 

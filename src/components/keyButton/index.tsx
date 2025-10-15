@@ -7,7 +7,7 @@ import { useRecordHotkeys } from 'react-hotkeys-hook';
 import { trim } from 'es-toolkit';
 import { formatKey } from '@/utils/format';
 import { listenKeyStart, listenKeyStop } from '@/commands/listenKey';
-import { getPlatform } from '@/utils';
+import { getPlatform } from '@/utils/platform';
 import { appError } from '@/utils/log';
 
 type KeyConfig = {

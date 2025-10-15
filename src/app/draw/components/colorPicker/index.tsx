@@ -12,7 +12,7 @@ import React, {
 } from 'react';
 import { getCurrentWindow, Window as AppWindow, PhysicalPosition } from '@tauri-apps/api/window';
 import { CaptureStep, DrawContext } from '@/app/draw/types';
-import { KeyEventKey } from '../drawToolbar/components/keyEventWrap/extra';
+import { DrawToolbarKeyEventKey } from '@/types/components/drawToolbar';
 import { useCallbackRender, useCallbackRenderSlow } from '@/hooks/useCallbackRender';
 import { MousePosition } from '@/utils/mousePosition';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
@@ -31,19 +31,16 @@ import { EnableKeyEventPublisher } from '../drawToolbar/components/keyEventWrap/
 import { KeyEventWrap } from '../drawToolbar/components/keyEventWrap';
 import { debounce } from 'es-toolkit';
 import { ScreenshotType } from '@/utils/types';
-import {
-    AppSettingsActionContext,
-    AppSettingsGroup,
-    AppSettingsPublisher,
-} from '@/app/contextWrap';
+import { AppSettingsGroup, ColorPickerShowMode } from '@/types/appSettings';
 import Color, { ColorInstance } from 'color';
 import { DrawToolbarStatePublisher } from '../drawToolbar';
 import { DragMode, SelectState } from '../selectLayer/extra';
-import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useMoveCursor } from './extra';
-import { getPlatform, supportOffscreenCanvas } from '@/utils';
+import { getPlatform } from '@/utils/platform';
+import { supportOffscreenCanvas } from '@/utils/environment';
 import { getExcalidrawCanvas } from '@/utils/excalidraw';
-import { ImageBuffer } from '@/commands';
+import { ImageBuffer } from '@/types/commands/screenshot';
 import { CaptureHistoryItem } from '@/utils/appStore';
 import {
     COLOR_PICKER_PREVIEW_CANVAS_SIZE,
@@ -65,12 +62,11 @@ import { getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
 import { useStateRef } from '@/hooks/useStateRef';
 import { useMonitorRect } from '../statusBar';
 import { ImageSharedBufferData } from '../../tools';
-
-export enum ColorPickerShowMode {
-    Always = 0,
-    BeyondSelectRect = 1,
-    Never = 2,
-}
+import { DrawState } from '@/types/draw';
+import {
+    AppSettingsActionContext,
+    AppSettingsPublisher,
+} from '@/contexts/appSettingsActionContext';
 
 export const isEnableColorPicker = (
     captureStep: CaptureStep,
@@ -791,7 +787,7 @@ const ColorPickerCore: React.FC<{
     return (
         <div className="color-picker" ref={colorPickerRef}>
             <KeyEventWrap
-                componentKey={KeyEventKey.ColorPickerCopy}
+                componentKey={DrawToolbarKeyEventKey.ColorPickerCopy}
                 onKeyDown={() => {
                     if (!enableRef.current) {
                         return;
@@ -810,7 +806,7 @@ const ColorPickerCore: React.FC<{
                 <div />
             </KeyEventWrap>
             <KeyEventWrap
-                componentKey={KeyEventKey.ColorPickerMoveUp}
+                componentKey={DrawToolbarKeyEventKey.ColorPickerMoveUp}
                 onKeyDown={() => {
                     moveCursor(0, -1);
                 }}
@@ -818,7 +814,7 @@ const ColorPickerCore: React.FC<{
                 <div />
             </KeyEventWrap>
             <KeyEventWrap
-                componentKey={KeyEventKey.ColorPickerMoveDown}
+                componentKey={DrawToolbarKeyEventKey.ColorPickerMoveDown}
                 onKeyDown={() => {
                     moveCursor(0, 1);
                 }}
@@ -826,7 +822,7 @@ const ColorPickerCore: React.FC<{
                 <div />
             </KeyEventWrap>
             <KeyEventWrap
-                componentKey={KeyEventKey.ColorPickerMoveLeft}
+                componentKey={DrawToolbarKeyEventKey.ColorPickerMoveLeft}
                 onKeyDown={() => {
                     moveCursor(-1, 0);
                 }}
@@ -834,7 +830,7 @@ const ColorPickerCore: React.FC<{
                 <div />
             </KeyEventWrap>
             <KeyEventWrap
-                componentKey={KeyEventKey.ColorPickerMoveRight}
+                componentKey={DrawToolbarKeyEventKey.ColorPickerMoveRight}
                 onKeyDown={() => {
                     moveCursor(1, 0);
                 }}
@@ -842,7 +838,7 @@ const ColorPickerCore: React.FC<{
                 <div />
             </KeyEventWrap>
             <KeyEventWrap
-                componentKey={KeyEventKey.SwitchColorFormat}
+                componentKey={DrawToolbarKeyEventKey.SwitchColorFormat}
                 onKeyUp={() => {
                     if (!enableRef.current) {
                         return;

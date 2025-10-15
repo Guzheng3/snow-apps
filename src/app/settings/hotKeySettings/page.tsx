@@ -1,30 +1,27 @@
 'use client';
 
-import { AppSettingsActionContext, AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
-import {
-    defaultDrawToolbarKeyEventComponentConfig,
-    defaultDrawToolbarKeyEventSettings,
-    KeyEventKey as DrawToolbarKeyEventKey,
-} from '@/app/draw/components/drawToolbar/components/keyEventWrap/extra';
+import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
 import { GroupTitle } from '@/components/groupTitle';
 import { KeyButton } from '@/components/keyButton';
 import { ResetSettingsButton } from '@/components/resetSettingsButton';
-import {
-    defaultKeyEventComponentConfig,
-    defaultKeyEventSettings,
-    KeyEventGroup,
-    KeyEventKey,
-} from '@/core/hotKeys';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { Col, Divider, Form, Row, Spin, theme } from 'antd';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { FormattedMessage } from 'react-intl';
 import { usePlatform } from '@/hooks/usePlatform';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
+import { PLUGIN_ID_AI_CHAT, PLUGIN_ID_RAPID_OCR } from '@/constants/pluginService';
+import { AppSettingsActionContext } from '@/contexts/appSettingsActionContext';
 import {
-    PLUGIN_ID_AI_CHAT,
-    PLUGIN_ID_RAPID_OCR,
-    usePluginService,
-} from '@/components/pluginService';
+    defaultDrawToolbarKeyEventComponentConfig,
+    defaultDrawToolbarKeyEventSettings,
+} from '@/constants/drawToolbarKeyEvent';
+import {
+    defaultCommonKeyEventComponentConfig,
+    defaultCommonKeyEventSettings,
+} from '@/constants/commonKeyEvent';
+import { DrawToolbarKeyEventKey } from '@/types/components/drawToolbar';
+import { CommonKeyEventGroup, CommonKeyEventKey } from '@/types/core/commonKeyEvent';
 
 export default function HotKeySettings() {
     const { token } = theme.useToken();
@@ -35,13 +32,14 @@ export default function HotKeySettings() {
 
     const [drawToolbarKeyEventForm] =
         Form.useForm<AppSettingsData[AppSettingsGroup.DrawToolbarKeyEvent]>();
-    const [keyEventForm] = Form.useForm<AppSettingsData[AppSettingsGroup.KeyEvent]>();
+    const [commonKeyEventForm] = Form.useForm<AppSettingsData[AppSettingsGroup.CommonKeyEvent]>();
 
     const [drawToolbarKeyEvent, setDrawToolbarKeyEvent] = useState<
         AppSettingsData[AppSettingsGroup.DrawToolbarKeyEvent]
     >(defaultDrawToolbarKeyEventSettings);
-    const [keyEvent, setKeyEvent] =
-        useState<AppSettingsData[AppSettingsGroup.KeyEvent]>(defaultKeyEventSettings);
+    const [commonKeyEvent, setCommonKeyEvent] = useState<
+        AppSettingsData[AppSettingsGroup.CommonKeyEvent]
+    >(defaultCommonKeyEventSettings);
     useAppSettingsLoad(
         useCallback(
             (settings: AppSettingsData, preSettings?: AppSettingsData) => {
@@ -57,9 +55,10 @@ export default function HotKeySettings() {
 
                 if (
                     preSettings === undefined ||
-                    preSettings[AppSettingsGroup.KeyEvent] !== settings[AppSettingsGroup.KeyEvent]
+                    preSettings[AppSettingsGroup.DrawToolbarKeyEvent] !==
+                        settings[AppSettingsGroup.DrawToolbarKeyEvent]
                 ) {
-                    setKeyEvent(settings[AppSettingsGroup.KeyEvent]);
+                    setCommonKeyEvent(settings[AppSettingsGroup.CommonKeyEvent]);
                 }
             },
             [setAppSettingsLoading],
@@ -69,7 +68,7 @@ export default function HotKeySettings() {
 
     const [currentPlatform] = usePlatform();
 
-    const { isReadyStatus } = usePluginService();
+    const { isReadyStatus } = usePluginServiceContext();
 
     const drawToolbarKeyEventFormItemList = useMemo(() => {
         return Object.keys(defaultDrawToolbarKeyEventSettings)
@@ -137,16 +136,16 @@ export default function HotKeySettings() {
     }, [currentPlatform, drawToolbarKeyEvent, isReadyStatus, updateAppSettings]);
 
     const keyEventFormItemList = useMemo(() => {
-        const groupFormItemMap: Record<KeyEventGroup, React.ReactNode[]> = {
-            [KeyEventGroup.Translation]: [],
-            [KeyEventGroup.Chat]: [],
-            [KeyEventGroup.FixedContent]: [],
+        const groupFormItemMap: Record<CommonKeyEventGroup, React.ReactNode[]> = {
+            [CommonKeyEventGroup.Translation]: [],
+            [CommonKeyEventGroup.Chat]: [],
+            [CommonKeyEventGroup.FixedContent]: [],
         };
 
-        Object.keys(defaultKeyEventSettings).forEach((key) => {
+        Object.keys(defaultCommonKeyEventSettings).forEach((key) => {
             const span = 12;
-            const config = keyEvent[key as KeyEventKey];
-            const componentConfig = defaultKeyEventComponentConfig[key as KeyEventKey];
+            const config = commonKeyEvent[key as CommonKeyEventKey];
+            const componentConfig = defaultCommonKeyEventComponentConfig[key as CommonKeyEventKey];
 
             if (!groupFormItemMap[config.group]) {
                 groupFormItemMap[config.group] = [];
@@ -164,7 +163,7 @@ export default function HotKeySettings() {
                             maxWidth={100}
                             onKeyChange={async (value) => {
                                 updateAppSettings(
-                                    AppSettingsGroup.KeyEvent,
+                                    AppSettingsGroup.CommonKeyEvent,
                                     {
                                         [key]: {
                                             ...config,
@@ -184,16 +183,16 @@ export default function HotKeySettings() {
         });
 
         return groupFormItemMap;
-    }, [keyEvent, updateAppSettings]);
+    }, [commonKeyEvent, updateAppSettings]);
 
-    const keyEventFormItemListKeys = Object.keys(keyEventFormItemList) as KeyEventGroup[];
+    const keyEventFormItemListKeys = Object.keys(keyEventFormItemList) as CommonKeyEventGroup[];
     return (
         <div className="settings-wrap">
             {/* 这里用 form 控制值的更新和保存的话反而很麻烦，所以 */}
-            <Form className="settings-form common-settings-form" form={keyEventForm}>
+            <Form className="settings-form common-settings-form" form={commonKeyEventForm}>
                 {keyEventFormItemListKeys
                     .filter((configGroup) => {
-                        if (configGroup === KeyEventGroup.Chat) {
+                        if (configGroup === CommonKeyEventGroup.Chat) {
                             return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
                         }
 
@@ -212,13 +211,13 @@ export default function HotKeySettings() {
                                                     key={configGroup}
                                                 />
                                             }
-                                            appSettingsGroup={AppSettingsGroup.KeyEvent}
+                                            appSettingsGroup={AppSettingsGroup.CommonKeyEvent}
                                             filter={(settings) => {
                                                 return Object.keys(settings).reduce(
                                                     (acc, key) => {
                                                         if (
-                                                            keyEvent[key as KeyEventKey].group ===
-                                                            configGroup
+                                                            commonKeyEvent[key as CommonKeyEventKey]
+                                                                .group === configGroup
                                                         ) {
                                                             acc[key] = settings[key];
                                                         }
@@ -236,7 +235,7 @@ export default function HotKeySettings() {
                                 </GroupTitle>
                                 <Spin spinning={appSettingsLoading}>
                                     <Row gutter={token.marginLG}>
-                                        {keyEventFormItemList[configGroup as KeyEventGroup]}
+                                        {keyEventFormItemList[configGroup as CommonKeyEventGroup]}
                                     </Row>
                                 </Spin>
 

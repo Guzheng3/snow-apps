@@ -9,7 +9,7 @@ import { setDrawWindowStyle } from '@/commands/screenshot';
 import { getCurrentMonitorInfo, MonitorInfo, readImageFromClipboard } from '@/commands/core';
 import { scrollScreenshotClear, scrollScreenshotGetImageData } from '@/commands/scrollScreenshot';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { AppSettingsFixedContentInitialPosition, AppSettingsGroup } from '../contextWrap';
+import { AppSettingsFixedContentInitialPosition, AppSettingsGroup } from '@/types/appSettings';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 
 export default function FixedContentPage() {

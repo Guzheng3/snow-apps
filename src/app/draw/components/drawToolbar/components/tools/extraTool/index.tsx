@@ -4,26 +4,20 @@ import { ScanOutlined } from '@ant-design/icons';
 import { useState, useCallback, useContext } from 'react';
 import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { DrawState } from '@/app/fullScreenDraw/components/drawCore/extra';
-import { getButtonTypeByState } from '../../../extra';
+import { DrawState } from '@/types/draw';
+import { getButtonTypeByState } from '@/app/draw/components/drawToolbar/extra';
 import { VideoRecordIcon } from '@/components/icons';
 import { createVideoRecordWindow } from '@/commands/core';
 import { DrawContext } from '@/app/draw/types';
-import { getPlatform } from '@/utils';
+import { getPlatform } from '@/utils/platform';
+import { AppSettingsData, AppSettingsGroup, ExtraToolList } from '@/types/appSettings';
+import { ToolbarPopover } from '@/app/draw/components/drawToolbar/components/toolbarPopover';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
+import { PLUGIN_ID_FFMPEG } from '@/constants/pluginService';
 import {
     AppSettingsActionContext,
-    AppSettingsData,
-    AppSettingsGroup,
     AppSettingsPublisher,
-} from '@/app/contextWrap';
-import { ToolbarPopover } from '@/app/draw/components/drawToolbar/components/toolbarPopover';
-import { PLUGIN_ID_FFMPEG, usePluginService } from '@/components/pluginService';
-
-export enum ExtraToolList {
-    None = 0,
-    ScanQrcode = 1,
-    VideoRecord = 2,
-}
+} from '@/contexts/appSettingsActionContext';
 
 export const ExtraTool: React.FC<{
     onToolClickAction: (tool: DrawState) => void;
@@ -156,7 +150,7 @@ export const ExtraTool: React.FC<{
         />
     );
 
-    const { isReadyStatus } = usePluginService();
+    const { isReadyStatus } = usePluginServiceContext();
 
     let mainToolbarButton = isReadyStatus?.(PLUGIN_ID_FFMPEG)
         ? videoRecordButton

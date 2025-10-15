@@ -20,12 +20,10 @@ import {
 } from '@/components/icons';
 import { getButtonIconColorByState } from '@/app/draw/components/drawToolbar/extra';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { ElementRect } from '@/commands';
+import { ElementRect } from '@/types/commands/screenshot';
 import { getVideoRecordParams, VideoRecordState } from '../extra';
 import {
     setExcludeFromCapture,
-    VideoFormat,
-    VideoMaxSize,
     videoRecordKill,
     videoRecordPause,
     videoRecordResume,
@@ -37,19 +35,14 @@ import { EventListenerContext } from '@/components/eventListener';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import {
-    AppSettingsActionContext,
-    AppSettingsData,
-    AppSettingsGroup,
-    AppSettingsPublisher,
-} from '@/app/contextWrap';
+import { AppSettingsData, AppSettingsGroup, VideoFormat, VideoMaxSize } from '@/types/appSettings';
 import { generateImageFileName, getVideoRecordSaveDirectory } from '@/utils/file';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { join as joinPath } from '@tauri-apps/api/path';
 import clipboard from 'tauri-plugin-clipboard-api';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { createDir } from '@/commands/file';
-import { getPlatformValue } from '@/utils';
+import { getPlatformValue } from '@/utils/platform';
 import {
     closeVideoRecordWindow,
     getMonitorsBoundingBox,
@@ -59,8 +52,13 @@ import { setWindowRect } from '@/utils/window';
 import { Window as AppWindow } from '@tauri-apps/api/window';
 import { useStateRef } from '@/hooks/useStateRef';
 import { appError } from '@/utils/log';
-import { PLUGIN_ID_FFMPEG, usePluginService } from '@/components/pluginService';
+import { usePluginServiceContext } from '@/contexts/pluginServiceContext';
+import { PLUGIN_ID_FFMPEG } from '@/constants/pluginService';
 import { VideoRecordWindowInfo } from '@/utils/types';
+import {
+    AppSettingsActionContext,
+    AppSettingsPublisher,
+} from '@/contexts/appSettingsActionContext';
 
 dayjs.extend(duration);
 
@@ -407,7 +405,7 @@ export default function VideoRecordToolbar() {
         };
     }, [addListener, init, removeListener, copyVideo, startRecord, videoRecordStateRef]);
 
-    const { isReadyStatus } = usePluginService();
+    const { isReadyStatus } = usePluginServiceContext();
     useEffect(() => {
         if (!isReadyStatus) {
             return;
