@@ -126,6 +126,7 @@ export type SelectRectPreset = {
         radius: number;
         shadowWidth: number;
         shadowColor: string;
+        lockAspectRatio: boolean | undefined;
     };
 };
 

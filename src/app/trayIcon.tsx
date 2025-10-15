@@ -45,6 +45,7 @@ import {
 } from '@/components/pluginService';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { ScreenshotType } from '@/utils/types';
+import { sendErrorMessage } from '@/functions/sendMessage';
 
 export const TrayIconStatePublisher = createPublisher<{
     disableShortcut: boolean;
@@ -498,7 +499,7 @@ const TrayIconLoaderComponent = () => {
             trayIcon = await TrayIcon.new(options);
         } catch (error) {
             appError(`[initTrayIcon] create tray icon failed`, error);
-            message.error(intl.formatMessage({ id: 'home.trayIcon.error' }));
+            sendErrorMessage(intl.formatMessage({ id: 'home.trayIcon.error' }));
         }
     }, [
         shortcutKeys,

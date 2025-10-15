@@ -131,6 +131,7 @@ export const draw = {
     'draw.positionY': '位置 Y',
     'draw.width': '宽度',
     'draw.height': '高度',
+    'draw.lockAspectRatio': '锁定长宽比',
     'draw.radius': '圆角',
     'draw.shadowWidth': '阴影宽度',
     'draw.shadowColor': '阴影颜色',

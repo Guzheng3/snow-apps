@@ -17,9 +17,11 @@ import ProForm, {
     ProFormDigit,
     ProFormList,
     ProFormSelect,
+    ProFormSwitch,
     ProFormText,
 } from '@ant-design/pro-form';
 import { Col, ColorPicker, Flex, Form, Row, Space, theme } from 'antd';
+import { AggregationColor } from 'antd/es/color-picker/color';
 import {
     useCallback,
     useContext,
@@ -91,6 +93,7 @@ export const ResizeModal: React.FC<{
         ElementRect | undefined
     >(undefined);
 
+    const aspectRatioRef = useRef<number>(undefined);
     useImperativeHandle(actionRef, () => {
         return {
             show: (
@@ -115,6 +118,7 @@ export const ResizeModal: React.FC<{
                     radius,
                     shadowWidth: shadowConfig.shadowWidth,
                     shadowColor: shadowConfig.shadowColor,
+                    lockAspectRatio: undefined,
                 });
                 setOpen(true);
             },
@@ -191,6 +195,7 @@ export const ResizeModal: React.FC<{
                     minY: targetSelectRect.min_y,
                     width: targetSelectRect.max_x - targetSelectRect.min_x,
                     height: targetSelectRect.max_y - targetSelectRect.min_y,
+                    lockAspectRatio: false,
                 });
                 setQuickSet(value);
                 return;
@@ -220,10 +225,23 @@ export const ResizeModal: React.FC<{
                                           shadowColor:
                                               defaultAppSettingsData[AppSettingsGroup.Cache]
                                                   .selectRectShadowColor,
+                                          lockAspectRatio: false,
                                       },
                                   },
                               ]
-                            : [...selectRectPresetListRef.current],
+                            : [
+                                  ...selectRectPresetListRef.current.map((item) => ({
+                                      ...item,
+                                      selectParams: {
+                                          ...item.selectParams,
+                                          shadowColor:
+                                              typeof item.selectParams.shadowColor === 'object'
+                                                  ? defaultAppSettingsData[AppSettingsGroup.Cache]
+                                                        .selectRectShadowColor
+                                                  : item.selectParams.shadowColor,
+                                      },
+                                  })),
+                              ],
                 });
                 setQuickSet(value);
                 return;
@@ -238,9 +256,18 @@ export const ResizeModal: React.FC<{
                     height: targetParams.height,
                     radius: targetParams.radius,
                     shadowWidth: targetParams.shadowWidth,
-                    shadowColor: targetParams.shadowColor,
+                    shadowColor:
+                        typeof targetParams.shadowColor === 'object'
+                            ? defaultAppSettingsData[AppSettingsGroup.Cache].selectRectShadowColor
+                            : targetParams.shadowColor,
+                    lockAspectRatio: targetParams.lockAspectRatio,
                 });
-                setQuickSet(value);
+                if (targetParams.lockAspectRatio) {
+                    aspectRatioRef.current = targetParams.height / targetParams.width;
+                } else {
+                    aspectRatioRef.current = undefined;
+                }
+                setQuickSet(null);
                 return;
             }
 
@@ -279,6 +306,31 @@ export const ResizeModal: React.FC<{
             enableScope(HotkeysScope.DrawTool);
         };
     }, [open, disableScope, enableScope]);
+
+    const lockAspectRatioValue = Form.useWatch('lockAspectRatio', form);
+    useEffect(() => {
+        if (lockAspectRatioValue) {
+            if (!aspectRatioRef.current) {
+                aspectRatioRef.current = form.getFieldValue('height') / form.getFieldValue('width');
+            }
+        } else {
+            aspectRatioRef.current = undefined;
+        }
+    }, [form, lockAspectRatioValue]);
+
+    const widthValue = Form.useWatch('width', form);
+    useEffect(() => {
+        if (aspectRatioRef.current) {
+            form.setFieldsValue({ height: widthValue * aspectRatioRef.current });
+        }
+    }, [form, aspectRatioRef, widthValue]);
+    const heightValue = Form.useWatch('height', form);
+    useEffect(() => {
+        if (aspectRatioRef.current) {
+            form.setFieldsValue({ width: heightValue / aspectRatioRef.current });
+        }
+    }, [form, aspectRatioRef, heightValue]);
+
     return (
         <ModalForm
             form={form}
@@ -301,7 +353,20 @@ export const ResizeModal: React.FC<{
                     updateAppSettings(
                         AppSettingsGroup.FunctionScreenshot,
                         {
-                            selectRectPresetList: params[0].selectRectPresetList,
+                            selectRectPresetList: params[0].selectRectPresetList.map(
+                                (item: { selectParams: { shadowColor: unknown } }) => {
+                                    console.log('item', item);
+                                    if (typeof item.selectParams.shadowColor === 'object') {
+                                        item.selectParams.shadowColor = (
+                                            item.selectParams.shadowColor as AggregationColor
+                                        ).toHexString();
+                                    }
+
+                                    return {
+                                        ...item,
+                                    };
+                                },
+                            ),
                         },
                         true,
                         true,
@@ -370,6 +435,14 @@ export const ResizeModal: React.FC<{
                                     min={1}
                                     max={selectRectLimit.max_y - selectRectLimit.min_y}
                                     fieldProps={{ precision: 0 }}
+                                />
+                            </Col>
+                        </Row>
+                        <Row gutter={token.marginLG}>
+                            <Col span={12}>
+                                <ProFormSwitch
+                                    name="lockAspectRatio"
+                                    label={<FormattedMessage id="draw.lockAspectRatio" />}
                                 />
                             </Col>
                         </Row>
@@ -451,6 +524,7 @@ export const ResizeModal: React.FC<{
                                     shadowColor:
                                         defaultAppSettingsData[AppSettingsGroup.Cache]
                                             .selectRectShadowColor,
+                                    lockAspectRatio: false,
                                 },
                             })}
                         >
@@ -511,6 +585,14 @@ export const ResizeModal: React.FC<{
                                         min={1}
                                         max={selectRectLimit.max_y - selectRectLimit.min_y}
                                         fieldProps={{ precision: 0 }}
+                                    />
+                                </Col>
+                            </Row>
+                            <Row gutter={token.marginLG}>
+                                <Col span={12}>
+                                    <ProFormSwitch
+                                        name={['selectParams', 'lockAspectRatio']}
+                                        label={<FormattedMessage id="draw.lockAspectRatio" />}
                                     />
                                 </Col>
                             </Row>
