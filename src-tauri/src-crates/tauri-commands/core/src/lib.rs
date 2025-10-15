@@ -508,11 +508,12 @@ struct VideoRecordWindowInfo {
     select_rect_max_y: i32,
 }
 
-pub async fn has_video_record_window(app: tauri::AppHandle) -> Result<bool, String> {
-    let window_label = "video-recording";
-    let window = app.get_webview_window(window_label);
+pub async fn has_video_record_window(
+    video_record_window_labels: tauri::State<'_, Mutex<Option<VideoRecordWindowLabels>>>,
+) -> Result<bool, String> {
+    let video_record_window_labels = video_record_window_labels.lock().await;
 
-    Ok(window.is_some())
+    Ok(video_record_window_labels.is_some())
 }
 
 pub struct VideoRecordWindowLabels {

@@ -167,8 +167,10 @@ pub async fn close_video_record_window(
 }
 
 #[command]
-pub async fn has_video_record_window(app: tauri::AppHandle) -> Result<bool, String> {
-    snow_shot_tauri_commands_core::has_video_record_window(app).await
+pub async fn has_video_record_window(
+    video_record_window_labels: tauri::State<'_, Mutex<Option<VideoRecordWindowLabels>>>,
+) -> Result<bool, String> {
+    snow_shot_tauri_commands_core::has_video_record_window(video_record_window_labels).await
 }
 
 #[command]
