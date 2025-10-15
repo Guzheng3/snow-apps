@@ -19,10 +19,6 @@ export const executeScreenshot = async (
     });
 };
 
-export const executeFixedClipboardContent = async () => {
-    await emit('execute-fixed-clipboard-content');
-};
-
 export const executeScreenshotFocusedWindow = async (appSettings: AppSettingsData) => {
     const imagePath = await getImagePathFromSettings(appSettings, 'focused-window');
     if (!imagePath) {

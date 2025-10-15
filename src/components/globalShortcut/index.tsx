@@ -17,11 +17,7 @@ import {
     TranslationIcon,
     VideoRecordIcon,
 } from '@/components/icons';
-import {
-    executeFixedClipboardContent,
-    executeScreenshot,
-    executeScreenshotFocusedWindow,
-} from '@/functions/screenshot';
+import { executeScreenshot, executeScreenshotFocusedWindow } from '@/functions/screenshot';
 import { ScreenshotType } from '@/utils/types';
 import {
     isRegistered,
@@ -37,7 +33,7 @@ import {
     executeTranslate,
     executeTranslateSelectedText,
 } from '@/functions/tools';
-import { createFullScreenDrawWindow } from '@/commands/core';
+import { createFixedContentWindow, createFullScreenDrawWindow } from '@/commands/core';
 import { IconLabel } from '@/components/iconLable';
 import { AppSettingsData, AppSettingsGroup, ShortcutKeyStatus } from '@/types/appSettings';
 import { AppSettingsPublisher } from '@/contexts/appSettingsActionContext';
@@ -60,6 +56,7 @@ import {
     AppFunctionGroup,
 } from '@/types/components/appFunction';
 import { defaultAppFunctionConfigs } from '@/constants/appFunction';
+import { getCaptureState } from '@/commands/global_state';
 
 export type GlobalShortcutContextType = {
     disableShortcutKeyRef: React.RefObject<boolean>;
@@ -227,8 +224,12 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
                         case AppFunction.FixedContent:
                             buttonTitle = <FormattedMessage id="home.fixedContent" />;
                             buttonIcon = <ClipboardIcon style={{ fontSize: '1.1em' }} />;
-                            buttonOnClick = () => {
-                                executeFixedClipboardContent();
+                            buttonOnClick = async () => {
+                                if ((await getCaptureState()).capturing) {
+                                    return;
+                                }
+
+                                createFixedContentWindow();
                             };
                             break;
                         case AppFunction.FullScreenDraw:

@@ -351,10 +351,6 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
                         listenMouseStopByWindowLabel(payload);
                     },
                 });
-                defaultListener.push({
-                    event: 'execute-fixed-clipboard-content',
-                    callback: async () => {},
-                });
             }
 
             if (isFullScreenDraw || isFullScreenDrawSwitchMouseThrough) {

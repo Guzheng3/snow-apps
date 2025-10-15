@@ -90,7 +90,7 @@ import Flatbush from 'flatbush';
 import { isOcrTool } from './components/drawToolbar/components/tools/ocrTool';
 import { CaptureHistoryActionType, CaptureHistoryController } from './components/captureHistory';
 import { AntdContext } from '@/contexts/antdContext';
-import { appError, appInfo } from '@/utils/log';
+import { appError } from '@/utils/log';
 import { NonDeletedExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 import {
     DrawContext as CommonDrawContext,
@@ -103,6 +103,7 @@ import { getCorrectHdrColorAlgorithm } from '@/utils/appSettings';
 import { CaptureHistorySource } from '@/utils/appStore';
 import { uploadToS3 } from '@/commands/httpServices';
 import { ScreenshotType } from '@/utils/types';
+import { setCaptureState } from '@/commands/global_state';
 
 const DrawCacheLayer = dynamic(
     async () => (await import('./components/drawCacheLayer')).DrawCacheLayer,
@@ -397,6 +398,7 @@ const DrawPageCore: React.FC<{
             resetScreenshotType();
             drawToolbarActionRef.current?.setEnable(false);
             capturingRef.current = false;
+            setCaptureState(false);
             history.clear();
 
             // 等待 1 帧，确保截图窗口内的元素均隐藏完成
@@ -511,6 +513,7 @@ const DrawPageCore: React.FC<{
             params: { windowId?: string; captureHistoryId?: string },
         ) => {
             capturingRef.current = true;
+            setCaptureState(true);
             drawToolbarActionRef.current?.setEnable(false);
 
             setExcludeFromCapture(true);
@@ -802,6 +805,9 @@ const DrawPageCore: React.FC<{
             return;
         }
 
+        capturingRef.current = false;
+        setCaptureState(false);
+
         const fixedContentAction = getFixedContentAction();
 
         if (
@@ -1049,27 +1055,6 @@ const DrawPageCore: React.FC<{
             excuteScreenshot(payload.type, payload);
         });
 
-        // 监听固定内容复制到剪贴板
-        const fixedClipboardContentListenerId = addListener(
-            'execute-fixed-clipboard-content',
-            () => {
-                if (capturingRef.current) {
-                    return;
-                }
-
-                if (
-                    !(
-                        drawPageStateRef.current === DrawPageState.Active ||
-                        drawPageStateRef.current === DrawPageState.WaitRelease
-                    )
-                ) {
-                    return;
-                }
-
-                createFixedContentWindow();
-            },
-        );
-
         const finishListenerId = addListener('finish-screenshot', () => {
             finishCapture();
         });
@@ -1093,7 +1078,6 @@ const DrawPageCore: React.FC<{
 
         return () => {
             removeListener(listenerId);
-            removeListener(fixedClipboardContentListenerId);
             removeListener(finishListenerId);
             removeListener(releaseListenerId);
         };

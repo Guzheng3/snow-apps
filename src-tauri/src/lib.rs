@@ -1,5 +1,6 @@
 pub mod core;
 pub mod file;
+pub mod global_state;
 pub mod hot_load_page;
 pub mod http_services;
 pub mod listen_key;
@@ -18,6 +19,7 @@ use tokio::sync::Mutex;
 
 use tauri::Manager;
 
+use crate::global_state::CaptureState;
 use snow_shot_app_os::ui_automation::UIElements;
 use snow_shot_app_scroll_screenshot_service::scroll_screenshot_capture_service;
 use snow_shot_app_scroll_screenshot_service::scroll_screenshot_image_service;
@@ -65,6 +67,8 @@ pub fn run() {
     let enable_run_log_clone = enable_run_log.clone();
 
     let plugin_service = Arc::new(plugin_service::PluginService::new());
+
+    let capture_state = Mutex::new(CaptureState { capturing: false });
 
     let full_screen_draw_window_labels = Mutex::new(Option::<FullScreenDrawWindowLabels>::None);
     let video_record_window_label = Mutex::new(Option::<VideoRecordWindowLabels>::None);
@@ -201,6 +205,7 @@ pub fn run() {
         .manage(support_webview_shared_buffer)
         .manage(hot_load_page_service)
         .manage(video_record_window_label)
+        .manage(capture_state)
         .invoke_handler(tauri::generate_handler![
             screenshot::capture_current_monitor,
             screenshot::capture_all_monitors,
@@ -288,6 +293,8 @@ pub fn run() {
             http_services::upload_to_s3,
             hot_load_page::hot_load_page_init,
             hot_load_page::hot_load_page_add_page,
+            global_state::set_capture_state,
+            global_state::get_capture_state,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {

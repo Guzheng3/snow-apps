@@ -6556,6 +6556,7 @@ version = "0.5.5-beta"
 dependencies = [
  "base64 0.22.1",
  "log",
+ "serde",
  "snow-shot-app-os",
  "snow-shot-app-scroll-screenshot-service",
  "snow-shot-app-services",
