@@ -1,5 +1,6 @@
 import { HolderOutlined } from '@ant-design/icons';
 import { Flex, theme } from 'antd';
+import { createStyles } from 'antd-style';
 import { useCallback, useContext, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { useIntl } from 'react-intl';
 import { DrawContext } from '@/app/draw/types';
@@ -11,12 +12,45 @@ export type SubToolsActionType = {
     getSubToolContainer: () => HTMLDivElement | null;
 };
 
+const useStyles = createStyles(({ token }) => ({
+    subToolsContainer: {
+        position: 'fixed',
+        zIndex: zIndexs.Draw_SubToolbar,
+        top: 0,
+        left: 0,
+    },
+    subTools: {
+        opacity: 0,
+        pointerEvents: 'auto',
+        padding: `${token.paddingSM}px ${token.paddingXXS}px`,
+        boxSizing: 'border-box',
+        backgroundColor: token.colorBgContainer,
+        borderRadius: `${token.borderRadiusLG}px`,
+        cursor: 'default', // 防止非拖动区域也变成可拖动状态
+        color: token.colorText,
+        boxShadow: `0 0 3px 0px ${token.colorPrimaryHover}`,
+        transition: `opacity ${token.motionDurationMid} ${token.motionEaseInOut}`,
+        transformOrigin: 'top left',
+    },
+    dragButton: {
+        marginTop: `${-token.marginXXS / 2}px`,
+        transform: 'rotate(90deg)',
+        fontSize: '18px',
+    },
+    antBtnIcon: {
+        '& .ant-btn .ant-btn-icon': {
+            fontSize: '24px',
+        },
+    },
+}));
+
 export const SubTools: React.FC<{
     buttons: React.ReactNode[];
     actionRef?: React.RefObject<SubToolsActionType | undefined>;
 }> = ({ buttons, actionRef }) => {
     const intl = useIntl();
     const { token } = theme.useToken();
+    const { styles } = useStyles();
 
     const { selectLayerActionRef } = useContext(DrawContext);
 
@@ -119,51 +153,21 @@ export const SubTools: React.FC<{
     );
 
     return (
-        <div className="sub-tools-container" ref={subToolsContainerRef}>
-            <div className="sub-tools" ref={subToolsRef}>
-                <div className="drag-button" title={dragTitle} onMouseDown={handleMouseDown}>
+        <div className={styles.subToolsContainer} ref={subToolsContainerRef}>
+            <div className={styles.subTools} ref={subToolsRef}>
+                <div className={styles.dragButton} title={dragTitle} onMouseDown={handleMouseDown}>
                     <HolderOutlined />
                 </div>
-                <Flex
-                    align="center"
-                    gap={token.paddingXS}
-                    style={{ flexDirection: 'column', marginTop: -token.marginXS }}
-                >
-                    {buttons}
-                </Flex>
+                <div className={styles.antBtnIcon}>
+                    <Flex
+                        align="center"
+                        gap={token.paddingXS}
+                        style={{ flexDirection: 'column', marginTop: -token.marginXS }}
+                    >
+                        {buttons}
+                    </Flex>
+                </div>
             </div>
-            <style jsx>{`
-                .sub-tools-container {
-                    position: fixed;
-                    z-index: ${zIndexs.Draw_SubToolbar};
-                    top: 0;
-                    left: 0;
-                }
-
-                .sub-tools {
-                    opacity: 0;
-                    pointer-events: auto;
-                    padding: ${token.paddingSM}px ${token.paddingXXS}px;
-                    box-sizing: border-box;
-                    background-color: ${token.colorBgContainer};
-                    border-radius: ${token.borderRadiusLG}px;
-                    cursor: default; /* 防止非拖动区域也变成可拖动状态 */
-                    color: ${token.colorText};
-                    box-shadow: 0 0 3px 0px ${token.colorPrimaryHover};
-                    transition: opacity ${token.motionDurationMid} ${token.motionEaseInOut};
-                    transform-origin: top left;
-                }
-
-                .drag-button {
-                    margin-top: -${token.marginXXS / 2}px;
-                    transform: rotate(90deg);
-                    font-size: 18px;
-                }
-
-                .sub-tools :global(.ant-btn) :global(.ant-btn-icon) {
-                    font-size: 24px;
-                }
-            `}</style>
         </div>
     );
 };
