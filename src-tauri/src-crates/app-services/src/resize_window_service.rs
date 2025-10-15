@@ -1,7 +1,7 @@
 use device_query::{DeviceQuery, MouseButton, MousePosition};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
-use tauri::{Emitter, LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize};
+use tauri::{Emitter, PhysicalPosition, PhysicalSize};
 
 use crate::device_event_handler_service::DeviceEventHandlerService;
 
@@ -213,9 +213,10 @@ impl ResizeWindowService {
                 #[cfg(target_os = "macos")]
                 {
                     if let Some(new_position) = new_position {
-                        match target_window
-                            .set_position(LogicalPosition::new(new_position.x, new_position.y))
-                        {
+                        match target_window.set_position(tauri::LogicalPosition::new(
+                            new_position.x,
+                            new_position.y,
+                        )) {
                             Ok(_) => {}
                             Err(_) => {
                                 log::error!(
@@ -225,7 +226,8 @@ impl ResizeWindowService {
                             }
                         }
                     }
-                    match target_window.set_size(LogicalSize::new(new_size.width, new_size.height))
+                    match target_window
+                        .set_size(tauri::LogicalSize::new(new_size.width, new_size.height))
                     {
                         Ok(_) => {}
                         Err(_) => {
