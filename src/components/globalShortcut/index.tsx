@@ -17,7 +17,11 @@ import {
     TranslationIcon,
     VideoRecordIcon,
 } from '@/components/icons';
-import { executeScreenshot, executeScreenshotFocusedWindow } from '@/functions/screenshot';
+import {
+    executeFixedClipboardContent,
+    executeScreenshot,
+    executeScreenshotFocusedWindow,
+} from '@/functions/screenshot';
 import { ScreenshotType } from '@/utils/types';
 import {
     isRegistered,
@@ -33,7 +37,7 @@ import {
     executeTranslate,
     executeTranslateSelectedText,
 } from '@/functions/tools';
-import { createFixedContentWindow, createFullScreenDrawWindow } from '@/commands/core';
+import { createFullScreenDrawWindow } from '@/commands/core';
 import { IconLabel } from '@/components/iconLable';
 import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
 import { TrayIconStatePublisher } from '@/app/trayIcon';
@@ -223,7 +227,9 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
                         case AppFunction.FixedContent:
                             buttonTitle = <FormattedMessage id="home.fixedContent" />;
                             buttonIcon = <ClipboardIcon style={{ fontSize: '1.1em' }} />;
-                            buttonOnClick = () => createFixedContentWindow();
+                            buttonOnClick = () => {
+                                executeFixedClipboardContent();
+                            };
                             break;
                         case AppFunction.FullScreenDraw:
                             buttonTitle = <FormattedMessage id="home.fullScreenDraw" />;

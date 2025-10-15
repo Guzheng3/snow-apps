@@ -92,7 +92,7 @@ import Flatbush from 'flatbush';
 import { isOcrTool } from './components/drawToolbar/components/tools/ocrTool';
 import { CaptureHistoryActionType, CaptureHistoryController } from './components/captureHistory';
 import { AntdContext } from '@/components/globalLayoutExtra';
-import { appError } from '@/utils/log';
+import { appError, appInfo } from '@/utils/log';
 import { NonDeletedExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 import {
     DrawContext as CommonDrawContext,
@@ -1047,6 +1047,26 @@ const DrawPageCore: React.FC<{
             excuteScreenshot(payload.type, payload);
         });
 
+        // 监听固定内容复制到剪贴板
+        const fixedClipboardContentListenerId = addListener(
+            'execute-fixed-clipboard-content',
+            () => {
+                appInfo('execute-fixed-clipboard-content', {
+                    c: capturingRef.current,
+                    d: drawPageStateRef.current,
+                });
+                if (capturingRef.current) {
+                    return;
+                }
+
+                if (drawPageStateRef.current !== DrawPageState.Active) {
+                    return;
+                }
+
+                createFixedContentWindow();
+            },
+        );
+
         const finishListenerId = addListener('finish-screenshot', () => {
             finishCapture();
         });
@@ -1070,6 +1090,7 @@ const DrawPageCore: React.FC<{
 
         return () => {
             removeListener(listenerId);
+            removeListener(fixedClipboardContentListenerId);
             removeListener(finishListenerId);
             removeListener(releaseListenerId);
         };

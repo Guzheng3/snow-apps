@@ -1,0 +1,7 @@
+{
+    "unwantedRecommendations": [
+        "rust-lang.rust-analyzer",
+        "rust-lang.rust"
+    ]
+}
+
