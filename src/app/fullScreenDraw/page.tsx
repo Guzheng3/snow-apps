@@ -48,6 +48,7 @@ const FullScreenDrawPage = () => {
     const excalidrawReadyRef = useRef(false);
     const excalidrawAppStateStoreReadyRef = useRef(false);
     const inited = useRef(false);
+    const [isExcalidrawReady, setisExcalidrawReady] = useState(false);
     const init = useMemo(() => {
         return debounce(() => {
             if (!excalidrawReadyRef.current || !excalidrawAppStateStoreReadyRef.current) {
@@ -79,6 +80,8 @@ const FullScreenDrawPage = () => {
             if (process.env.NODE_ENV === 'development') {
                 getCurrentWindow().setAlwaysOnTop(false);
             }
+
+            setisExcalidrawReady(true);
         }, 0);
     }, [setEnableKeyEvent, setExcalidrawEvent]);
 
@@ -188,6 +191,11 @@ const FullScreenDrawPage = () => {
                             left: 0;
                             width: 100vw;
                             height: 100vh;
+                        }
+
+                        .full-screen-draw-page :global(.draw-core-layer) {
+                            opacity: ${isExcalidrawReady ? '1' : '0'};
+                            transition: opacity ${token.motionDurationSlow} ${token.motionEaseInOut};
                         }
 
                         .full-screen-draw-page :global(.full-screen-draw-toolbar-container) {
