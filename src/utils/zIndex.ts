@@ -69,9 +69,11 @@ export const zIndexs = {
     // 固定到屏幕窗口 BEGIN
     /** 边框 */
     FixedToScreen_Border: 205,
+    /** 缩放窗口 */
+    FixedToScreen_ResizeWindow: 206,
     /** 缩放提示 */
-    FixedToScreen_ScaleInfo: 206,
+    FixedToScreen_ScaleInfo: 207,
     /** 关闭按钮 */
-    FixedToScreen_CloseButton: 207,
+    FixedToScreen_CloseButton: 208,
     // 固定到屏幕窗口 END
 };

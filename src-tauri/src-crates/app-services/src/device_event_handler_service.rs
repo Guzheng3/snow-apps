@@ -8,6 +8,7 @@ use device_query::{
 const DEVICE_EVENT_HANDLER_FPS: u64 = 100;
 
 pub struct DeviceEventHandlerService {
+    fps: u64,
     /* 设备事件处理 */
     device_event_handler: Option<DeviceEventsHandlerInnerThread>,
 }
@@ -15,8 +16,13 @@ pub struct DeviceEventHandlerService {
 impl DeviceEventHandlerService {
     pub fn new() -> Self {
         Self {
+            fps: DEVICE_EVENT_HANDLER_FPS,
             device_event_handler: None,
         }
+    }
+
+    pub fn set_fps(&mut self, fps: u64) {
+        self.fps = fps;
     }
 
     pub fn get_device_event_handler(&mut self) -> Result<&DeviceEventsHandlerInnerThread, String> {
@@ -33,9 +39,7 @@ impl DeviceEventHandlerService {
             }
         }
 
-        let handler = DeviceEventsHandlerInnerThread::new(Duration::from_millis(
-            1000 / DEVICE_EVENT_HANDLER_FPS,
-        ));
+        let handler = DeviceEventsHandlerInnerThread::new(Duration::from_millis(1000 / self.fps));
 
         self.device_event_handler = Some(handler);
         Ok(&self.device_event_handler.as_ref().unwrap())

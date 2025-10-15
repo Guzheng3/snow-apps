@@ -187,8 +187,8 @@ export const draw = {
     'draw.selectRectParams.quickSet.addPreset': '添加预设',
     'draw.selectRectParams.quickSet.presetName': '预设名称',
     'draw.processImage': '处理图像',
-    'draw.processImage.rotateRight': '向右旋转',
-    'draw.processImage.rotateLeft': '向左旋转',
+    'draw.processImage.rotateRight': '顺时针 90°',
+    'draw.processImage.rotateLeft': '逆时针 90°',
     'draw.processImage.horizontalFlip': '水平翻转',
     'draw.processImage.verticalFlip': '垂直翻转',
 };

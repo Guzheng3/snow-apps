@@ -27,6 +27,7 @@ use snow_shot_app_services::free_drag_window_service;
 use snow_shot_app_services::hot_load_page_service;
 use snow_shot_app_services::listen_key_service;
 use snow_shot_app_services::ocr_service::OcrService;
+use snow_shot_app_services::resize_window_service;
 use snow_shot_app_services::video_record_service;
 use snow_shot_app_shared::EnigoManager;
 use snow_shot_plugin_service::plugin_service;
@@ -53,6 +54,7 @@ pub fn run() {
 
     let free_drag_window_service =
         Mutex::new(free_drag_window_service::FreeDragWindowService::new());
+    let resize_window_service = Mutex::new(resize_window_service::ResizeWindowService::new());
 
     let listen_key_service = Mutex::new(listen_key_service::ListenKeyService::new());
     let listen_mouse_service = Mutex::new(listen_mouse_service::ListenMouseService::new());
@@ -189,6 +191,7 @@ pub fn run() {
         .manage(scroll_screenshot_capture_service)
         .manage(video_record_service)
         .manage(free_drag_window_service)
+        .manage(resize_window_service)
         .manage(listen_key_service)
         .manage(listen_mouse_service)
         .manage(file_cache_service)
@@ -225,6 +228,7 @@ pub fn run() {
             ocr::ocr_release,
             core::exit_app,
             core::start_free_drag,
+            core::start_resize_window,
             core::close_window_after_delay,
             core::get_selected_text,
             core::set_enable_proxy,

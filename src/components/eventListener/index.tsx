@@ -45,11 +45,13 @@ type Listener = {
 export type EventListenerContextType = {
     addListener: (event: string, listener: (payload: unknown) => void) => number;
     removeListener: (id: number) => boolean;
+    reset: () => void;
 };
 
 export const EventListenerContext = createContext<EventListenerContextType>({
     addListener: () => 0,
     removeListener: () => false,
+    reset: () => {},
 });
 /**
  * 监听 tauri 的消息
@@ -102,6 +104,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
         isFullScreenDrawSwitchMouseThrough,
         isVideoRecordPage,
         isIdlePage,
+        isFixedContentPage,
         isVideoRecordToolbarPage,
         isCaptureHistoryPage,
     } = useMemo(() => {
@@ -112,6 +115,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
         let isVideoRecordToolbarPage = false;
         let isCaptureHistoryPage = false;
         let isIdlePage = false;
+        let isFixedContentPage = false;
         if (pathname === '/draw') {
             isDrawPage = true;
         } else if (pathname === '/fullScreenDraw') {
@@ -126,6 +130,8 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
             isCaptureHistoryPage = true;
         } else if (pathname === '/idle') {
             isIdlePage = true;
+        } else if (pathname === '/fixedContent') {
+            isFixedContentPage = true;
         }
 
         return {
@@ -136,6 +142,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
             isVideoRecordToolbarPage,
             isCaptureHistoryPage,
             isIdlePage,
+            isFixedContentPage,
         };
     }, [pathname]);
 
@@ -151,9 +158,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
         if (inited.current) {
             return;
         }
-        if (!isIdlePage) {
-            inited.current = true;
-        }
+        inited.current = true;
 
         let detach: UnlistenFn;
         attachConsole().then((d) => {
@@ -383,6 +388,13 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
                     callback: async () => {},
                 });
             }
+
+            if (isFixedContentPage || isDrawPage) {
+                defaultListener.push({
+                    event: 'resize-window-service:resize-window',
+                    callback: async () => {},
+                });
+            }
         }
 
         defaultListener
@@ -445,10 +457,17 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
         releaseOcrSessionAction,
         refreshPluginStatusThrottle,
         isIdlePage,
+        isFixedContentPage,
     ]);
 
     const eventListenerContextValue = useMemo(() => {
-        return { addListener, removeListener };
+        return {
+            addListener,
+            removeListener,
+            reset: () => {
+                inited.current = false;
+            },
+        };
     }, [addListener, removeListener]);
     return (
         <EventListenerContext.Provider value={eventListenerContextValue}>

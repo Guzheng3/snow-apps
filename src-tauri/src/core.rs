@@ -185,6 +185,29 @@ pub async fn start_free_drag(
 }
 
 #[command]
+pub async fn start_resize_window(
+    window: tauri::Window,
+    resize_window_service: tauri::State<
+        '_,
+        Mutex<snow_shot_app_services::resize_window_service::ResizeWindowService>,
+    >,
+    side: snow_shot_app_services::resize_window_service::ResizeWindowSide,
+    spect_ratio: f64,
+    min_width: f64,
+    max_width: f64,
+) -> Result<(), String> {
+    snow_shot_tauri_commands_core::start_resize_window(
+        window,
+        resize_window_service,
+        side,
+        spect_ratio,
+        min_width,
+        max_width,
+    )
+    .await
+}
+
+#[command]
 pub async fn set_current_window_always_on_top(
     window: tauri::WebviewWindow,
     allow_input_method_overlay: bool,

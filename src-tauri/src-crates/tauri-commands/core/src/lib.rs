@@ -11,10 +11,12 @@ use tauri::Manager;
 use tokio::{fs, sync::Mutex, time};
 
 use snow_shot_app_os::notification;
-use snow_shot_app_services::hot_load_page_service::HotLoadPageService;
 use snow_shot_app_services::{
     free_drag_window_service::FreeDragWindowService,
-    hot_load_page_service::HotLoadPageRoutePushEvent,
+    hot_load_page_service::HotLoadPageRoutePushEvent, resize_window_service::ResizeWindowSide,
+};
+use snow_shot_app_services::{
+    hot_load_page_service::HotLoadPageService, resize_window_service::ResizeWindowService,
 };
 use snow_shot_app_shared::{ElementRect, EnigoManager};
 use snow_shot_app_utils::{get_target_monitor, monitor_info::MonitorRect};
@@ -714,6 +716,19 @@ pub async fn start_free_drag(
 
     free_drag_window_service.start_drag(window)?;
 
+    Ok(())
+}
+
+pub async fn start_resize_window(
+    window: tauri::Window,
+    resize_window_service: tauri::State<'_, Mutex<ResizeWindowService>>,
+    side: ResizeWindowSide,
+    spect_ratio: f64,
+    min_width: f64,
+    max_width: f64,
+) -> Result<(), String> {
+    let mut resize_window_service = resize_window_service.lock().await;
+    resize_window_service.start_resize(window, side, spect_ratio, min_width, max_width)?;
     Ok(())
 }
 

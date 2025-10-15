@@ -17,3 +17,10 @@ export type VideoRecordWindowInfo = {
     select_rect_min_x: number;
     select_rect_min_y: number;
 };
+
+export enum ResizeWindowSide {
+    Top = 'Top',
+    Bottom = 'Bottom',
+    Left = 'Left',
+    Right = 'Right',
+}

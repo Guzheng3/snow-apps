@@ -16,7 +16,7 @@ export default function IdlePage() {
         }, []),
     );
 
-    const { addListener, removeListener } = useContext(EventListenerContext);
+    const { addListener, removeListener, reset } = useContext(EventListenerContext);
 
     useEffect(() => {
         const listenerId = addListener('hot-load-page-route-push', (args) => {
@@ -33,13 +33,14 @@ export default function IdlePage() {
                 return;
             }
 
+            reset();
             router.push(payload.url);
         });
 
         return () => {
             removeListener(listenerId);
         };
-    }, [addListener, removeListener, router]);
+    }, [addListener, removeListener, router, reset]);
 
     return <></>;
 }

@@ -67,6 +67,8 @@ import { PLUGIN_ID_RAPID_OCR, usePluginService } from '@/components/pluginServic
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getHtmlContent, getStyleProps } from './extra';
 import { renderToCanvasAction } from './actions';
+import { ResizeWindow } from './components/resizeWindow';
+import { debounce } from 'es-toolkit';
 
 export type FixedContentInitDrawParams = {
     captureBoundingBoxInfo: CaptureBoundingBoxInfo;
@@ -147,6 +149,9 @@ export type FixedContentProcessImageConfig = {
     horizontalFlip: boolean;
     verticalFlip: boolean;
 };
+
+export const SCALE_WINDOW_MAX_SCALE = 200;
+export const SCALE_WINDOW_MIN_SCALE = 20;
 
 export const FixedContentCore: React.FC<{
     actionRef: React.RefObject<FixedContentActionType | undefined>;
@@ -909,10 +914,10 @@ export const FixedContentCore: React.FC<{
 
             let targetScale = scaleRef.current.x + scaleDelta;
 
-            if (targetScale <= 20) {
-                targetScale = 20;
-            } else if (targetScale >= 500) {
-                targetScale = 500;
+            if (targetScale <= SCALE_WINDOW_MIN_SCALE) {
+                targetScale = SCALE_WINDOW_MIN_SCALE;
+            } else if (targetScale >= SCALE_WINDOW_MAX_SCALE) {
+                targetScale = SCALE_WINDOW_MAX_SCALE;
             }
 
             if (targetScale === scaleRef.current.x) {
@@ -1734,6 +1739,36 @@ export const FixedContentCore: React.FC<{
         };
     }, [contentScaleFactor, scale.x, scale.y, windowSize.height, windowSize.width]);
 
+    const getAspectRatio = useCallback(() => {
+        return windowSizeRef.current.height / windowSizeRef.current.width;
+    }, [windowSizeRef]);
+    const getMinWidth = useCallback(() => {
+        const windowSize = getWindowPhysicalSize(SCALE_WINDOW_MIN_SCALE);
+
+        return windowSize.width;
+    }, [getWindowPhysicalSize]);
+    const getMaxWidth = useCallback(() => {
+        const windowSize = getWindowPhysicalSize(SCALE_WINDOW_MAX_SCALE);
+
+        return windowSize.width;
+    }, [getWindowPhysicalSize]);
+
+    const onResize = useCallback(
+        (size: { width: number; height: number }) => {
+            const windowSize = getWindowPhysicalSize(100);
+
+            const scale = size.width / windowSize.width;
+            const targetScale = scale * 100;
+            setScale({
+                x: targetScale,
+                y: targetScale,
+            });
+            ocrResultActionRef.current?.setScale(targetScale);
+            showScaleInfoTemporary();
+        },
+        [getWindowPhysicalSize, setScale, showScaleInfoTemporary],
+    );
+
     return (
         <div
             className="fixed-image-container"
@@ -1956,7 +1991,15 @@ export const FixedContentCore: React.FC<{
                 onWheel={onWheel}
                 onMouseDown={onScrollDown}
             >
-                <div className="fixed-image-container-inner-border" />
+                <div className="fixed-image-container-inner-border"></div>
+                <div className="fixed-image-container-inner-resize-window">
+                    <ResizeWindow
+                        getAspectRatio={getAspectRatio}
+                        getMinWidth={getMinWidth}
+                        getMaxWidth={getMaxWidth}
+                        onResize={onResize}
+                    />
+                </div>
 
                 <Space
                     className="fixed-image-button-group"
@@ -2006,7 +2049,7 @@ export const FixedContentCore: React.FC<{
                 <div className="scale-info" style={{ opacity: showScaleInfo ? 1 : 0 }}>
                     <FormattedMessage
                         id="settings.hotKeySettings.fixedContent.scaleInfo"
-                        values={{ scale: scale.x }}
+                        values={{ scale: scale.x.toFixed(0) }}
                     />
                 </div>
 
@@ -2071,6 +2114,17 @@ export const FixedContentCore: React.FC<{
                     border-radius: ${(borderRadius * (scale.x / 100)) / textScaleFactor}px;
                 }
 
+                .fixed-image-container-inner-resize-window {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: calc(${isThumbnail ? '100vw' : `${documentSize.width}px`});
+                    height: calc(${isThumbnail ? '100vh' : `${documentSize.height}px`});
+                    pointer-events: none;
+                    z-index: ${zIndexs.FixedToScreen_ResizeWindow};
+                    display: ${isThumbnail || enableDraw || enableSelectText ? 'none' : 'block'};
+                }
+
                 .fixed-image-container-inner:active {
                     cursor: grabbing;
                 }
@@ -2131,7 +2185,7 @@ export const FixedContentCore: React.FC<{
                 /* 
                  * 窗口过小的情况下隐藏关闭按钮
                  */
-                @media screen and (max-width: 120px) {
+                @media screen and (max-width: 160px) {
                     .fixed-image-container :global(.fixed-image-button-group) {
                         display: none !important;
                     }

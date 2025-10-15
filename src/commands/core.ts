@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { ElementRect } from '.';
 import { MonitorRect } from '@/app/draw/extra';
+import { ResizeWindowSide } from '@/utils/types';
 
 export const getSelectedText = async () => {
     const result = await invoke<string>('get_selected_text');
@@ -84,6 +85,21 @@ export const enableFreeDrag = async () => {
 
 export const startFreeDrag = async () => {
     const result = await invoke<void>('start_free_drag');
+    return result;
+};
+
+export const startResizeWindow = async (
+    side: ResizeWindowSide,
+    spectRatio: number,
+    minWidth: number,
+    maxWidth: number,
+) => {
+    const result = await invoke<void>('start_resize_window', {
+        side,
+        spectRatio,
+        minWidth,
+        maxWidth,
+    });
     return result;
 };
 
