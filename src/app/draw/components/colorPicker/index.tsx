@@ -1,6 +1,7 @@
 'use client';
 
 import { theme } from 'antd';
+import { createStyles } from 'antd-style';
 import { zIndexs } from '@/utils/zIndex';
 import React, {
     useCallback,
@@ -56,6 +57,68 @@ import {
     switchCaptureHistoryAction,
     terminateWorkerAction,
 } from './actions';
+
+const useStyles = createStyles(({ token }) => ({
+    colorPicker: {
+        userSelect: 'none',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        backgroundColor: token.colorBgContainer,
+        borderRadius: `${token.borderRadius}px`,
+        boxShadow: token.boxShadowSecondary,
+        zIndex: zIndexs.Draw_ColorPicker,
+        pointerEvents: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: 0,
+        color: token.colorText,
+        flexDirection: 'column',
+        padding: `${token.paddingXXS}px`,
+        transition: `opacity ${token.motionDurationFast} ${token.motionEaseInOut}`,
+        transformOrigin: 'top left',
+    },
+    colorPickerContainer: {
+        width: `${COLOR_PICKER_PREVIEW_CANVAS_SIZE}px`,
+        height: `${COLOR_PICKER_PREVIEW_CANVAS_SIZE}px`,
+        borderRadius: `${token.borderRadius}px`,
+        overflow: 'hidden',
+    },
+    colorPickerPreview: {},
+    colorPickerPreviewBorder: {
+        position: 'absolute',
+        width: `${1 * COLOR_PICKER_PREVIEW_SCALE}px`,
+        height: `${1 * COLOR_PICKER_PREVIEW_SCALE}px`,
+        left: `${COLOR_PICKER_PREVIEW_CANVAS_SIZE / 2 - 2}px`,
+        top: `${COLOR_PICKER_PREVIEW_CANVAS_SIZE / 2 - 2}px`,
+        backgroundColor: 'transparent',
+        borderRadius: `${token.borderRadiusXS}px`,
+    },
+    previewCanvas: {
+        width: `${COLOR_PICKER_PREVIEW_CANVAS_SIZE}px`,
+        height: `${COLOR_PICKER_PREVIEW_CANVAS_SIZE}px`,
+        imageRendering: 'pixelated',
+    },
+    colorPickerContent: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: `${token.marginXXS}px`,
+        marginTop: `${token.marginXXS}px`,
+        fontSize: `${token.fontSizeSM}px`,
+        width: `${COLOR_PICKER_PREVIEW_CANVAS_SIZE}px`,
+        borderBottomLeftRadius: `${token.borderRadius}px`,
+        borderBottomRightRadius: `${token.borderRadius}px`,
+        overflow: 'hidden',
+    },
+    colorPickerContentColor: {
+        padding: `${token.paddingXXS}px`,
+        textAlign: 'center',
+    },
+    colorPickerContentText: {
+        textAlign: 'center',
+    },
+}));
 import { writeTextToClipboard } from '@/utils/clipboard';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
@@ -144,6 +207,7 @@ const ColorPickerCore: React.FC<{
 
     const { updateAppSettings } = useContext(AppSettingsActionContext);
 
+    const { styles } = useStyles();
     const { token } = theme.useToken();
 
     const { captureBoundingBoxInfoRef, selectLayerActionRef } = useContext(DrawContext);
@@ -785,7 +849,7 @@ const ColorPickerCore: React.FC<{
     }, [initPreviewCanvas]);
 
     return (
-        <div className="color-picker" ref={colorPickerRef}>
+        <div className={styles.colorPicker} ref={colorPickerRef}>
             <KeyEventWrap
                 componentKey={DrawToolbarKeyEventKey.ColorPickerCopy}
                 onKeyDown={() => {
@@ -878,95 +942,17 @@ const ColorPickerCore: React.FC<{
                 <div />
             </KeyEventWrap>
 
-            <div className="color-picker-container">
-                <div className="color-picker-preview">
-                    <canvas ref={previewCanvasRef} className="preview-canvas" />
-                    <div ref={previewColorElementRef} className="color-picker-preview-border" />
+            <div className={styles.colorPickerContainer}>
+                <div className={styles.colorPickerPreview}>
+                    <canvas ref={previewCanvasRef} className={styles.previewCanvas} />
+                    <div ref={previewColorElementRef} className={styles.colorPickerPreviewBorder} />
                 </div>
             </div>
 
-            <div className="color-picker-content">
-                <div className="color-picker-content-text" ref={pickerPositionElementRef}></div>
-                <div className="color-picker-content-color" ref={colorElementRef}></div>
+            <div className={styles.colorPickerContent}>
+                <div className={styles.colorPickerContentText} ref={pickerPositionElementRef}></div>
+                <div className={styles.colorPickerContentColor} ref={colorElementRef}></div>
             </div>
-            <style jsx>
-                {`
-                    .color-picker {
-                        user-select: none;
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        background-color: ${token.colorBgContainer};
-                        border-radius: ${token.borderRadius}px;
-                        box-shadow: ${token.boxShadowSecondary};
-                        z-index: ${zIndexs.Draw_ColorPicker};
-                        pointer-events: none;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        opacity: 0;
-                        color: ${token.colorText};
-                        display: flex;
-                        flex-direction: column;
-                        padding: ${token.paddingXXS}px;
-                        transition: opacity ${token.motionDurationFast} ${token.motionEaseInOut};
-                        transform-origin: top left;
-                    }
-
-                    .color-picker-container {
-                        width: ${COLOR_PICKER_PREVIEW_CANVAS_SIZE}px;
-                        height: ${COLOR_PICKER_PREVIEW_CANVAS_SIZE}px;
-                        border-radius: ${token.borderRadius}px;
-                        overflow: hidden;
-                    }
-
-                    .color-picker-preview {
-                    }
-
-                    .color-picker-preview-border {
-                        position: absolute;
-                        width: ${1 * COLOR_PICKER_PREVIEW_SCALE}px;
-                        height: ${1 * COLOR_PICKER_PREVIEW_SCALE}px;
-                        left: ${COLOR_PICKER_PREVIEW_CANVAS_SIZE / 2 - 2}px;
-                        top: ${COLOR_PICKER_PREVIEW_CANVAS_SIZE / 2 - 2}px;
-                        background-color: transparent;
-                        border-radius: ${token.borderRadiusXS}px;
-                    }
-
-                    .preview-canvas {
-                        width: ${COLOR_PICKER_PREVIEW_CANVAS_SIZE}px;
-                        height: ${COLOR_PICKER_PREVIEW_CANVAS_SIZE}px;
-                        image-rendering: pixelated;
-                    }
-
-                    .color-picker-content {
-                        display: flex;
-                        flex-direction: column;
-                        gap: ${token.marginXXS}px;
-                        margin-top: ${token.marginXXS}px;
-                        font-size: ${token.fontSizeSM}px;
-                        width: ${COLOR_PICKER_PREVIEW_CANVAS_SIZE}px;
-                        border-bottom-left-radius: ${token.borderRadius}px;
-                        border-bottom-right-radius: ${token.borderRadius}px;
-                        overflow: hidden;
-                    }
-
-                    .color-picker-content-color {
-                        padding: ${token.paddingXXS}px;
-                        text-align: center;
-                    }
-
-                    .color-picker-content-text {
-                        text-align: center;
-                    }
-
-                    .color-picker-content-text,
-                    .color-picker-content-color {
-                        user-select: none;
-                        pointer-events: none;
-                    }
-                `}
-            </style>
         </div>
     );
 };
