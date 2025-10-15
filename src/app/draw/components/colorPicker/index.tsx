@@ -502,7 +502,6 @@ const ColorPickerCore: React.FC<{
     );
     const updateImageRender = useCallbackRenderSlow(updateImageData);
 
-    const [, , textScaleFactorRef] = useTextScaleFactor();
     const updateTransform = useCallback(
         (mouseX: number, mouseY: number, dragPosition: { x: number; y: number } | undefined) => {
             const colorPickerElement = colorPickerRef.current;
@@ -522,8 +521,8 @@ const ColorPickerCore: React.FC<{
             let colorPickerLeft;
             let colorPickerTop;
             if (dragPosition) {
-                colorPickerLeft = dragPosition.x / textScaleFactorRef.current;
-                colorPickerTop = dragPosition.y / textScaleFactorRef.current;
+                colorPickerLeft = dragPosition.x / window.devicePixelRatio;
+                colorPickerTop = dragPosition.y / window.devicePixelRatio;
             } else {
                 colorPickerLeft = Math.min(Math.max(mouseX, 0), maxLeft);
                 colorPickerTop = Math.min(Math.max(mouseY, 0), maxTop);
@@ -533,7 +532,7 @@ const ColorPickerCore: React.FC<{
 
             updateOpacity(dragPosition !== undefined);
         },
-        [contentScaleRef, textScaleFactorRef, updateOpacity],
+        [contentScaleRef, updateOpacity],
     );
     const updateTransformRender = useCallbackRender(updateTransform);
 
