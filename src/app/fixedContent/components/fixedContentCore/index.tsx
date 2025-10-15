@@ -68,7 +68,6 @@ import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getHtmlContent, getStyleProps } from './extra';
 import { renderToCanvasAction } from './actions';
 import { ResizeWindow } from './components/resizeWindow';
-import { debounce } from 'es-toolkit';
 
 export type FixedContentInitDrawParams = {
     captureBoundingBoxInfo: CaptureBoundingBoxInfo;

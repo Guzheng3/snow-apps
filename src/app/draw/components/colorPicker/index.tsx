@@ -65,7 +65,6 @@ import { getCaptureHistoryImageAbsPath } from '@/utils/captureHistory';
 import { useStateRef } from '@/hooks/useStateRef';
 import { useMonitorRect } from '../statusBar';
 import { ImageSharedBufferData } from '../../tools';
-import { useTextScaleFactor } from '@/hooks/useTextScaleFactor';
 
 export enum ColorPickerShowMode {
     Always = 0,
