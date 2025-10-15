@@ -263,9 +263,9 @@ export const OcrResult: React.FC<{
                             let textWidth = textElement.clientWidth;
                             let textHeight = textElement.clientHeight;
                             if (isVertical) {
-                                textWidth -= 3;
+                                textWidth -= 1;
                             } else {
-                                textHeight -= 3;
+                                textHeight -= 1;
                             }
 
                             const scale = Math.min(height / textHeight, width / textWidth);
@@ -531,6 +531,16 @@ export const OcrResult: React.FC<{
 
             if (type === 'contextMenu') {
                 onContextMenu();
+            } else if (type === 'wheel') {
+                const wheelEvent = {
+                    deltaY: event.data.eventData.deltaY,
+                    clientX: event.data.eventData.clientX,
+                    clientY: event.data.eventData.clientY,
+                    ctrlKey: event.data.eventData.ctrlKey,
+                    shiftKey: event.data.eventData.shiftKey,
+                    altKey: event.data.eventData.altKey,
+                } as React.WheelEvent<HTMLDivElement>;
+                onWheel?.(wheelEvent);
             } else if (type === 'keydown' || type === 'keyup') {
                 // 创建并触发自定义键盘事件
                 const keyEvent = new KeyboardEvent(type, {
@@ -599,7 +609,7 @@ export const OcrResult: React.FC<{
         return () => {
             window.removeEventListener('message', handleMessage);
         };
-    }, [disabled, isElementDragging, onContextMenu, onMouseDown, onMouseMove, onMouseUp]);
+    }, [disabled, isElementDragging, onContextMenu, onMouseDown, onMouseMove, onMouseUp, onWheel]);
 
     const handleContainerContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
         event.preventDefault();
@@ -624,6 +634,7 @@ export const OcrResult: React.FC<{
                 ref={containerElementRef}
                 onContextMenu={handleContainerContextMenu}
                 onWheel={onWheel}
+                onMouseDown={onMouseDown}
             >
                 <div
                     ref={textContainerElementRef}
@@ -729,6 +740,21 @@ export const OcrResult: React.FC<{
                                     shiftKey: e.shiftKey,
                                     altKey: e.altKey,
                                     metaKey: e.metaKey,
+                                }, '*');
+                            });
+
+                            document.addEventListener('wheel', (e) => {
+                                e.preventDefault();
+                                window.parent.postMessage({
+                                    type: 'wheel',
+                                    eventData: {
+                                        deltaY: e.deltaY,
+                                        clientX: e.clientX,
+                                        clientY: e.clientY,
+                                        ctrlKey: e.ctrlKey,
+                                        shiftKey: e.shiftKey,
+                                        altKey: e.altKey,
+                                    },
                                 }, '*');
                             });
 

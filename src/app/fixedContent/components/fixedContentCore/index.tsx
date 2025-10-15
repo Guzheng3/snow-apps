@@ -1424,6 +1424,17 @@ export const FixedContentCore: React.FC<{
         ],
     );
 
+    const onScrollDown = useCallback(
+        (e: React.MouseEvent<HTMLDivElement>) => {
+            if (e.button !== 1) {
+                return;
+            }
+
+            scaleWindow(100 - scaleRef.current.x, false);
+        },
+        [scaleRef, scaleWindow],
+    );
+
     const handleContextMenu = useCallback(async (e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
@@ -1498,6 +1509,8 @@ export const FixedContentCore: React.FC<{
                     cancelable: true,
                 });
                 document.dispatchEvent(keyEvent);
+            } else if (type === 'mousedown') {
+                onScrollDown(event.data as unknown as React.MouseEvent<HTMLDivElement>);
             }
         };
 
@@ -1506,7 +1519,15 @@ export const FixedContentCore: React.FC<{
         return () => {
             window.removeEventListener('message', handleMessage);
         };
-    }, [onHtmlLoad, setWindowSize, handleContextMenu, onWheel, disabled, fixedContentType]);
+    }, [
+        onHtmlLoad,
+        setWindowSize,
+        handleContextMenu,
+        onWheel,
+        disabled,
+        fixedContentType,
+        onScrollDown,
+    ]);
 
     useHotkeys(
         hotkeys?.[KeyEventKey.FixedContentSwitchThumbnail]?.hotKey ?? '',
@@ -1611,6 +1632,11 @@ export const FixedContentCore: React.FC<{
 
     const onDragRegionMouseDown = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
+            if (e.button !== 0) {
+                onScrollDown(e);
+                return;
+            }
+
             e.stopPropagation();
             e.preventDefault();
 
@@ -1627,7 +1653,7 @@ export const FixedContentCore: React.FC<{
                 );
             }
         },
-        [enableDrawRef],
+        [enableDrawRef, onScrollDown],
     );
     const onDragRegionMouseMove = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1925,7 +1951,11 @@ export const FixedContentCore: React.FC<{
                 />
             )}
 
-            <div className="fixed-image-container-inner" onWheel={onWheel}>
+            <div
+                className="fixed-image-container-inner"
+                onWheel={onWheel}
+                onMouseDown={onScrollDown}
+            >
                 <div className="fixed-image-container-inner-border" />
 
                 <Button

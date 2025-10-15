@@ -131,6 +131,17 @@ export const getHtmlContent = (token: GlobalToken, bodyContent: string) => {
                             }, '*');
                         });
 
+                        document.addEventListener('mousedown', (e) => {
+                            window.parent.postMessage({
+                                type: 'mousedown',
+                                button: e.button,
+                                buttons: e.buttons,
+                                ctrlKey: e.ctrlKey,
+                                shiftKey: e.shiftKey,
+                                altKey: e.altKey,
+                            }, '*');
+                        });
+
                         // 拦截 a 标签的跳转操作
                         document.addEventListener('click', (e) => {
                             const target = e.target;
