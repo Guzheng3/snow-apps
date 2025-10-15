@@ -2131,14 +2131,14 @@ export const FixedContentCore: React.FC<{
                 /* 
                  * 窗口过小的情况下隐藏关闭按钮
                  */
-                @media screen and (max-width: 128px) {
-                    .fixed-image-container :global(.fixed-image-close-button) {
+                @media screen and (max-width: 120px) {
+                    .fixed-image-container :global(.fixed-image-button-group) {
                         display: none !important;
                     }
                 }
 
-                @media screen and (max-height: 64px) {
-                    .fixed-image-container :global(.fixed-image-close-button) {
+                @media screen and (max-height: 83px) {
+                    .fixed-image-container :global(.fixed-image-button-group) {
                         display: none !important;
                     }
                 }
