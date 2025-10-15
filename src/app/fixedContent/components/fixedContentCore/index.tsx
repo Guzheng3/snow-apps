@@ -5,7 +5,7 @@ import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { PhysicalSize, PhysicalPosition } from '@tauri-apps/api/dpi';
 import { Menu, MenuItemOptions, Submenu } from '@tauri-apps/api/menu';
 import { getCurrentWindow, Window as AppWindow } from '@tauri-apps/api/window';
-import { Button, Descriptions, theme, Typography } from 'antd';
+import { Button, Descriptions, Space, theme, Typography } from 'antd';
 import {
     useCallback,
     useContext,
@@ -21,7 +21,7 @@ import { generateImageFileName, ImageFormat } from '@/utils/file';
 import { closeWindowComplete } from '@/utils/window';
 import { useCallbackRender } from '@/hooks/useCallbackRender';
 import { zIndexs } from '@/utils/zIndex';
-import { CloseOutlined } from '@ant-design/icons';
+import { CloseOutlined, EditOutlined } from '@ant-design/icons';
 import {
     AppOcrResult,
     OcrResult,
@@ -1958,28 +1958,50 @@ export const FixedContentCore: React.FC<{
             >
                 <div className="fixed-image-container-inner-border" />
 
-                <Button
-                    className="fixed-image-close-button"
-                    icon={<CloseOutlined />}
-                    type="primary"
-                    shape="circle"
-                    variant="solid"
+                <Space
+                    className="fixed-image-button-group"
                     style={{
                         position: 'absolute',
                         top: token.margin,
                         right: token.margin,
                         opacity: 0,
-                        transition: `all ${token.motionDurationFast} ${token.motionEaseInOut}`,
-                        backgroundColor: token.colorBgMask,
+                        transition: `opacity ${token.motionDurationFast} ${token.motionEaseInOut}`,
                         zIndex: zIndexs.FixedToScreen_CloseButton,
                         // iframe 无法点击 close 按钮
-                        display: isThumbnail || enableDraw || enableSelectText ? 'none' : 'block',
+                        display: isThumbnail || enableDraw || enableSelectText ? 'none' : undefined,
                         pointerEvents: 'auto',
                     }}
-                    onClick={() => {
-                        closeWindowComplete();
-                    }}
-                />
+                >
+                    <Button
+                        icon={<EditOutlined />}
+                        style={{
+                            backgroundColor: token.colorBgMask,
+                            transition: `background-color ${token.motionDurationFast} ${token.motionEaseInOut}`,
+                        }}
+                        className="fixed-image-edit-button"
+                        type="primary"
+                        shape="circle"
+                        variant="solid"
+                        onClick={() => {
+                            switchDraw();
+                        }}
+                    />
+
+                    <Button
+                        icon={<CloseOutlined />}
+                        style={{
+                            backgroundColor: token.colorBgMask,
+                            transition: `background-color ${token.motionDurationFast} ${token.motionEaseInOut}`,
+                        }}
+                        className="fixed-image-close-button"
+                        type="primary"
+                        shape="circle"
+                        variant="solid"
+                        onClick={() => {
+                            closeWindowComplete();
+                        }}
+                    />
+                </Space>
 
                 <div className="scale-info" style={{ opacity: showScaleInfo ? 1 : 0 }}>
                     <FormattedMessage
@@ -2008,11 +2030,17 @@ export const FixedContentCore: React.FC<{
                     background-color: ${token.colorBgContainer};
                 }
 
-                .fixed-image-container:hover :global(.ant-btn.fixed-image-close-button) {
+                .fixed-image-container:hover :global(.fixed-image-button-group) {
                     opacity: 1 !important;
                 }
 
-                .fixed-image-container :global(.ant-btn.fixed-image-close-button):hover {
+                .fixed-image-container
+                    :global(.fixed-image-button-group .fixed-image-edit-button):hover {
+                    background-color: ${token.colorPrimary} !important;
+                }
+
+                .fixed-image-container
+                    :global(.fixed-image-button-group .fixed-image-close-button):hover {
                     background-color: ${token.colorError} !important;
                 }
 
