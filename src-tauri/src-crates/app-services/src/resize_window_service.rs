@@ -1,7 +1,7 @@
 use device_query::{DeviceQuery, MouseButton, MousePosition};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
-use tauri::{Emitter, PhysicalPosition, PhysicalSize};
+use tauri::{Emitter, LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize};
 
 use crate::device_event_handler_service::DeviceEventHandlerService;
 
@@ -76,18 +76,30 @@ impl ResizeWindowService {
         let window_x;
         #[cfg(target_os = "macos")]
         let window_y;
+        #[cfg(target_os = "macos")]
+        let window_width;
+        #[cfg(target_os = "macos")]
+        let window_height;
 
         #[cfg(not(target_os = "macos"))]
         let window_x = window_position.x as f64;
         #[cfg(not(target_os = "macos"))]
         let window_y = window_position.y as f64;
+        #[cfg(not(target_os = "macos"))]
+        let window_width = window_size.width as f64;
+        #[cfg(not(target_os = "macos"))]
+        let window_height = window_size.height as f64;
 
         #[cfg(target_os = "macos")]
         {
+            let scale_factor = window.scale_factor().unwrap_or(1.0);
             let logical_window_positon: tauri::LogicalPosition<f64> =
-                window_position.to_logical(window.scale_factor().unwrap_or(1.0));
+                window_position.to_logical(scale_factor);
+            let logical_window_size: tauri::LogicalSize<f64> = window_size.to_logical(scale_factor);
             window_x = logical_window_positon.x as f64;
             window_y = logical_window_positon.y as f64;
+            window_width = logical_window_size.width as f64;
+            window_height = logical_window_size.height as f64;
         }
 
         self.target_window = Arc::new(Mutex::new(Some(window)));
@@ -97,7 +109,7 @@ impl ResizeWindowService {
         let target_window = Arc::clone(&self.target_window);
         let origin_mouse_position = Arc::new((mouse_x, mouse_y));
         let origin_window_position = Arc::new((window_x, window_y));
-        let origin_window_size = Arc::new((window_size.width as f64, window_size.height as f64));
+        let origin_window_size = Arc::new((window_width, window_height));
 
         let mut device_event_handler = self.device_event_handler.lock().unwrap();
         self._mouse_move_guard.lock().unwrap().replace(Box::new(
@@ -198,24 +210,54 @@ impl ResizeWindowService {
                         }
                     };
 
-                if let Some(new_position) = new_position {
-                    match target_window.set_position(new_position) {
+                #[cfg(target_os = "macos")]
+                {
+                    if let Some(new_position) = new_position {
+                        match target_window
+                            .set_position(LogicalPosition::new(new_position.x, new_position.y))
+                        {
+                            Ok(_) => {}
+                            Err(_) => {
+                                log::error!(
+                                    "[ResizeWindowService] Failed to set window position: {:?}",
+                                    new_position
+                                );
+                            }
+                        }
+                    }
+                    match target_window.set_size(LogicalSize::new(new_size.width, new_size.height))
+                    {
                         Ok(_) => {}
                         Err(_) => {
                             log::error!(
-                                "[ResizeWindowService] Failed to set window position: {:?}",
-                                new_position
+                                "[ResizeWindowService] Failed to set window size: {:?}",
+                                new_size
                             );
                         }
                     }
                 }
-                match target_window.set_size(new_size) {
-                    Ok(_) => {}
-                    Err(_) => {
-                        log::error!(
-                            "[ResizeWindowService] Failed to set window size: {:?}",
-                            new_size
-                        );
+
+                #[cfg(not(target_os = "macos"))]
+                {
+                    if let Some(new_position) = new_position {
+                        match target_window.set_position(new_position) {
+                            Ok(_) => {}
+                            Err(_) => {
+                                log::error!(
+                                    "[ResizeWindowService] Failed to set window position: {:?}",
+                                    new_position
+                                );
+                            }
+                        }
+                    }
+                    match target_window.set_size(new_size) {
+                        Ok(_) => {}
+                        Err(_) => {
+                            log::error!(
+                                "[ResizeWindowService] Failed to set window size: {:?}",
+                                new_size
+                            );
+                        }
                     }
                 }
 
