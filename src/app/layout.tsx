@@ -16,7 +16,7 @@ import { EventListener } from '@/components/eventListener';
 import { AppSettingsContextProvider } from '@/components/appSettingsContextProvider';
 import { TextScaleFactorProvider } from '@/components/textScaleFactorContextProvider';
 import { AntdContextProvider } from '@/components/antdContextProvider';
-import StyleRegistry from '@/components/antdStyleRegistry';
+import { AntdStyleRegistry } from '@/components/antdStyleRegistry';
 
 export default function RootLayout({
     children,
@@ -61,7 +61,7 @@ export default function RootLayout({
             <body>
                 <AntdApp>
                     <StyledJsxRegistry>
-                        <StyleRegistry>
+                        <AntdStyleRegistry>
                             <AntdRegistry>
                                 <MenuLayoutContextProvider>
                                     <PluginServiceContextProvider>
@@ -81,7 +81,7 @@ export default function RootLayout({
                                     </PluginServiceContextProvider>
                                 </MenuLayoutContextProvider>
                             </AntdRegistry>
-                        </StyleRegistry>
+                        </AntdStyleRegistry>
                     </StyledJsxRegistry>
                 </AntdApp>
             </body>

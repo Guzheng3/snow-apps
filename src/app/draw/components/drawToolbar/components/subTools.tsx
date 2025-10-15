@@ -36,6 +36,8 @@ const useStyles = createStyles(({ token }) => ({
         marginTop: `${-token.marginXXS / 2}px`,
         transform: 'rotate(90deg)',
         fontSize: '18px',
+        color: token.colorTextQuaternary,
+        cursor: 'move',
     },
     antBtnIcon: {
         '& .ant-btn .ant-btn-icon': {
