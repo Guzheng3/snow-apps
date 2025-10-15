@@ -7,7 +7,8 @@ import {
     SettingOutlined,
     ToolOutlined,
 } from '@ant-design/icons';
-import { Layout, theme } from 'antd';
+import { Layout } from 'antd';
+import { createStyles } from 'antd-style';
 import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
 import { AppSettingsGroup, AppSettingsLanguage, AppSettingsTheme } from '@/types/appSettings';
@@ -37,7 +38,44 @@ import { AppContext } from '@/contexts/appContext';
 
 type MenuItem = ItemType<MenuItemType>;
 
+const useStyles = createStyles(({ token, css }, props: { darkMode: boolean }) => ({
+    menuLayoutWrap: css`
+        box-shadow: 0 0 12px 0 rgba(0, 0, 0, 0.21);
+        overflow: hidden;
+        height: 100%;
+        --snow-shot-purple-color: ${props.darkMode ? token['purple-7'] : token['purple-5']};
+        --snow-shot-text-color: ${props.darkMode ? '#fff' : '#000'};
+
+        & .ant-layout {
+            height: 100% !important;
+        }
+
+        & > .ant-layout {
+            flex-direction: row !important;
+        }
+
+        & .ant-layout-sider-trigger {
+            position: absolute !important;
+        }
+
+        & .ant-layout-sider {
+            box-shadow: ${token.boxShadowSecondary};
+        }
+
+        & .ant-layout-header {
+            height: 32px !important;
+            background: ${token.colorBgContainer} !important;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 ${token.padding}px;
+        }
+    `,
+}));
+
 const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { currentTheme } = useContext(AppContext);
+    const { styles } = useStyles({ darkMode: currentTheme === AppSettingsTheme.Dark });
     useEffect(() => {
         if (process.env.NODE_ENV !== 'development') {
             return;
@@ -67,7 +105,6 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
     const intl = useIntl();
     const appSettings = useContext(AppSettingsActionContext);
-    const { currentTheme } = useContext(AppContext);
     const { updateAppSettings } = appSettings;
 
     const pathname = usePathname() || '/';
@@ -104,7 +141,6 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
         ),
     );
 
-    const { token } = theme.useToken();
     const { isReadyStatus } = usePluginServiceContext();
     const router = useRouter();
     const routes = useMemo(() => {
@@ -469,7 +505,7 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
             <GlobalEventHandler />
             <CheckEnvironment />
             <CheckVersion />
-            <div className="menu-layout-wrap">
+            <div className={styles.menuLayoutWrap}>
                 <Layout>
                     <MenuSider
                         menuItems={menuItems}
@@ -480,38 +516,6 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
                         <GlobalShortcut>{children}</GlobalShortcut>
                     </MenuContent>
                 </Layout>
-                <style jsx>{`
-                    .menu-layout-wrap {
-                        box-shadow: 0 0 12px 0 rgba(0, 0, 0, 0.21);
-                        overflow: hidden;
-                        height: 100%;
-                    }
-
-                    .menu-layout-wrap :global(.ant-layout) {
-                        height: 100% !important;
-                    }
-
-                    .menu-layout-wrap > :global(.ant-layout) {
-                        flex-direction: row !important;
-                    }
-
-                    .menu-layout-wrap :global(.ant-layout-sider-trigger) {
-                        position: absolute !important;
-                    }
-
-                    .menu-layout-wrap :global(.ant-layout-sider) {
-                        box-shadow: ${token.boxShadowSecondary};
-                    }
-
-                    .menu-layout-wrap :global(.ant-layout-header) {
-                        height: 32px !important;
-                        background: ${token.colorBgContainer} !important;
-                        display: flex;
-                        align-items: center;
-                        justify-content: flex-end;
-                        padding: 0 ${token.padding}px;
-                    }
-                `}</style>
             </div>
         </>
     );

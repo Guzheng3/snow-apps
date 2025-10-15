@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CloseOutlined, MinusOutlined } from '@ant-design/icons';
 import { Button, Layout, Space, theme } from 'antd';
+import { createStyles } from 'antd-style';
 import RSC from 'react-scrollbars-custom';
 import { Header } from 'antd/es/layout/layout';
 import { getCurrentWindow, Window as AppWindow } from '@tauri-apps/api/window';
@@ -12,11 +13,59 @@ import { RouteMapItem } from '@/types/components/menuLayout';
 
 const { Content } = Layout;
 
+const useStyles = createStyles(({ token }) => ({
+    contentWrap: {
+        display: 'grid',
+        gridTemplateColumns: `${token.padding}px auto ${token.padding}px`,
+        gridTemplateRows: `${token.padding}px auto ${token.padding}px`,
+        height: '100%',
+    },
+    center: {
+        gridColumn: 2,
+        gridRow: 2,
+        overflowY: 'hidden',
+        overflowX: 'hidden',
+        borderRadius: `${token.borderRadiusLG}px`,
+        backgroundColor: `${token.colorBgContainer} !important`,
+        padding: `${token.padding}px ${token.borderRadiusLG}px`,
+        display: 'flex',
+        flexDirection: 'column',
+        transform: 'translateY(0px)',
+        '&::-webkit-scrollbar': {
+            display: 'none',
+        },
+    },
+    contentContainer: {
+        padding: `0 ${token.padding}px`,
+        width: '100%',
+        height: '100%',
+        overflowX: 'hidden',
+    },
+    logoText: {
+        position: 'absolute',
+        lineHeight: 'initial',
+        display: 'flex',
+        height: 32,
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'var(--snow-shot-text-color)',
+        fontStyle: 'italic',
+        fontWeight: 600,
+        userSelect: 'none',
+        left: 0,
+        right: 0,
+    },
+    logoTextHighlight: {
+        color: 'var(--snow-shot-purple-color)',
+    },
+}));
+
 const MenuContentCore: React.FC<{
     pathname: string;
     routeTabsMap: Record<string, RouteMapItem>;
     children: React.ReactNode;
 }> = ({ pathname, routeTabsMap, children }) => {
+    const { styles } = useStyles();
     const { token } = theme.useToken();
     const appWindowRef = useRef<AppWindow | undefined>(undefined);
     useEffect(() => {
@@ -61,8 +110,8 @@ const MenuContentCore: React.FC<{
                 )}
 
                 {currentPlatform === 'macos' && (
-                    <div data-tauri-drag-region className="logo-text">
-                        <div data-tauri-drag-region className="logo-text-highlight">
+                    <div data-tauri-drag-region className={styles.logoText}>
+                        <div data-tauri-drag-region className={styles.logoTextHighlight}>
                             Snow
                         </div>
                         <div data-tauri-drag-region>Shot</div>
@@ -70,12 +119,12 @@ const MenuContentCore: React.FC<{
                 )}
             </Header>
             <Content>
-                <div className="content-wrap">
+                <div className={styles.contentWrap}>
                     <div data-tauri-drag-region className="app-tauri-drag-region"></div>
                     <div data-tauri-drag-region className="app-tauri-drag-region"></div>
                     <div data-tauri-drag-region className="app-tauri-drag-region"></div>
                     <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                    <div className="center">
+                    <div className={styles.center}>
                         <PageNav tabItems={tabItems} actionRef={pageNavActionRef} />
                         <RSC
                             onScroll={(e) => {
@@ -84,7 +133,7 @@ const MenuContentCore: React.FC<{
                                 }
                             }}
                         >
-                            <div ref={contentRef} className="content-container">
+                            <div ref={contentRef} className={styles.contentContainer}>
                                 {children}
                             </div>
                         </RSC>
@@ -95,60 +144,6 @@ const MenuContentCore: React.FC<{
                     <div data-tauri-drag-region className="app-tauri-drag-region"></div>
                 </div>
             </Content>
-
-            <style jsx>{`
-                .content-wrap {
-                    display: grid;
-                    grid-template-columns: ${token.padding}px auto ${token.padding}px;
-                    grid-template-rows: ${token.padding}px auto ${token.padding}px;
-                    height: 100%;
-                }
-
-                .center {
-                    grid-column: 2;
-                    grid-row: 2;
-                    overflow-y: hidden;
-                    overflow-x: hidden;
-                    border-radius: ${token.borderRadiusLG}px;
-                    background-color: ${token.colorBgContainer} !important;
-                    padding: ${token.padding}px ${token.borderRadiusLG}px;
-                    display: flex;
-                    flex-direction: column;
-                    transform: translateY(0px);
-                }
-
-                .center::-webkit-scrollbar {
-                    display: none;
-                }
-
-                .content-container {
-                    padding: 0 ${token.padding}px;
-                    width: 100%;
-                    height: 100%;
-                    overflow-x: hidden;
-                }
-
-                .logo-text {
-                    position: absolute;
-                    line-height: initial;
-                    display: flex;
-                    height: 32px;
-                    align-items: center;
-                    justify-content: center;
-                    color: var(--snow-shot-text-color);
-                    font-style: italic;
-                    font-weight: 600;
-                    user-select: none;
-                    /* 对齐系统里的 title 位置 */
-                    position: absolute;
-                    left: 0;
-                    right: 0;
-                }
-
-                .logo-text-highlight {
-                    color: var(--snow-shot-purple-color);
-                }
-            `}</style>
         </Layout>
     );
 };

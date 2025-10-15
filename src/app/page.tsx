@@ -313,11 +313,6 @@ export default function Home() {
                         </div>
                     );
                 })}
-
-            <style jsx>{`
-                .home-wrap {
-                }
-            `}</style>
         </ContentWrap>
     );
 }

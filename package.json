@@ -36,6 +36,7 @@
     "@tweenjs/tween.js": "^25.0.0",
     "antd": "^5.27.4",
     "antd-style": "^3.7.1",
+    "classnames": "^2.5.1",
     "color": "^5.0.2",
     "compare-versions": "^6.1.1",
     "dayjs": "1.11.13",
