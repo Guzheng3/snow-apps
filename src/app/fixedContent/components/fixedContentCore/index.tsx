@@ -2082,7 +2082,6 @@ export const FixedContentCore: React.FC<{
                     transformorigin: center center;
                     transform: rotateX(${rotateAngles.x}deg) rotateY(${rotateAngles.y}deg)
                         rotateZ(${rotateAngles.z}deg);
-                    background-color: ${token.colorBgContainer};
                 }
 
                 .fixed-image-container:hover :global(.fixed-image-button-group) {
