@@ -332,6 +332,11 @@ const AppSettingsContextProviderCore: React.FC<{ children: React.ReactNode }> = 
                             ? newSettings.delayScreenshotSeconds
                             : (prevSettings?.delayScreenshotSeconds ??
                               defaultAppSettingsData[group].delayScreenshotSeconds),
+                    lockDragAspectRatio:
+                        typeof newSettings?.lockDragAspectRatio === 'number'
+                            ? Math.min(Math.max(newSettings.lockDragAspectRatio, 0), 100)
+                            : (prevSettings?.lockDragAspectRatio ??
+                              defaultAppSettingsData[group].lockDragAspectRatio),
                 };
             } else if (group === AppSettingsGroup.Screenshot) {
                 newSettings = newSettings as AppSettingsData[typeof group];

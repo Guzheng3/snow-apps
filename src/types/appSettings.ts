@@ -162,6 +162,7 @@ export type SelectRectPreset = {
         shadowWidth: number;
         shadowColor: string;
         lockAspectRatio: boolean | undefined;
+        lockDragAspectRatio: boolean | undefined;
     };
 };
 
@@ -276,6 +277,8 @@ export type AppSettingsData = {
         lastWatermarkText: string;
         /** 延迟截图秒数 */
         delayScreenshotSeconds: number;
+        /** 锁定手动选区时的宽高比 */
+        lockDragAspectRatio: number;
     };
     [AppSettingsGroup.DrawToolbarKeyEvent]: Record<
         DrawToolbarKeyEventKey,

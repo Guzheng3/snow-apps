@@ -15,7 +15,7 @@ import { ScreenshotType } from '@/utils/types';
 import { debounce } from 'es-toolkit';
 import { DrawState } from '@/types/draw';
 import { DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
-import { RadiusIcon, ShadowIcon } from '@/components/icons';
+import { LockAspectRatioIcon, RadiusIcon, ShadowIcon } from '@/components/icons';
 import { useStateRef } from '@/hooks/useStateRef';
 import { useCallbackRender } from '@/hooks/useCallbackRender';
 import { SelectState } from '../../extra';
@@ -29,6 +29,7 @@ export type ResizeToolbarActionType = {
     setSelectedRect: (selectedRect: ElementRect) => void;
     setRadius: (radius: number) => void;
     setShadowConfig: (shadowConfig: { shadowWidth: number; shadowColor: string }) => void;
+    setLockDragAspectRatio: (lockDragAspectRatio: number) => void;
     setSelectState: (selectState: SelectState) => void;
 };
 
@@ -37,12 +38,14 @@ export const ResizeToolbar: React.FC<{
     onSelectedRectChange: (selectedRect: ElementRect) => void;
     onRadiusChange: (radius: number) => void;
     onShadowConfigChange: (shadowConfig: { shadowWidth: number; shadowColor: string }) => void;
+    onLockDragAspectRatioChange: (lockDragAspectRatio: number) => void;
     getCaptureBoundingBoxInfo: () => CaptureBoundingBoxInfo | undefined;
 }> = ({
     actionRef,
     onSelectedRectChange,
     onRadiusChange,
     onShadowConfigChange,
+    onLockDragAspectRatioChange,
     getCaptureBoundingBoxInfo,
 }) => {
     const { token } = theme.useToken();
@@ -61,6 +64,7 @@ export const ResizeToolbar: React.FC<{
         shadowWidth: 0,
         shadowColor: '#00000000',
     });
+    const [lockDragAspectRatio, setLockDragAspectRatio, lockDragAspectRatioRef] = useStateRef(0);
     const [selectState, setSelectState] = useState(SelectState.Auto);
 
     const {
@@ -172,11 +176,15 @@ export const ResizeToolbar: React.FC<{
             setShadowConfig: (shadowConfig: { shadowWidth: number; shadowColor: string }) => {
                 setShadowConfig(shadowConfig);
             },
+            setLockDragAspectRatio: (lockDragAspectRatio: number) => {
+                console.log('setLockDragAspectRatio actionRef', lockDragAspectRatio);
+                setLockDragAspectRatio(lockDragAspectRatio);
+            },
             setSelectState: (selectState: SelectState) => {
                 setSelectState(selectState);
             },
         };
-    }, [setRadius, setSelectedRect, setShadowConfig, updateStyle]);
+    }, [setLockDragAspectRatio, setRadius, setSelectedRect, setShadowConfig, updateStyle]);
 
     const updateSelectedRectCore = useCallback(
         (delta: ElementRect) => {
@@ -265,6 +273,25 @@ export const ResizeToolbar: React.FC<{
     );
     const changeShadowWidth = useCallbackRender(changeShadowWidthCore);
 
+    const changeLockDragAspectRatio = useCallback(
+        (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const currentWidth = Math.max(
+                1,
+                selectedRectRef.current.max_x - selectedRectRef.current.min_x,
+            );
+            const currentHeight = Math.max(
+                1,
+                selectedRectRef.current.max_y - selectedRectRef.current.min_y,
+            );
+            onLockDragAspectRatioChange(
+                lockDragAspectRatioRef.current > 0 ? 0 : currentHeight / currentWidth,
+            );
+        },
+        [onLockDragAspectRatioChange, lockDragAspectRatioRef, selectedRectRef],
+    );
+
     const resizeModalActionRef = useRef<ResizeModalActionType | undefined>(undefined);
     const showResizeModal = useCallback(() => {
         const captureBoundingBoxInfo = getCaptureBoundingBoxInfo();
@@ -276,9 +303,10 @@ export const ResizeToolbar: React.FC<{
             selectedRect,
             radius,
             shadowConfig,
+            lockDragAspectRatio,
             captureBoundingBoxInfo,
         );
-    }, [getCaptureBoundingBoxInfo, selectedRect, radius, shadowConfig]);
+    }, [getCaptureBoundingBoxInfo, selectedRect, radius, shadowConfig, lockDragAspectRatio]);
 
     const onFinish = useCallback(
         async (params: ResizeModalParams) => {
@@ -297,10 +325,15 @@ export const ResizeToolbar: React.FC<{
                 shadowWidth: params.shadowWidth,
                 shadowColor: params.shadowColor as string,
             });
+            onLockDragAspectRatioChange(
+                params.lockDragAspectRatio
+                    ? Math.max(1, params.height) / Math.max(1, params.width)
+                    : 0,
+            );
 
             return true;
         },
-        [onRadiusChange, onSelectedRectChange, onShadowConfigChange],
+        [onLockDragAspectRatioChange, onRadiusChange, onSelectedRectChange, onShadowConfigChange],
     );
 
     return (
@@ -330,7 +363,28 @@ export const ResizeToolbar: React.FC<{
                             </div>
                             <div className="draw-resize-toolbar-unit">{`px`}</div>
                         </Flex>
-                        <div className="draw-resize-toolbar-splitter" />
+
+                        <div>
+                            <div
+                                className="draw-resize-toolbar-scroll-value lock-aspect-ratio-icon"
+                                style={{ cursor: 'row-resize' }}
+                                title={intl.formatMessage({ id: 'draw.lockDragAspectRatio' })}
+                                onClick={changeLockDragAspectRatio}
+                            >
+                                <LockAspectRatioIcon
+                                    style={{
+                                        fontSize: '1.28em',
+                                        position: 'relative',
+                                        top: '0.08em',
+                                        color:
+                                            lockDragAspectRatio > 0
+                                                ? token.colorPrimary
+                                                : undefined,
+                                        margin: `0 ${token.marginXXS}px`,
+                                    }}
+                                />
+                            </div>
+                        </div>
                     </>
                 )}
                 <Flex align="center">
@@ -454,6 +508,11 @@ export const ResizeToolbar: React.FC<{
 
                 .draw-resize-toolbar-scroll-value:hover::before {
                     opacity: 0.42;
+                }
+
+                .lock-aspect-ratio-icon.draw-resize-toolbar-scroll-value::before {
+                    width: calc(100% - 4px);
+                    left: 2px;
                 }
 
                 .draw-resize-toolbar-symbol {

@@ -38,6 +38,7 @@ export type ResizeModalActionType = {
         selectedRect: ElementRect,
         radius: number,
         shadowConfig: { shadowWidth: number; shadowColor: string },
+        lockDragAspectRatio: number,
         captureBoundingBoxInfo: CaptureBoundingBoxInfo,
     ) => void;
 };
@@ -50,6 +51,7 @@ export type ResizeModalParams = {
     radius: number;
     shadowWidth: number;
     shadowColor: unknown;
+    lockDragAspectRatio: boolean | undefined;
 };
 
 export type QuickSetType = 'previousSelectRect' | 'currentSelectRect' | number | 'addPreset';
@@ -98,6 +100,7 @@ export const ResizeModal: React.FC<{
                 selectedRect: ElementRect,
                 radius: number,
                 shadowConfig: { shadowWidth: number; shadowColor: string },
+                lockDragAspectRatio: number,
                 captureBoundingBoxInfo: CaptureBoundingBoxInfo,
             ) => {
                 if (openRef.current) {
@@ -117,6 +120,7 @@ export const ResizeModal: React.FC<{
                     shadowWidth: shadowConfig.shadowWidth,
                     shadowColor: shadowConfig.shadowColor,
                     lockAspectRatio: undefined,
+                    lockDragAspectRatio: lockDragAspectRatio > 0 ? true : false,
                 });
                 setOpen(true);
             },
@@ -194,6 +198,7 @@ export const ResizeModal: React.FC<{
                     width: targetSelectRect.max_x - targetSelectRect.min_x,
                     height: targetSelectRect.max_y - targetSelectRect.min_y,
                     lockAspectRatio: false,
+                    lockDragAspectRatio: false,
                 });
                 setQuickSet(value);
                 return;
@@ -224,6 +229,7 @@ export const ResizeModal: React.FC<{
                                               defaultAppSettingsData[AppSettingsGroup.Cache]
                                                   .selectRectShadowColor,
                                           lockAspectRatio: false,
+                                          lockDragAspectRatio: false,
                                       },
                                   },
                               ]
@@ -259,6 +265,7 @@ export const ResizeModal: React.FC<{
                             ? defaultAppSettingsData[AppSettingsGroup.Cache].selectRectShadowColor
                             : targetParams.shadowColor,
                     lockAspectRatio: targetParams.lockAspectRatio,
+                    lockDragAspectRatio: targetParams.lockDragAspectRatio,
                 });
                 if (targetParams.lockAspectRatio) {
                     aspectRatioRef.current = targetParams.height / targetParams.width;
@@ -443,6 +450,13 @@ export const ResizeModal: React.FC<{
                                     label={<FormattedMessage id="draw.lockAspectRatio" />}
                                 />
                             </Col>
+
+                            <Col span={12}>
+                                <ProFormSwitch
+                                    name="lockDragAspectRatio"
+                                    label={<FormattedMessage id="draw.lockDragAspectRatio" />}
+                                />
+                            </Col>
                         </Row>
                         <Row gutter={token.marginLG}>
                             <Col span={12}>
@@ -523,6 +537,7 @@ export const ResizeModal: React.FC<{
                                         defaultAppSettingsData[AppSettingsGroup.Cache]
                                             .selectRectShadowColor,
                                     lockAspectRatio: false,
+                                    lockDragAspectRatio: false,
                                 },
                             })}
                         >
@@ -591,6 +606,12 @@ export const ResizeModal: React.FC<{
                                     <ProFormSwitch
                                         name={['selectParams', 'lockAspectRatio']}
                                         label={<FormattedMessage id="draw.lockAspectRatio" />}
+                                    />
+                                </Col>
+                                <Col span={12}>
+                                    <ProFormSwitch
+                                        name={['selectParams', 'lockDragAspectRatio']}
+                                        label={<FormattedMessage id="draw.lockDragAspectRatio" />}
                                     />
                                 </Col>
                             </Row>

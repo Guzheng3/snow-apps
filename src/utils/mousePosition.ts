@@ -28,17 +28,22 @@ export class MousePosition {
     /**
      * 计算两个鼠标位置之间的矩形区域
      * @param other 另一个鼠标位置
-     * @param lockWidthHeight 是否锁定宽高比
+     * @param lockWidthHeight 是否锁定为正方形（1:1宽高比）
+     * @param lockDragAspectRatio 锁定的宽高比（height/width），0表示不锁定
      * @returns 包含最小和最大坐标值的对象
      */
-    public toElementRect = (other: MousePosition, lockWidthHeight: boolean = false) => {
+    public toElementRect = (
+        other: MousePosition,
+        lockWidthHeight: boolean = false,
+        lockDragAspectRatio: number = 0,
+    ) => {
         let minX: number;
         let maxX: number;
         let minY: number;
         let maxY: number;
 
         if (lockWidthHeight) {
-            // 锁定宽高比且保持起始点不变
+            // 锁定为正方形（1:1宽高比）且保持起始点不变
             const width = Math.abs(this.mouseX - other.mouseX);
             const height = Math.abs(this.mouseY - other.mouseY);
             const maxSide = Math.max(width, height);
@@ -58,7 +63,35 @@ export class MousePosition {
                 minY = maxY;
                 maxY = temp;
             }
+        } else if (lockDragAspectRatio > 0) {
+            // 按指定宽高比锁定（aspectRatio = height / width）
+            const deltaX = other.mouseX - this.mouseX;
+            const deltaY = other.mouseY - this.mouseY;
+            const absDeltaX = Math.abs(deltaX);
+
+            // 以宽度为基准计算高度
+            const width = absDeltaX;
+            const height = Math.round(width * lockDragAspectRatio);
+
+            // 根据鼠标移动方向确定矩形的位置
+            minX = this.mouseX;
+            maxX = this.mouseX + (deltaX >= 0 ? width : -width);
+            minY = this.mouseY;
+            maxY = this.mouseY + (deltaY >= 0 ? height : -height);
+
+            // 确保 min < max
+            if (maxX < minX) {
+                const temp = minX;
+                minX = maxX;
+                maxX = temp;
+            }
+            if (maxY < minY) {
+                const temp = minY;
+                minY = maxY;
+                maxY = temp;
+            }
         } else {
+            // 不锁定宽高比，自由拖拽
             if (this.mouseX < other.mouseX) {
                 minX = this.mouseX;
                 maxX = other.mouseX;

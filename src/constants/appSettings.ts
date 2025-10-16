@@ -94,6 +94,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         lastDrawExtraTool: DrawState.Idle,
         lastWatermarkText: '',
         delayScreenshotSeconds: 0,
+        lockDragAspectRatio: 0,
     },
     [AppSettingsGroup.DrawToolbarKeyEvent]: defaultDrawToolbarKeyEventSettings,
     [AppSettingsGroup.CommonKeyEvent]: defaultCommonKeyEventSettings,

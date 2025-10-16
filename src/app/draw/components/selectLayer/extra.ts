@@ -343,6 +343,7 @@ export const dragRect = (
     originMousePosition: MousePosition,
     mousePosition: MousePosition,
     lockWidthHeight: boolean = false,
+    lockDragAspectRatio: number = 0,
 ): ElementRect => {
     // 计算鼠标移动的偏移量
     const deltaX = mousePosition.mouseX - originMousePosition.mouseX;
@@ -408,7 +409,14 @@ export const dragRect = (
             break;
     }
 
-    return startMousePosition.toElementRect(controlMousePosition, lockWidthHeight);
+    // 移动整个选区时不应用宽高比锁定
+    const shouldApplyAspectRatioLock = dragMode !== DragMode.All;
+
+    return startMousePosition.toElementRect(
+        controlMousePosition,
+        lockWidthHeight && shouldApplyAspectRatioLock,
+        lockDragAspectRatio > 0 && shouldApplyAspectRatioLock ? lockDragAspectRatio : 0,
+    );
 };
 
 export const limitRect = (

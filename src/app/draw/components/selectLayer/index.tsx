@@ -104,6 +104,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         shadowWidth: 0,
         shadowColor: '#00000000',
     });
+    const [lockDragAspectRatioCache, setLockDragAspectRatioCache] = useState(0);
     const fullScreenAuxiliaryLineColorRef = useRef<string | undefined>(undefined);
     const monitorCenterAuxiliaryLineColorRef = useRef<string | undefined>(undefined);
     const selectRectMaskColorRef = useRef<string | undefined>(undefined);
@@ -119,6 +120,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 shadowWidth: settings[AppSettingsGroup.Cache].selectRectShadowWidth,
                 shadowColor: settings[AppSettingsGroup.Cache].selectRectShadowColor,
             });
+            setLockDragAspectRatioCache(settings[AppSettingsGroup.Cache].lockDragAspectRatio);
             const fullScreenAuxiliaryLineColor =
                 settings[AppSettingsGroup.Screenshot].fullScreenAuxiliaryLineColor;
             if (new Color(fullScreenAuxiliaryLineColor).alpha() === 0) {
@@ -173,6 +175,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         shadowWidth: 0,
         shadowColor: '#00000000',
     }); // 选区阴影宽度
+    const lockDragAspectRatioRef = useRef(0); // 锁定手动选区时的宽高比
     const selectLayerCanvasContextRef = useRef<CanvasRenderingContext2D | null>(null);
     const elementsListRef = useRef<ElementRect[]>([]); // 窗口元素的列表
     const elementsIndexWindowIdMapRef = useRef<Map<number, number>>(new Map()); // 窗口元素对应的窗口 ID
@@ -985,6 +988,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                         mouseDownPositionRef.current.toElementRect(
                             mousePosition,
                             enableLockWidthHeightPicker(),
+                            lockDragAspectRatioRef.current,
                         ),
                         {
                             min_x: 0,
@@ -1026,6 +1030,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                         mouseDownPositionRef.current,
                         mousePosition,
                         enableLockWidthHeightPicker(),
+                        lockDragAspectRatioRef.current,
                     ),
                     true,
                 );
@@ -1533,6 +1538,40 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         }
     }, [selectRectShadowConfigCache, onShadowConfigChange]);
 
+    const onLockDragAspectRatioChange = useCallback(
+        (lockDragAspectRatio: number) => {
+            lockDragAspectRatioRef.current = lockDragAspectRatio;
+            resizeToolbarActionRef.current?.setLockDragAspectRatio(lockDragAspectRatio);
+
+            const selectRect = getSelectRect();
+            if (selectRect) {
+                drawCanvasSelectRect(
+                    selectRect,
+                    captureBoundingBoxInfoRef.current!,
+                    undefined,
+                    false,
+                );
+                updateAppSettings(
+                    AppSettingsGroup.Cache,
+                    {
+                        lockDragAspectRatio,
+                    },
+                    true,
+                    true,
+                    false,
+                    true,
+                    true,
+                );
+            }
+        },
+        [drawCanvasSelectRect, getSelectRect, updateAppSettings],
+    );
+    useEffect(() => {
+        if (lockDragAspectRatioRef.current !== lockDragAspectRatioCache) {
+            onLockDragAspectRatioChange(lockDragAspectRatioCache);
+        }
+    }, [lockDragAspectRatioCache, onLockDragAspectRatioChange]);
+
     const getCaptureBoundingBoxInfo = useCallback(
         () => captureBoundingBoxInfoRef.current,
         [captureBoundingBoxInfoRef],
@@ -1544,6 +1583,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 onSelectedRectChange={onSelectedRectChange}
                 onRadiusChange={onRadiusChange}
                 onShadowConfigChange={onShadowConfigChange}
+                onLockDragAspectRatioChange={onLockDragAspectRatioChange}
                 getCaptureBoundingBoxInfo={getCaptureBoundingBoxInfo}
             />
 
