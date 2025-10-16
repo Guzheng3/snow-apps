@@ -16,6 +16,7 @@ import { useStateRef } from '@/hooks/useStateRef';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { zIndexs } from '@/utils/zIndex';
 import { Button, Spin, theme } from 'antd';
+import { createStyles } from 'antd-style';
 import { debounce, throttle } from 'es-toolkit';
 import {
     useCallback,
@@ -45,6 +46,113 @@ import { AppSettingsPublisher } from '@/contexts/appSettingsActionContext';
 import { LISTEN_KEY_SERVICE_MOUSE_DOWN_EMIT_KEY } from '@/constants/eventListener';
 
 const THUMBNAIL_WIDTH = 128;
+
+const useStyles = createStyles(
+    (
+        _,
+        {
+            contentScale,
+            scrollDirection,
+            monitorThumbnailWidth,
+        }: {
+            contentScale: number;
+            scrollDirection: ScrollDirection;
+            monitorThumbnailWidth: number;
+        },
+    ) => ({
+        touchArea: {
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            zIndex: zIndexs.Draw_ScrollScreenshotThumbnail,
+            pointerEvents: 'auto',
+        },
+        tip: {
+            color: 'white',
+            textAlign: 'center',
+            width: '100%',
+            transform: `scale(${contentScale}) translateY(-100%)`,
+            lineHeight: '1.2em',
+            opacity: 0.83,
+            pointerEvents: 'none',
+        },
+        thumbnailList: {
+            width:
+                scrollDirection === ScrollDirection.Horizontal
+                    ? 'unset'
+                    : `${monitorThumbnailWidth + 5}px`,
+            height:
+                scrollDirection === ScrollDirection.Horizontal
+                    ? `${monitorThumbnailWidth + 5}px`
+                    : 'unset',
+            position: 'fixed',
+            left: 0,
+            top: scrollDirection === ScrollDirection.Horizontal ? '-5px' : 0,
+            overflowY: scrollDirection === ScrollDirection.Horizontal ? 'hidden' : 'auto',
+            overflowX: scrollDirection === ScrollDirection.Horizontal ? 'auto' : 'hidden',
+            pointerEvents: 'auto',
+            boxSizing: 'border-box',
+            '&::-webkit-scrollbar': {
+                width: '5px',
+                height: '5px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                borderRadius: '4px',
+                '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                },
+            },
+            '&::-webkit-scrollbar-track': {
+                background: 'transparent',
+                borderRadius: '4px',
+            },
+        },
+        thumbnail: {
+            width:
+                scrollDirection === ScrollDirection.Horizontal
+                    ? 'unset'
+                    : `${monitorThumbnailWidth}px`,
+            height:
+                scrollDirection === ScrollDirection.Horizontal
+                    ? `${monitorThumbnailWidth}px`
+                    : 'unset',
+        },
+        thumbnailListContent: {
+            position: 'relative',
+        },
+        thumbnailListContentScrollArea: {
+            display: 'flex',
+            flexDirection: scrollDirection === ScrollDirection.Horizontal ? 'row' : 'column',
+            position: 'relative',
+            transform:
+                scrollDirection === ScrollDirection.Horizontal ? 'rotateX(180deg)' : undefined,
+            width: 'fit-content',
+        },
+        captueSpin: {
+            position: 'absolute',
+            left: 0,
+            top: 0,
+        },
+        captuerEdgeMask: {
+            display: 'flex',
+            flexDirection: scrollDirection === ScrollDirection.Horizontal ? 'row' : 'column',
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+        },
+        captuerEdgeMaskTop: {
+            display: 'block',
+            background: 'rgba(0, 0, 0, 0.32)',
+            width: '100%',
+        },
+        captuerEdgeMaskBottom: {
+            display: 'block',
+            background: 'rgba(0, 0, 0, 0.32)',
+            width: '100%',
+        },
+    }),
+);
 
 export type ScrollScreenshotActionType = {
     getScrollScreenshotSubToolContainer: () => HTMLDivElement | null | undefined;
@@ -106,6 +214,12 @@ export const ScrollScreenshot: React.FC<{
     const [scrollDirection, setScrollDirection, scrollDirectionRef] = useStateRef<ScrollDirection>(
         ScrollDirection.Vertical,
     );
+
+    const { styles } = useStyles({
+        contentScale,
+        scrollDirection,
+        monitorThumbnailWidth,
+    });
 
     const scrollTo = useMemo(() => {
         return debounce((value: number) => {
@@ -645,7 +759,7 @@ export const ScrollScreenshot: React.FC<{
             />
 
             <div
-                className="scroll-screenshot-tool-touch-area"
+                className={styles.touchArea}
                 style={{
                     transform: `translate(${positionRect.min_x}px, ${positionRect.min_y}px)`,
                 }}
@@ -667,7 +781,7 @@ export const ScrollScreenshot: React.FC<{
                     }}
                 >
                     {showTip && (
-                        <div className="tip">
+                        <div className={styles.tip}>
                             <div>
                                 <FormattedMessage id="draw.scrollScreenshot.tip" />
                             </div>
@@ -680,14 +794,14 @@ export const ScrollScreenshot: React.FC<{
             </div>
 
             <div
-                className="thumbnail-list"
+                className={styles.thumbnailList}
                 style={{
                     transform: thumbnailListTransform,
                 }}
                 ref={scrollRef}
             >
                 <div
-                    className="thumbnail-list-content"
+                    className={styles.thumbnailListContent}
                     style={
                         scrollDirection === ScrollDirection.Horizontal
                             ? {
@@ -700,17 +814,17 @@ export const ScrollScreenshot: React.FC<{
                               }
                     }
                 >
-                    <div className="thumbnail-list-content-scroll-area">
+                    <div className={styles.thumbnailListContentScrollArea}>
                         {captuerEdgePosition !== undefined && (
                             <div
-                                className="captuer-edge-mask"
+                                className={styles.captuerEdgeMask}
                                 style={{
                                     position: 'absolute',
                                     zIndex: bottomImageUrlList.length + topImageUrlList.length + 1,
                                 }}
                             >
                                 <div
-                                    className="captuer-edge-mask-top"
+                                    className={styles.captuerEdgeMaskTop}
                                     style={
                                         scrollDirection === ScrollDirection.Horizontal
                                             ? {
@@ -743,7 +857,7 @@ export const ScrollScreenshot: React.FC<{
                                     }
                                 />
                                 <div
-                                    className="captuer-edge-mask-bottom"
+                                    className={styles.captuerEdgeMaskBottom}
                                     style={
                                         scrollDirection === ScrollDirection.Horizontal
                                             ? {
@@ -767,7 +881,7 @@ export const ScrollScreenshot: React.FC<{
                         {topImageUrlList.map((imageUrl, index) => (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
-                                className="thumbnail"
+                                className={styles.thumbnail}
                                 key={imageUrl.url}
                                 src={imageUrl.url}
                                 // 越前的图片，层级越高，并且 topImageUrlList 大于 bottomImageUrlList
@@ -791,7 +905,7 @@ export const ScrollScreenshot: React.FC<{
                         {bottomImageUrlList.map((imageUrl, index) => (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
-                                className="thumbnail"
+                                className={styles.thumbnail}
                                 key={imageUrl.url}
                                 src={imageUrl.url}
                                 // 越后的图片，层级越高
@@ -839,123 +953,6 @@ export const ScrollScreenshot: React.FC<{
                     />
                 </Spin>
             </div>
-
-            <style jsx>{`
-                .scroll-screenshot-tool-touch-area {
-                    position: fixed;
-                    left: 0px;
-                    top: 0px;
-                    z-index: ${zIndexs.Draw_ScrollScreenshotThumbnail};
-                    pointer-events: auto;
-                }
-
-                .scroll-screenshot-tool-touch-area-content {
-                    width: 100%;
-                    height: 100%;
-                }
-
-                .scroll-screenshot-tool-touch-area .tip {
-                    color: white;
-                    text-align: center;
-                    width: 100%;
-                    transform: scale(${contentScale}) translateY(-100%);
-                    line-height: 1.2em;
-                    opacity: 0.83;
-                    pointer-events: none;
-                }
-
-                .thumbnail-list {
-                    width: ${scrollDirection === ScrollDirection.Horizontal
-                        ? 'unset'
-                        : `${monitorThumbnailWidth + 5}px`};
-                    height: ${scrollDirection === ScrollDirection.Horizontal
-                        ? `${monitorThumbnailWidth + 5}px`
-                        : 'unset'};
-                    position: fixed;
-                    left: 0px;
-                    top: ${scrollDirection === ScrollDirection.Horizontal ? '-5px' : '0px'};
-                    overflow-y: ${scrollDirection === ScrollDirection.Horizontal
-                        ? 'hidden'
-                        : 'auto'};
-                    overflow-x: ${scrollDirection === ScrollDirection.Horizontal
-                        ? 'auto'
-                        : 'hidden'};
-                    pointer-events: auto;
-                    box-sizing: border-box;
-                }
-
-                .thumbnail-list::-webkit-scrollbar {
-                    width: 5px;
-                    height: 5px;
-                }
-
-                .thumbnail-list::-webkit-scrollbar-thumb {
-                    background-color: rgba(0, 0, 0, 0.2);
-                    border-radius: 4px;
-                }
-
-                .thumbnail-list::-webkit-scrollbar-thumb:hover {
-                    background-color: rgba(0, 0, 0, 0.4);
-                }
-
-                .thumbnail-list::-webkit-scrollbar-track {
-                    background: transparent;
-                    border-radius: 4px;
-                }
-
-                .thumbnail-list .thumbnail {
-                    width: ${scrollDirection === ScrollDirection.Horizontal
-                        ? 'unset'
-                        : `${monitorThumbnailWidth}px`};
-                    height: ${scrollDirection === ScrollDirection.Horizontal
-                        ? `${monitorThumbnailWidth}px`
-                        : 'unset'};
-                }
-
-                .thumbnail-list-content {
-                    position: relative;
-                }
-
-                .thumbnail-list-content-scroll-area {
-                    display: flex;
-                    flex-direction: ${scrollDirection === ScrollDirection.Horizontal
-                        ? 'row'
-                        : 'column'};
-                    position: relative;
-                    ${scrollDirection === ScrollDirection.Horizontal
-                        ? 'transform: rotateX(180deg);'
-                        : ''}
-                    width: fit-content;
-                }
-
-                .captuer-spin {
-                    position: absolute;
-                    left: 0px;
-                    top: 0px;
-                }
-
-                .captuer-edge-mask {
-                    display: flex;
-                    flex-direction: ${scrollDirection === ScrollDirection.Horizontal
-                        ? 'row'
-                        : 'column'};
-                    position: absolute;
-                    width: 100%;
-                    height: 100%;
-                }
-
-                .captuer-edge-mask-top {
-                    display: block;
-                    background: rgba(0, 0, 0, 0.32);
-                    width: 100%;
-                }
-
-                .captuer-edge-mask-bottom {
-                    display: block;
-                    background: rgba(0, 0, 0, 0.32);
-                    width: 100%;
-                }
-            `}</style>
         </>
     );
 };
