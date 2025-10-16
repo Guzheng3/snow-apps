@@ -82,7 +82,7 @@ import {
     withCanvasHistory,
 } from '@/app/fullScreenDraw/components/drawCore/components/historyContext';
 import { covertOcrResultToText } from '../fixedContent/components/ocrResult';
-import { writeTextToClipboard } from '@/utils/clipboard';
+import { writeFilePathToClipboard, writeTextToClipboard } from '@/utils/clipboard';
 import { listenKeyStart, listenKeyStop } from '@/commands/listenKey';
 import { sendErrorMessage } from '@/functions/sendMessage';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -890,6 +890,8 @@ const DrawPageCore: React.FC<{
 
     const onCopyToClipboard = useCallback(async () => {
         const enableAutoSave = getAppSettings()[AppSettingsGroup.FunctionScreenshot].autoSaveOnCopy;
+        const enableCopyImageFileToClipboard =
+            getAppSettings()[AppSettingsGroup.FunctionScreenshot].copyImageFileToClipboard;
 
         if (getDrawState() === DrawState.ScrollScreenshot) {
             saveCaptureHistory(undefined, CaptureHistorySource.ScrollScreenshotCopy);
@@ -975,7 +977,9 @@ const DrawPageCore: React.FC<{
             }
 
             await Promise.all([
-                copyToClipboard(imageData, getAppSettings(), selectRectParams),
+                enableCopyImageFileToClipboard
+                    ? Promise.resolve()
+                    : copyToClipboard(imageData, getAppSettings(), selectRectParams),
                 (async () => {
                     await new Promise((resolve) => {
                         setTimeout(resolve, 0);
@@ -985,14 +989,18 @@ const DrawPageCore: React.FC<{
                 })(),
             ]);
 
-            if (enableAutoSave) {
-                await saveToFile(
-                    getAppSettings(),
-                    imageCanvas,
-                    undefined,
-                    undefined,
-                    await getImagePathFromSettings(getAppSettings(), 'auto'),
-                );
+            if (enableAutoSave || enableCopyImageFileToClipboard) {
+                const imagePath = await getImagePathFromSettings(getAppSettings(), 'auto');
+                if (imagePath) {
+                    await saveToFile(
+                        getAppSettings(),
+                        imageCanvas,
+                        undefined,
+                        undefined,
+                        imagePath,
+                    );
+                    await writeFilePathToClipboard(imagePath.filePath);
+                }
             }
         }
     }, [finishCapture, getAppSettings, getDrawState, saveCaptureHistory]);

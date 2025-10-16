@@ -176,6 +176,9 @@ export const draw = {
     'draw.saveToCloud.loading': '保存到云端中',
     'draw.saveToCloud.error': '保存到云端失败',
     'draw.doubleClickCopyToClipboard': '双击复制到剪贴板',
+    'draw.copyImageFileToClipboard': '复制图片文件到剪贴板',
+    'draw.copyImageFileToClipboard.tip':
+        '复制截图时先将图片写入到文件然后复制文件路径到剪贴板，开启该选项后默认启用“复制后自动保存”。目前仅支持保存普通截图',
     'draw.cloudSaveUrlFormat': '云端链接格式',
     'draw.cloudSaveUrlFormat.origin': '原始链接',
     'draw.cloudSaveUrlFormat.markdown': 'Markdown 链接',

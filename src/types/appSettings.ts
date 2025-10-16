@@ -327,6 +327,8 @@ export type AppSettingsData = {
         fullScreenCopyToClipboard: boolean;
         /** 双击复制到剪贴板 */
         doubleClickCopyToClipboard: boolean;
+        /** 复制图片文件到剪贴板 */
+        copyImageFileToClipboard: boolean;
         /** 保存到云端 */
         saveToCloud: boolean;
         /** 云端链接格式 */

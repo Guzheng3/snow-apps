@@ -129,6 +129,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         shortcutCanleTip: true,
         autoSaveOnCopy: false,
         doubleClickCopyToClipboard: true,
+        copyImageFileToClipboard: false,
         focusedWindowCopyToClipboard: true,
         fullScreenCopyToClipboard: true,
         fastSave: false,

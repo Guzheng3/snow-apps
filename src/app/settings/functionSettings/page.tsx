@@ -668,6 +668,23 @@ export default function SystemSettings() {
                     <Row gutter={token.marginLG}>
                         <Col span={12}>
                             <ProFormSwitch
+                                name="copyImageFileToClipboard"
+                                layout="horizontal"
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="draw.copyImageFileToClipboard" />
+                                        }
+                                        tooltipTitle={
+                                            <FormattedMessage id="draw.copyImageFileToClipboard.tip" />
+                                        }
+                                    />
+                                }
+                            />
+                        </Col>
+
+                        <Col span={12}>
+                            <ProFormSwitch
                                 name="autoSaveOnCopy"
                                 layout="horizontal"
                                 label={
@@ -675,6 +692,7 @@ export default function SystemSettings() {
                                 }
                             />
                         </Col>
+
                         <Col span={12}>
                             <ProFormSwitch
                                 name="fastSave"

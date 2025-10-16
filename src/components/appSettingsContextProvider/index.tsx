@@ -756,6 +756,10 @@ const AppSettingsContextProviderCore: React.FC<{ children: React.ReactNode }> = 
                             ? newSettings.doubleClickCopyToClipboard
                             : (prevSettings?.doubleClickCopyToClipboard ??
                               defaultAppSettingsData[group].doubleClickCopyToClipboard),
+                    copyImageFileToClipboard:
+                        typeof newSettings?.copyImageFileToClipboard === 'boolean'
+                            ? newSettings.copyImageFileToClipboard
+                            : (prevSettings?.copyImageFileToClipboard ?? defaultAppSettingsData[group].copyImageFileToClipboard),
                     saveToCloud:
                         typeof newSettings?.saveToCloud === 'boolean'
                             ? newSettings.saveToCloud
