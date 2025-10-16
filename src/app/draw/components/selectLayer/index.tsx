@@ -63,6 +63,7 @@ import { debounce } from 'es-toolkit';
 import { useMonitorRect } from '../statusBar';
 import { AppContext } from '@/contexts/appContext';
 import { DrawToolbarKeyEventKey } from '@/types/components/drawToolbar';
+import { createStyles } from 'antd-style';
 
 export type SelectRectParams = {
     rect: ElementRect;
@@ -90,7 +91,26 @@ export type SelectLayerProps = {
     actionRef: React.RefObject<SelectLayerActionType | undefined>;
 };
 
+const useStyles = createStyles(() => ({
+    selectLayerContainer: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: zIndexs.Draw_SelectLayer,
+    },
+    selectLayerCanvas: {
+        width: '100vw',
+        height: '100vh',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+    },
+}));
+
 const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
+    const { styles } = useStyles();
     const captureBoundingBoxInfoRef = useRef<CaptureBoundingBoxInfo | undefined>(undefined);
     const resizeToolbarActionRef = useRef<ResizeToolbarActionType | undefined>(undefined);
 
@@ -1587,26 +1607,8 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 getCaptureBoundingBoxInfo={getCaptureBoundingBoxInfo}
             />
 
-            <div className="select-layer-container" ref={layerContainerElementRef}>
-                <canvas className="select-layer-canvas" ref={selectLayerCanvasRef} />
-                <style jsx>{`
-                    .select-layer-container {
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        width: 100vw;
-                        height: 100vh;
-                        z-index: ${zIndexs.Draw_SelectLayer};
-                    }
-
-                    .select-layer-container > .select-layer-canvas {
-                        width: 100vw;
-                        height: 100vh;
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                    }
-                `}</style>
+            <div className={styles.selectLayerContainer} ref={layerContainerElementRef}>
+                <canvas className={styles.selectLayerCanvas} ref={selectLayerCanvasRef} />
             </div>
         </>
     );
