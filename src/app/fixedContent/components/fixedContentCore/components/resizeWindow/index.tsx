@@ -3,6 +3,7 @@ import { ResizeWindowSide } from '@/utils/types';
 import React, { useCallback, useContext, useEffect, useMemo } from 'react';
 import { EventListenerContext } from '@/components/eventListener';
 import { throttle } from 'es-toolkit';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 const SIDE_WIDTH = 5;
 
@@ -27,14 +28,20 @@ export const ResizeWindow: React.FC<{
     const onResizeThrottle = useMemo(() => throttle(onResize, 1000 / 15), [onResize]);
 
     useEffect(() => {
+        const windowLabel = getCurrentWindow().label;
         const listenerId = addListener('resize-window-service:resize-window', (args) => {
             const payload = (
                 args as {
                     payload: {
                         size: { width: number; height: number };
+                        label: string;
                     };
                 }
             ).payload;
+
+            if (payload.label !== windowLabel) {
+                return;
+            }
 
             onResizeThrottle(payload.size);
         });

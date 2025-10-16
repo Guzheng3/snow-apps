@@ -16,6 +16,7 @@ pub enum ResizeWindowSide {
 #[derive(Serialize, Clone)]
 pub struct ResizeWindowEvent {
     pub size: PhysicalSize<u32>,
+    pub label: String,
 }
 
 pub struct ResizeWindowService {
@@ -71,6 +72,7 @@ impl ResizeWindowService {
                 ));
             }
         };
+        let window_label = window.label().to_owned();
 
         #[cfg(target_os = "macos")]
         let window_x;
@@ -110,6 +112,7 @@ impl ResizeWindowService {
         let origin_mouse_position = Arc::new((mouse_x, mouse_y));
         let origin_window_position = Arc::new((window_x, window_y));
         let origin_window_size = Arc::new((window_width, window_height));
+        let window_label = Arc::new(window_label);
 
         let mut device_event_handler = self.device_event_handler.lock().unwrap();
         self._mouse_move_guard.lock().unwrap().replace(Box::new(
@@ -266,7 +269,10 @@ impl ResizeWindowService {
                 target_window
                     .emit(
                         "resize-window-service:resize-window",
-                        ResizeWindowEvent { size: new_size },
+                        ResizeWindowEvent {
+                            size: new_size,
+                            label: window_label.to_string(),
+                        },
                     )
                     .unwrap();
             })?,
