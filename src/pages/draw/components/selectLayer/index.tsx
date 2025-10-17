@@ -123,6 +123,11 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 	const [isEnable, setIsEnable] = useState(false);
 
 	const [findChildrenElements, setFindChildrenElements] = useState(false);
+	const [
+		enableTabFindChildrenElements,
+		setEnableTabFindChildrenElements,
+		enableTabFindChildrenElementsRef,
+	] = useStateRef(false);
 	const [selectRectRadiusCache, setSelectRectRadiusCache] = useState(0);
 	const [selectRectShadowConfigCache, setSelectRectShadowConfigCache] =
 		useState({
@@ -138,53 +143,55 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 	const { updateAppSettings } = useContext(AppSettingsActionContext);
 	const [getAppSettings] = useStateSubscriber(
 		AppSettingsPublisher,
-		useCallback((settings: AppSettingsData) => {
-			setFindChildrenElements(
-				settings[AppSettingsGroup.FunctionScreenshot].findChildrenElements,
-			);
-			setSelectRectRadiusCache(
-				settings[AppSettingsGroup.Cache].selectRectRadius,
-			);
-			setSelectRectShadowConfigCache({
-				shadowWidth: settings[AppSettingsGroup.Cache].selectRectShadowWidth,
-				shadowColor: settings[AppSettingsGroup.Cache].selectRectShadowColor,
-			});
-			setLockDragAspectRatioCache(
-				settings[AppSettingsGroup.Cache].lockDragAspectRatio,
-			);
-			const fullScreenAuxiliaryLineColor =
-				settings[AppSettingsGroup.Screenshot].fullScreenAuxiliaryLineColor;
-			if (new Color(fullScreenAuxiliaryLineColor).alpha() === 0) {
-				fullScreenAuxiliaryLineColorRef.current = undefined;
-			} else {
-				fullScreenAuxiliaryLineColorRef.current = fullScreenAuxiliaryLineColor;
-			}
-			const monitorCenterAuxiliaryLineColor =
-				settings[AppSettingsGroup.Screenshot].monitorCenterAuxiliaryLineColor;
-			if (new Color(monitorCenterAuxiliaryLineColor).alpha() === 0) {
-				monitorCenterAuxiliaryLineColorRef.current = undefined;
-			} else {
-				monitorCenterAuxiliaryLineColorRef.current =
-					monitorCenterAuxiliaryLineColor;
-			}
-			const selectRectMaskColor =
-				settings[AppSettingsGroup.Screenshot].selectRectMaskColor;
-			if (selectRectMaskColor === getMaskBackgroundColor(false)) {
-				selectRectMaskColorRef.current = undefined;
-			} else {
-				selectRectMaskColorRef.current = selectRectMaskColor;
-			}
-		}, []),
+		useCallback(
+			(settings: AppSettingsData) => {
+				setFindChildrenElements(
+					settings[AppSettingsGroup.FunctionScreenshot].findChildrenElements,
+				);
+				setEnableTabFindChildrenElements(
+					settings[AppSettingsGroup.Cache].enableTabFindChildrenElements,
+				);
+				setSelectRectRadiusCache(
+					settings[AppSettingsGroup.Cache].selectRectRadius,
+				);
+				setSelectRectShadowConfigCache({
+					shadowWidth: settings[AppSettingsGroup.Cache].selectRectShadowWidth,
+					shadowColor: settings[AppSettingsGroup.Cache].selectRectShadowColor,
+				});
+				setLockDragAspectRatioCache(
+					settings[AppSettingsGroup.Cache].lockDragAspectRatio,
+				);
+				const fullScreenAuxiliaryLineColor =
+					settings[AppSettingsGroup.Screenshot].fullScreenAuxiliaryLineColor;
+				if (new Color(fullScreenAuxiliaryLineColor).alpha() === 0) {
+					fullScreenAuxiliaryLineColorRef.current = undefined;
+				} else {
+					fullScreenAuxiliaryLineColorRef.current =
+						fullScreenAuxiliaryLineColor;
+				}
+				const monitorCenterAuxiliaryLineColor =
+					settings[AppSettingsGroup.Screenshot].monitorCenterAuxiliaryLineColor;
+				if (new Color(monitorCenterAuxiliaryLineColor).alpha() === 0) {
+					monitorCenterAuxiliaryLineColorRef.current = undefined;
+				} else {
+					monitorCenterAuxiliaryLineColorRef.current =
+						monitorCenterAuxiliaryLineColor;
+				}
+				const selectRectMaskColor =
+					settings[AppSettingsGroup.Screenshot].selectRectMaskColor;
+				if (selectRectMaskColor === getMaskBackgroundColor(false)) {
+					selectRectMaskColorRef.current = undefined;
+				} else {
+					selectRectMaskColorRef.current = selectRectMaskColor;
+				}
+			},
+			[setEnableTabFindChildrenElements],
+		),
 	);
 	const [getScreenshotType] = useStateSubscriber(
 		ScreenshotTypePublisher,
 		undefined,
 	);
-	const [
-		tabFindChildrenElements,
-		setTabFindChildrenElements,
-		tabFindChildrenElementsRef,
-	] = useStateRef<boolean>(false); // Tab 键的切换查找子元素
 	const isEnableFindChildrenElements = useCallback(() => {
 		if (getPlatform() === "macos") {
 			return false;
@@ -195,11 +202,15 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 		}
 
 		return (
-			tabFindChildrenElementsRef.current &&
+			enableTabFindChildrenElementsRef.current &&
 			getScreenshotType()?.type !== ScreenshotType.TopWindow &&
 			getScreenshotType()?.type !== ScreenshotType.SwitchCaptureHistory
 		);
-	}, [findChildrenElements, getScreenshotType, tabFindChildrenElementsRef]);
+	}, [
+		findChildrenElements,
+		getScreenshotType,
+		enableTabFindChildrenElementsRef,
+	]);
 
 	const changeCursor = useCallback((cursor: string) => {
 		if (layerContainerElementRef.current) {
@@ -1300,12 +1311,12 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 	}, []);
 
 	useEffect(() => {
-		setTabFindChildrenElements(findChildrenElements);
-	}, [findChildrenElements, setTabFindChildrenElements]);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: 查找子元素切换时，刷新选取
-	useEffect(() => {
-		refreshMouseMove();
-	}, [tabFindChildrenElements, refreshMouseMove]);
+		if (enableTabFindChildrenElements) {
+			refreshMouseMove();
+		} else {
+			refreshMouseMove();
+		}
+	}, [refreshMouseMove, enableTabFindChildrenElements]);
 
 	useEffect(() => {
 		const layerContainerElement = layerContainerElementRef.current;
@@ -1496,7 +1507,18 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 			}
 
 			if (isHotkeyPressed("Tab")) {
-				setTabFindChildrenElements((prev) => !prev);
+				updateAppSettings(
+					AppSettingsGroup.Cache,
+					{
+						enableTabFindChildrenElements:
+							!enableTabFindChildrenElementsRef.current,
+					},
+					true,
+					true,
+					false,
+					true,
+					false,
+				);
 				e.preventDefault();
 				return;
 			}
@@ -1546,7 +1568,8 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 		getAppSettings,
 		isEnable,
 		setPrevSelectRect,
-		setTabFindChildrenElements,
+		enableTabFindChildrenElementsRef,
+		updateAppSettings,
 	]);
 
 	useEffect(() => {

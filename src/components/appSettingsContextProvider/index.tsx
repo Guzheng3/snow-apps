@@ -374,6 +374,11 @@ const AppSettingsContextProviderCore: React.FC<{
 							? Math.min(Math.max(newSettings.lockDragAspectRatio, 0), 100)
 							: (prevSettings?.lockDragAspectRatio ??
 								defaultAppSettingsData[group].lockDragAspectRatio),
+					enableTabFindChildrenElements:
+						typeof newSettings?.enableTabFindChildrenElements === "boolean"
+							? newSettings.enableTabFindChildrenElements
+							: (prevSettings?.enableTabFindChildrenElements ??
+								defaultAppSettingsData[group].enableTabFindChildrenElements),
 				};
 			} else if (group === AppSettingsGroup.Screenshot) {
 				newSettings = newSettings as AppSettingsData[typeof group];

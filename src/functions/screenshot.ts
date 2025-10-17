@@ -5,6 +5,7 @@ import { FOCUS_WINDOW_APP_NAME_ENV_VARIABLE } from "@/constants/components/chat"
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 import { playCameraShutterSound } from "@/utils/audio";
 import { getImagePathFromSettings } from "@/utils/file";
+import { appError } from "@/utils/log";
 import { ScreenshotType } from "@/utils/types";
 
 export const executeScreenshot = async (
@@ -34,14 +35,21 @@ export const executeScreenshotFocusedWindow = async (
 		return;
 	}
 
-	captureFocusedWindow(
-		imagePath.filePath,
-		appSettings[AppSettingsGroup.FunctionScreenshot]
-			.focusedWindowCopyToClipboard,
-		FOCUS_WINDOW_APP_NAME_ENV_VARIABLE,
-	);
-	// 播放相机快门音效
-	playCameraShutterSound();
+	try {
+		const captureFocusedWindowPromise = captureFocusedWindow(
+			imagePath.filePath,
+			appSettings[AppSettingsGroup.FunctionScreenshot]
+				.focusedWindowCopyToClipboard,
+			FOCUS_WINDOW_APP_NAME_ENV_VARIABLE,
+		);
+		playCameraShutterSound();
+		await captureFocusedWindowPromise;
+	} catch (error) {
+		appError(
+			"[executeScreenshotFocusedWindow] Failed to capture focused window",
+			error,
+		);
+	}
 };
 
 export const finishScreenshot = async () => {

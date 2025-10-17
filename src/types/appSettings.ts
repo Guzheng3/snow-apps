@@ -284,6 +284,8 @@ export type AppSettingsData = {
 		delayScreenshotSeconds: number;
 		/** 锁定手动选区时的宽高比 */
 		lockDragAspectRatio: number;
+		/** Tab 键是否启用查找子元素 */
+		enableTabFindChildrenElements: boolean;
 	};
 	[AppSettingsGroup.DrawToolbarKeyEvent]: Record<
 		DrawToolbarKeyEventKey,

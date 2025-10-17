@@ -98,6 +98,7 @@ export const defaultAppSettingsData: AppSettingsData = {
 		lastWatermarkText: "",
 		delayScreenshotSeconds: 0,
 		lockDragAspectRatio: 0,
+		enableTabFindChildrenElements: true,
 	},
 	[AppSettingsGroup.DrawToolbarKeyEvent]: defaultDrawToolbarKeyEventSettings,
 	[AppSettingsGroup.CommonKeyEvent]: defaultCommonKeyEventSettings,
