@@ -22,7 +22,8 @@
 		"update:excalidraw": "cd ../excalidraw && rimraf ./packages/excalidraw/dist && yarn build:packages && cd ../snow-shot-rsbuild && pnpm update @mg-chao/excalidraw",
 		"dev:rsdoctor": "cross-env RSDOCTOR=true rsbuild dev",
 		"build:rsdoctor": "cross-env RSDOCTOR=true rsbuild build",
-		"build:analyze": "cross-env BUNDLE_ANALYZE=true pnpm build"
+		"build:analyze": "cross-env BUNDLE_ANALYZE=true pnpm build",
+		"prepare": "husky"
 	},
 	"dependencies": {
 		"@ant-design/icons": "^5.6.1",
@@ -77,6 +78,8 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.2.6",
+		"@commitlint/cli": "^20.1.0",
+		"@commitlint/config-conventional": "^20.0.0",
 		"@rsbuild/core": "^1.5.14",
 		"@rsbuild/plugin-node-polyfill": "^1.4.2",
 		"@rsbuild/plugin-react": "^1.4.1",
@@ -89,6 +92,8 @@
 		"@types/react-dom": "^19.2.1",
 		"@types/react-syntax-highlighter": "^15.5.13",
 		"cross-env": "^10.1.0",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.2.4",
 		"rimraf": "^6.0.1",
 		"typescript": "^5.9.3"
 	},

@@ -4,6 +4,15 @@ GUI 框架使用 [Tauri](https://tauri.app/)
 Web 开发框架使用 [Next.js](https://nextjs.org/) 
 UI 组件库使用 [Ant Design](https://ant.design/)
 
+### Git 工作流规范
+
+在开始开发之前，请务必阅读 [Git 工作流规范](./git-workflow.md)，了解项目的分支管理和提交规范。
+
+项目已配置自动化工具来确保代码质量和提交规范：
+- **Husky**: Git hooks 管理
+- **Commitlint**: Commit message 格式检查
+- **Lint-staged**: 提交前自动格式化代码
+
 ### 开发环境
 
 | 软件                                         | 版本       |
