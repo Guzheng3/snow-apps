@@ -170,6 +170,10 @@ export const settings = {
 		"复制文本",
 	"settings.functionSettings.screenshotSettings.ocrAfterAction.copyTextAndCloseWindow":
 		"复制文本并关闭窗口",
+	"settings.functionSettings.screenshotSettings.ocrAfterAction.ocrDetectCopyText":
+		"文本识别-复制文本",
+	"settings.functionSettings.screenshotSettings.ocrAfterAction.ocrDetectCopyTextAndCloseWindow":
+		"文本识别-复制文本并关闭窗口",
 	"settings.functionSettings.screenshotSettings.ocrCopyText":
 		"OCR 复制时复制文本",
 	"settings.functionSettings.screenshotSettings.focusedWindowCopyToClipboard":

@@ -13,11 +13,13 @@ import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { DrawState } from "@/types/draw";
 import { writeTextToClipboard } from "@/utils/clipboard";
+import { ScreenshotType } from "@/utils/types";
 import { zIndexs } from "@/utils/zIndex";
 import {
 	type CaptureBoundingBoxInfo,
 	DrawEvent,
 	DrawEventPublisher,
+	ScreenshotTypePublisher,
 } from "../../extra";
 import OcrTool, { isOcrTool } from "../drawToolbar/components/tools/ocrTool";
 
@@ -39,6 +41,10 @@ export const OcrBlocks: React.FC<{
 }> = ({ actionRef, finishCapture }) => {
 	const ocrResultActionRef = useRef<OcrResultActionType>(undefined);
 
+	const [getScreenshotType] = useStateSubscriber(
+		ScreenshotTypePublisher,
+		undefined,
+	);
 	const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
 	const [getDrawState] = useStateSubscriber(
 		DrawStatePublisher,
@@ -97,10 +103,17 @@ export const OcrBlocks: React.FC<{
 				const ocrAfterAction =
 					getAppSettings()[AppSettingsGroup.FunctionScreenshot].ocrAfterAction;
 
-				if (ocrAfterAction === OcrDetectAfterAction.CopyText) {
+				if (
+					ocrAfterAction === OcrDetectAfterAction.CopyText ||
+					(ocrAfterAction === OcrDetectAfterAction.OcrDetectCopyText &&
+						getScreenshotType().type === ScreenshotType.OcrDetect)
+				) {
 					writeTextToClipboard(covertOcrResultToText(ocrResult));
 				} else if (
-					ocrAfterAction === OcrDetectAfterAction.CopyTextAndCloseWindow
+					ocrAfterAction === OcrDetectAfterAction.CopyTextAndCloseWindow ||
+					(ocrAfterAction ===
+						OcrDetectAfterAction.OcrDetectCopyTextAndCloseWindow &&
+						getScreenshotType().type === ScreenshotType.OcrDetect)
 				) {
 					writeTextToClipboard(covertOcrResultToText(ocrResult));
 					finishCapture?.();
@@ -115,7 +128,13 @@ export const OcrBlocks: React.FC<{
 			});
 			setDrawEvent(undefined);
 		},
-		[finishCapture, getAppSettings, getDrawState, setDrawEvent],
+		[
+			finishCapture,
+			getAppSettings,
+			getDrawState,
+			setDrawEvent,
+			getScreenshotType,
+		],
 	);
 
 	return (

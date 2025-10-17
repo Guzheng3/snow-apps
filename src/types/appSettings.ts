@@ -48,6 +48,10 @@ export enum OcrDetectAfterAction {
 	CopyText = "copyText",
 	/** 复制文本并关闭窗口 */
 	CopyTextAndCloseWindow = "copyTextAndCloseWindow",
+	/** 文本识别-复制文本 */
+	OcrDetectCopyText = "ocrDetectCopyText",
+	/** 文本识别-复制文本并关闭窗口 */
+	OcrDetectCopyTextAndCloseWindow = "ocrDetectCopyTextAndCloseWindow",
 }
 
 export enum HdrColorAlgorithm {

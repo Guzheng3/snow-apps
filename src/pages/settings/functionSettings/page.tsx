@@ -455,6 +455,18 @@ export const FunctionSettingsPage = () => {
 				}),
 				value: OcrDetectAfterAction.CopyTextAndCloseWindow,
 			},
+			{
+				label: intl.formatMessage({
+					id: "settings.functionSettings.screenshotSettings.ocrAfterAction.ocrDetectCopyText",
+				}),
+				value: OcrDetectAfterAction.OcrDetectCopyText,
+			},
+			{
+				label: intl.formatMessage({
+					id: "settings.functionSettings.screenshotSettings.ocrAfterAction.ocrDetectCopyTextAndCloseWindow",
+				}),
+				value: OcrDetectAfterAction.OcrDetectCopyTextAndCloseWindow,
+			},
 		];
 	}, [intl]);
 
