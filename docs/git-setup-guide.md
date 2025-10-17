@@ -19,6 +19,9 @@
 - **.lintstagedrc.json** - Git 提交前代码格式化配置
 - **.husky/pre-commit** - 提交前执行 lint-staged
 - **.husky/commit-msg** - 提交时检查 commit message 格式
+- **.editorconfig** - 编辑器统一配置（缩进、行尾符等）
+- **.gitattributes** - Git 行尾符处理配置
+- **.vscode/settings.json** - 已更新，添加 LF 行尾符配置
 
 ### 3. 创建的文档
 

@@ -12,6 +12,8 @@ UI 组件库使用 [Ant Design](https://ant.design/)
 - **Husky**: Git hooks 管理
 - **Commitlint**: Commit message 格式检查
 - **Lint-staged**: 提交前自动格式化代码
+- **EditorConfig**: 统一编辑器配置（缩进、行尾符等）
+- **Git Attributes**: 统一使用 LF 行尾符
 
 ### 开发环境
 

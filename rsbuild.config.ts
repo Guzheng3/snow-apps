@@ -49,8 +49,7 @@ export default defineConfig({
 					autoCodeSplitting: true,
 				}),
 			],
-			optimization: {
-			},
+			optimization: {},
 		},
 	},
 });

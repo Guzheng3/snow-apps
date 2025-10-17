@@ -207,6 +207,18 @@ Git hooks 管理工具，在 commit 时自动执行检查。
 
 配置文件：`.lintstagedrc.json`
 
+### EditorConfig
+
+统一编辑器配置，确保所有开发者使用相同的缩进风格和行尾符。
+
+配置文件：`.editorconfig`
+
+### Git Attributes
+
+Git 行尾符处理配置，统一使用 LF (Unix 风格) 行尾符。
+
+配置文件：`.gitattributes`
+
 ### 工作流程
 
 ```
@@ -232,6 +244,65 @@ Git hooks 管理工具，在 commit 时自动执行检查。
                          │
                          ↓
                    ✅ 提交成功
+```
+
+## ⚙️ 编辑器配置
+
+### 行尾符统一 (LF)
+
+项目已配置统一使用 **LF (Unix 风格)** 行尾符，避免跨平台协作时的问题。
+
+#### 配置文件
+
+1. **VSCode 配置** (`.vscode/settings.json`)
+   ```json
+   "files.eol": "\n"
+   ```
+   新建文件会自动使用 LF
+
+2. **EditorConfig** (`.editorconfig`)
+   ```
+   [*]
+   end_of_line = lf
+   ```
+   支持所有主流编辑器（VSCode、WebStorm、Sublime 等）
+
+3. **Git Attributes** (`.gitattributes`)
+   ```
+   * text=auto
+   *.js text eol=lf
+   *.ts text eol=lf
+   ```
+   确保提交到仓库的文件使用 LF
+
+#### 转换现有文件
+
+##### 方法 1: VSCode 手动转换
+1. 打开文件
+2. 点击右下角状态栏的 `CRLF` 或 `LF`
+3. 选择 `LF`
+4. 保存文件 (Ctrl+S)
+
+##### 方法 2: Git 批量转换
+```bash
+# 让 Git 根据 .gitattributes 规范化所有文件
+git add --renormalize .
+git status  # 查看哪些文件会被修改
+
+# 提交更改
+git commit -m "chore: 统一行尾符为 LF"
+```
+
+#### 验证行尾符
+
+```bash
+# Windows PowerShell - 检查文件行尾符
+(Get-Content -Raw file.js) -match "`r`n"
+# True = CRLF, False = LF
+
+# Git Bash / Linux / macOS
+file file.js
+# 会显示文件的行尾符类型
 ```
 
 ## 🛠️ 常见问题
@@ -289,6 +360,23 @@ git commit --no-verify -m "your message"
 ```
 
 ⚠️ **警告**: 只有在完全了解后果的情况下才使用 `--no-verify`
+
+### Q6: 为什么 Git 显示大量文件被修改，但只是行尾符不同？
+
+这通常发生在 Windows 上。解决方法：
+
+```bash
+# 1. 配置 Git 不自动转换行尾符
+git config core.autocrlf false
+
+# 2. 规范化所有文件
+git add --renormalize .
+
+# 3. 提交更改
+git commit -m "chore: 统一行尾符为 LF"
+```
+
+之后新建的文件会自动使用 LF（由 `.editorconfig` 和 VSCode 配置控制）
 
 ## 📚 参考资源
 

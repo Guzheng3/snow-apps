@@ -6,7 +6,7 @@ import type {
 } from "@mg-chao/excalidraw/types";
 import { theme } from "antd";
 import React, {
-    Suspense,
+	Suspense,
 	useCallback,
 	useContext,
 	useImperativeHandle,

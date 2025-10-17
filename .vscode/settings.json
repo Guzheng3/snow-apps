@@ -45,6 +45,9 @@
 		"editor.defaultFormatter": "biomejs.biome"
 	},
 
+	// 行尾符配置 - 统一使用 LF
+	"files.eol": "\n",
+
 	"files.readonlyInclude": {
 		"**/routeTree.gen.ts": true
 	},
