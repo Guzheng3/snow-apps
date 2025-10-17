@@ -326,7 +326,7 @@ impl VideoRecordService {
         }
 
         #[cfg(target_os = "macos")]
-        let monitor_list = MonitorList::all();
+        let monitor_list = MonitorList::all(true);
         #[cfg(target_os = "macos")]
         let mut target_monitor_index = 0;
 
