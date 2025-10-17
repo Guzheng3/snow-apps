@@ -222,7 +222,7 @@ pub async fn capture_focused_window<F>(
     file_path: String,
     copy_to_clipboard: bool,
     focus_window_app_name_variable_name: String,
-    _correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
+    #[allow(unused_variables)] correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
 ) -> Result<(), String>
 where
     F: Fn(&image::DynamicImage) -> Result<(), String> + Send + 'static,
