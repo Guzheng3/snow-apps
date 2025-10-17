@@ -42,7 +42,7 @@ pub struct CaptureOption {
 impl MonitorInfo {
     pub fn new(
         monitor: &Monitor,
-        #[cfg(target_os = "windows")] monitor_hdr_info: MonitorHdrInfo,
+        #[cfg(target_os = "windows")] monitor_hdr_info: Option<MonitorHdrInfo>,
     ) -> Self {
         let monitor_rect: ElementRect;
         let scale_factor: f32;
@@ -64,7 +64,7 @@ impl MonitorInfo {
                 monitor: monitor.clone(),
                 rect: monitor_rect,
                 scale_factor,
-                monitor_hdr_info,
+                monitor_hdr_info: monitor_hdr_info.unwrap_or(MonitorHdrInfo::default()),
             }
         }
 
@@ -216,7 +216,10 @@ pub enum CorrectHdrColorAlgorithm {
 }
 
 impl MonitorList {
-    fn get_monitors(region: Option<ElementRect>) -> MonitorList {
+    fn get_monitors(
+        region: Option<ElementRect>,
+        #[allow(unused_variables)] ignore_sdr_info: bool,
+    ) -> MonitorList {
         let monitors = Monitor::all().unwrap_or_default();
 
         let region = match region {
@@ -230,7 +233,20 @@ impl MonitorList {
         };
 
         #[cfg(target_os = "windows")]
-        let monitor_hdr_info_map = monitor_hdr_info::get_all_monitors_sdr_info().unwrap();
+        let monitor_hdr_info_map = if ignore_sdr_info {
+            None
+        } else {
+            match monitor_hdr_info::get_all_monitors_sdr_info() {
+                Ok(monitor_hdr_info_map) => Some(monitor_hdr_info_map),
+                Err(e) => {
+                    log::error!(
+                        "[MonitorList::get_monitors] Failed to get monitor HDR info: {:?}",
+                        e
+                    );
+                    None
+                }
+            }
+        };
 
         let monitor_info_list = monitors
             .iter()
@@ -239,14 +255,19 @@ impl MonitorList {
                 {
                     MonitorInfo::new(
                         monitor,
-                        monitor_hdr_info_map
-                            .get(
-                                MonitorInfo::get_device_name(monitor)
-                                    .unwrap_or_default()
-                                    .as_str(),
-                            )
-                            .unwrap_or(&MonitorHdrInfo::default())
-                            .clone(),
+                        match &monitor_hdr_info_map {
+                            Some(monitor_hdr_info_map) => Some(
+                                monitor_hdr_info_map
+                                    .get(
+                                        MonitorInfo::get_device_name(monitor)
+                                            .unwrap_or_default()
+                                            .as_str(),
+                                    )
+                                    .unwrap_or(&MonitorHdrInfo::default())
+                                    .clone(),
+                            ),
+                            None => None,
+                        },
                     )
                 }
 
@@ -261,12 +282,12 @@ impl MonitorList {
         MonitorList(monitor_info_list)
     }
 
-    pub fn all() -> MonitorList {
-        Self::get_monitors(None)
+    pub fn all(ignore_sdr_info: bool) -> MonitorList {
+        Self::get_monitors(None, ignore_sdr_info)
     }
 
-    pub fn get_by_region(region: ElementRect) -> MonitorList {
-        Self::get_monitors(Some(region))
+    pub fn get_by_region(region: ElementRect, ignore_sdr_info: bool) -> MonitorList {
+        Self::get_monitors(Some(region), ignore_sdr_info)
     }
 
     /// 获取所有显示器的最小矩形
@@ -831,7 +852,7 @@ mod tests {
     fn test_get_all_monitors() {
         use crate::monitor_hdr_info;
 
-        let monitors = MonitorList::all();
+        let monitors = MonitorList::all(true);
         println!("monitors: {:?}", monitors);
 
         let monitor_hdr_info_map = monitor_hdr_info::get_all_monitors_sdr_info().unwrap();
@@ -879,7 +900,7 @@ mod tests {
             };
         }
 
-        let monitors = MonitorList::get_by_region(crop_region);
+        let monitors = MonitorList::get_by_region(crop_region, true);
 
         let image = monitors
             .capture(
@@ -978,7 +999,7 @@ mod tests {
             max_y: 1000,
         };
 
-        let monitors = MonitorList::get_by_region(crop_region);
+        let monitors = MonitorList::get_by_region(crop_region, true);
         let image = monitors
             .capture_region(
                 crop_region,

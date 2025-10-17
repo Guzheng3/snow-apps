@@ -201,9 +201,10 @@ pub fn get_capture_monitor_list(
     #[allow(unused_variables)] app: &AppHandle,
     region: Option<ElementRect>,
     enable_multiple_monitor: bool,
+    ignore_sdr_info: bool,
 ) -> Result<MonitorList, String> {
     if let Some(region) = region {
-        return Ok(MonitorList::get_by_region(region));
+        return Ok(MonitorList::get_by_region(region, ignore_sdr_info));
     }
 
     let support_multiple_monitor;
@@ -227,15 +228,18 @@ pub fn get_capture_monitor_list(
     }
 
     if enable_multiple_monitor && support_multiple_monitor {
-        Ok(MonitorList::all())
+        Ok(MonitorList::all(ignore_sdr_info))
     } else {
         let (mouse_x, mouse_y) = get_mouse_position(app)?;
-        Ok(MonitorList::get_by_region(ElementRect {
-            min_x: mouse_x,
-            min_y: mouse_y,
-            max_x: mouse_x,
-            max_y: mouse_y,
-        }))
+        Ok(MonitorList::get_by_region(
+            ElementRect {
+                min_x: mouse_x,
+                min_y: mouse_y,
+                max_x: mouse_x,
+                max_y: mouse_y,
+            },
+            ignore_sdr_info,
+        ))
     }
 }
 

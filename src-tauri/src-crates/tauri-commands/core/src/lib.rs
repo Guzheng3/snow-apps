@@ -488,7 +488,7 @@ pub async fn get_monitors_bounding_box(
     enable_multiple_monitor: bool,
 ) -> Result<MonitorsBoundingBox, String> {
     let monitors =
-        snow_shot_app_utils::get_capture_monitor_list(app, region, enable_multiple_monitor)?;
+        snow_shot_app_utils::get_capture_monitor_list(app, region, enable_multiple_monitor, true)?;
 
     let monitors_bounding_box = monitors.get_monitors_bounding_box();
 

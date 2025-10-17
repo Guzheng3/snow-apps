@@ -59,6 +59,7 @@ pub async fn capture_all_monitors(
             &app_handle,
             None,
             enable_multiple_monitor,
+            true,
         )?
         .capture(
             Some(&window),
@@ -82,6 +83,7 @@ pub async fn capture_all_monitors(
             &app_handle,
             None,
             enable_multiple_monitor,
+            correct_hdr_color_algorithm == CorrectHdrColorAlgorithm::None,
         )?
         .capture(
             Some(&window),
@@ -143,7 +145,7 @@ where
                 Ok(_) => Ok(()),
                 Err(e) => {
                     log::error!(
-                        "[capture_focused_window] Failed to write image to clipboard: {}",
+                        "[save_and_copy_image] Failed to write image to clipboard: {}",
                         e
                     );
 
@@ -556,15 +558,22 @@ where
 {
     // 激活的显示器
     let (mouse_x, mouse_y) = snow_shot_app_utils::get_mouse_position(&app_handle)?;
-    let active_monitor = MonitorList::get_by_region(ElementRect {
-        min_x: mouse_x,
-        min_y: mouse_y,
-        max_x: mouse_x,
-        max_y: mouse_y,
-    });
+    let active_monitor = MonitorList::get_by_region(
+        ElementRect {
+            min_x: mouse_x,
+            min_y: mouse_y,
+            max_x: mouse_x,
+            max_y: mouse_y,
+        },
+        correct_hdr_color_algorithm == CorrectHdrColorAlgorithm::None,
+    );
     // 所有显示器
-    let monitor_list =
-        snow_shot_app_utils::get_capture_monitor_list(&app_handle, None, enable_multiple_monitor)?;
+    let monitor_list = snow_shot_app_utils::get_capture_monitor_list(
+        &app_handle,
+        None,
+        enable_multiple_monitor,
+        correct_hdr_color_algorithm == CorrectHdrColorAlgorithm::None,
+    )?;
 
     // 截取所有显示器的截图
     let all_monitors_image = monitor_list
