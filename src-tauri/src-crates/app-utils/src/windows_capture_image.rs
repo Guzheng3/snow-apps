@@ -63,9 +63,6 @@ impl GraphicsCaptureApiHandler for WindowsCaptureImage {
 
         let orgin_image_buffer = origin_image.as_raw_buffer();
 
-        println!("origin_image_width: {}, origin_image_height: {}", origin_image_width, origin_image_height);
-        println!("orgin_image_buffer len: {}", orgin_image_buffer.len());
-
         let (min_x, min_y, max_x, max_y) = if let Some(crop_area) = capture_info.crop_area {
             (
                 crop_area.min_x,
