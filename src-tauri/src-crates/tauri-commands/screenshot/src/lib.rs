@@ -1,3 +1,4 @@
+use image::DynamicImage;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Serialize;
 use snow_shot_app_os::ui_automation::UIElements;
@@ -168,11 +169,60 @@ where
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
+pub fn capture_window_hdr_image(window: &xcap::Window) -> Option<image::DynamicImage> {
+    use snow_shot_app_utils::monitor_hdr_info::get_all_monitors_sdr_info;
+    use snow_shot_app_utils::monitor_info::MonitorInfo;
+    use snow_shot_app_utils::windows_capture_image;
+    use windows::Win32::Foundation::HWND;
+
+    // 获取 Windows 所属的显示
+    let monitor = match window.current_monitor() {
+        Ok(monitor) => monitor,
+        Err(_) => return None,
+    };
+
+    let hdr_infos = match get_all_monitors_sdr_info() {
+        Ok(hdr_infos) => hdr_infos,
+        Err(e) => {
+            log::error!(
+                "[capture_window_hdr_image] Failed to get all monitors SDR info: {}",
+                e
+            );
+            return None;
+        }
+    };
+
+    let hdr_info = match hdr_infos.get(
+        MonitorInfo::get_device_name(&monitor)
+            .unwrap_or_default()
+            .as_str(),
+    ) {
+        Some(hdr_info) => hdr_info,
+        None => return None,
+    };
+
+    if !hdr_info.hdr_enabled {
+        return None;
+    }
+
+    return match windows_capture_image::capture_monitor_image(
+        &MonitorInfo::new(&monitor, Some(hdr_info.clone())),
+        Some(HWND(window.hwnd().unwrap())),
+        None,
+        ColorFormat::Rgba8,
+    ) {
+        Ok(image) => Some(image),
+        Err(_) => None,
+    };
+}
+
 pub async fn capture_focused_window<F>(
     write_image_to_clipboard: F,
     file_path: String,
     copy_to_clipboard: bool,
     focus_window_app_name_variable_name: String,
+    correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
 ) -> Result<(), String>
 where
     F: Fn(&image::DynamicImage) -> Result<(), String> + Send + 'static,
@@ -190,20 +240,31 @@ where
 
         focused_window_app_name = focused_window.app_name().unwrap_or_default();
 
-        image = match focused_window.capture_image() {
-            Ok(image) => image,
-            Err(_) => {
-                log::warn!("[capture_focused_window] Failed to capture focused window");
-                // 改成捕获当前显示器
+        let hdr_image = if correct_hdr_color_algorithm != CorrectHdrColorAlgorithm::None {
+            capture_window_hdr_image(&focused_window)
+        } else {
+            None
+        };
 
-                let (_, _, monitor) = snow_shot_app_utils::get_target_monitor()?;
-
-                match monitor.capture_image() {
-                    Ok(image) => image,
+        image = match hdr_image {
+            Some(image) => image,
+            None => {
+                match focused_window.capture_image() {
+                    Ok(image) => DynamicImage::ImageRgba8(image),
                     Err(_) => {
-                        return Err(String::from(
-                            "[capture_focused_window] Failed to capture image",
-                        ));
+                        log::warn!("[capture_focused_window] Failed to capture focused window");
+                        // 改成捕获当前显示器
+
+                        let (_, _, monitor) = snow_shot_app_utils::get_target_monitor()?;
+
+                        match monitor.capture_image() {
+                            Ok(image) => DynamicImage::ImageRgba8(image),
+                            Err(_) => {
+                                return Err(String::from(
+                                    "[capture_focused_window] Failed to capture image",
+                                ));
+                            }
+                        }
                     }
                 }
             }
@@ -248,7 +309,7 @@ where
         };
 
         image = match window_image {
-            Some(image) => image,
+            Some(image) => DynamicImage::ImageRgba8(image),
             None => {
                 log::warn!("[capture_focused_window] Failed to capture focused window");
                 // 改成捕获当前显示器
@@ -256,7 +317,7 @@ where
                 let (_, _, monitor) = snow_shot_app_utils::get_target_monitor()?;
 
                 match monitor.capture_image() {
-                    Ok(image) => image,
+                    Ok(image) => DynamicImage::ImageRgba8(image),
                     Err(_) => {
                         return Err(String::from(
                             "[capture_focused_window] Failed to capture image",
@@ -281,7 +342,7 @@ where
 
     save_and_copy_image(
         write_image_to_clipboard,
-        image::DynamicImage::ImageRgba8(image),
+        image,
         file_path,
         copy_to_clipboard,
     )

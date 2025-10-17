@@ -56,13 +56,11 @@ type Listener = {
 export type EventListenerContextType = {
 	addListener: (event: string, listener: (payload: unknown) => void) => number;
 	removeListener: (id: number) => boolean;
-	reset: () => void;
 };
 
 export const EventListenerContext = createContext<EventListenerContextType>({
 	addListener: () => 0,
 	removeListener: () => false,
-	reset: () => {},
 });
 /**
  * 监听 tauri 的消息
@@ -70,8 +68,6 @@ export const EventListenerContext = createContext<EventListenerContextType>({
 const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 	children,
 }) => {
-	const { message } = useContext(AntdContext);
-
 	const { pathname, hasLayout } = usePathname();
 	const appWindowRef = useRef<AppWindow | undefined>(undefined);
 	useEffect(() => {
@@ -115,8 +111,17 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 	}, []);
 
 	const { reloadAppSettings } = useContext(AppSettingsActionContext);
+	const reloadAppSettingsRef = useRef(reloadAppSettings);
+	useEffect(() => {
+		reloadAppSettingsRef.current = reloadAppSettings;
+	}, [reloadAppSettings]);
 
-	const inited = useRef(false);
+	const { message } = useContext(AntdContext);
+	const messageRef = useRef(message);
+	useEffect(() => {
+		messageRef.current = message;
+	}, [message]);
+
 	const {
 		isDrawPage,
 		isFullScreenDraw,
@@ -174,17 +179,12 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 	const { refreshPluginStatusThrottle } = usePluginServiceContext();
 
 	useEffect(() => {
-		if (inited.current) {
-			return;
-		}
-		inited.current = true;
-
 		let detach: UnlistenFn;
 		attachConsole().then((d) => {
 			detach = d;
 		});
 
-		const unlistenList: UnlistenFn[] = [];
+		const unlistenList: Promise<UnlistenFn>[] = [];
 		const defaultListener: Listener[] = [];
 
 		const listenKeyCallback = (
@@ -302,7 +302,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 				event: "main-window:send-error-message",
 				callback: async ({ payload }: { payload: string }) => {
 					showWindow();
-					message.error(payload);
+					messageRef.current.error(payload);
 				},
 			});
 			defaultListener.push({
@@ -343,7 +343,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 			defaultListener.push({
 				event: "reload-app-settings",
 				callback: async () => {
-					reloadAppSettings();
+					reloadAppSettingsRef.current();
 				},
 			});
 
@@ -439,46 +439,37 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 					return;
 				}
 
-				appWindowRef.current
-					.listen(listener.event, listener.callback)
-					.then((unlisten) => {
-						unlistenList.push(unlisten);
-					});
+				unlistenList.push(
+					appWindowRef.current.listen(listener.event, listener.callback),
+				);
 			});
-
-		const clear = () => {
-			listenKeyStop();
-
-			detach?.();
-
-			unlistenList.forEach((unlisten) => {
-				try {
-					unlisten();
-				} catch (error) {
-					appError("[EventListenerCore] clear unlisten error", error);
-				}
-			});
-
-			inited.current = false;
-		};
-
-		window.addEventListener("beforeunload", () => {
-			clear();
-		});
 
 		return () => {
-			clear();
-			window.removeEventListener("beforeunload", clear);
+			listenerEventMapRef.current = new Map();
+			listenerMapRef.current = new Map();
+			listenerCount.current = 0;
+
+			listenKeyStop();
+
+			unlistenList.forEach((unlisten) => {
+				unlisten.then((unlisten) => {
+					try {
+						unlisten();
+					} catch (error) {
+						appError("[EventListenerCore] clear unlisten error", error);
+					}
+				});
+			});
+
+			detach?.();
 		};
 	}, [
 		isDrawPage,
-		reloadAppSettings,
 		isFullScreenDraw,
 		isFullScreenDrawSwitchMouseThrough,
 		isVideoRecordPage,
 		isVideoRecordToolbarPage,
 		isCaptureHistoryPage,
-		message,
 		releaseOcrSessionAction,
 		refreshPluginStatusThrottle,
 		isIdlePage,
@@ -490,9 +481,6 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 		return {
 			addListener,
 			removeListener,
-			reset: () => {
-				inited.current = false;
-			},
 		};
 	}, [addListener, removeListener]);
 	return (

@@ -190,6 +190,7 @@ impl MonitorInfo {
 
             return match windows_capture_image::capture_monitor_image(
                 &self,
+                None,
                 crop_area,
                 capture_option.color_format,
             ) {

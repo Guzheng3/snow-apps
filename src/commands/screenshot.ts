@@ -28,11 +28,13 @@ export const captureFocusedWindow = async (
 	filePath: string,
 	copyToClipboard: boolean,
 	focusWindowAppNameVariableName: string,
+	correctHdrColorAlgorithm: HdrColorAlgorithm,
 ) => {
 	const result = await invoke("capture_focused_window", {
 		filePath,
 		copyToClipboard,
 		focusWindowAppNameVariableName,
+		correctHdrColorAlgorithm,
 	});
 	return result;
 };

@@ -3,6 +3,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use snow_shot_app_shared::ElementRect;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Sender, channel};
+use windows::Win32::Foundation::HWND;
 use windows_capture::capture::{Context, GraphicsCaptureApiError, GraphicsCaptureApiHandler};
 use windows_capture::frame::Frame;
 use windows_capture::graphics_capture_api::{self, InternalCaptureControl};
@@ -58,8 +59,12 @@ impl GraphicsCaptureApiHandler for WindowsCaptureImage {
 
         let origin_image_width = origin_image.width() as usize;
         let origin_image_height = origin_image.height() as usize;
+        let origin_image_row_pitch = origin_image.row_pitch() as usize;
 
         let orgin_image_buffer = origin_image.as_raw_buffer();
+
+        println!("origin_image_width: {}, origin_image_height: {}", origin_image_width, origin_image_height);
+        println!("orgin_image_buffer len: {}", orgin_image_buffer.len());
 
         let (min_x, min_y, max_x, max_y) = if let Some(crop_area) = capture_info.crop_area {
             (
@@ -78,6 +83,7 @@ impl GraphicsCaptureApiHandler for WindowsCaptureImage {
         let crop_height = (max_y - min_y) as usize;
         let pixels_count = crop_width * crop_height;
 
+        // Rgba16F 每个像素占 8 字节
         let pixel_byte_count = 8;
         let mut pixels: Vec<u8> = unsafe {
             let mut pixels = Vec::with_capacity(pixels_count * pixel_byte_count);
@@ -85,13 +91,14 @@ impl GraphicsCaptureApiHandler for WindowsCaptureImage {
             pixels
         };
 
+        // 使用 row_pitch 而不是 width * pixel_byte_count，因为图像可能有行对齐填充
         let origin_image_buffer_base_index =
-            (origin_y_offset * origin_image_width + origin_x_offset) * pixel_byte_count;
+            origin_y_offset * origin_image_row_pitch + origin_x_offset * pixel_byte_count;
         let origin_image_buffer_ptr = orgin_image_buffer.as_ptr() as usize;
         let pixels_ptr = pixels.as_mut_ptr() as usize;
         (0..crop_height).into_par_iter().for_each(|y| {
             let origin_image_index =
-                origin_image_buffer_base_index + y * origin_image_width * pixel_byte_count;
+                origin_image_buffer_base_index + y * origin_image_row_pitch;
             let target_image_index = y * crop_width * pixel_byte_count;
 
             unsafe {
@@ -201,6 +208,10 @@ pub fn write_rgba16f_linear_to_rgba8(
         ))
         .to_f32()
             * hdr_scale;
+        let alpha_f = f16::from_bits(u16::from_le(
+            *(rgba16f_image.add(pixel_index * 8 + 6) as *const u16),
+        ))
+        .to_f32();
 
         // 使用快速饱和转换
         rgba8_image
@@ -212,7 +223,10 @@ pub fn write_rgba16f_linear_to_rgba8(
         rgba8_image
             .add(pixel_index * 4 + 2)
             .write(linear_to_srgb_byte(blue_f));
-        rgba8_image.add(pixel_index * 4 + 3).write(255);
+        // Alpha 通道不需要 linear_to_srgb 转换，直接钳位到 [0, 1] 范围
+        rgba8_image
+            .add(pixel_index * 4 + 3)
+            .write((alpha_f.clamp(0.0, 1.0) * 255.0) as u8);
     }
 }
 
@@ -238,15 +252,15 @@ fn process_captured_image(
     };
 
     let result_image_pixels_count = image_width * image_height;
-    let mut rgb8_image_pixels: Vec<u8> = unsafe {
-        let mut rgb8_image_pixels = Vec::with_capacity(result_image_pixels_count * pixel_len);
-        rgb8_image_pixels.set_len(result_image_pixels_count * pixel_len);
-        rgb8_image_pixels
+    let mut image_pixels: Vec<u8> = unsafe {
+        let mut image_pixels = Vec::with_capacity(result_image_pixels_count * pixel_len);
+        image_pixels.set_len(result_image_pixels_count * pixel_len);
+        image_pixels
     };
 
     let hdr_scale = 1000.0 / (monitor.monitor_hdr_info.sdr_white_level as f32);
 
-    let rgb8_image_pixels_ptr = rgb8_image_pixels.as_mut_ptr() as usize;
+    let image_pixels_ptr = image_pixels.as_mut_ptr() as usize;
     let rgba16f_image_ptr = rgba16f_image.as_ptr() as usize;
     match color_format {
         ColorFormat::Rgb8 => {
@@ -255,17 +269,13 @@ fn process_captured_image(
                 .for_each(|i| {
                     write_rgba16f_linear_to_rgb8(
                         rgba16f_image_ptr as *const u8,
-                        rgb8_image_pixels_ptr as *mut u8,
+                        image_pixels_ptr as *mut u8,
                         hdr_scale,
                         i,
                     );
                 });
 
-            match image::RgbImage::from_raw(
-                image_width as u32,
-                image_height as u32,
-                rgb8_image_pixels,
-            ) {
+            match image::RgbImage::from_raw(image_width as u32, image_height as u32, image_pixels) {
                 Some(rgb8_image) => Ok(image::DynamicImage::ImageRgb8(rgb8_image)),
                 None => Err(format!(
                     "[windows_capture_image::process_captured_image] Failed to create rgb8 image"
@@ -278,17 +288,14 @@ fn process_captured_image(
                 .for_each(|i| {
                     write_rgba16f_linear_to_rgba8(
                         rgba16f_image_ptr as *const u8,
-                        rgb8_image_pixels_ptr as *mut u8,
+                        image_pixels_ptr as *mut u8,
                         hdr_scale,
                         i,
                     );
                 });
 
-            match image::RgbaImage::from_raw(
-                image_width as u32,
-                image_height as u32,
-                rgb8_image_pixels,
-            ) {
+            match image::RgbaImage::from_raw(image_width as u32, image_height as u32, image_pixels)
+            {
                 Some(rgba8_image) => Ok(image::DynamicImage::ImageRgba8(rgba8_image)),
                 None => Err(format!(
                     "[windows_capture_image::process_captured_image] Failed to create rgba8 image"
@@ -300,6 +307,7 @@ fn process_captured_image(
 
 pub fn capture_monitor_image(
     monitor: &MonitorInfo,
+    window: Option<HWND>,
     crop_area: Option<ElementRect>,
     color_format: ColorFormat,
 ) -> Result<image::DynamicImage, String> {
@@ -314,23 +322,49 @@ pub fn capture_monitor_image(
 
     let capture_monitor =
         Monitor::from_raw_hmonitor(MonitorInfo::get_monitor_handle(&monitor.monitor).0);
+    let window = match window {
+        Some(window) => Some(windows_capture::window::Window::from_raw_hwnd(window.0)),
+        None => None,
+    };
 
-    let settings = Settings::new(
-        capture_monitor.clone(),
-        CursorCaptureSettings::WithoutCursor,
-        draw_border_setting,
-        SecondaryWindowSettings::Default,
-        MinimumUpdateIntervalSettings::Default,
-        DirtyRegionSettings::Default,
-        windows_capture::settings::ColorFormat::Rgba16F,
-        CaptureFlags {
-            on_frame_arrived: sender,
-            crop_area,
-        },
-    );
+    let start_result: Result<(), GraphicsCaptureApiError<String>> = match window {
+        Some(window) => {
+            let settings = Settings::new(
+                window,
+                CursorCaptureSettings::WithoutCursor,
+                draw_border_setting,
+                SecondaryWindowSettings::Default,
+                MinimumUpdateIntervalSettings::Default,
+                DirtyRegionSettings::Default,
+                windows_capture::settings::ColorFormat::Rgba16F,
+                CaptureFlags {
+                    on_frame_arrived: sender,
+                    crop_area,
+                },
+            );
+
+            WindowsCaptureImage::start(settings)
+        }
+        None => {
+            let settings = Settings::new(
+                capture_monitor,
+                CursorCaptureSettings::WithoutCursor,
+                draw_border_setting,
+                SecondaryWindowSettings::Default,
+                MinimumUpdateIntervalSettings::Default,
+                DirtyRegionSettings::Default,
+                windows_capture::settings::ColorFormat::Rgba16F,
+                CaptureFlags {
+                    on_frame_arrived: sender,
+                    crop_area,
+                },
+            );
+
+            WindowsCaptureImage::start(settings)
+        }
+    };
 
     // 尝试启动捕获器
-    let start_result = WindowsCaptureImage::start(settings);
 
     match start_result {
         Ok(_capturer) => {
@@ -351,22 +385,45 @@ pub fn capture_monitor_image(
                 // 使用 Default 设置重试
                 let (retry_sender, retry_receiver) = channel();
 
-                let retry_settings = Settings::new(
-                    capture_monitor.clone(),
-                    CursorCaptureSettings::WithoutCursor,
-                    DrawBorderSettings::Default,
-                    SecondaryWindowSettings::Default,
-                    MinimumUpdateIntervalSettings::Default,
-                    DirtyRegionSettings::Default,
-                    windows_capture::settings::ColorFormat::Rgba16F,
-                    CaptureFlags {
-                        on_frame_arrived: retry_sender,
-                        crop_area,
-                    },
-                );
+                let start_result: Result<(), GraphicsCaptureApiError<String>> = match window {
+                    Some(window) => {
+                        let settings = Settings::new(
+                            window,
+                            CursorCaptureSettings::WithoutCursor,
+                            draw_border_setting,
+                            SecondaryWindowSettings::Default,
+                            MinimumUpdateIntervalSettings::Default,
+                            DirtyRegionSettings::Default,
+                            windows_capture::settings::ColorFormat::Rgba16F,
+                            CaptureFlags {
+                                on_frame_arrived: retry_sender,
+                                crop_area,
+                            },
+                        );
+
+                        WindowsCaptureImage::start(settings)
+                    }
+                    None => {
+                        let settings = Settings::new(
+                            capture_monitor.clone(),
+                            CursorCaptureSettings::WithoutCursor,
+                            draw_border_setting,
+                            SecondaryWindowSettings::Default,
+                            MinimumUpdateIntervalSettings::Default,
+                            DirtyRegionSettings::Default,
+                            windows_capture::settings::ColorFormat::Rgba16F,
+                            CaptureFlags {
+                                on_frame_arrived: retry_sender,
+                                crop_area,
+                            },
+                        );
+
+                        WindowsCaptureImage::start(settings)
+                    }
+                };
 
                 // 重试启动捕获器
-                match WindowsCaptureImage::start(retry_settings) {
+                match start_result {
                     Ok(_capturer) => {
                         // 重试成功，处理捕获的图像
                         process_captured_image(retry_receiver, monitor, color_format)

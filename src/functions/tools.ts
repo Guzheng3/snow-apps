@@ -9,7 +9,6 @@ export const executeChat = async () => {
 };
 
 export const executeChatSelectedText = async () => {
-	console.log("executeChatSelectedText");
 	await emit("execute-chat-selected-text");
 };
 

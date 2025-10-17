@@ -3,6 +3,7 @@ import * as tauriLog from "@tauri-apps/plugin-log";
 import { captureFocusedWindow } from "@/commands/screenshot";
 import { FOCUS_WINDOW_APP_NAME_ENV_VARIABLE } from "@/constants/components/chat";
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
+import { getCorrectHdrColorAlgorithm } from "@/utils/appSettings";
 import { playCameraShutterSound } from "@/utils/audio";
 import { getImagePathFromSettings } from "@/utils/file";
 import { appError } from "@/utils/log";
@@ -41,6 +42,7 @@ export const executeScreenshotFocusedWindow = async (
 			appSettings[AppSettingsGroup.FunctionScreenshot]
 				.focusedWindowCopyToClipboard,
 			FOCUS_WINDOW_APP_NAME_ENV_VARIABLE,
+			getCorrectHdrColorAlgorithm(appSettings),
 		);
 		playCameraShutterSound();
 		await captureFocusedWindowPromise;

@@ -16,8 +16,7 @@ export const IdlePage: React.FC = () => {
 		}, []),
 	);
 
-	const { addListener, removeListener, reset } =
-		useContext(EventListenerContext);
+	const { addListener, removeListener } = useContext(EventListenerContext);
 
 	useEffect(() => {
 		const listenerId = addListener("hot-load-page-route-push", (args) => {
@@ -34,14 +33,13 @@ export const IdlePage: React.FC = () => {
 				return;
 			}
 
-			reset();
 			router.navigate({ to: payload.url });
 		});
 
 		return () => {
 			removeListener(listenerId);
 		};
-	}, [addListener, removeListener, router, reset]);
+	}, [addListener, removeListener, router]);
 
 	return undefined;
 };

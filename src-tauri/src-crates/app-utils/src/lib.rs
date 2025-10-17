@@ -22,9 +22,9 @@ use zune_jpegxl::JxlSimpleEncoder;
 use crate::monitor_info::{ColorFormat, MonitorList};
 
 #[cfg(target_os = "windows")]
-mod monitor_hdr_info;
+pub mod monitor_hdr_info;
 #[cfg(target_os = "windows")]
-mod windows_capture_image;
+pub mod windows_capture_image;
 
 pub mod monitor_info;
 
