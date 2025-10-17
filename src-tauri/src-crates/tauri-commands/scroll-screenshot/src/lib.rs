@@ -79,7 +79,10 @@ pub async fn scroll_screenshot_capture(
         };
         let monitor_list = {
             let mut monitor_list_service = scroll_screenshot_capture_service.lock().await;
-            monitor_list_service.init(crop_region);
+            monitor_list_service.init(
+                crop_region,
+                correct_hdr_color_algorithm == CorrectHdrColorAlgorithm::None,
+            );
             monitor_list_service.get()
         };
 

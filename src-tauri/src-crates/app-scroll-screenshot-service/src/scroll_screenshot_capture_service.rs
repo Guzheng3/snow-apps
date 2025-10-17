@@ -15,9 +15,9 @@ impl ScrollScreenshotCaptureService {
         Self { monitor_list: None }
     }
 
-    pub fn init(&mut self, region: ElementRect) {
+    pub fn init(&mut self, region: ElementRect, ignore_sdr_info: bool) {
         if self.monitor_list.is_none() {
-            self.monitor_list = Some(Arc::new(MonitorList::get_by_region(region, false)));
+            self.monitor_list = Some(Arc::new(MonitorList::get_by_region(region, ignore_sdr_info)));
         }
     }
 
