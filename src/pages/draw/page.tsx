@@ -778,7 +778,7 @@ const DrawPageCore: React.FC<{
 				scrollScreenshotSaveToFile(imagePath.filePath).then(() => {
 					scrollScreenshotClear();
 				});
-				finishCapture();
+				finishCapture(false);
 				return;
 			}
 
@@ -1029,10 +1029,10 @@ const DrawPageCore: React.FC<{
 				enableAutoSave && filePath
 					? scrollScreenshotSaveToFile(filePath)
 					: Promise.resolve(),
-			]).then(() => {
+			]).finally(() => {
 				scrollScreenshotClear();
 			});
-			finishCapture();
+			finishCapture(false);
 			return;
 		}
 
