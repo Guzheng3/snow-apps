@@ -1,2 +1,1 @@
-export const personalization = {
-};
+export const personalization = {};

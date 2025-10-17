@@ -1,103 +1,105 @@
-'use client';
+import { Layout, Menu, theme } from "antd";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 
-import React, { useCallback, useContext, useEffect, useState } from 'react';
-import { Layout, Menu, theme } from 'antd';
 const { Sider } = Layout;
-import RSC from 'react-scrollbars-custom';
-import { AppSettingsData, AppSettingsGroup } from '@/types/appSettings';
-import { AppSettingsActionContext } from '@/contexts/appSettingsActionContext';
-import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
-import { ItemType, MenuItemType } from 'antd/es/menu/interface';
-import * as tauriOs from '@tauri-apps/plugin-os';
+
+import * as tauriOs from "@tauri-apps/plugin-os";
+import type { ItemType, MenuItemType } from "antd/es/menu/interface";
+import RSC from "react-scrollbars-custom";
+import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
+import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
+import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 
 type MenuItem = ItemType<MenuItemType>;
 
 const MenuSiderCore: React.FC<{
-    menuItems: MenuItem[];
-    darkMode: boolean;
-    pathname: string;
+	menuItems: MenuItem[];
+	darkMode: boolean;
+	pathname: string;
 }> = ({ menuItems, darkMode, pathname }) => {
-    const { token } = theme.useToken();
-    const [collapsed, setCollapsed] = useState(false);
-    useAppSettingsLoad(
-        useCallback((settings: AppSettingsData) => {
-            setCollapsed(settings[AppSettingsGroup.Cache].menuCollapsed);
-        }, []),
-    );
-    const { updateAppSettings } = useContext(AppSettingsActionContext);
+	const { token } = theme.useToken();
+	const [collapsed, setCollapsed] = useState(false);
+	useAppSettingsLoad(
+		useCallback((settings: AppSettingsData) => {
+			setCollapsed(settings[AppSettingsGroup.Cache].menuCollapsed);
+		}, []),
+	);
+	const { updateAppSettings } = useContext(AppSettingsActionContext);
 
-    useEffect(() => {
-        if (process.env.NODE_ENV === 'development') {
-            return;
-        }
+	useEffect(() => {
+		if (process.env.NODE_ENV === "development") {
+			return;
+		}
 
-        window.oncontextmenu = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-        };
+		window.oncontextmenu = (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+		};
 
-        return () => {
-            window.oncontextmenu = null;
-        };
-    }, []);
+		return () => {
+			window.oncontextmenu = null;
+		};
+	}, []);
 
-    const [currentPlatform, setCurrentPlatform] = useState<tauriOs.Platform | undefined>(undefined);
-    useEffect(() => {
-        setCurrentPlatform(tauriOs.platform());
-    }, []);
+	const [currentPlatform, setCurrentPlatform] = useState<
+		tauriOs.Platform | undefined
+	>(undefined);
+	useEffect(() => {
+		setCurrentPlatform(tauriOs.platform());
+	}, []);
 
-    return (
-        <Sider
-            theme={darkMode ? 'dark' : 'light'}
-            collapsed={collapsed}
-            collapsible
-            onCollapse={(value) => {
-                setCollapsed(value);
-                updateAppSettings(
-                    AppSettingsGroup.Cache,
-                    { menuCollapsed: value },
-                    true,
-                    true,
-                    false,
-                );
-            }}
-        >
-            <div className="menu-sider-wrap">
-                {currentPlatform === 'macos' && (
-                    <div className="macos-title-bar-margin app-tauri-drag-region"></div>
-                )}
+	return (
+		<Sider
+			theme={darkMode ? "dark" : "light"}
+			collapsed={collapsed}
+			collapsible
+			onCollapse={(value) => {
+				setCollapsed(value);
+				updateAppSettings(
+					AppSettingsGroup.Cache,
+					{ menuCollapsed: value },
+					true,
+					true,
+					false,
+				);
+			}}
+		>
+			<div className="menu-sider-wrap">
+				{currentPlatform === "macos" && (
+					<div className="macos-title-bar-margin app-tauri-drag-region"></div>
+				)}
 
-                {currentPlatform !== 'macos' && (
-                    <div className="logo-wrap">
-                        <div className="logo-text">
-                            {collapsed ? (
-                                <>
-                                    <div className="logo-text-highlight">S</div>
-                                    <div>now</div>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="logo-text-highlight">Snow</div>
-                                    <div>Shot</div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
-                <RSC>
-                    <Menu
-                        defaultSelectedKeys={[menuItems[0]!.key?.toString() ?? '/']}
-                        selectedKeys={[pathname]}
-                        mode="inline"
-                        theme={darkMode ? 'dark' : 'light'}
-                        items={menuItems}
-                        defaultOpenKeys={menuItems
-                            .map((item) => item?.key as string)
-                            .filter((key) => !!key)}
-                    />
-                </RSC>
-            </div>
-            <style jsx>{`
+				{currentPlatform !== "macos" && (
+					<div className="logo-wrap">
+						<div className="logo-text">
+							{collapsed ? (
+								<>
+									<div className="logo-text-highlight">S</div>
+									<div>now</div>
+								</>
+							) : (
+								<>
+									<div className="logo-text-highlight">Snow</div>
+									<div>Shot</div>
+								</>
+							)}
+						</div>
+					</div>
+				)}
+				<RSC>
+					<Menu
+						defaultSelectedKeys={[menuItems[0]?.key?.toString() ?? "/"]}
+						selectedKeys={[pathname]}
+						mode="inline"
+						theme={darkMode ? "dark" : "light"}
+						items={menuItems}
+						defaultOpenKeys={menuItems
+							.map((item) => item?.key as string)
+							.filter((key) => !!key)}
+					/>
+				</RSC>
+			</div>
+			<style jsx>{`
                 .logo-wrap {
                     margin-top: 16px;
                     margin-bottom: 10px;
@@ -114,8 +116,8 @@ const MenuSiderCore: React.FC<{
                 }
 
                 :global(body) {
-                    --snow-shot-purple-color: ${darkMode ? token['purple-7'] : token['purple-5']};
-                    --snow-shot-text-color: ${darkMode ? '#fff' : '#000'};
+                    --snow-shot-purple-color: ${darkMode ? token["purple-7"] : token["purple-5"]};
+                    --snow-shot-text-color: ${darkMode ? "#fff" : "#000"};
                 }
 
                 .logo-wrap .logo-text .logo-text-highlight {
@@ -145,8 +147,8 @@ const MenuSiderCore: React.FC<{
                     overflow: auto;
                 }
             `}</style>
-        </Sider>
-    );
+		</Sider>
+	);
 };
 
 export const MenuSider = React.memo(MenuSiderCore);

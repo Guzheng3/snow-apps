@@ -1,102 +1,105 @@
-'use client';
-
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { CloseOutlined, MinusOutlined } from '@ant-design/icons';
-import { Button, Layout, Space, theme } from 'antd';
-import RSC from 'react-scrollbars-custom';
-import { Header } from 'antd/es/layout/layout';
-import { getCurrentWindow, Window as AppWindow } from '@tauri-apps/api/window';
-import { PageNav, PageNavActionType } from '@/app/components/pageNav';
-import * as tauriOs from '@tauri-apps/plugin-os';
-import { RouteMapItem } from '@/types/components/menuLayout';
+import { CloseOutlined, MinusOutlined } from "@ant-design/icons";
+import {
+	type Window as AppWindow,
+	getCurrentWindow,
+} from "@tauri-apps/api/window";
+import * as tauriOs from "@tauri-apps/plugin-os";
+import { Button, Layout, Space, theme } from "antd";
+import { Header } from "antd/es/layout/layout";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import RSC from "react-scrollbars-custom";
+import { PageNav, type PageNavActionType } from "@/components/pageNav";
+import type { RouteMapItem } from "@/types/components/menuLayout";
 
 const { Content } = Layout;
 
 const MenuContentCore: React.FC<{
-    pathname: string;
-    routeTabsMap: Record<string, RouteMapItem>;
-    children: React.ReactNode;
+	pathname: string;
+	routeTabsMap: Record<string, RouteMapItem>;
+	children: React.ReactNode;
 }> = ({ pathname, routeTabsMap, children }) => {
-    const { token } = theme.useToken();
-    const appWindowRef = useRef<AppWindow | undefined>(undefined);
-    useEffect(() => {
-        appWindowRef.current = getCurrentWindow();
-    }, []);
+	const { token } = theme.useToken();
+	const appWindowRef = useRef<AppWindow | undefined>(undefined);
+	useEffect(() => {
+		appWindowRef.current = getCurrentWindow();
+	}, []);
 
-    const tabItems = useMemo(() => {
-        return routeTabsMap[pathname] ?? routeTabsMap['/'] ?? [];
-    }, [pathname, routeTabsMap]);
+	const tabItems = useMemo(() => {
+		return routeTabsMap[pathname] ?? routeTabsMap["/"] ?? [];
+	}, [pathname, routeTabsMap]);
 
-    const pageNavActionRef = useRef<PageNavActionType | null>(null);
-    const contentRef = useRef<HTMLDivElement>(null);
+	const pageNavActionRef = useRef<PageNavActionType | null>(null);
+	const contentRef = useRef<HTMLDivElement>(null);
 
-    const [currentPlatform, setCurrentPlatform] = useState<tauriOs.Platform | undefined>(undefined);
-    useEffect(() => {
-        setCurrentPlatform(tauriOs.platform());
-    }, []);
+	const [currentPlatform, setCurrentPlatform] = useState<
+		tauriOs.Platform | undefined
+	>(undefined);
+	useEffect(() => {
+		setCurrentPlatform(tauriOs.platform());
+	}, []);
 
-    return (
-        <Layout>
-            <Header data-tauri-drag-region className="app-tauri-drag-region">
-                {currentPlatform !== 'macos' && (
-                    <Space>
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<MinusOutlined />}
-                            onClick={() => {
-                                appWindowRef.current?.minimize();
-                            }}
-                        />
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<CloseOutlined />}
-                            onClick={() => {
-                                appWindowRef.current?.hide();
-                                appWindowRef.current?.emit('on-hide-main-window');
-                            }}
-                        />
-                    </Space>
-                )}
+	return (
+		<Layout>
+			<Header data-tauri-drag-region className="app-tauri-drag-region">
+				{currentPlatform !== "macos" && (
+					<Space>
+						<Button
+							type="text"
+							size="small"
+							icon={<MinusOutlined />}
+							onClick={() => {
+								appWindowRef.current?.minimize();
+							}}
+						/>
+						<Button
+							type="text"
+							size="small"
+							icon={<CloseOutlined />}
+							onClick={() => {
+								appWindowRef.current?.hide();
+								appWindowRef.current?.emit("on-hide-main-window");
+							}}
+						/>
+					</Space>
+				)}
 
-                {currentPlatform === 'macos' && (
-                    <div data-tauri-drag-region className="logo-text">
-                        <div data-tauri-drag-region className="logo-text-highlight">
-                            Snow
-                        </div>
-                        <div data-tauri-drag-region>Shot</div>
-                    </div>
-                )}
-            </Header>
-            <Content>
-                <div className="content-wrap">
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                    <div className="center">
-                        <PageNav tabItems={tabItems} actionRef={pageNavActionRef} />
-                        <RSC
-                            onScroll={(e) => {
-                                if ('scrollTop' in e && typeof e.scrollTop === 'number') {
-                                    pageNavActionRef.current?.updateActiveKey(e.scrollTop);
-                                }
-                            }}
-                        >
-                            <div ref={contentRef} className="content-container">
-                                {children}
-                            </div>
-                        </RSC>
-                    </div>
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                    <div data-tauri-drag-region className="app-tauri-drag-region"></div>
-                </div>
-            </Content>
+				{currentPlatform === "macos" && (
+					<div data-tauri-drag-region className="logo-text">
+						<div data-tauri-drag-region className="logo-text-highlight">
+							Snow
+						</div>
+						<div data-tauri-drag-region>Shot</div>
+					</div>
+				)}
+			</Header>
+			<Content>
+				<div className="content-wrap">
+					<div data-tauri-drag-region className="app-tauri-drag-region"></div>
+					<div data-tauri-drag-region className="app-tauri-drag-region"></div>
+					<div data-tauri-drag-region className="app-tauri-drag-region"></div>
+					<div data-tauri-drag-region className="app-tauri-drag-region"></div>
+					<div className="center">
+						<PageNav tabItems={tabItems} actionRef={pageNavActionRef} />
+						<RSC
+							onScroll={(e) => {
+								if ("scrollTop" in e && typeof e.scrollTop === "number") {
+									pageNavActionRef.current?.updateActiveKey(e.scrollTop);
+								}
+							}}
+						>
+							<div ref={contentRef} className="content-container">
+								{children}
+							</div>
+						</RSC>
+					</div>
+					<div data-tauri-drag-region className="app-tauri-drag-region"></div>
+					<div data-tauri-drag-region className="app-tauri-drag-region"></div>
+					<div data-tauri-drag-region className="app-tauri-drag-region"></div>
+					<div data-tauri-drag-region className="app-tauri-drag-region"></div>
+				</div>
+			</Content>
 
-            <style jsx>{`
+			<style jsx>{`
                 .content-wrap {
                     display: grid;
                     grid-template-columns: ${token.padding}px auto ${token.padding}px;
@@ -149,8 +152,8 @@ const MenuContentCore: React.FC<{
                     color: var(--snow-shot-purple-color);
                 }
             `}</style>
-        </Layout>
-    );
+		</Layout>
+	);
 };
 
 export const MenuContent = React.memo(MenuContentCore);

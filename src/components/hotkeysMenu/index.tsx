@@ -1,24 +1,28 @@
-import { Button, Dropdown } from 'antd';
-import { KeyboardIcon } from '../icons';
-import React from 'react';
+import { Button, Dropdown } from "antd";
+import type React from "react";
+import { KeyboardIcon } from "../icons";
 
 export const HotkeysMenu: React.FC<{
-    menu: React.ComponentProps<typeof Dropdown>['menu'];
-    className?: string;
+	menu: React.ComponentProps<typeof Dropdown>["menu"];
+	className?: string;
 }> = ({ menu, className }) => {
-    return (
-        <div className={`component-hotkeys-menu ${className}`}>
-            <Dropdown
-                menu={menu}
-                arrow={{
-                    pointAtCenter: true,
-                }}
-                placement="topRight"
-            >
-                <Button className="hotkeys-menu-button" icon={<KeyboardIcon />} shape="circle" />
-            </Dropdown>
+	return (
+		<div className={`component-hotkeys-menu ${className}`}>
+			<Dropdown
+				menu={menu}
+				arrow={{
+					pointAtCenter: true,
+				}}
+				placement="topRight"
+			>
+				<Button
+					className="hotkeys-menu-button"
+					icon={<KeyboardIcon />}
+					shape="circle"
+				/>
+			</Dropdown>
 
-            <style jsx>{`
+			<style jsx>{`
                 .component-hotkeys-menu {
                     display: inline-block;
                 }
@@ -31,6 +35,6 @@ export const HotkeysMenu: React.FC<{
                     opacity: 1;
                 }
             `}</style>
-        </div>
-    );
+		</div>
+	);
 };

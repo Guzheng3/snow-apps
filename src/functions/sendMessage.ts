@@ -1,5 +1,5 @@
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export const sendErrorMessage = (message: string) => {
-    getCurrentWindow().emit('main-window:send-error-message', message);
+	getCurrentWindow().emit("main-window:send-error-message", message);
 };

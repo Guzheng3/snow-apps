@@ -1,3 +1,3 @@
 export type EncodeImageData = {
-    encodeData: ArrayBuffer;
+	encodeData: ArrayBuffer;
 };

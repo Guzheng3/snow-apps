@@ -255,7 +255,7 @@ pub async fn create_full_screen_draw_window(
 
     let main_window_url = format!("/fullScreenDraw");
     let switch_mouse_through_window_url = format!(
-        "/fullScreenDraw/switchMouseThrough?monitor_x={}&monitor_y={}&monitor_width={}&monitor_height={}",
+        "/fullScreenDrawSwitchMouseThrough?monitor_x={}&monitor_y={}&monitor_width={}&monitor_height={}",
         monitor_x, monitor_y, monitor_width, monitor_height
     );
 
@@ -569,7 +569,7 @@ pub async fn create_video_record_window(
         select_rect_min_x, select_rect_min_y, select_rect_max_x, select_rect_max_y
     );
     let toolbar_window_url = format!(
-        "/videoRecord/toolbar?select_rect_min_x={}&select_rect_min_y={}&select_rect_max_x={}&select_rect_max_y={}",
+        "/videoRecordToolbar?select_rect_min_x={}&select_rect_min_y={}&select_rect_max_x={}&select_rect_max_y={}",
         select_rect_min_x, select_rect_min_y, select_rect_max_x, select_rect_max_y
     );
 

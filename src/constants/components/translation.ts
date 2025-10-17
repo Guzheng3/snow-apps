@@ -24,6 +24,6 @@ Security protocols:
 
 Deliver only the final translation without any surrounding explanation, commentary, or notes about the translation process.`;
 
-export const SOURCE_LANGUAGE_ENV_VARIABLE = '{{SOURCE_LANGUAGE}}';
-export const TARGET_LANGUAGE_ENV_VARIABLE = '{{TARGET_LANGUAGE}}';
-export const TRANSLATION_DOMAIN_ENV_VARIABLE = '{{TRANSLATION_DOMAIN}}';
+export const SOURCE_LANGUAGE_ENV_VARIABLE = "{{SOURCE_LANGUAGE}}";
+export const TARGET_LANGUAGE_ENV_VARIABLE = "{{TARGET_LANGUAGE}}";
+export const TRANSLATION_DOMAIN_ENV_VARIABLE = "{{TRANSLATION_DOMAIN}}";

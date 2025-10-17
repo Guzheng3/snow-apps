@@ -1,3 +1,3 @@
 export type CaptureState = {
-    capturing: boolean;
+	capturing: boolean;
 };

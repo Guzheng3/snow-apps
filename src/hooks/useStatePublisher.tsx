@@ -1,117 +1,135 @@
-'use client';
+import {
+	type Context,
+	createContext,
+	type RefObject,
+	useCallback,
+	useMemo,
+	useRef,
+} from "react";
 
-import { Context, createContext, RefObject, useCallback, useMemo, useRef } from 'react';
-
-export type StatePublisherListener<Value> = (value: Value, previousValue: Value) => void;
+export type StatePublisherListener<Value> = (
+	value: Value,
+	previousValue: Value,
+) => void;
 
 export type StatePublisherContext<Value> = {
-    stateRef: RefObject<Value>;
-    stateListenersRef: RefObject<Map<number, StatePublisherListener<Value>>>;
-    publish: (value: Value) => void;
-    subscribe: (callback: StatePublisherListener<Value>) => () => void;
-    reset: () => void;
+	stateRef: RefObject<Value>;
+	stateListenersRef: RefObject<Map<number, StatePublisherListener<Value>>>;
+	publish: (value: Value) => void;
+	subscribe: (callback: StatePublisherListener<Value>) => () => void;
+	reset: () => void;
 };
 
 export type StatePublisher<Value> = {
-    defaultValue: Value;
-    ignoreUndefined: boolean;
-    context: Context<StatePublisherContext<Value>>;
+	defaultValue: Value;
+	ignoreUndefined: boolean;
+	context: Context<StatePublisherContext<Value>>;
 };
 
 export function createPublisher<Value>(
-    defaultValue: Value,
-    ignoreUndefined = false,
+	defaultValue: Value,
+	ignoreUndefined = false,
 ): StatePublisher<Value> {
-    const context = createContext<StatePublisherContext<Value>>({
-        stateRef: { current: defaultValue },
-        stateListenersRef: { current: new Map() },
-        publish: () => {},
-        subscribe: () => () => {},
-        reset: () => {},
-    });
+	const context = createContext<StatePublisherContext<Value>>({
+		stateRef: { current: defaultValue },
+		stateListenersRef: { current: new Map() },
+		publish: () => {},
+		subscribe: () => () => {},
+		reset: () => {},
+	});
 
-    return { defaultValue, ignoreUndefined, context };
+	return { defaultValue, ignoreUndefined, context };
 }
 
 export function PublisherProvider<Value>({
-    children,
-    statePublisher,
+	children,
+	statePublisher,
 }: {
-    children: React.ReactNode;
-    statePublisher: StatePublisher<Value>;
+	children: React.ReactNode;
+	statePublisher: StatePublisher<Value>;
 }) {
-    const { defaultValue, ignoreUndefined, context: StatePublisherContext } = statePublisher;
-    const stateRef = useRef(defaultValue);
-    const stateListenersRef = useRef<Map<number, StatePublisherListener<Value>>>(new Map());
-    const listenerIdRef = useRef<number>(0);
+	const {
+		defaultValue,
+		ignoreUndefined,
+		context: StatePublisherContext,
+	} = statePublisher;
+	const stateRef = useRef(defaultValue);
+	const stateListenersRef = useRef<Map<number, StatePublisherListener<Value>>>(
+		new Map(),
+	);
+	const listenerIdRef = useRef<number>(0);
 
-    const publish = useCallback(
-        (value: Value) => {
-            const previousValue = stateRef.current;
-            stateRef.current = value;
+	const publish = useCallback(
+		(value: Value) => {
+			const previousValue = stateRef.current;
+			stateRef.current = value;
 
-            if (ignoreUndefined && value === undefined) {
-                return;
-            }
+			if (ignoreUndefined && value === undefined) {
+				return;
+			}
 
-            stateListenersRef.current.forEach((listener) => listener(value, previousValue));
-        },
-        [ignoreUndefined],
-    );
+			stateListenersRef.current.forEach((listener) => {
+				listener(value, previousValue);
 
-    const subscribe = useCallback((listener: StatePublisherListener<Value>) => {
-        const listenerId = listenerIdRef.current++;
-        stateListenersRef.current.set(listenerId, listener);
+				return;
+			});
+		},
+		[ignoreUndefined],
+	);
 
-        return () => {
-            stateListenersRef.current.delete(listenerId);
-        };
-    }, []);
+	const subscribe = useCallback((listener: StatePublisherListener<Value>) => {
+		const listenerId = listenerIdRef.current++;
+		stateListenersRef.current.set(listenerId, listener);
 
-    const reset = useCallback(() => {
-        publish(defaultValue);
-    }, [defaultValue, publish]);
+		return () => {
+			stateListenersRef.current.delete(listenerId);
+		};
+	}, []);
 
-    const publisherValue = useMemo(
-        () => ({
-            stateRef,
-            stateListenersRef,
-            publish,
-            subscribe,
-            reset,
-        }),
-        [stateRef, stateListenersRef, publish, subscribe, reset],
-    );
+	const reset = useCallback(() => {
+		publish(defaultValue);
+	}, [defaultValue, publish]);
 
-    return (
-        <StatePublisherContext.Provider value={publisherValue}>
-            {children}
-        </StatePublisherContext.Provider>
-    );
+	const publisherValue = useMemo(
+		() => ({
+			stateRef,
+			stateListenersRef,
+			publish,
+			subscribe,
+			reset,
+		}),
+		[publish, subscribe, reset],
+	);
+
+	return (
+		<StatePublisherContext.Provider value={publisherValue}>
+			{children}
+		</StatePublisherContext.Provider>
+	);
 }
 
 function createNestedProviders<Value>(
-    statePublishers: StatePublisher<Value>[],
-    children: React.ReactNode,
-    index: number,
+	statePublishers: StatePublisher<Value>[],
+	children: React.ReactNode,
+	index: number,
 ): React.ReactNode {
-    if (index >= statePublishers.length) {
-        return children;
-    }
+	if (index >= statePublishers.length) {
+		return children;
+	}
 
-    return (
-        <PublisherProvider statePublisher={statePublishers[index]}>
-            {createNestedProviders(statePublishers, children, index + 1)}
-        </PublisherProvider>
-    );
+	return (
+		<PublisherProvider statePublisher={statePublishers[index]}>
+			{createNestedProviders(statePublishers, children, index + 1)}
+		</PublisherProvider>
+	);
 }
 
 export function withStatePublisher<Props extends object>(
-    Component: React.ComponentType<Props>,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...statePublishers: StatePublisher<any>[]
+	Component: React.ComponentType<Props>,
+	// biome-ignore lint/suspicious/noExplicitAny: 动态类型
+	...statePublishers: StatePublisher<any>[]
 ) {
-    return function WithStatePublisher(props: Props) {
-        return createNestedProviders(statePublishers, <Component {...props} />, 0);
-    };
+	return function WithStatePublisher(props: Props) {
+		return createNestedProviders(statePublishers, <Component {...props} />, 0);
+	};
 }

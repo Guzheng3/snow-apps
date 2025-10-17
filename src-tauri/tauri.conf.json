@@ -6,8 +6,8 @@
     "identifier": "com.chao.snowshot",
     "build": {
         "removeUnusedCommands": true,
-        "frontendDist": "../out",
-        "devUrl": "http://localhost:8301",
+        "frontendDist": "../dist",
+        "devUrl": "http://localhost:8083",
         "beforeDevCommand": "pnpm dev",
         "beforeBuildCommand": "pnpm build"
     },

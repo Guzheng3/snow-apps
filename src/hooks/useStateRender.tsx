@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * 避免在 react 的每个渲染周期内多次设置 state 后超出 setState 的最大设置次数
@@ -6,44 +6,43 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * @param val
  * @returns
  */
-export function useStateRender<ValueType>(val: ValueType): [ValueType, (value: ValueType) => void] {
-    const valueRef = useRef(val);
-    const [value, _setValue] = useState(val);
+export function useStateRender<ValueType>(
+	val: ValueType,
+): [ValueType, (value: ValueType) => void] {
+	const valueRef = useRef(val);
+	const [value, _setValue] = useState(val);
 
-    const setValue = useCallback(
-        (value: ValueType) => {
-            valueRef.current = value;
-            _setValue(value);
-        },
-        [_setValue],
-    );
+	const setValue = useCallback((value: ValueType) => {
+		valueRef.current = value;
+		_setValue(value);
+	}, []);
 
-    const reactRenderedRef = useRef(true);
-    const renderedRef = useRef(true);
+	const reactRenderedRef = useRef(true);
+	const renderedRef = useRef(true);
 
-    useEffect(() => {
-        reactRenderedRef.current = false;
-    }, []);
+	useEffect(() => {
+		reactRenderedRef.current = false;
+	}, []);
 
-    useEffect(() => {
-        valueRef.current = value;
+	useEffect(() => {
+		valueRef.current = value;
 
-        if (!reactRenderedRef.current) {
-            return;
-        }
+		if (!reactRenderedRef.current) {
+			return;
+		}
 
-        reactRenderedRef.current = false;
+		reactRenderedRef.current = false;
 
-        if (!renderedRef.current) {
-            return;
-        }
+		if (!renderedRef.current) {
+			return;
+		}
 
-        renderedRef.current = false;
-        requestAnimationFrame(() => {
-            setValue(valueRef.current);
-            renderedRef.current = true;
-        });
-    }, [setValue, value]);
+		renderedRef.current = false;
+		requestAnimationFrame(() => {
+			setValue(valueRef.current);
+			renderedRef.current = true;
+		});
+	}, [setValue, value]);
 
-    return [value, setValue];
+	return [value, setValue];
 }
