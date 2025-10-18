@@ -441,6 +441,26 @@ const DrawPageCore: React.FC<{
 		}, 1000 * 16);
 	}, []);
 
+	// 防止快速截图的情况下延迟设置 setCaptureState 后覆盖正确的值
+	const setCaptureStateActionTimerRef = useRef<NodeJS.Timeout | undefined>(
+		undefined,
+	);
+	const setCaptureStateAction = useCallback(async (capturing: boolean) => {
+		if (setCaptureStateActionTimerRef.current) {
+			clearTimeout(setCaptureStateActionTimerRef.current);
+			setCaptureStateActionTimerRef.current = undefined;
+		}
+
+		if (capturing) {
+			setCaptureState(capturing);
+		} else {
+			setCaptureStateActionTimerRef.current = setTimeout(() => {
+				setCaptureState(capturing);
+				setCaptureStateActionTimerRef.current = undefined;
+			}, 256);
+		}
+	}, []);
+
 	const finishCapture = useCallback<DrawContextType["finishCapture"]>(
 		async (clearScrollScreenshot: boolean = true) => {
 			// 停止监听键盘
@@ -471,7 +491,7 @@ const DrawPageCore: React.FC<{
 			resetScreenshotType();
 			drawToolbarActionRef.current?.setEnable(false);
 			capturingRef.current = false;
-			setCaptureState(false);
+			setCaptureStateAction(false);
 			history.clear();
 
 			// 等待 1 帧，确保截图窗口内的元素均隐藏完成
@@ -487,6 +507,7 @@ const DrawPageCore: React.FC<{
 			resetDrawState,
 			resetScreenshotType,
 			setCaptureEvent,
+			setCaptureStateAction,
 		],
 	);
 
@@ -596,7 +617,7 @@ const DrawPageCore: React.FC<{
 			params: { windowId?: string; captureHistoryId?: string },
 		) => {
 			capturingRef.current = true;
-			setCaptureState(true);
+			setCaptureStateAction(true);
 			drawToolbarActionRef.current?.setEnable(false);
 
 			setExcludeFromCapture(true);
@@ -681,6 +702,7 @@ const DrawPageCore: React.FC<{
 			intl,
 			finishCapture,
 			readyCapture,
+			setCaptureStateAction,
 		],
 	);
 
@@ -924,7 +946,7 @@ const DrawPageCore: React.FC<{
 		}
 
 		capturingRef.current = false;
-		setCaptureState(false);
+		setCaptureStateAction(false);
 
 		const fixedContentAction = getFixedContentAction();
 
@@ -978,6 +1000,7 @@ const DrawPageCore: React.FC<{
 		getFixedContentAction,
 		saveCaptureHistory,
 		setCaptureStep,
+		setCaptureStateAction,
 	]);
 
 	const onTopWindow = useCallback(async () => {
