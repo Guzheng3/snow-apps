@@ -94,6 +94,7 @@ pub fn run() {
         vec![Target::new(TargetKind::LogDir { file_name: None })]
     };
 
+    #[allow(unused_mut)]
     let mut app_builder = tauri::Builder::default()
         .plugin(
             tauri_plugin_window_state::Builder::new()
