@@ -22,9 +22,12 @@ declare global {
 				) => void;
 				removeEventListener: (
 					event: string,
-					callback: (e: { getBuffer: () => ArrayBuffer }) => void,
+					callback: (e: {
+						getBuffer: () => SharedBuffer;
+						additionalData?: Record<string, unknown>;
+					}) => void,
 				) => void;
-				releaseBuffer: (buffer: ArrayBuffer) => void;
+				releaseBuffer: (buffer: SharedBuffer) => void;
 			};
 		};
 	}

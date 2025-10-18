@@ -438,8 +438,6 @@ export type AppSettingsData = {
 		/** OCR 模型写入内存 */
 		ocrModelWriteToMemory: boolean;
 		ocrDetectAngle: boolean;
-		/** 启用浏览器剪贴板 */
-		enableBrowserClipboard: boolean;
 		/** 尝试使用 Bitmap 格式写入到剪贴板 */
 		tryWriteBitmapImageToClipboard: boolean;
 		/** 启用多显示器截图 */

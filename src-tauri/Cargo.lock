@@ -6670,6 +6670,7 @@ dependencies = [
  "scap",
  "serde",
  "snow-shot-app-shared",
+ "snow-shot-webview",
  "tauri",
  "tokio",
  "webview2-com",
@@ -6725,7 +6726,9 @@ dependencies = [
  "snow-shot-app-services",
  "snow-shot-app-shared",
  "snow-shot-app-utils",
+ "snow-shot-webview",
  "tauri",
+ "tauri-plugin-clipboard-manager",
  "tokio",
  "windows 0.61.3",
 ]
@@ -6806,6 +6809,7 @@ dependencies = [
 name = "snow-shot-webview"
 version = "0.1.0"
 dependencies = [
+ "dashmap",
  "log",
  "tauri",
  "tokio",

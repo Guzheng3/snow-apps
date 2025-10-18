@@ -1108,7 +1108,7 @@ const DrawPageCore: React.FC<{
 
 			const selectRectParams =
 				selectLayerActionRef.current.getSelectRectParams();
-			const imageCanvas = await getCanvas(
+			const imageCanvas: HTMLCanvasElement | undefined = await getCanvas(
 				selectRectParams,
 				drawLayerActionRef.current,
 				drawCacheLayerActionRef.current,
@@ -1118,33 +1118,17 @@ const DrawPageCore: React.FC<{
 				return;
 			}
 
-			const imageData = await new Promise<ArrayBuffer | undefined>(
-				(resolve) => {
-					imageCanvas.toBlob(
-						async (blob) => {
-							resolve(await blob?.arrayBuffer());
-						},
-						"image/png",
-						1,
-					);
-				},
-			);
-
 			if (
 				getAppSettings()[AppSettingsGroup.SystemScreenshot]
 					.historySaveEditResult
 			) {
-				saveCaptureHistory(imageData, CaptureHistorySource.Copy);
-			}
-
-			if (!imageData) {
-				return;
+				saveCaptureHistory(imageCanvas, CaptureHistorySource.Copy);
 			}
 
 			await Promise.all([
 				enableCopyImageFileToClipboard
 					? Promise.resolve()
-					: copyToClipboard(imageData, getAppSettings(), selectRectParams),
+					: copyToClipboard(imageCanvas, getAppSettings(), selectRectParams),
 				(async () => {
 					await new Promise((resolve) => {
 						setTimeout(resolve, 0);

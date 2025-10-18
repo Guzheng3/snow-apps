@@ -1,7 +1,9 @@
-import { getPlatform } from "./platform";
+import { supportWebViewSharedBuffer } from "./environment";
 
-export const getWebViewSharedBuffer = (): Promise<ArrayBuffer | undefined> => {
-	if (getPlatform() !== "windows" || !("chrome" in window)) {
+export const getWebViewSharedBuffer = (
+	channelId?: string,
+): Promise<ArrayBuffer | undefined> => {
+	if (!supportWebViewSharedBuffer()) {
 		return Promise.resolve(undefined);
 	}
 
@@ -9,7 +11,12 @@ export const getWebViewSharedBuffer = (): Promise<ArrayBuffer | undefined> => {
 	return new Promise((resolve) => {
 		const handleSharedBufferReceived = (e: {
 			getBuffer: () => ArrayBuffer;
+			additionalData?: Record<string, unknown>;
 		}) => {
+			if (channelId && e.additionalData?.id !== channelId) {
+				return;
+			}
+
 			clearTimeout(timeout);
 
 			const buffer = e.getBuffer();
@@ -37,7 +44,7 @@ export const getWebViewSharedBuffer = (): Promise<ArrayBuffer | undefined> => {
 };
 
 export const releaseWebViewSharedBuffer = (buffer: ArrayBuffer) => {
-	if (getPlatform() !== "windows" || !("chrome" in window)) {
+	if (!supportWebViewSharedBuffer()) {
 		return;
 	}
 	window.chrome.webview.releaseBuffer(buffer);

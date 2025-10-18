@@ -840,6 +840,18 @@ pub async fn write_bitmap_image_to_clipboard(
     snow_shot_app_utils::write_bitmap_image_to_clipboard(image_data).await
 }
 
+#[cfg(target_os = "windows")]
+pub async fn write_bitmap_image_to_clipboard_with_shared_buffer(
+    shared_buffer_service: tauri::State<'_, Arc<snow_shot_webview::SharedBufferService>>,
+    channel_id: String,
+) -> Result<(), String> {
+    snow_shot_app_utils::write_bitmap_image_to_clipboard_with_shared_buffer(
+        shared_buffer_service,
+        channel_id,
+    )
+    .await
+}
+
 /// 保留目录中指定的文件，删除其他所有文件
 pub async fn retain_dir_files(dir_path: PathBuf, file_names: Vec<String>) -> Result<(), String> {
     // 检查目录是否存在和是否是目录
@@ -981,5 +993,48 @@ pub async fn set_exclude_from_capture(
         }
 
         Ok(())
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub async fn write_image_pixels_to_clipboard_with_shared_buffer(
+    app: tauri::AppHandle,
+    shared_buffer_service: tauri::State<'_, Arc<snow_shot_webview::SharedBufferService>>,
+    channel_id: String,
+) -> Result<(), String> {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+
+    let image_data = match shared_buffer_service.receive_data(channel_id) {
+        Ok(image_data) => image_data,
+        Err(e) => {
+            return Err(format!(
+                "[write_image_pixels_to_clipboard_with_shared_buffer] Failed to receive image data: {}",
+                e
+            ));
+        }
+    };
+
+    // 最后 8 个字节是 image_width 和 image_height
+    let image_width = u32::from_le_bytes(
+        image_data[image_data.len() - 8..image_data.len() - 4]
+            .try_into()
+            .unwrap(),
+    );
+    let image_height = u32::from_le_bytes(
+        image_data[image_data.len() - 4..image_data.len()]
+            .try_into()
+            .unwrap(),
+    );
+
+    match app.clipboard().write_image(&tauri::image::Image::new(
+        &image_data[..image_data.len() - 8],
+        image_width,
+        image_height,
+    )) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!(
+            "[write_image_pixels_to_clipboard_with_shared_buffer] Failed to write image to clipboard: {}",
+            e
+        )),
     }
 }

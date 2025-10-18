@@ -53,6 +53,8 @@ pub fn run() {
         Mutex::new(scroll_screenshot_image_service::ScrollScreenshotImageService::new());
     let scroll_screenshot_capture_service =
         Mutex::new(scroll_screenshot_capture_service::ScrollScreenshotCaptureService::new());
+    #[cfg(target_os = "windows")]
+    let shared_buffer_service = Arc::new(snow_shot_webview::SharedBufferService::new());
 
     let free_drag_window_service =
         Mutex::new(free_drag_window_service::FreeDragWindowService::new());
@@ -92,7 +94,7 @@ pub fn run() {
         vec![Target::new(TargetKind::LogDir { file_name: None })]
     };
 
-    tauri::Builder::default()
+    let mut app_builder = tauri::Builder::default()
         .plugin(
             tauri_plugin_window_state::Builder::new()
                 .with_state_flags(
@@ -255,6 +257,8 @@ pub fn run() {
             core::auto_start_disable,
             core::restart_with_admin,
             core::write_bitmap_image_to_clipboard,
+            #[cfg(target_os = "windows")]
+            core::write_bitmap_image_to_clipboard_with_shared_buffer,
             core::retain_dir_files,
             core::is_admin,
             core::set_run_log,
@@ -290,6 +294,10 @@ pub fn run() {
             plugin::plugin_uninstall_plugin,
             webview::create_webview_shared_buffer,
             webview::set_support_webview_shared_buffer,
+            #[cfg(target_os = "windows")]
+            webview::create_webview_shared_buffer_channel,
+            #[cfg(target_os = "windows")]
+            core::write_image_pixels_to_clipboard_with_shared_buffer,
             http_services::upload_to_s3,
             hot_load_page::hot_load_page_init,
             hot_load_page::hot_load_page_add_page,
@@ -320,7 +328,14 @@ pub fn run() {
                     }
                 }
             }
-        })
+        });
+
+    #[cfg(target_os = "windows")]
+    {
+        app_builder = app_builder.manage(shared_buffer_service);
+    }
+
+    app_builder
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

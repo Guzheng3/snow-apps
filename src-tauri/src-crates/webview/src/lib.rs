@@ -6,6 +6,9 @@ mod macos;
 #[path = "windows/mod.rs"]
 mod windows;
 
+#[cfg(target_os = "windows")]
+pub use windows::SharedBufferService;
+
 pub async fn create_shared_buffer(
     #[allow(unused_variables)] webview: tauri::Webview,
     #[allow(unused_variables)] data: &[u8],

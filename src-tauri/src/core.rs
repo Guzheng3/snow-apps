@@ -347,6 +347,19 @@ pub async fn write_bitmap_image_to_clipboard(
     snow_shot_tauri_commands_core::write_bitmap_image_to_clipboard(request).await
 }
 
+#[cfg(target_os = "windows")]
+#[command]
+pub async fn write_bitmap_image_to_clipboard_with_shared_buffer(
+    shared_buffer_service: tauri::State<'_, Arc<snow_shot_webview::SharedBufferService>>,
+    channel_id: String,
+) -> Result<(), String> {
+    snow_shot_app_utils::write_bitmap_image_to_clipboard_with_shared_buffer(
+        shared_buffer_service,
+        channel_id,
+    )
+    .await
+}
+
 #[command]
 pub async fn retain_dir_files(dir_path: PathBuf, file_names: Vec<String>) -> Result<(), String> {
     snow_shot_tauri_commands_core::retain_dir_files(dir_path, file_names).await
@@ -370,4 +383,19 @@ pub async fn set_run_log(
 #[command]
 pub async fn set_exclude_from_capture(window: tauri::Window, enable: bool) -> Result<(), String> {
     snow_shot_tauri_commands_core::set_exclude_from_capture(window, enable).await
+}
+
+#[cfg(target_os = "windows")]
+#[command]
+pub async fn write_image_pixels_to_clipboard_with_shared_buffer(
+    app: tauri::AppHandle,
+    shared_buffer_service: tauri::State<'_, Arc<snow_shot_webview::SharedBufferService>>,
+    channel_id: String,
+) -> Result<(), String> {
+    snow_shot_tauri_commands_core::write_image_pixels_to_clipboard_with_shared_buffer(
+        app,
+        shared_buffer_service,
+        channel_id,
+    )
+    .await
 }

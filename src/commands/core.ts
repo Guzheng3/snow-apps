@@ -198,6 +198,16 @@ export const writeBitmapImageToClipboard = async (image: ArrayBuffer) => {
 	return result;
 };
 
+export const writeBitmapImageToClipboardWithSharedBuffer = async (
+	channelId: string,
+) => {
+	const result = await invoke<void>(
+		"write_bitmap_image_to_clipboard_with_shared_buffer",
+		{ channelId },
+	);
+	return result;
+};
+
 export const retainDirFiles = async (dirPath: string, fileNames: string[]) => {
 	const result = await invoke<void>("retain_dir_files", {
 		dirPath,
@@ -215,5 +225,15 @@ export const setRunLog = async (enable: boolean) => {
 	const result = await invoke<void>("set_run_log", {
 		enable,
 	});
+	return result;
+};
+
+export const writeImagePixelsToClipboardWithSharedBuffer = async (
+	channelId: string,
+) => {
+	const result = await invoke<void>(
+		"write_image_pixels_to_clipboard_with_shared_buffer",
+		{ channelId },
+	);
 	return result;
 };

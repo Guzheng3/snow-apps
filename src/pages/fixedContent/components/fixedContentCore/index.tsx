@@ -46,6 +46,7 @@ import { useStateRef } from "@/hooks/useStateRef";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import { useTempInfo } from "@/hooks/useTempInfo";
 import { useTextScaleFactor } from "@/hooks/useTextScaleFactor";
+import { copyToClipboard as copyToClipboardDrawAction } from "@/pages/draw/actions";
 import type { SelectRectParams } from "@/pages/draw/components/selectLayer";
 import type { CaptureBoundingBoxInfo } from "@/pages/draw/extra";
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
@@ -222,7 +223,6 @@ export const FixedContentCore: React.FC<{
 		scaleFactor: 1,
 		ignoreTextScaleFactor: false,
 	});
-	const blobRef = useRef<Blob | undefined>(undefined);
 	const canvasElementContainerRef = useRef<HTMLDivElement>(null);
 	const [canvasElement, setCanvasElement, canvasElementRef] = useStateRef<
 		HTMLCanvasElement | undefined
@@ -463,11 +463,15 @@ export const FixedContentCore: React.FC<{
 
 	const copyRawToClipboard = useCallback(async () => {
 		if (fixedContentTypeRef.current === FixedContentType.DrawCanvas) {
-			if (!blobRef.current) {
+			if (!canvasElementRef.current) {
 				return;
 			}
 
-			await writeImageToClipboard(blobRef.current);
+			await copyToClipboardDrawAction(
+				canvasElementRef.current,
+				undefined,
+				undefined,
+			);
 		} else if (
 			fixedContentTypeRef.current === FixedContentType.Html &&
 			originHtmlContentRef.current
@@ -486,7 +490,7 @@ export const FixedContentCore: React.FC<{
 
 			await clipboard.writeImage(await canvasBlob.arrayBuffer());
 		}
-	}, [fixedContentTypeRef, textContentRef, renderToBlob]);
+	}, [fixedContentTypeRef, textContentRef, renderToBlob, canvasElementRef]);
 
 	const { isReady, isReadyStatus } = usePluginServiceContext();
 	const initDraw = useCallback(
@@ -839,13 +843,13 @@ export const FixedContentCore: React.FC<{
 	);
 
 	const copyToClipboard = useCallback(async () => {
-		const canvasBlob = await renderToBlob();
-		if (!canvasBlob) {
+		const canvasElement = await renderToCanvas();
+		if (!canvasElement) {
 			return;
 		}
 
-		await writeImageToClipboard(canvasBlob);
-	}, [renderToBlob]);
+		await copyToClipboardDrawAction(canvasElement, undefined, undefined);
+	}, [renderToCanvas]);
 
 	const saveToFile = useCallback(async () => {
 		const filePath = await dialog.save({

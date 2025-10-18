@@ -606,42 +606,19 @@ pub fn overlay_image(
     );
 }
 
-pub async fn write_bitmap_image_to_clipboard(
-    #[allow(unused_variables)] image_data: &Vec<u8>,
+#[cfg(target_os = "windows")]
+pub async fn write_bitmap_image_to_clipboard_core(
+    rgba_image: &[u8],
+    image_width: usize,
+    image_height: usize,
 ) -> Result<(), String> {
-    #[cfg(not(target_os = "windows"))]
-    {
-        return Err(String::from(
-            "[write_bitmap_image_to_clipboard] Not supported on this platform",
-        ));
-    }
-
     // 如果是 Windows 系统则尝试使用 DIB 格式写入到剪贴板
     // Windows 下使用 DIB 格式写入到剪贴板，比 BMP 文件格式更标准
     #[cfg(target_os = "windows")]
     {
         use clipboard_win::{Setter, formats, types::BITMAPINFOHEADER};
-        use image::ImageDecoder;
         use rayon::prelude::*;
         use std::mem;
-
-        let decoder = match image::codecs::png::PngDecoder::new(std::io::Cursor::new(image_data)) {
-            Ok(decoder) => decoder,
-            Err(_) => {
-                return Err(String::from(
-                    "[write_bitmap_image_to_clipboard] Failed to create PNG decoder",
-                ));
-            }
-        };
-        let (image_width, image_height) = decoder.dimensions();
-        let image_width = image_width as usize;
-        let image_height = image_height as usize;
-        let image_total_bytes = decoder.total_bytes() as usize;
-        let mut rgba_image = Vec::with_capacity(image_total_bytes);
-        unsafe {
-            rgba_image.set_len(image_total_bytes);
-        }
-        decoder.read_image(&mut rgba_image).unwrap();
 
         // 计算 DIB 数据大小：BITMAPINFOHEADER + 像素数据
         let header_size = mem::size_of::<BITMAPINFOHEADER>();
@@ -721,6 +698,84 @@ pub async fn write_bitmap_image_to_clipboard(
 
         Ok(())
     }
+}
+
+pub async fn write_bitmap_image_to_clipboard(
+    #[allow(unused_variables)] image_data: &Vec<u8>,
+) -> Result<(), String> {
+    #[cfg(not(target_os = "windows"))]
+    {
+        return Err(String::from(
+            "[write_bitmap_image_to_clipboard] Not supported on this platform",
+        ));
+    }
+
+    // 如果是 Windows 系统则尝试使用 DIB 格式写入到剪贴板
+    // Windows 下使用 DIB 格式写入到剪贴板，比 BMP 文件格式更标准
+    #[cfg(target_os = "windows")]
+    {
+        use image::ImageDecoder;
+
+        let decoder = match image::codecs::png::PngDecoder::new(std::io::Cursor::new(image_data)) {
+            Ok(decoder) => decoder,
+            Err(_) => {
+                return Err(String::from(
+                    "[write_bitmap_image_to_clipboard] Failed to create PNG decoder",
+                ));
+            }
+        };
+        let (image_width, image_height) = decoder.dimensions();
+        let image_width = image_width as usize;
+        let image_height = image_height as usize;
+        let image_total_bytes = decoder.total_bytes() as usize;
+        let mut rgba_image = Vec::with_capacity(image_total_bytes);
+        unsafe {
+            rgba_image.set_len(image_total_bytes);
+        }
+        decoder.read_image(&mut rgba_image).unwrap();
+
+        write_bitmap_image_to_clipboard_core(rgba_image.as_ref(), image_width, image_height)
+            .await?;
+
+        Ok(())
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub async fn write_bitmap_image_to_clipboard_with_shared_buffer(
+    shared_buffer_service: tauri::State<'_, std::sync::Arc<snow_shot_webview::SharedBufferService>>,
+    channel_id: String,
+) -> Result<(), String> {
+    let image_data = match shared_buffer_service.receive_data(channel_id) {
+        Ok(image_data) => image_data,
+        Err(e) => {
+            return Err(format!(
+                "[write_bitmap_image_to_clipboard_with_shared_buffer] Failed to receive image data: {}",
+                e
+            ));
+        }
+    };
+
+    // 最后 8 个字节是 image_width 和 image_height
+    let image_width = u32::from_le_bytes(
+        image_data[image_data.len() - 8..image_data.len() - 4]
+            .try_into()
+            .unwrap(),
+    );
+    let image_height = u32::from_le_bytes(
+        image_data[image_data.len() - 4..image_data.len()]
+            .try_into()
+            .unwrap(),
+    );
+
+    write_bitmap_image_to_clipboard_core(
+        &image_data[..image_data.len() - 8],
+        image_width as usize,
+        image_height as usize,
+    )
+    .await?;
+
+    Ok(())
 }
 
 pub fn get_request_header(

@@ -21,3 +21,22 @@ pub async fn set_support_webview_shared_buffer(
 
     Ok(())
 }
+
+#[cfg(target_os = "windows")]
+#[command]
+pub async fn create_webview_shared_buffer_channel(
+    support_webview_shared_buffer: tauri::State<'_, Mutex<bool>>,
+    shared_buffer_service: tauri::State<'_, std::sync::Arc<snow_shot_webview::SharedBufferService>>,
+    webview: tauri::Webview,
+    channel_id: String,
+    data_size: usize,
+) -> Result<bool, String> {
+    if !*support_webview_shared_buffer.lock().await {
+        return Ok(false);
+    }
+
+    match shared_buffer_service.create_channel(channel_id, webview, data_size) {
+        Ok(_) => Ok(true),
+        Err(e) => Err(e),
+    }
+}

@@ -63,6 +63,7 @@ tokio-util = "0.7.16"
 futures-util = "0.3"
 windows = "0.61"
 base64 = "^0.22"
+tauri-plugin-clipboard-manager = "^2"
 
 # 项目内依赖
 snow-shot-app-services = { path = "src-crates/app-services" }
@@ -79,6 +80,7 @@ snow-shot-tauri-commands-http-service = { path = "src-crates/tauri-commands/http
 snow-shot-plugin-service = { path = "src-crates/plugin-service" }
 snow-shot-webview = { path = "src-crates/webview" }
 snow-shot-http-services = { path = "src-crates/http-services" }
+
 
 [dependencies]
 snow-shot-app-shared = { workspace = true }
@@ -114,7 +116,7 @@ tauri-plugin-fs = "^2"
 tauri-plugin-dialog = "^2"
 tauri-plugin-http = "^2"
 tauri-plugin-store = "^2"
-tauri-plugin-clipboard-manager = "^2"
+tauri-plugin-clipboard-manager = { workspace = true }
 tauri-plugin-opener = "^2"
 tauri-plugin-clipboard = "^2"
 tauri-plugin-process = "^2"

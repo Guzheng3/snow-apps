@@ -1153,11 +1153,6 @@ const AppSettingsContextProviderCore: React.FC<{
 							? newSettings.correctColorFilter
 							: (prevSettings?.correctColorFilter ??
 								defaultAppSettingsData[group].correctColorFilter),
-					enableBrowserClipboard:
-						typeof newSettings?.enableBrowserClipboard === "boolean"
-							? newSettings.enableBrowserClipboard
-							: (prevSettings?.enableBrowserClipboard ??
-								defaultAppSettingsData[group].enableBrowserClipboard),
 					tryWriteBitmapImageToClipboard:
 						typeof newSettings?.tryWriteBitmapImageToClipboard === "boolean"
 							? newSettings.tryWriteBitmapImageToClipboard

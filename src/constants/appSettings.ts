@@ -201,7 +201,6 @@ export const defaultAppSettingsData: AppSettingsData = {
 		historyValidDuration: HistoryValidDuration.Week,
 		recordCaptureHistory: true,
 		historySaveEditResult: true,
-		enableBrowserClipboard: true,
 		/** 尝试使用 Bitmap 格式写入到剪贴板 */
 		tryWriteBitmapImageToClipboard: true,
 		/** 启用多显示器截图 */

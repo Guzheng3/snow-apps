@@ -24,3 +24,5 @@ objc2-app-kit = { workspace = true }
 
 [target.'cfg(any(target_os = "windows"))'.dependencies]
 windows = { workspace = true, features = ["Win32_UI"] }
+snow-shot-webview = { workspace = true }
+tauri-plugin-clipboard-manager = { workspace = true }

@@ -1,13 +1,20 @@
 import type { Window as AppWindow } from "@tauri-apps/api/window";
 import { createDrawWindow, saveFile } from "@/commands";
-import { writeBitmapImageToClipboard } from "@/commands/core";
+import {
+	writeBitmapImageToClipboard,
+	writeBitmapImageToClipboardWithSharedBuffer,
+	writeImagePixelsToClipboardWithSharedBuffer,
+} from "@/commands/core";
 import { setExcludeFromCapture } from "@/commands/videoRecord";
+import { createWebViewSharedBufferChannel } from "@/commands/webview";
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 import { ImageFormat, type ImagePath } from "@/types/utils/file";
 import { writeImageToClipboard } from "@/utils/clipboard";
 import { showImageDialog } from "@/utils/file";
-import { appError, appWarn } from "@/utils/log";
+import { appError, appInfo } from "@/utils/log";
 import { getPlatform } from "@/utils/platform";
+import { randomString } from "@/utils/random";
+import { getWebViewSharedBuffer } from "@/utils/webview";
 import { setWindowRect } from "@/utils/window";
 import type { FixedContentActionType } from "../fixedContent/components/fixedContentCore";
 import type { AppOcrResult } from "../fixedContent/components/ocrResult";
@@ -274,59 +281,160 @@ export const fixedToScreen = async (
 	layerContainerElement.style.opacity = "1";
 };
 
+const copyBitmapImageToClipboardWithSharedBuffer = async (
+	imageCanvas: HTMLCanvasElement,
+	type: "bitmap" | "image",
+): Promise<boolean> => {
+	const sharedBufferChannelId = `copyToClipboard:${Date.now()}:${randomString(8)}`;
+	const getWebViewSharedBufferPromise = getWebViewSharedBuffer(
+		sharedBufferChannelId,
+	);
+
+	const createResult = await createWebViewSharedBufferChannel(
+		sharedBufferChannelId,
+		imageCanvas.width * imageCanvas.height * 4 + 8, // 后 8 个字节写入宽高
+	);
+	if (!createResult) {
+		return false;
+	}
+
+	const imageDataArray = imageCanvas
+		.getContext("2d")
+		?.getImageData(0, 0, imageCanvas.width, imageCanvas.height);
+	if (!imageDataArray) {
+		appError(
+			"[copyBitmapImageToClipboardWithSharedBuffer] imageDataArray is undefined",
+		);
+		return false;
+	}
+
+	const reciveData = (await getWebViewSharedBufferPromise) as unknown as
+		| SharedArrayBuffer
+		| undefined;
+	if (!reciveData) {
+		appError(
+			"[copyBitmapImageToClipboardWithSharedBuffer] reciveData is undefined",
+		);
+		return false;
+	}
+
+	// 将 ImageData 写入 SharedArrayBuffer
+	const sharedArray = new Uint8ClampedArray(reciveData);
+	sharedArray.set(imageDataArray.data);
+
+	// 将宽高以 u32 字节形式写入最后 8 个字节（使用 Uint32Array 更高效）
+	const u32Array = new Uint32Array(reciveData, imageDataArray.data.length, 2);
+	u32Array[0] = imageCanvas.width;
+	u32Array[1] = imageCanvas.height;
+
+	if (type === "bitmap") {
+		await writeBitmapImageToClipboardWithSharedBuffer(sharedBufferChannelId);
+	} else {
+		await writeImagePixelsToClipboardWithSharedBuffer(sharedBufferChannelId);
+	}
+
+	return true;
+};
+
+const convertImageDataToArrayBuffer = async (
+	imageData: Blob | ArrayBuffer | HTMLCanvasElement,
+): Promise<ArrayBuffer | undefined> => {
+	let imageDataArrayBuffer: ArrayBuffer | undefined;
+	if (imageData instanceof Blob) {
+		imageDataArrayBuffer = await imageData.arrayBuffer();
+	} else if (imageData instanceof ArrayBuffer) {
+		imageDataArrayBuffer = imageData;
+	} else if (imageData instanceof HTMLCanvasElement) {
+		const blobArrayBuffer = await new Promise<ArrayBuffer | undefined>(
+			(resolve) => {
+				imageData.toBlob(
+					async (blob) => {
+						if (!blob) {
+							resolve(undefined);
+							return;
+						}
+
+						resolve(await blob.arrayBuffer());
+					},
+					"image/png",
+					1,
+				);
+			},
+		);
+
+		if (!blobArrayBuffer) {
+			appError("[copyToClipboard] blobArrayBuffer is undefined");
+			return;
+		}
+
+		imageDataArrayBuffer = blobArrayBuffer;
+	}
+
+	return imageDataArrayBuffer;
+};
+
 export const copyToClipboard = async (
-	imageData: Blob | ArrayBuffer,
-	appSettings: AppSettingsData,
+	imageData: Blob | ArrayBuffer | HTMLCanvasElement,
+	appSettings: AppSettingsData | undefined,
 	selectRectParams: SelectRectParams | undefined,
 ) => {
 	let imageDataArrayBuffer: ArrayBuffer | undefined;
 	if (
 		getPlatform() === "windows" &&
-		appSettings[AppSettingsGroup.SystemScreenshot]
+		appSettings?.[AppSettingsGroup.SystemScreenshot]
 			.tryWriteBitmapImageToClipboard &&
 		selectRectParams &&
 		selectRectParams.shadowWidth === 0 &&
 		selectRectParams.radius === 0
 	) {
 		try {
-			imageDataArrayBuffer =
-				imageData instanceof Blob ? await imageData.arrayBuffer() : imageData;
-			await writeBitmapImageToClipboard(imageDataArrayBuffer);
-
-			// 写入成功后直接返回
-			return;
-		} catch {
-			appWarn("[copyToClipboard] writeBitmapImageToClipboard error");
-		}
-	}
-
-	// 尝试使用浏览器剪贴板写入，浏览器写入更快
-	let browserClipboardWriteSuccess = false;
-	try {
-		if (appSettings[AppSettingsGroup.SystemScreenshot].enableBrowserClipboard) {
-			if (
-				"clipboard" in navigator &&
-				"write" in navigator.clipboard &&
-				getPlatform() !== "macos"
-			) {
-				if (window.isSecureContext && window.document.hasFocus()) {
-					await navigator.clipboard.write([
-						new ClipboardItem({
-							"image/png":
-								imageData instanceof Blob ? imageData : new Blob([imageData]),
-						}),
-					]);
-					browserClipboardWriteSuccess = true;
+			if (imageData instanceof HTMLCanvasElement) {
+				if (
+					await copyBitmapImageToClipboardWithSharedBuffer(imageData, "bitmap")
+				) {
+					return;
 				}
 			}
+
+			imageDataArrayBuffer = await convertImageDataToArrayBuffer(imageData);
+			if (!imageDataArrayBuffer) {
+				appError(
+					"[copyToClipboard] imageDataArrayBuffer is undefined(writeBitmapImageToClipboard)",
+				);
+				return;
+			}
+
+			await writeBitmapImageToClipboard(imageDataArrayBuffer);
+
+			return;
+		} catch (error) {
+			appError("[copyToClipboard] writeBitmapImageToClipboard error", error);
 		}
-	} catch {
-		browserClipboardWriteSuccess = false;
+	} else {
+		if (imageData instanceof HTMLCanvasElement) {
+			if (
+				await copyBitmapImageToClipboardWithSharedBuffer(imageData, "image")
+			) {
+				appInfo(
+					"[copyToClipboard] copyImagePixelsToClipboardWithSharedBuffer success",
+				);
+				return;
+			}
+		}
 	}
 
-	if (!browserClipboardWriteSuccess) {
-		await writeImageToClipboard(imageDataArrayBuffer ?? imageData);
+	if (!imageDataArrayBuffer) {
+		imageDataArrayBuffer = await convertImageDataToArrayBuffer(imageData);
 	}
+
+	if (!imageDataArrayBuffer) {
+		appError(
+			"[copyToClipboard] imageDataArrayBuffer is undefined(writeImageToClipboard)",
+		);
+		return;
+	}
+
+	await writeImageToClipboard(imageDataArrayBuffer);
 };
 
 export const handleOcrDetect = async (

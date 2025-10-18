@@ -1,5 +1,6 @@
 import { isAdmin } from "@/commands/core";
 import { getAppConfigBaseDir, getAppConfigDir } from "@/commands/file";
+import { getPlatform } from "./platform";
 
 let isAdminResultCache: boolean | undefined;
 export const isAdminWithCache = async () => {
@@ -59,4 +60,17 @@ export function listenDevicePixelRatio(callback: (ratio: number) => void) {
 	return function stopListen() {
 		media.removeEventListener("change", handleChange);
 	};
+}
+
+export function supportWebViewSharedBuffer() {
+	if (
+		getPlatform() !== "windows" ||
+		!("chrome" in window) ||
+		!("webview" in window.chrome) ||
+		!("addEventListener" in window.chrome.webview)
+	) {
+		return false;
+	}
+
+	return true;
 }
