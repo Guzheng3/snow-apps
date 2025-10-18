@@ -159,9 +159,9 @@ export const settings = {
 	"settings.functionSettings.screenshotSettings.autoOcrAfterFixed":
 		"固定屏幕后自动 OCR",
 	"settings.functionSettings.screenshotSettings.shortcutCanleTip":
-		"取消截图弹窗提示",
+		"“取消截图”的弹窗提示",
 	"settings.functionSettings.screenshotSettings.shortcutCanleTip.tip":
-		"通过快捷键取消截图时，是否弹窗提示",
+		"通过快捷键“取消截图”时，是否弹窗提示",
 	"settings.functionSettings.screenshotSettings.lockDrawTool": "锁定绘制工具",
 	"settings.functionSettings.screenshotSettings.ocrAfterAction":
 		"OCR 后自动执行",

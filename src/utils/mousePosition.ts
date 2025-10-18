@@ -65,8 +65,8 @@ export class MousePosition {
 			}
 		} else if (lockDragAspectRatio > 0) {
 			// 按指定宽高比锁定（aspectRatio = height / width）
-			const deltaX = other.mouseX - this.mouseX;
-			const deltaY = other.mouseY - this.mouseY;
+			const deltaX = Math.round(other.mouseX - this.mouseX);
+			const deltaY = Math.round(other.mouseY - this.mouseY);
 			const absDeltaX = Math.abs(deltaX);
 
 			// 以宽度为基准计算高度
