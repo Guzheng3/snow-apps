@@ -223,9 +223,10 @@ export const FixedContentCore: React.FC<{
 		ignoreTextScaleFactor: false,
 	});
 	const blobRef = useRef<Blob | undefined>(undefined);
-	const [canvasImageUrl, setCanvasImageUrl] = useState<string | undefined>(
-		undefined,
-	);
+	const canvasElementContainerRef = useRef<HTMLDivElement>(null);
+	const [canvasElement, setCanvasElement, canvasElementRef] = useStateRef<
+		HTMLCanvasElement | undefined
+	>(undefined);
 	const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
 	const imageBlobRef = useRef<Blob | undefined>(undefined);
 	const [scale, setScale, scaleRef] = useStateRef<{
@@ -250,11 +251,11 @@ export const FixedContentCore: React.FC<{
 
 	const [textScaleFactor] = useTextScaleFactor();
 	const contentScaleFactor = useMemo(() => {
-		if (canvasImageUrl || imageUrl) {
+		if (canvasElement || imageUrl) {
 			return textScaleFactor;
 		}
 		return 1;
-	}, [canvasImageUrl, imageUrl, textScaleFactor]);
+	}, [canvasElement, imageUrl, textScaleFactor]);
 
 	const [htmlContent, setHtmlContent] = useState<string | undefined>(undefined);
 	const originHtmlContentRef = useRef<string | undefined>(undefined);
@@ -434,6 +435,7 @@ export const FixedContentCore: React.FC<{
 		async (ignoreDrawCanvas: boolean = false) => {
 			return renderToCanvasAction(
 				fixedContentTypeRef,
+				canvasElementRef,
 				imageRef,
 				htmlContentContainerRef,
 				textContentContainerRef,
@@ -442,7 +444,7 @@ export const FixedContentCore: React.FC<{
 				ignoreDrawCanvas,
 			);
 		},
-		[fixedContentTypeRef, processImageConfigRef],
+		[fixedContentTypeRef, processImageConfigRef, canvasElementRef],
 	);
 
 	const renderToBlob = useCallback(
@@ -535,22 +537,14 @@ export const FixedContentCore: React.FC<{
 				setBorderRadius(selectRectParams.radius / scaleFactor);
 			}
 
-			setCanvasImageUrl(
-				await new Promise<string | undefined>((resolve) => {
-					canvas.toBlob(
-						(blob) => {
-							if (!blob) {
-								resolve(undefined);
-								return;
-							}
-							blobRef.current = blob;
-							resolve(URL.createObjectURL(blob));
-						},
-						"image/png",
-						1,
-					);
-				}),
-			);
+			setCanvasElement(canvas);
+			if (canvasElementContainerRef.current) {
+				canvasElementContainerRef.current.appendChild(canvas);
+			} else {
+				appError(
+					"[FixedContentCore] canvasElementContainerRef.current is null",
+				);
+			}
 			if (ocrResultActionRef.current) {
 				if (params.ocrResult) {
 					// 原有的 OCR 结果不包含阴影，加个偏移
@@ -594,6 +588,8 @@ export const FixedContentCore: React.FC<{
 				}
 			}
 
+			onDrawLoad?.();
+
 			if (
 				getAppSettings()[AppSettingsGroup.FunctionFixedContent]
 					.autoCopyToClipboard
@@ -608,6 +604,8 @@ export const FixedContentCore: React.FC<{
 			setFixedContentType,
 			setWindowSize,
 			isReady,
+			onDrawLoad,
+			setCanvasElement,
 		],
 	);
 
@@ -643,18 +641,6 @@ export const FixedContentCore: React.FC<{
 		}),
 		[initDraw, initHtml, initImage, initText],
 	);
-
-	useEffect(() => {
-		const url = canvasImageUrl;
-
-		return () => {
-			if (!url) {
-				return;
-			}
-
-			URL.revokeObjectURL(url);
-		};
-	}, [canvasImageUrl]);
 
 	const [scrollAction, setscrollAction, scrollActionRef] =
 		useStateRef<FixedContentScrollAction>(FixedContentScrollAction.Zoom);
@@ -1879,7 +1865,7 @@ export const FixedContentCore: React.FC<{
 				height: `${documentSize.height}px`,
 				zIndex: zIndexs.Draw_FixedImage,
 				pointerEvents:
-					canvasImageUrl || htmlContent || textContent || imageUrl
+					canvasElement || htmlContent || textContent || imageUrl
 						? "auto"
 						: "none",
 				opacity: isThumbnail ? 0.72 : contentOpacity,
@@ -1913,49 +1899,57 @@ export const FixedContentCore: React.FC<{
 					}}
 				/>
 
-				{(canvasImageUrl || imageUrl) && (
-					<>
-						{/* eslint-disable-next-line @next/next/no-img-element */}
-						<img
-							src={canvasImageUrl || imageUrl || ""}
-							ref={imageRef}
-							style={{
-								objectFit: "contain",
-								...getStyleProps(
-									(windowSize.width * scale.x) / 100 / contentScaleFactor,
-									(windowSize.height * scale.y) / 100 / contentScaleFactor,
-									processImageConfig,
-								),
-							}}
-							crossOrigin="anonymous"
-							alt="fixed-canvas-image"
-							onLoad={async (event) => {
-								if (imageUrl) {
-									const image = event.target as HTMLImageElement;
-									const monitorInfo = await getCurrentMonitorInfo();
-									onImageLoad?.(image, monitorInfo);
+				{!(imageUrl || htmlContent || textContent) && (
+					<div
+						ref={canvasElementContainerRef}
+						className="fixed-canvas-element-container"
+						style={{
+							...getStyleProps(
+								(windowSize.width * scale.x) / 100 / contentScaleFactor,
+								(windowSize.height * scale.y) / 100 / contentScaleFactor,
+								processImageConfig,
+							),
+							display: canvasElement ? "block" : "none",
+						}}
+					/>
+				)}
 
-									const imageWidth =
-										image.naturalWidth / monitorInfo.monitor_scale_factor;
-									const imageHeight =
-										image.naturalHeight / monitorInfo.monitor_scale_factor;
+				{imageUrl && (
+					<img
+						src={imageUrl || ""}
+						ref={imageRef}
+						style={{
+							objectFit: "contain",
+							...getStyleProps(
+								(windowSize.width * scale.x) / 100 / contentScaleFactor,
+								(windowSize.height * scale.y) / 100 / contentScaleFactor,
+								processImageConfig,
+							),
+						}}
+						crossOrigin="anonymous"
+						alt="fixed-canvas-image"
+						onLoad={async (event) => {
+							const image = event.target as HTMLImageElement;
+							const monitorInfo = await getCurrentMonitorInfo();
+							onImageLoad?.(image, monitorInfo);
 
-									setWindowSize({
-										width: imageWidth,
-										height: imageHeight,
-									});
-									canvasPropsRef.current = {
-										width: image.naturalWidth,
-										height: image.naturalHeight,
-										scaleFactor: monitorInfo.monitor_scale_factor,
-										ignoreTextScaleFactor: false,
-									};
-								} else {
-									onDrawLoad?.();
-								}
-							}}
-						/>
-					</>
+							const imageWidth =
+								image.naturalWidth / monitorInfo.monitor_scale_factor;
+							const imageHeight =
+								image.naturalHeight / monitorInfo.monitor_scale_factor;
+
+							setWindowSize({
+								width: imageWidth,
+								height: imageHeight,
+							});
+							canvasPropsRef.current = {
+								width: image.naturalWidth,
+								height: image.naturalHeight,
+								scaleFactor: monitorInfo.monitor_scale_factor,
+								ignoreTextScaleFactor: false,
+							};
+						}}
+					/>
 				)}
 
 				{htmlContent && (
@@ -2195,6 +2189,11 @@ export const FixedContentCore: React.FC<{
                 .fixed-image-container
                     :global(.fixed-image-button-group .fixed-image-close-button):hover {
                     background-color: ${token.colorError} !important;
+                }
+
+                .fixed-canvas-element-container > :global(canvas) {
+                    width: 100%;
+                    height: 100%;
                 }
 
                 .fixed-image-container-inner {
