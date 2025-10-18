@@ -64,6 +64,7 @@ const applyRotationTransform = (
 
 export const renderToCanvasAction = async (
 	fixedContentTypeRef: RefObject<FixedContentType | undefined>,
+	canvasElementRef: RefObject<HTMLCanvasElement | undefined>,
 	imageRef: RefObject<HTMLImageElement | null>,
 	htmlContentContainerRef: RefObject<HTMLIFrameElement | null>,
 	textContentContainerRef: RefObject<HTMLDivElement | null>,
@@ -73,10 +74,52 @@ export const renderToCanvasAction = async (
 ) => {
 	let canvas: HTMLCanvasElement | undefined;
 
-	if (
-		fixedContentTypeRef.current === FixedContentType.DrawCanvas ||
-		fixedContentTypeRef.current === FixedContentType.Image
-	) {
+	if (fixedContentTypeRef.current === FixedContentType.DrawCanvas) {
+		if (!canvasElementRef.current) {
+			appError("[renderToCanvas] canvasElementRef is undefined");
+			return;
+		}
+
+		const sourceCanvas = canvasElementRef.current;
+		canvas = document.createElement("canvas");
+
+		// 根据旋转角度设置 canvas 尺寸
+		if (needSwapWidthAndHeight(processImageConfigRef.current.angle)) {
+			canvas.width = sourceCanvas.height;
+			canvas.height = sourceCanvas.width;
+		} else {
+			canvas.width = sourceCanvas.width;
+			canvas.height = sourceCanvas.height;
+		}
+
+		const context = canvas.getContext("2d");
+		if (!context) {
+			return;
+		}
+
+		// 保存当前上下文状态
+		context.save();
+
+		// 应用旋转和翻转变换
+		applyRotationTransform(
+			context,
+			processImageConfigRef.current,
+			canvas.width,
+			canvas.height,
+		);
+
+		// 绘制源 canvas（旋转后的坐标系中绘制）
+		context.drawImage(
+			sourceCanvas,
+			0,
+			0,
+			sourceCanvas.width,
+			sourceCanvas.height,
+		);
+
+		// 恢复上下文状态
+		context.restore();
+	} else if (fixedContentTypeRef.current === FixedContentType.Image) {
 		if (!imageRef.current) {
 			appError("[renderToCanvas] imageRef is undefined");
 			return;
