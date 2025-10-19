@@ -211,7 +211,8 @@ export const FullScreenDrawToolbar: React.FC<{
 				case DrawState.MouseThrough:
 					drawCoreAction?.setActiveTool(
 						{
-							type: "selection",
+							type: "laser",
+							locked: true,
 						},
 						undefined,
 						next,
