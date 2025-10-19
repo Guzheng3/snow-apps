@@ -64,20 +64,30 @@ export class MousePosition {
 				maxY = temp;
 			}
 		} else if (lockDragAspectRatio > 0) {
+			// 以宽度为基准计算高度
 			// 按指定宽高比锁定（aspectRatio = height / width）
 			const deltaX = Math.round(other.mouseX - this.mouseX);
 			const deltaY = Math.round(other.mouseY - this.mouseY);
 			const absDeltaX = Math.abs(deltaX);
+			const absDeltaY = Math.abs(deltaY);
 
 			// 以宽度为基准计算高度
-			const width = absDeltaX;
-			const height = Math.round(width * lockDragAspectRatio);
+			const widthByWidth = absDeltaX;
+			const heightByWidth = Math.round(widthByWidth * lockDragAspectRatio);
+			const widthByHeight = Math.round(absDeltaY / lockDragAspectRatio);
+			const heightByHeight = absDeltaY;
 
-			// 根据鼠标移动方向确定矩形的位置
-			minX = this.mouseX;
-			maxX = this.mouseX + (deltaX >= 0 ? width : -width);
-			minY = this.mouseY;
-			maxY = this.mouseY + (deltaY >= 0 ? height : -height);
+			if (widthByWidth * widthByWidth > widthByHeight * widthByHeight) {
+				minX = this.mouseX;
+				maxX = this.mouseX + (deltaX >= 0 ? widthByWidth : -widthByWidth);
+				minY = this.mouseY;
+				maxY = this.mouseY + (deltaY >= 0 ? heightByWidth : -heightByWidth);
+			} else {
+				minX = this.mouseX;
+				maxX = this.mouseX + (deltaX >= 0 ? widthByHeight : -widthByHeight);
+				minY = this.mouseY;
+				maxY = this.mouseY + (deltaY >= 0 ? heightByHeight : -heightByHeight);
+			}
 
 			// 确保 min < max
 			if (maxX < minX) {

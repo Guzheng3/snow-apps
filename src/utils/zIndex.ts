@@ -35,10 +35,10 @@ export const zIndexs = {
 	Draw_StatusBar: 202,
 	/** 截图颜色选择器 */
 	Draw_ColorPicker: 203,
-	/** 截图选区大小工具栏 */
-	Draw_ResizeToolbar: 204,
 	/** 截图绘制工具栏 */
-	Draw_Toolbar: 205,
+	Draw_Toolbar: 204,
+	/** 截图选区大小工具栏 */
+	Draw_ResizeToolbar: 205,
 	/** 截图绘制子工具栏 */
 	Draw_SubToolbar: 206,
 	/** 截图绘制 Excalidraw 工具栏 */

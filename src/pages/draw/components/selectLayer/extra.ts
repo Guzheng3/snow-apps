@@ -411,6 +411,7 @@ export const dragRect = (
 	// 根据拖动模式更新相应的坐标
 	let startMousePosition: MousePosition | undefined;
 	let controlMousePosition: MousePosition | undefined;
+
 	switch (dragMode) {
 		case DragMode.All:
 			startMousePosition = new MousePosition(

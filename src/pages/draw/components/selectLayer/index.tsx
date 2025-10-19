@@ -1765,6 +1765,10 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 		() => captureBoundingBoxInfoRef.current,
 		[],
 	);
+	const getLockDragAspectRatio = useCallback(
+		() => lockDragAspectRatioRef.current,
+		[],
+	);
 	return (
 		<>
 			<ResizeToolbar
@@ -1774,6 +1778,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 				onShadowConfigChange={onShadowConfigChange}
 				onLockDragAspectRatioChange={onLockDragAspectRatioChange}
 				getCaptureBoundingBoxInfo={getCaptureBoundingBoxInfo}
+				getLockDragAspectRatio={getLockDragAspectRatio}
 			/>
 
 			<div className="select-layer-container" ref={layerContainerElementRef}>

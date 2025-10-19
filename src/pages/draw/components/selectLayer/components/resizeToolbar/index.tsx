@@ -61,6 +61,7 @@ export const ResizeToolbar: React.FC<{
 	}) => void;
 	onLockDragAspectRatioChange: (lockDragAspectRatio: number) => void;
 	getCaptureBoundingBoxInfo: () => CaptureBoundingBoxInfo | undefined;
+	getLockDragAspectRatio: () => number;
 }> = ({
 	actionRef,
 	onSelectedRectChange,
@@ -68,6 +69,7 @@ export const ResizeToolbar: React.FC<{
 	onShadowConfigChange,
 	onLockDragAspectRatioChange,
 	getCaptureBoundingBoxInfo,
+	getLockDragAspectRatio,
 }) => {
 	const { token } = theme.useToken();
 	const intl = useIntl();
@@ -239,9 +241,43 @@ export const ResizeToolbar: React.FC<{
 				max_x: selectedRectRef.current.max_x + delta.max_x,
 				max_y: selectedRectRef.current.max_y + delta.max_y,
 			};
+
+			const lockDragAspectRatioValue = getLockDragAspectRatio();
+			if (
+				delta.min_x === 0 &&
+				delta.min_y === 0 &&
+				lockDragAspectRatioValue > 0
+			) {
+				const deltaValue = delta.max_y + delta.max_x;
+				let width = newSelectedRect.max_x - newSelectedRect.min_x;
+				let height = newSelectedRect.max_y - newSelectedRect.min_y;
+				if (deltaValue > 0) {
+					if (
+						width * (width * lockDragAspectRatioValue) >
+						(height / lockDragAspectRatioValue) * height
+					) {
+						height = width * lockDragAspectRatioValue;
+					} else {
+						width = height / lockDragAspectRatioValue;
+					}
+				} else {
+					if (
+						width * (width * lockDragAspectRatioValue) <
+						(height / lockDragAspectRatioValue) * height
+					) {
+						height = width * lockDragAspectRatioValue;
+					} else {
+						width = height / lockDragAspectRatioValue;
+					}
+				}
+
+				newSelectedRect.max_x = newSelectedRect.min_x + width;
+				newSelectedRect.max_y = newSelectedRect.min_y + height;
+			}
+
 			onSelectedRectChange(newSelectedRect);
 		},
-		[onSelectedRectChange, selectedRectRef],
+		[onSelectedRectChange, selectedRectRef, getLockDragAspectRatio],
 	);
 	const updateSelectedRect = useCallbackRender(updateSelectedRectCore);
 
