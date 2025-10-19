@@ -55,11 +55,7 @@ import {
 	type CommonKeyEventValue,
 } from "@/types/core/commonKeyEvent";
 import { ImageFormat } from "@/types/utils/file";
-import {
-	writeHtmlToClipboard,
-	writeImageToClipboard,
-	writeTextToClipboard,
-} from "@/utils/clipboard";
+import { writeHtmlToClipboard, writeTextToClipboard } from "@/utils/clipboard";
 import { generateImageFileName } from "@/utils/file";
 import { formatKey } from "@/utils/format";
 import { appError } from "@/utils/log";

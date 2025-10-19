@@ -346,14 +346,26 @@ export const ResizeModal: React.FC<{
 
 	const widthValue = Form.useWatch("width", form);
 	useEffect(() => {
-		if (aspectRatioRef.current) {
-			form.setFieldsValue({ height: widthValue * aspectRatioRef.current });
+		if (typeof widthValue !== "number") {
+			return;
+		}
+
+		if (aspectRatioRef.current && widthValue > 0) {
+			form.setFieldsValue({
+				height: Math.max(1, Math.round(widthValue * aspectRatioRef.current)),
+			});
 		}
 	}, [form, widthValue]);
 	const heightValue = Form.useWatch("height", form);
 	useEffect(() => {
-		if (aspectRatioRef.current) {
-			form.setFieldsValue({ width: heightValue / aspectRatioRef.current });
+		if (typeof heightValue !== "number") {
+			return;
+		}
+
+		if (aspectRatioRef.current && heightValue > 0) {
+			form.setFieldsValue({
+				width: Math.max(1, Math.round(heightValue / aspectRatioRef.current)),
+			});
 		}
 	}, [form, heightValue]);
 
@@ -380,11 +392,30 @@ export const ResizeModal: React.FC<{
 						AppSettingsGroup.FunctionScreenshot,
 						{
 							selectRectPresetList: params[0].selectRectPresetList.map(
-								(item: { selectParams: { shadowColor: unknown } }) => {
+								(item: {
+									selectParams: {
+										shadowColor: unknown;
+										shadowWidth: number;
+										radius: number;
+									};
+								}) => {
 									if (typeof item.selectParams.shadowColor === "object") {
 										item.selectParams.shadowColor = (
 											item.selectParams.shadowColor as AggregationColor
 										).toHexString();
+									}
+
+									if (!item.selectParams.shadowWidth) {
+										item.selectParams.shadowWidth =
+											defaultAppSettingsData[
+												AppSettingsGroup.Cache
+											].selectRectShadowWidth;
+									}
+									if (!item.selectParams.radius) {
+										item.selectParams.radius =
+											defaultAppSettingsData[
+												AppSettingsGroup.Cache
+											].selectRectRadius;
 									}
 
 									return {
@@ -401,6 +432,17 @@ export const ResizeModal: React.FC<{
 					);
 					setQuickSet(null);
 					return;
+				}
+
+				if (!params[0].shadowWidth) {
+					params[0].shadowWidth =
+						defaultAppSettingsData[
+							AppSettingsGroup.Cache
+						].selectRectShadowWidth;
+				}
+				if (!params[0].radius) {
+					params[0].radius =
+						defaultAppSettingsData[AppSettingsGroup.Cache].selectRectRadius;
 				}
 
 				return await onFinish(...params);
@@ -421,6 +463,7 @@ export const ResizeModal: React.FC<{
 										value: quickSet,
 										getPopupContainer,
 									}}
+									rules={[{ required: true, type: "number" }]}
 									onChange={onQuickSetChange}
 								/>
 							</Col>
@@ -429,19 +472,21 @@ export const ResizeModal: React.FC<{
 							<Col span={12}>
 								<ProFormDigit
 									name="minX"
-									label={<FormattedMessage id="draw.positionX" />}
+									label={intl.formatMessage({ id: "draw.positionX" })}
 									min={selectRectLimit.min_x}
 									max={selectRectLimit.max_x - 1}
 									fieldProps={{ precision: 0 }}
+									rules={[{ required: true, type: "number" }]}
 								/>
 							</Col>
 							<Col span={12}>
 								<ProFormDigit
 									name="minY"
-									label={<FormattedMessage id="draw.positionY" />}
+									label={intl.formatMessage({ id: "draw.positionY" })}
 									min={selectRectLimit.min_y}
 									max={selectRectLimit.max_y - 1}
 									fieldProps={{ precision: 0 }}
+									rules={[{ required: true, type: "number" }]}
 								/>
 							</Col>
 						</Row>
@@ -449,19 +494,21 @@ export const ResizeModal: React.FC<{
 							<Col span={12}>
 								<ProFormDigit
 									name="width"
-									label={<FormattedMessage id="draw.width" />}
+									label={intl.formatMessage({ id: "draw.width" })}
 									min={1}
 									max={selectRectLimit.max_x - selectRectLimit.min_x}
 									fieldProps={{ precision: 0 }}
+									rules={[{ required: true, type: "number" }]}
 								/>
 							</Col>
 							<Col span={12}>
 								<ProFormDigit
 									name="height"
-									label={<FormattedMessage id="draw.height" />}
+									label={intl.formatMessage({ id: "draw.height" })}
 									min={1}
 									max={selectRectLimit.max_y - selectRectLimit.min_y}
 									fieldProps={{ precision: 0 }}
+									rules={[{ required: true, type: "number" }]}
 								/>
 							</Col>
 						</Row>
@@ -484,10 +531,11 @@ export const ResizeModal: React.FC<{
 							<Col span={12}>
 								<ProFormDigit
 									name="radius"
-									label={<FormattedMessage id="draw.radius" />}
+									label={intl.formatMessage({ id: "draw.radius" })}
 									min={0}
 									max={256}
 									fieldProps={{ precision: 0 }}
+									rules={[{ type: "number" }]}
 								/>
 							</Col>
 						</Row>
@@ -496,10 +544,11 @@ export const ResizeModal: React.FC<{
 							<Col span={12}>
 								<ProFormDigit
 									name="shadowWidth"
-									label={<FormattedMessage id="draw.shadowWidth" />}
+									label={intl.formatMessage({ id: "draw.shadowWidth" })}
 									min={0}
 									max={32}
 									fieldProps={{ precision: 0 }}
+									rules={[{ type: "number" }]}
 								/>
 							</Col>
 
@@ -590,19 +639,21 @@ export const ResizeModal: React.FC<{
 								<Col span={12}>
 									<ProFormDigit
 										name={["selectParams", "minX"]}
-										label={<FormattedMessage id="draw.positionX" />}
+										label={intl.formatMessage({ id: "draw.positionX" })}
 										min={selectRectLimit.min_x}
 										max={selectRectLimit.max_x - 1}
 										fieldProps={{ precision: 0 }}
+										rules={[{ required: true, type: "number" }]}
 									/>
 								</Col>
 								<Col span={12}>
 									<ProFormDigit
 										name={["selectParams", "minY"]}
-										label={<FormattedMessage id="draw.positionY" />}
+										label={intl.formatMessage({ id: "draw.positionY" })}
 										min={selectRectLimit.min_y}
 										max={selectRectLimit.max_y - 1}
 										fieldProps={{ precision: 0 }}
+										rules={[{ required: true, type: "number" }]}
 									/>
 								</Col>
 							</Row>
@@ -610,19 +661,21 @@ export const ResizeModal: React.FC<{
 								<Col span={12}>
 									<ProFormDigit
 										name={["selectParams", "width"]}
-										label={<FormattedMessage id="draw.width" />}
+										label={intl.formatMessage({ id: "draw.width" })}
 										min={1}
 										max={selectRectLimit.max_x - selectRectLimit.min_x}
 										fieldProps={{ precision: 0 }}
+										rules={[{ required: true, type: "number" }]}
 									/>
 								</Col>
 								<Col span={12}>
 									<ProFormDigit
 										name={["selectParams", "height"]}
-										label={<FormattedMessage id="draw.height" />}
+										label={intl.formatMessage({ id: "draw.height" })}
 										min={1}
 										max={selectRectLimit.max_y - selectRectLimit.min_y}
 										fieldProps={{ precision: 0 }}
+										rules={[{ required: true, type: "number" }]}
 									/>
 								</Col>
 							</Row>
@@ -644,10 +697,11 @@ export const ResizeModal: React.FC<{
 								<Col span={12}>
 									<ProFormDigit
 										name={["selectParams", "radius"]}
-										label={<FormattedMessage id="draw.radius" />}
+										label={intl.formatMessage({ id: "draw.radius" })}
 										min={0}
 										max={256}
 										fieldProps={{ precision: 0 }}
+										rules={[{ type: "number" }]}
 									/>
 								</Col>
 							</Row>
@@ -655,10 +709,11 @@ export const ResizeModal: React.FC<{
 								<Col span={12}>
 									<ProFormDigit
 										name={["selectParams", "shadowWidth"]}
-										label={<FormattedMessage id="draw.shadowWidth" />}
+										label={intl.formatMessage({ id: "draw.shadowWidth" })}
 										min={0}
 										max={32}
 										fieldProps={{ precision: 0 }}
+										rules={[{ type: "number" }]}
 									/>
 								</Col>
 
