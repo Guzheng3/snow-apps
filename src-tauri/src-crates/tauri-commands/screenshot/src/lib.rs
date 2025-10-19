@@ -113,7 +113,13 @@ pub async fn capture_all_monitors(
                 );
             }
 
-            snow_shot_webview::create_shared_buffer(webview, image.as_bytes(), &extra_data).await?;
+            snow_shot_webview::create_shared_buffer(
+                webview,
+                image.as_bytes(),
+                &extra_data,
+                "screenshot".to_string(),
+            )
+            .await?;
 
             // 通过 SharedBuffer 传输的特殊标记
             Ok(Response::new(vec![1]))

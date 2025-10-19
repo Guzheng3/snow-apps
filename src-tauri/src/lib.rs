@@ -232,6 +232,8 @@ pub fn run() {
             file::get_app_config_base_dir,
             file::create_local_config_dir,
             ocr::ocr_detect,
+            #[cfg(target_os = "windows")]
+            ocr::ocr_detect_with_shared_buffer,
             ocr::ocr_init,
             ocr::ocr_release,
             core::exit_app,

@@ -10,6 +10,7 @@ pub async fn create_shared_buffer(
     webview: tauri::Webview,
     data: &[u8],
     extra_data: &[u8],
+    transfer_type: String,
 ) -> Result<(), String> {
     // windows 可以使用 SharedBuffer 加快数据传输
     let (transfer_result_sender, transfer_result_receiver) = channel::<Result<(), String>>();
@@ -102,11 +103,18 @@ pub async fn create_shared_buffer(
             );
         }
 
+        let additional_data_string: Vec<u16> =
+            format!("{{\"transfer_type\":\"{}\"}}", transfer_type)
+                .encode_utf16()
+                .chain(std::iter::once(0)) // null terminator
+                .collect();
+        let additional_data = windows::core::PCWSTR::from_raw(additional_data_string.as_ptr());
+
         match unsafe {
             webview_17.PostSharedBufferToScript(
                 &shared_buffer,
                 COREWEBVIEW2_SHARED_BUFFER_ACCESS_READ_WRITE,
-                windows::core::PCWSTR::default(),
+                additional_data,
             )
         } {
             Ok(_) => {

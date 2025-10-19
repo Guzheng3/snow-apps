@@ -6,8 +6,9 @@ use tokio::sync::Mutex;
 pub async fn create_webview_shared_buffer(
     webview: tauri::Webview,
     data: Vec<u8>,
+    transfer_type: String,
 ) -> Result<(), String> {
-    create_shared_buffer(webview, &data, &[]).await?;
+    create_shared_buffer(webview, &data, &[], transfer_type).await?;
 
     Ok(())
 }

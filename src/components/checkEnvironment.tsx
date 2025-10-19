@@ -18,8 +18,11 @@ export const CheckEnvironment = () => {
 		hasCheckedEnvironmentRef.current = true;
 
 		const testData = new Uint8Array([83]);
-		const receiveDataPromise = getWebViewSharedBuffer();
-		await createWebViewSharedBuffer(testData.buffer);
+		const receiveDataPromise = getWebViewSharedBuffer(
+			undefined,
+			"check_environment",
+		);
+		await createWebViewSharedBuffer(testData.buffer, "check_environment");
 		const receiveData = await receiveDataPromise;
 		if (!receiveData) {
 			return;

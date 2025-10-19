@@ -1,8 +1,14 @@
 import { invoke } from "@tauri-apps/api/core";
 import { supportWebViewSharedBuffer } from "@/utils/environment";
 
-export const createWebViewSharedBuffer = async (data: ArrayBuffer) => {
-	const result = await invoke<void>("create_webview_shared_buffer", { data });
+export const createWebViewSharedBuffer = async (
+	data: ArrayBuffer,
+	transferType: string,
+) => {
+	const result = await invoke<void>("create_webview_shared_buffer", {
+		data,
+		transferType,
+	});
 	return result;
 };
 

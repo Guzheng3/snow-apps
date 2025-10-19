@@ -12,7 +12,7 @@ export type ImageSharedBufferData = {
 export const getImageBufferFromSharedBuffer = async (): Promise<
 	ImageSharedBufferData | undefined
 > => {
-	const data = await getWebViewSharedBuffer();
+	const data = await getWebViewSharedBuffer(undefined, "screenshot");
 	if (!data) {
 		return undefined;
 	}

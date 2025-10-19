@@ -29,12 +29,86 @@ pub struct OcrDetectResult {
     pub scale_factor: f32,
 }
 
+fn convert_rgba_to_rgb(image: &[u8]) -> Vec<u8> {
+    let pixel_count = image.len() / 4;
+    let mut rgb_data = Vec::with_capacity(pixel_count * 3);
+
+    unsafe {
+        rgb_data.set_len(pixel_count * 3);
+
+        let image_ptr = image.as_ptr();
+        let rgb_ptr: *mut u8 = rgb_data.as_mut_ptr();
+
+        for i in 0..pixel_count {
+            let image_base = i * 4;
+            let rgb_base = i * 3;
+
+            *rgb_ptr.add(rgb_base) = *image_ptr.add(image_base);
+            *rgb_ptr.add(rgb_base + 1) = *image_ptr.add(image_base + 1);
+            *rgb_ptr.add(rgb_base + 2) = *image_ptr.add(image_base + 2);
+        }
+    }
+
+    rgb_data
+}
+
+pub async fn ocr_detect_core(
+    ocr_service: tauri::State<'_, Mutex<OcrService>>,
+    image: image::DynamicImage,
+    scale_factor: f32,
+    detect_angle: bool,
+) -> Result<OcrDetectResult, String> {
+    let mut ocr_service = ocr_service.lock().await;
+    let mut scale_factor = scale_factor;
+    let mut image = image;
+
+    // 分辨率过小的图片识别可能有问题，当 scale_factor 低于 1.5 时，放大图片使有效缩放达到 1.5
+    let target_scale_factor = 1.5;
+    if scale_factor < target_scale_factor && scale_factor > 0.0 {
+        scale_factor = target_scale_factor;
+        let resize_factor = target_scale_factor / scale_factor;
+        image = image.resize(
+            (image.width() as f32 * resize_factor) as u32,
+            (image.height() as f32 * resize_factor) as u32,
+            image::imageops::FilterType::Lanczos3,
+        );
+    }
+
+    let max_size = image.height().max(image.width());
+
+    let image_buffer = match image {
+        image::DynamicImage::ImageRgb8(image) => image,
+        image::DynamicImage::ImageRgba8(image) => {
+            let rgb_data = convert_rgba_to_rgb(image.as_raw());
+            image::RgbImage::from_raw(image.width(), image.height(), rgb_data).unwrap()
+        }
+        _ => return Err("[ocr_detect_core] Invalid image".to_string()),
+    };
+    let ocr_result = ocr_service.get_session().await?.detect_angle_rollback(
+        &image_buffer,
+        50,
+        max_size,
+        0.5,
+        0.3,
+        1.6,
+        detect_angle,
+        false,
+        0.9, // 屏幕截取的文字质量通常较高，且非横向排版的情况较少，尽量减少角度的影响
+    );
+
+    match ocr_result {
+        Ok(ocr_result) => Ok(OcrDetectResult {
+            text_blocks: ocr_result.text_blocks,
+            scale_factor,
+        }),
+        Err(e) => return Err(format!("[ocr_detect_core] Failed to detect text: {}", e)),
+    }
+}
+
 pub async fn ocr_detect(
     ocr_service: tauri::State<'_, Mutex<OcrService>>,
     request: tauri::ipc::Request<'_>,
 ) -> Result<OcrDetectResult, String> {
-    let mut ocr_service = ocr_service.lock().await;
-
     log::info!("[ocr_detect] start detect");
 
     let image_data = match request.body() {
@@ -75,26 +149,52 @@ pub async fn ocr_detect(
         None => return Err("[ocr_detect] Missing detect angle".to_string()),
     };
 
-    let image_buffer = image.to_rgb8();
-    let ocr_result = ocr_service.get_session().await?.detect_angle_rollback(
-        &image_buffer,
-        50,
-        image.height().max(image.width()),
-        0.5,
-        0.3,
-        1.6,
-        detect_angle,
-        false,
-        0.9, // 屏幕截取的文字质量通常较高，且非横向排版的情况较少，尽量减少角度的影响
+    ocr_detect_core(ocr_service, image, scale_factor, detect_angle).await
+}
+
+#[cfg(target_os = "windows")]
+pub async fn ocr_detect_with_shared_buffer(
+    ocr_service: tauri::State<'_, Mutex<OcrService>>,
+    shared_buffer_service: tauri::State<'_, std::sync::Arc<snow_shot_webview::SharedBufferService>>,
+    channel_id: String,
+    scale_factor: f32,
+    detect_angle: bool,
+) -> Result<OcrDetectResult, String> {
+    log::info!("[ocr_detect_with_shared_buffer] start detect");
+
+    let image_data = match shared_buffer_service.receive_data(channel_id) {
+        Ok(image_data) => image_data,
+        Err(e) => {
+            return Err(format!(
+                "[ocr_detect_with_shared_buffer] Failed to receive image data: {}",
+                e
+            ));
+        }
+    };
+
+    let image_width = u32::from_le_bytes(
+        image_data[image_data.len() - 8..image_data.len() - 4]
+            .try_into()
+            .unwrap(),
+    );
+    let image_height = u32::from_le_bytes(
+        image_data[image_data.len() - 4..image_data.len()]
+            .try_into()
+            .unwrap(),
     );
 
-    match ocr_result {
-        Ok(ocr_result) => Ok(OcrDetectResult {
-            text_blocks: ocr_result.text_blocks,
-            scale_factor,
-        }),
-        Err(e) => return Err(format!("[ocr_detect] Failed to detect text: {}", e)),
-    }
+    ocr_detect_core(
+        ocr_service,
+        image::DynamicImage::ImageRgba8(
+            match image::RgbaImage::from_raw(image_width, image_height, image_data) {
+                Some(image) => image,
+                None => return Err("[ocr_detect_with_shared_buffer] Invalid image".to_string()),
+            },
+        ),
+        scale_factor,
+        detect_angle,
+    )
+    .await
 }
 
 pub async fn ocr_release(ocr_service: tauri::State<'_, Mutex<OcrService>>) -> Result<(), String> {

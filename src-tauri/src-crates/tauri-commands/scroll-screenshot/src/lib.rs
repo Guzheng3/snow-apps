@@ -289,7 +289,7 @@ pub async fn scroll_screenshot_get_image_data(
         }
     };
 
-    let mut buf = Vec::with_capacity((image_data.height() * image_data.width() * 3 / 8) as usize);
+    let mut buf = Vec::new();
 
     match image_data.write_with_encoder(PngEncoder::new_with_quality(
         &mut buf,

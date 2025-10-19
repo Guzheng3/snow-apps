@@ -15,6 +15,18 @@ export const ocrDetect = async (
 	});
 };
 
+export const ocrDetectWithSharedBuffer = async (
+	channelId: string,
+	scaleFactor: number,
+	detectAngle: boolean,
+): Promise<OcrDetectResult> => {
+	return await invoke<OcrDetectResult>("ocr_detect_with_shared_buffer", {
+		channelId,
+		scaleFactor,
+		detectAngle,
+	});
+};
+
 export const ocrInit = async (
 	orcPluginPath: string,
 	model: OcrModel,

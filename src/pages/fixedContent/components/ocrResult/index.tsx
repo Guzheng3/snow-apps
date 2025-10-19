@@ -12,7 +12,8 @@ import {
 	useState,
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { ocrDetect } from "@/commands/ocr";
+import { ocrDetect, ocrDetectWithSharedBuffer } from "@/commands/ocr";
+import { createWebViewSharedBufferChannel } from "@/commands/webview";
 import { PLUGIN_ID_RAPID_OCR } from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
@@ -28,7 +29,10 @@ import { AppSettingsGroup } from "@/types/appSettings";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { writeTextToClipboard } from "@/utils/clipboard";
+import { appError, appInfo } from "@/utils/log";
 import { getPlatformValue } from "@/utils/platform";
+import { randomString } from "@/utils/random";
+import { getWebViewSharedBuffer } from "@/utils/webview";
 
 // 定义角度阈值常量（以度为单位）
 const ROTATION_THRESHOLD = 3; // 小于3度的旋转被视为误差，不进行旋转
@@ -161,6 +165,10 @@ export const OcrResult: React.FC<{
 				return;
 			}
 
+			if (containerElementRef.current) {
+				containerElementRef.current.style.opacity = "0";
+			}
+
 			textContainerElement.innerHTML = "";
 
 			textContainerElement.style.left =
@@ -277,7 +285,7 @@ export const OcrResult: React.FC<{
 					textContainerElement.appendChild(textWrapElement);
 
 					await new Promise((resolve) => {
-						requestAnimationFrame(() => {
+						setTimeout(() => {
 							let textWidth = textElement.clientWidth;
 							let textHeight = textElement.clientHeight;
 							if (isVertical) {
@@ -301,13 +309,16 @@ export const OcrResult: React.FC<{
 								textWrapElement.style.transform = `translate(${centerX - width * 0.5}px, ${centerY - height * 0.5}px) rotate(${rotationDeg}deg)`;
 
 							resolve(undefined);
-						});
+						}, 17);
 					});
 				}),
 			);
 			setTextContainerContent(
 				textContainerElement.innerHTML ? textContainerElement.innerHTML : " ", // 避免空字符串导致 iframe 内容为空
 			);
+			if (containerElementRef.current) {
+				containerElementRef.current.style.opacity = "1";
+			}
 		},
 		[token.colorBgContainer, token.colorText],
 	);
@@ -323,48 +334,168 @@ export const OcrResult: React.FC<{
 		textIframeContainerElementWrapRef.current.style.transform = `scale(${scale / 100})`;
 	}, []);
 
-	/** 请求 ID，避免 OCR 检测中切换工具后任然触发 OCR 结果 */
-	const requestIdRef = useRef<number>(0);
-	const { isReady } = usePluginServiceContext();
-	const initDrawCanvas = useCallback(
-		async (params: OcrResultInitDrawCanvasParams) => {
-			requestIdRef.current++;
-			const currentRequestId = requestIdRef.current;
+	const ocrDetectWithSharedBufferAction = useCallback(
+		async (
+			canvas: HTMLCanvasElement,
+			scaleFactor: number,
+			detectAngle: boolean,
+		): Promise<OcrDetectResult | undefined> => {
+			const sharedBufferChannelId = `ocrDetectByCanvas:${Date.now()}:${randomString(8)}`;
+			const getWebViewSharedBufferPromise = getWebViewSharedBuffer(
+				sharedBufferChannelId,
+			);
 
-			const { selectRect, canvas } = params;
+			const createResult = await createWebViewSharedBufferChannel(
+				sharedBufferChannelId,
+				canvas.width * canvas.height * 4 + 8, // 后 8 个字节写入宽高
+			);
+			if (!createResult) {
+				return undefined;
+			}
+
+			const imageDataArray = canvas
+				.getContext("2d")
+				?.getImageData(0, 0, canvas.width, canvas.height);
+			if (!imageDataArray) {
+				appError("[ocrDetectByCanvas] imageDataArray is undefined");
+				return undefined;
+			}
+
+			const reciveData = (await getWebViewSharedBufferPromise) as unknown as
+				| SharedArrayBuffer
+				| undefined;
+			if (!reciveData) {
+				appError("[ocrDetectByCanvas] reciveData is undefined");
+				return undefined;
+			}
+
+			// 将 ImageData 写入 SharedArrayBuffer
+			const sharedArray = new Uint8ClampedArray(reciveData);
+			sharedArray.set(imageDataArray.data);
+
+			// 将宽高以 u32 字节形式写入最后 8 个字节（使用 Uint32Array 更高效）
+			const u32Array = new Uint32Array(
+				reciveData,
+				imageDataArray.data.length,
+				2,
+			);
+			u32Array[0] = canvas.width;
+			u32Array[1] = canvas.height;
+
+			return ocrDetectWithSharedBuffer(
+				sharedBufferChannelId,
+				scaleFactor,
+				detectAngle,
+			);
+		},
+		[],
+	);
+
+	const ocrDetectByCanvas = useCallback(
+		async (
+			canvas: HTMLCanvasElement,
+			scaleFactor: number,
+			detectAngle: boolean,
+		): Promise<OcrDetectResult | undefined> => {
+			const ocrResultWithSharedBuffer = await ocrDetectWithSharedBufferAction(
+				canvas,
+				scaleFactor,
+				detectAngle,
+			);
+
+			if (ocrResultWithSharedBuffer) {
+				return ocrResultWithSharedBuffer;
+			}
 
 			const imageBlob = await new Promise<Blob | null>((resolve) => {
 				canvas.toBlob(resolve, "image/png", 1);
 			});
 
-			if (imageBlob && isReady?.(PLUGIN_ID_RAPID_OCR)) {
-				monitorScaleFactorRef.current = window.devicePixelRatio;
-				const ocrResult = params.ocrResult ?? {
-					result: await ocrDetect(
-						await imageBlob.arrayBuffer(),
+			if (!imageBlob) {
+				return undefined;
+			}
+
+			const ocrResult = await ocrDetect(
+				await imageBlob.arrayBuffer(),
+				scaleFactor,
+				detectAngle,
+			);
+			return ocrResult;
+		},
+		[ocrDetectWithSharedBufferAction],
+	);
+
+	/** 请求 ID，避免 OCR 检测中切换工具后任然触发 OCR 结果 */
+	const requestIdRef = useRef<number>(0);
+	const { isReady } = usePluginServiceContext();
+	const initDrawCanvas = useCallback(
+		async (params: OcrResultInitDrawCanvasParams) => {
+			if (!isReady?.(PLUGIN_ID_RAPID_OCR)) {
+				return;
+			}
+
+			requestIdRef.current++;
+			const currentRequestId = requestIdRef.current;
+
+			const { selectRect, canvas } = params;
+
+			monitorScaleFactorRef.current = window.devicePixelRatio;
+
+			let ocrResult:
+				| {
+						result: OcrDetectResult;
+						ignoreScale: boolean;
+				  }
+				| undefined;
+
+			if (params.ocrResult) {
+				ocrResult = params.ocrResult;
+			} else {
+				try {
+					const tempOcrResult = await ocrDetectByCanvas(
+						canvas,
 						monitorScaleFactorRef.current,
 						getAppSettings()[AppSettingsGroup.SystemScreenshot].ocrDetectAngle,
-					).finally(() => {
-						releaseOcrSession();
-					}),
-					ignoreScale: false,
-				};
+					);
 
-				// 如果请求 ID 不一致，说明 OCR 检测中切换工具了，不进行更新
-				if (currentRequestId !== requestIdRef.current) {
-					return;
+					if (!tempOcrResult) {
+						appError("[ocrDetectByCanvas] ocrDetectByCanvas failed");
+						return;
+					}
+
+					ocrResult = {
+						result: tempOcrResult,
+						ignoreScale: false,
+					};
+				} finally {
+					releaseOcrSession();
 				}
-
-				selectRectRef.current = selectRect;
-				updateOcrTextElements(ocrResult.result, ocrResult.ignoreScale);
-				onOcrDetect?.(ocrResult.result);
 			}
+
+			// 如果请求 ID 不一致，说明 OCR 检测中切换工具了，不进行更新
+			if (currentRequestId !== requestIdRef.current) {
+				return;
+			}
+
+			selectRectRef.current = selectRect;
+			updateOcrTextElements(ocrResult.result, ocrResult.ignoreScale);
+			onOcrDetect?.(ocrResult.result);
 		},
-		[getAppSettings, isReady, onOcrDetect, updateOcrTextElements],
+		[
+			getAppSettings,
+			isReady,
+			onOcrDetect,
+			updateOcrTextElements,
+			ocrDetectByCanvas,
+		],
 	);
 
 	const initImage = useCallback(
 		async (params: OcrResultInitImageParams) => {
+			if (!isReady?.(PLUGIN_ID_RAPID_OCR)) {
+				return;
+			}
+
 			const { imageElement } = params;
 
 			const tempCanvas = document.createElement("canvas");
@@ -377,10 +508,6 @@ export const OcrResult: React.FC<{
 
 			tempCtx.drawImage(imageElement, 0, 0);
 
-			const imageBlob = await new Promise<Blob | null>((resolve) => {
-				tempCanvas.toBlob(resolve, "image/png", 1);
-			});
-
 			selectRectRef.current = {
 				min_x: 0,
 				min_y: 0,
@@ -389,19 +516,32 @@ export const OcrResult: React.FC<{
 			};
 			monitorScaleFactorRef.current = params.monitorScaleFactor;
 
-			if (imageBlob && isReady?.(PLUGIN_ID_RAPID_OCR)) {
-				const ocrResult = await ocrDetect(
-					await imageBlob.arrayBuffer(),
-					0,
+			let ocrResult: OcrDetectResult | undefined;
+			try {
+				ocrResult = await ocrDetectByCanvas(
+					tempCanvas,
+					monitorScaleFactorRef.current,
 					getAppSettings()[AppSettingsGroup.SystemScreenshot].ocrDetectAngle,
 				);
+			} finally {
 				releaseOcrSession();
-
-				updateOcrTextElements(ocrResult);
-				onOcrDetect?.(ocrResult);
 			}
+
+			if (!ocrResult) {
+				appError("[ocrDetectByCanvas] ocrDetectByCanvas failed");
+				return;
+			}
+
+			updateOcrTextElements(ocrResult);
+			onOcrDetect?.(ocrResult);
 		},
-		[getAppSettings, isReady, onOcrDetect, updateOcrTextElements],
+		[
+			getAppSettings,
+			isReady,
+			onOcrDetect,
+			updateOcrTextElements,
+			ocrDetectByCanvas,
+		],
 	);
 
 	const selectedTextRef = useRef<string>(undefined);
@@ -685,16 +825,7 @@ export const OcrResult: React.FC<{
 				className="ocr-result-text-container"
 			></div>
 			<div
-				style={{
-					transformOrigin: "top left",
-					position: "absolute",
-					opacity: textContainerContent ? 1 : 0,
-					userSelect: "none",
-					pointerEvents:
-						isElementDragging || disabled || !textContainerContent
-							? "none"
-							: "auto",
-				}}
+				className="ocr-result-text-iframe-container"
 				ref={textIframeContainerElementWrapRef}
 			>
 				<iframe
@@ -860,22 +991,38 @@ export const OcrResult: React.FC<{
 			</div>
 
 			<style jsx>{`
-                    .ocr-result-text-iframe {
-                        width: 100%;
-                        height: 100%;
-                        padding: 0;
-                        margin: 0;
-                        border: none;
-                    }
+                .ocr-result-text-iframe {
+                    width: 100%;
+                    height: 100%;
+                    padding: 0;
+                    margin: 0;
+                    border: none;
+                }
 
-                    :global(.ocr-result-text-background-element) {
-                        backdrop-filter: blur(2.4px);
-                    }
+                :global(.ocr-result-text-background-element) {
+                    backdrop-filter: blur(2.4px);
+                }
 
-                    :global(.ocr-result-text-element) {
-                        opacity: 0;
-                    }
-                `}</style>
+                :global(.ocr-result-text-element) {
+                    opacity: 0;
+                }
+
+                .ocr-result-text-iframe-container {
+                    transform-origin: top left;
+				    position: absolute;
+				    user-select: none;
+                }
+            `}</style>
+			<style jsx>{`
+                .ocr-result-text-iframe-container {
+                    pointer-events:
+					${
+						isElementDragging || disabled || !textContainerContent
+							? "none"
+							: "auto"
+					};
+                }
+            `}</style>
 		</div>
 	);
 };

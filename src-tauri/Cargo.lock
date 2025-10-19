@@ -6766,6 +6766,7 @@ dependencies = [
  "paddle-ocr-rs",
  "serde",
  "snow-shot-app-services",
+ "snow-shot-webview",
  "tauri",
  "tokio",
 ]
@@ -6800,6 +6801,7 @@ dependencies = [
  "snow-shot-app-scroll-screenshot-service",
  "snow-shot-app-shared",
  "snow-shot-app-utils",
+ "snow-shot-webview",
  "tauri",
  "tokio",
  "xcap",

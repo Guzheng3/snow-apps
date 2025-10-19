@@ -574,7 +574,7 @@ export const FixedContentCore: React.FC<{
 					isReady?.(PLUGIN_ID_RAPID_OCR) &&
 					getAppSettings()[AppSettingsGroup.FunctionFixedContent].autoOcr
 				) {
-					ocrResultActionRef.current.init({
+					ocrResultActionRef.current?.init({
 						selectRect: {
 							min_x: 0,
 							min_y: 0,

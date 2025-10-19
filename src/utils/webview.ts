@@ -2,6 +2,7 @@ import { supportWebViewSharedBuffer } from "./environment";
 
 export const getWebViewSharedBuffer = (
 	channelId?: string,
+	transferType?: string,
 ): Promise<ArrayBuffer | undefined> => {
 	if (!supportWebViewSharedBuffer()) {
 		return Promise.resolve(undefined);
@@ -13,6 +14,10 @@ export const getWebViewSharedBuffer = (
 			getBuffer: () => ArrayBuffer;
 			additionalData?: Record<string, unknown>;
 		}) => {
+			if (transferType && e.additionalData?.transfer_type !== transferType) {
+				return;
+			}
+
 			if (channelId && e.additionalData?.id !== channelId) {
 				return;
 			}
