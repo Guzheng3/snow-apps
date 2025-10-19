@@ -43,9 +43,7 @@ fn convert_rgba_to_rgb(image: &[u8]) -> Vec<u8> {
             let image_base = i * 4;
             let rgb_base = i * 3;
 
-            *rgb_ptr.add(rgb_base) = *image_ptr.add(image_base);
-            *rgb_ptr.add(rgb_base + 1) = *image_ptr.add(image_base + 1);
-            *rgb_ptr.add(rgb_base + 2) = *image_ptr.add(image_base + 2);
+            std::ptr::copy_nonoverlapping(image_ptr.add(image_base), rgb_ptr.add(rgb_base), 3);
         }
     }
 
