@@ -316,7 +316,7 @@ export const OcrResult: React.FC<{
 			setTextContainerContent(
 				textContainerElement.innerHTML ? textContainerElement.innerHTML : " ", // 避免空字符串导致 iframe 内容为空
 			);
-			if (containerElementRef.current) {
+			if (containerElementRef.current && enableRef.current) {
 				containerElementRef.current.style.opacity = "1";
 			}
 		},
