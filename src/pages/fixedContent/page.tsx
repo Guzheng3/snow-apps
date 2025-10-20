@@ -86,9 +86,7 @@ export const FixedContentPage: React.FC = () => {
 						fileUri.endsWith(".png") ||
 						fileUri.endsWith(".jpg") ||
 						fileUri.endsWith(".jpeg") ||
-						fileUri.endsWith(".webp") ||
-						fileUri.endsWith(".avif") ||
-						fileUri.endsWith(".gif")
+						fileUri.endsWith(".webp")
 					) {
 						imageFileUri = fileUri;
 						break;
@@ -122,7 +120,7 @@ export const FixedContentPage: React.FC = () => {
 				container:
 					| { width: number; height: number }
 					| null
-					| HTMLImageElement
+					| { naturalWidth: number; naturalHeight: number }
 					| HTMLDivElement;
 				monitorInfo?: MonitorInfo;
 		  }
@@ -133,7 +131,7 @@ export const FixedContentPage: React.FC = () => {
 			container:
 				| { width: number; height: number }
 				| null
-				| HTMLImageElement
+				| { naturalWidth: number; naturalHeight: number }
 				| HTMLDivElement,
 			monitorInfo?: MonitorInfo,
 		) => {
@@ -161,7 +159,7 @@ export const FixedContentPage: React.FC = () => {
 
 			let width = 0;
 			let height = 0;
-			if (container instanceof HTMLImageElement) {
+			if ("naturalWidth" in container) {
 				width = container.naturalWidth;
 				height = container.naturalHeight;
 			} else if ("width" in container && "height" in container) {

@@ -9,6 +9,18 @@ import type { RefWrap } from "./workers/renderWorkerTypes";
 
 export type RefType<T> = RefWrap<T> | RefObject<T>;
 
+export const renderInitBaseImageTextureAction = async (
+	baseImageTextureRef: RefType<PIXI.Texture | undefined>,
+	imageUrl: string,
+): Promise<{ width: number; height: number }> => {
+	const texture = await PIXI.Assets.load<PIXI.Texture>({
+		src: imageUrl,
+		parser: "texture",
+	});
+	baseImageTextureRef.current = texture;
+	return { width: texture.width, height: texture.height };
+};
+
 export const renderDisposeCanvasAction = (
 	canvasAppRef: RefType<Application | undefined>,
 ) => {
@@ -88,7 +100,7 @@ export const renderClearCanvasAction = (
 
 export const renderGetImageDataAction = (
 	canvasAppRef: RefType<Application | undefined>,
-	selectRect: ElementRect,
+	selectRect: ElementRect | undefined,
 ): ImageData | undefined => {
 	const canvasApp = canvasAppRef.current;
 	if (!canvasApp) {
@@ -97,12 +109,14 @@ export const renderGetImageDataAction = (
 
 	const pixels = canvasApp.renderer.extract.pixels({
 		target: canvasApp.stage,
-		frame: new PIXI.Rectangle(
-			selectRect.min_x,
-			selectRect.min_y,
-			selectRect.max_x - selectRect.min_x,
-			selectRect.max_y - selectRect.min_y,
-		),
+		frame: selectRect
+			? new PIXI.Rectangle(
+					selectRect.min_x,
+					selectRect.min_y,
+					selectRect.max_x - selectRect.min_x,
+					selectRect.max_y - selectRect.min_y,
+				)
+			: undefined,
 	});
 
 	const res = new ImageData(
@@ -116,15 +130,21 @@ export const renderGetImageDataAction = (
 
 export const renderRenderToCanvasAction = (
 	canvasAppRef: RefType<Application | undefined>,
+	canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
 	selectRect: ElementRect,
+	containerId: string | undefined,
 ): PIXI.ICanvas | undefined => {
 	const canvasApp = canvasAppRef.current;
 	if (!canvasApp) {
 		return;
 	}
 
+	const container = containerId
+		? canvasContainerMapRef.current.get(containerId)
+		: undefined;
+
 	return canvasApp.renderer.extract.canvas({
-		target: canvasApp.stage,
+		target: container ?? canvasApp.stage,
 		frame: new PIXI.Rectangle(
 			selectRect.min_x,
 			selectRect.min_y,
@@ -132,6 +152,43 @@ export const renderRenderToCanvasAction = (
 			selectRect.max_y - selectRect.min_y,
 		),
 	});
+};
+
+export const renderRenderToPngAction = async (
+	canvasAppRef: RefType<Application | undefined>,
+	canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
+	selectRect: ElementRect,
+	containerId: string | undefined,
+): Promise<ArrayBuffer | undefined> => {
+	const canvasApp = canvasAppRef.current;
+	if (!canvasApp) {
+		return;
+	}
+
+	const container = containerId
+		? canvasContainerMapRef.current.get(containerId)
+		: undefined;
+
+	const canvas = canvasApp.renderer.extract.canvas({
+		target: container ?? canvasApp.stage,
+		frame: new PIXI.Rectangle(
+			selectRect.min_x,
+			selectRect.min_y,
+			selectRect.max_x - selectRect.min_x,
+			selectRect.max_y - selectRect.min_y,
+		),
+	});
+
+	const blob = await canvas.convertToBlob?.({
+		type: "image/png",
+		quality: 1,
+	});
+
+	if (!blob) {
+		return;
+	}
+
+	return await blob.arrayBuffer();
 };
 
 export const renderCanvasRenderAction = (
@@ -148,28 +205,41 @@ export const renderCanvasRenderAction = (
 export const renderAddImageToContainerAction = async (
 	canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
 	currentImageTextureRef: RefType<PIXI.Texture | undefined>,
+	baseImageTextureRef: RefType<PIXI.Texture | undefined>,
 	containerKey: string,
-	imageSrc: string | ImageSharedBufferData,
+	imageSrc: string | ImageSharedBufferData | { type: "base_image_texture" },
 ): Promise<void> => {
 	const container = canvasContainerMapRef.current.get(containerKey);
 	if (!container) {
 		return;
 	}
 
-	const texture =
-		typeof imageSrc === "object"
-			? new PIXI.Texture({
-					source: new PIXI.BufferImageSource({
-						resource: imageSrc.sharedBuffer,
-						width: imageSrc.width,
-						height: imageSrc.height,
-						alphaMode: "no-premultiply-alpha",
-					}),
-				})
-			: await PIXI.Assets.load<PIXI.Texture>({
-					src: imageSrc,
-					parser: "texture",
-				});
+	let texture: PIXI.Texture | undefined;
+	if (typeof imageSrc === "object") {
+		if ("type" in imageSrc) {
+			if (imageSrc.type === "base_image_texture") {
+				texture = baseImageTextureRef.current;
+			}
+			console.log("[renderAddImageToContainerAction] texture", {
+				texture,
+			});
+		} else {
+			texture = new PIXI.Texture({
+				source: new PIXI.BufferImageSource({
+					resource: imageSrc.sharedBuffer,
+					width: imageSrc.width,
+					height: imageSrc.height,
+					alphaMode: "no-premultiply-alpha",
+				}),
+			});
+		}
+	} else if (typeof imageSrc === "string") {
+		texture = await PIXI.Assets.load<PIXI.Texture>({
+			src: imageSrc,
+			parser: "texture",
+		});
+	}
+
 	const image = new PIXI.Sprite(texture);
 	container.removeChildren();
 	container.addChild(image);

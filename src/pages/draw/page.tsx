@@ -359,14 +359,13 @@ const DrawPageCore: React.FC<{
 				imageLayerActionRef.current?.onCaptureReady(
 					imageBlobUrlRef.current,
 					imageBuffer,
-					captureBoundingBoxInfo,
 				),
 				drawLayerActionRef.current?.onCaptureReady(),
 			]);
 
 			setCaptureEvent({
 				event: CaptureEvent.onCaptureReady,
-				params: [imageBlobUrlRef.current, imageBuffer, captureBoundingBoxInfo],
+				params: [imageBlobUrlRef.current, imageBuffer],
 			});
 			setCaptureLoading(false);
 
@@ -553,7 +552,8 @@ const DrawPageCore: React.FC<{
 					)
 				: undefined,
 			imageLayerActionRef.current?.onCaptureBoundingBoxInfoReady(
-				captureBoundingBoxInfoRef.current,
+				captureBoundingBoxInfoRef.current.width,
+				captureBoundingBoxInfoRef.current.height,
 			),
 		]);
 	}, [getAppSettings, getScreenshotType, message, showWindow]);

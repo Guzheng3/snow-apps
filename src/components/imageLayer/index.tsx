@@ -17,6 +17,7 @@ import type { ElementRect, ImageBuffer } from "@/types/commands/screenshot";
 import type { CaptureHistoryItem } from "@/utils/appStore";
 import { getCaptureHistoryImageAbsPath } from "@/utils/captureHistory";
 import { supportOffscreenCanvas } from "@/utils/environment";
+import { appError, appInfo } from "@/utils/log";
 import {
 	addImageToContainerAction,
 	canvasRenderAction,
@@ -29,8 +30,10 @@ import {
 	disposeCanvasAction,
 	getImageDataAction,
 	INIT_CONTAINER_KEY,
+	initBaseImageTextureAction,
 	initCanvasAction,
 	renderToCanvasAction,
+	renderToPngAction,
 	resizeCanvasAction,
 	updateBlurSpriteAction,
 	updateHighlightAction,
@@ -55,12 +58,19 @@ export type ImageLayerActionType = {
 	clearCanvas: () => Promise<void>;
 	getLayerContainerElement: () => HTMLDivElement | null;
 	changeCursor: (cursor: Required<React.CSSProperties>["cursor"]) => string;
-	getImageData: (selectRect: ElementRect) => Promise<ImageData | undefined>;
+	getImageData: (
+		selectRect: ElementRect | undefined,
+	) => Promise<ImageData | undefined>;
+	renderToPng: (
+		selectRect: ElementRect,
+		containerId: string | undefined,
+	) => Promise<ArrayBuffer | undefined>;
 	/**
 	 * 渲染画布
 	 */
 	renderToCanvas: (
 		selectRect: ElementRect,
+		containerId: string | undefined,
 	) => Promise<PIXI.ICanvas | undefined>;
 	/**
 	 * 渲染画布
@@ -71,7 +81,7 @@ export type ImageLayerActionType = {
 	 */
 	addImageToContainer: (
 		containerKey: string,
-		imageSrc: string | ImageSharedBufferData,
+		imageSrc: string | ImageSharedBufferData | { type: "base_image_texture" },
 	) => Promise<void>;
 	/**
 	 * 清空画布容器
@@ -130,14 +140,18 @@ export type ImageLayerActionType = {
 	 */
 	onCaptureReady: (
 		imageSrc: string | undefined,
-		imageBuffer: ImageBuffer | ImageSharedBufferData | undefined,
-		captureBoundingBoxInfo: CaptureBoundingBoxInfo,
+		imageBuffer:
+			| ImageBuffer
+			| ImageSharedBufferData
+			| { type: "base_image_texture" }
+			| undefined,
 	) => Promise<void>;
 	/**
 	 * 显示器信息准备
 	 */
 	onCaptureBoundingBoxInfoReady: (
-		captureBoundingBoxInfo: CaptureBoundingBoxInfo,
+		width: number,
+		height: number,
 	) => Promise<void>;
 	/**
 	 * 截图加载完成
@@ -151,12 +165,19 @@ export type ImageLayerActionType = {
 	 * 截图完成
 	 */
 	onCaptureFinish: () => Promise<void>;
+	/**
+	 * 初始化临时图片纹理
+	 */
+	initBaseImageTexture: (
+		imageUrl: string,
+	) => Promise<{ width: number; height: number }>;
 };
 
 export type ImageLayerProps = {
 	zIndex: number;
 	onInitCanvasReady: () => Promise<void>;
 	actionRef: React.RefObject<ImageLayerActionType | undefined>;
+	disabled?: boolean;
 };
 
 export const DRAW_LAYER_BLUR_CONTAINER_KEY = "draw_layer_blur_container";
@@ -169,11 +190,13 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 	zIndex,
 	onInitCanvasReady,
 	actionRef,
+	disabled,
 }) => {
 	const layerContainerElementRef = useRef<HTMLDivElement>(null);
 	/** 可能的 OffscreenCanvas，用于在 Web Worker 中渲染 */
 	const offscreenCanvasRef = useRef<OffscreenCanvas | undefined>(undefined);
 	const canvasAppRef = useRef<PIXI.Application | undefined>(undefined);
+	const baseImageTextureRef = useRef<PIXI.Texture | undefined>(undefined);
 	const canvasContainerMapRef = useRef<Map<string, PIXI.Container>>(new Map());
 	const canvasContainerChildCountRef = useRef<number>(0);
 	const currentImageTextureRef = useRef<PIXI.Texture | undefined>(undefined);
@@ -185,12 +208,14 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 	const [rendererWorker, setRendererWorker] = useState<Worker | undefined>(
 		undefined,
 	);
+	const [hasInitRendererWorker, setHasInitRendererWorker] = useState(false);
 
 	useEffect(() => {
 		const worker = supportOffscreenCanvas()
 			? new Worker(new URL("./workers/renderWorker.ts", import.meta.url))
 			: undefined;
 		setRendererWorker(worker);
+		setHasInitRendererWorker(true);
 		return () => {
 			worker?.terminate();
 		};
@@ -213,9 +238,29 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 		await disposeCanvasAction(rendererWorker, canvasAppRef);
 	}, [rendererWorker]);
 
+	const initBaseImageTexture = useCallback<
+		ImageLayerActionType["initBaseImageTexture"]
+	>(
+		async (imageUrl: string) => {
+			return await initBaseImageTextureAction(
+				rendererWorker,
+				baseImageTextureRef,
+				imageUrl,
+			);
+		},
+		[rendererWorker],
+	);
 	/** 初始化画布 */
 	const initCanvas = useCallback<ImageLayerActionType["initCanvas"]>(
 		async (antialias: boolean) => {
+			if (disabled) {
+				return;
+			}
+
+			if (!hasInitRendererWorker) {
+				return;
+			}
+
 			const canvas = document.createElement("canvas");
 			if (layerContainerElementRef.current) {
 				if (layerContainerElementRef.current.firstChild) {
@@ -251,9 +296,10 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 				offscreenCanvasRef.current ? [offscreenCanvasRef.current] : undefined,
 			);
 
-			await onInitCanvasReady();
+			appInfo("[ImageLayer] initCanvas", disabled);
+			await onInitCanvasReady?.();
 		},
-		[rendererWorker, onInitCanvasReady],
+		[rendererWorker, onInitCanvasReady, disabled, hasInitRendererWorker],
 	);
 
 	useEffect(() => {
@@ -298,15 +344,34 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 	>(() => layerContainerElementRef.current, []);
 
 	const getImageData = useCallback<ImageLayerActionType["getImageData"]>(
-		async (selectRect: ElementRect) => {
+		async (selectRect: ElementRect | undefined) => {
 			return getImageDataAction(rendererWorker, canvasAppRef, selectRect);
 		},
 		[rendererWorker],
 	);
 
+	const renderToPng = useCallback<ImageLayerActionType["renderToPng"]>(
+		async (selectRect: ElementRect, containerId: string | undefined) => {
+			return renderToPngAction(
+				rendererWorker,
+				canvasAppRef,
+				canvasContainerMapRef,
+				selectRect,
+				containerId,
+			);
+		},
+		[rendererWorker],
+	);
+
 	const renderToCanvas = useCallback<ImageLayerActionType["renderToCanvas"]>(
-		async (selectRect: ElementRect) => {
-			return renderToCanvasAction(rendererWorker, canvasAppRef, selectRect);
+		async (selectRect: ElementRect, containerId: string | undefined) => {
+			return renderToCanvasAction(
+				rendererWorker,
+				canvasAppRef,
+				canvasContainerMapRef,
+				selectRect,
+				containerId,
+			);
 		},
 		[rendererWorker],
 	);
@@ -320,11 +385,12 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 	const addImageToContainer = useCallback<
 		ImageLayerActionType["addImageToContainer"]
 	>(
-		async (containerKey: string, imageSrc: string | ImageSharedBufferData) => {
+		async (containerKey, imageSrc) => {
 			await addImageToContainerAction(
 				rendererWorker,
 				canvasContainerMapRef,
 				currentImageTextureRef,
+				baseImageTextureRef,
 				containerKey,
 				imageSrc,
 			);
@@ -472,7 +538,11 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 	const onCaptureReady = useCallback<ImageLayerActionType["onCaptureReady"]>(
 		async (
 			imageSrc: string | undefined,
-			imageBuffer: ImageBuffer | ImageSharedBufferData | undefined,
+			imageBuffer:
+				| ImageBuffer
+				| ImageSharedBufferData
+				| { type: "base_image_texture" }
+				| undefined,
 		): Promise<void> => {
 			// 底图作为单独的层级显示
 			const isSharedBuffer = imageBuffer && "sharedBuffer" in imageBuffer;
@@ -484,6 +554,14 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 				await addImageToContainer(INIT_CONTAINER_KEY, imageSrc);
 			} else if (isSharedBuffer) {
 				await addImageToContainer(INIT_CONTAINER_KEY, imageBuffer);
+			} else if (
+				imageBuffer &&
+				"type" in imageBuffer &&
+				imageBuffer.type === "base_image_texture"
+			) {
+				await addImageToContainer(INIT_CONTAINER_KEY, imageBuffer);
+			} else {
+				appError("[ImageLayer] imageBuffer is not supported", imageBuffer);
 			}
 			// 水印层
 			watermarkContainerKeyRef.current = await createNewCanvasContainer(
@@ -513,16 +591,16 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 		ImageLayerActionType["onExecuteScreenshot"]
 	>(async () => {}, []);
 
-	const onCaptureBoundingBoxInfoReady = useCallback(
+	const onCaptureBoundingBoxInfoReady = useCallback<
+		ImageLayerActionType["onCaptureBoundingBoxInfoReady"]
+	>(
 		async (
 			...args: Parameters<ImageLayerActionType["onCaptureBoundingBoxInfoReady"]>
 		) => {
-			const [captureBoundingBoxInfo] = args;
+			const [width, height] = args;
 
 			// 将画布调整为截图大小
-			const { width, height } = captureBoundingBoxInfo;
-
-			resizeCanvas(width, height);
+			await resizeCanvas(width, height);
 		},
 		[resizeCanvas],
 	);
@@ -582,6 +660,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 			getLayerContainerElement,
 			createNewCanvasContainer,
 			getImageData,
+			renderToPng,
 			renderToCanvas,
 			initCanvas,
 			changeCursor,
@@ -602,6 +681,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 			onCaptureFinish,
 			onCaptureBoundingBoxInfoReady,
 			onCaptureLoad,
+			initBaseImageTexture,
 		}),
 		[
 			resizeCanvas,
@@ -610,6 +690,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 			createNewCanvasContainer,
 			getImageData,
 			renderToCanvas,
+			renderToPng,
 			initCanvas,
 			changeCursor,
 			canvasRender,
@@ -628,6 +709,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 			onExecuteScreenshot,
 			onCaptureReady,
 			onCaptureLoad,
+			initBaseImageTexture,
 		],
 	);
 
@@ -637,7 +719,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 				className="base-layer"
 				ref={layerContainerElementRef}
 				style={{ zIndex }}
-			></div>
+			/>
 
 			<style jsx>
 				{`

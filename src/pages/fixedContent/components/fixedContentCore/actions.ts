@@ -1,8 +1,8 @@
-import * as htmlToImage from "html-to-image";
 import type { RefObject } from "react";
 import { appError } from "@/utils/log";
-import { type FixedContentProcessImageConfig, FixedContentType } from ".";
+import type { FixedContentProcessImageConfig } from ".";
 import type { FixedContentCoreDrawActionType } from "./components/drawLayer";
+import type { FixedContentImageLayerActionType } from "./components/imageLayer";
 import { needSwapWidthAndHeight } from "./extra";
 
 /**
@@ -63,162 +63,55 @@ const applyRotationTransform = (
 };
 
 export const renderToCanvasAction = async (
-	fixedContentTypeRef: RefObject<FixedContentType | undefined>,
-	canvasElementRef: RefObject<HTMLCanvasElement | undefined>,
-	imageRef: RefObject<HTMLImageElement | null>,
-	htmlContentContainerRef: RefObject<HTMLIFrameElement | null>,
-	textContentContainerRef: RefObject<HTMLDivElement | null>,
+	imageLayerActionRef: RefObject<FixedContentImageLayerActionType | undefined>,
 	drawActionRef: RefObject<FixedContentCoreDrawActionType | undefined>,
 	processImageConfigRef: RefObject<FixedContentProcessImageConfig>,
 	ignoreDrawCanvas: boolean = false,
 ) => {
-	let canvas: HTMLCanvasElement | undefined;
+	const imageLayerAction = imageLayerActionRef.current?.getImageLayerAction();
+	if (!imageLayerAction) {
+		appError("[renderToCanvas] imageLayerAction is undefined");
+		return;
+	}
 
-	if (fixedContentTypeRef.current === FixedContentType.DrawCanvas) {
-		if (!canvasElementRef.current) {
-			appError("[renderToCanvas] canvasElementRef is undefined");
-			return;
-		}
+	const sourceBuffer = await imageLayerAction.getImageData(undefined);
+	if (!sourceBuffer) {
+		appError("[renderToCanvas] sourceBuffer is undefined");
+		return;
+	}
 
-		const sourceCanvas = canvasElementRef.current;
-		canvas = document.createElement("canvas");
+	const canvas = document.createElement("canvas");
 
-		// 根据旋转角度设置 canvas 尺寸
-		if (needSwapWidthAndHeight(processImageConfigRef.current.angle)) {
-			canvas.width = sourceCanvas.height;
-			canvas.height = sourceCanvas.width;
-		} else {
-			canvas.width = sourceCanvas.width;
-			canvas.height = sourceCanvas.height;
-		}
-
-		const context = canvas.getContext("2d");
-		if (!context) {
-			return;
-		}
-
-		// 保存当前上下文状态
-		context.save();
-
-		// 应用旋转和翻转变换
-		applyRotationTransform(
-			context,
-			processImageConfigRef.current,
-			canvas.width,
-			canvas.height,
-		);
-
-		// 绘制源 canvas（旋转后的坐标系中绘制）
-		context.drawImage(
-			sourceCanvas,
-			0,
-			0,
-			sourceCanvas.width,
-			sourceCanvas.height,
-		);
-
-		// 恢复上下文状态
-		context.restore();
-	} else if (fixedContentTypeRef.current === FixedContentType.Image) {
-		if (!imageRef.current) {
-			appError("[renderToCanvas] imageRef is undefined");
-			return;
-		}
-
-		canvas = document.createElement("canvas");
-		if (needSwapWidthAndHeight(processImageConfigRef.current.angle)) {
-			canvas.width = imageRef.current.naturalHeight;
-			canvas.height = imageRef.current.naturalWidth;
-		} else {
-			canvas.width = imageRef.current.naturalWidth;
-			canvas.height = imageRef.current.naturalHeight;
-		}
-
-		const context = canvas.getContext("2d");
-		if (!context) {
-			return;
-		}
-
-		// 保存当前上下文状态
-		context.save();
-
-		// 应用旋转和翻转变换
-		applyRotationTransform(
-			context,
-			processImageConfigRef.current,
-			canvas.width,
-			canvas.height,
-		);
-
-		// 绘制图片（旋转后的坐标系中绘制）
-		context.drawImage(
-			imageRef.current,
-			0,
-			0,
-			imageRef.current.naturalWidth,
-			imageRef.current.naturalHeight,
-		);
-
-		// 恢复上下文状态
-		context.restore();
+	// 根据旋转角度设置 canvas 尺寸
+	if (needSwapWidthAndHeight(processImageConfigRef.current.angle)) {
+		canvas.width = sourceBuffer.height;
+		canvas.height = sourceBuffer.width;
 	} else {
-		let htmlElement: HTMLElement | undefined | null;
-		if (fixedContentTypeRef.current === FixedContentType.Html) {
-			htmlElement =
-				htmlContentContainerRef.current?.contentWindow?.document.body;
-		} else if (fixedContentTypeRef.current === FixedContentType.Text) {
-			htmlElement = textContentContainerRef.current;
-		}
-
-		if (!htmlElement) {
-			appError("[renderToCanvas] htmlElement is undefined");
-			return;
-		}
-
-		const sourceCanvas = await htmlToImage.toCanvas(htmlElement);
-		const { angle, horizontalFlip, verticalFlip } =
-			processImageConfigRef.current;
-
-		// 若存在旋转或翻转，需要重新绘制到新的 canvas 上（仅无旋转且无翻转时可直接复用）
-		if (angle !== 0 || horizontalFlip || verticalFlip) {
-			canvas = document.createElement("canvas");
-
-			// 根据旋转角度设置 canvas 尺寸
-			if (needSwapWidthAndHeight(angle)) {
-				canvas.width = sourceCanvas.height;
-				canvas.height = sourceCanvas.width;
-			} else {
-				canvas.width = sourceCanvas.width;
-				canvas.height = sourceCanvas.height;
-			}
-
-			const context = canvas.getContext("2d");
-			if (!context) {
-				return;
-			}
-
-			// 保存上下文状态并应用旋转和翻转变换
-			context.save();
-			applyRotationTransform(
-				context,
-				processImageConfigRef.current,
-				canvas.width,
-				canvas.height,
-			);
-
-			// 绘制源 canvas
-			context.drawImage(sourceCanvas, 0, 0);
-			context.restore();
-		} else {
-			canvas = sourceCanvas;
-		}
+		canvas.width = sourceBuffer.width;
+		canvas.height = sourceBuffer.height;
 	}
 
 	const context = canvas.getContext("2d");
 	if (!context) {
-		appError("[renderToCanvas] context is undefined");
 		return;
 	}
+
+	// 保存当前上下文状态
+	context.save();
+
+	// 应用旋转和翻转变换
+	applyRotationTransform(
+		context,
+		processImageConfigRef.current,
+		canvas.width,
+		canvas.height,
+	);
+
+	// 绘制源 canvas（旋转后的坐标系中绘制）
+	context.putImageData(sourceBuffer, 0, 0);
+
+	// 恢复上下文状态
+	context.restore();
 
 	const drawCanvas = drawActionRef.current?.getCanvas();
 	if (drawCanvas && !ignoreDrawCanvas) {

@@ -78,11 +78,6 @@ const DrawLayerCore: React.FC<{
 	);
 
 	const [excalidrawReady, setExcalidrawReady] = useState(false);
-	useEffect(() => {
-		if (!disabled) {
-			setExcalidrawReady(true);
-		}
-	}, [disabled]);
 
 	const mousePositionRef = useRef<MousePosition | undefined>(undefined);
 	useEffect(() => {
@@ -270,30 +265,6 @@ const DrawLayerCore: React.FC<{
 		};
 	}, [documentSize.height, documentSize.width, token.marginXXS]);
 
-	useImperativeHandle(actionRef, () => {
-		return {
-			getToolbarSize: () => {
-				return (
-					drawToolbarActionRef.current?.getSize() ?? {
-						width: 0,
-						height: 0,
-					}
-				);
-			},
-			getDrawMenuSize,
-			getCanvas: () => {
-				if (
-					drawCoreActionRef.current?.getExcalidrawAPI()?.getSceneElements()
-						.length === 0
-				) {
-					return null;
-				}
-
-				return drawCoreActionRef.current?.getCanvas() ?? null;
-			},
-		};
-	}, [getDrawMenuSize]);
-
 	const drawContextValue = useMemo<DrawContextType>(() => {
 		return {
 			getDrawCoreAction: () => drawCoreActionRef.current,
@@ -347,6 +318,42 @@ const DrawLayerCore: React.FC<{
 		}
 	}, [disabled, activeToolbar]);
 
+	useImperativeHandle(actionRef, () => {
+		return {
+			getToolbarSize: () => {
+				return (
+					drawToolbarActionRef.current?.getSize() ?? {
+						width: 0,
+						height: 0,
+					}
+				);
+			},
+			getDrawMenuSize,
+			getCanvas: () => {
+				if (
+					drawCoreActionRef.current?.getExcalidrawAPI()?.getSceneElements()
+						.length === 0
+				) {
+					return null;
+				}
+
+				return drawCoreActionRef.current?.getCanvas() ?? null;
+			},
+		};
+	}, [getDrawMenuSize]);
+
+	const excalidrawHasLoadRef = useRef(false);
+	const excalidrawAppStateStoreReadyRef = useRef(false);
+	const tryShowExcalidraw = useCallback(() => {
+		if (
+			!excalidrawHasLoadRef.current ||
+			!excalidrawAppStateStoreReadyRef.current
+		) {
+			return;
+		}
+		setExcalidrawReady(true);
+	}, []);
+
 	return (
 		<DrawContext.Provider value={drawContextValue}>
 			<div
@@ -362,6 +369,14 @@ const DrawLayerCore: React.FC<{
 							zIndex={zIndexs.Draw_DrawCacheLayer}
 							layoutMenuZIndex={zIndexs.Draw_ExcalidrawToolbar}
 							appStateStorageKey={"fixed-content-draw-layer"}
+							onLoad={() => {
+								excalidrawHasLoadRef.current = true;
+								tryShowExcalidraw();
+							}}
+							onAppStateStoreReady={() => {
+								excalidrawAppStateStoreReadyRef.current = true;
+								tryShowExcalidraw();
+							}}
 						/>
 					</Suspense>
 					<FixedContentCoreDrawToolbar
@@ -381,15 +396,15 @@ const DrawLayerCore: React.FC<{
                         left: 0;
                         width: ${documentSize.width}px;
                         height: ${documentSize.height}px;
-                        opacity: ${!excalidrawReady || hidden ? 0 : 1};
                         pointer-events: ${disabled ? "none" : "auto"};
                     }
 
+                    .fixed-content-draw-layer :global(.draw-core-layer .excalidraw) {
+                        opacity: ${excalidrawReady && !hidden ? 1 : 0};
+                    }
+
                     .fixed-content-draw-layer :global(.Island.App-menu__left) {
-                        max-height: ${Math.max(
-													documentSize.height + 19,
-													DRAW_MENU_HEIGHT + 15,
-												)}px !important;
+                        max-height: ${Math.max(documentSize.height + 19, DRAW_MENU_HEIGHT + 15)}px !important;
                     }
                 `}</style>
 			</div>

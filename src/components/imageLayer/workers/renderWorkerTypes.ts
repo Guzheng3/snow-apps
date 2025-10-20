@@ -21,6 +21,7 @@ export enum BaseLayerRenderMessageType {
 	ClearCanvas = "clearCanvas",
 	GetImageData = "getImageData",
 	RenderToCanvas = "renderToCanvas",
+	RenderToPng = "renderToPng",
 	CanvasRender = "canvasRender",
 	AddImageToContainer = "addImageToContainer",
 	ClearContainer = "clearContainer",
@@ -32,6 +33,7 @@ export enum BaseLayerRenderMessageType {
 	UpdateHighlightElement = "updateHighlightElement",
 	UpdateHighlight = "updateHighlight",
 	ClearContext = "clearContext",
+	InitBaseImageTexture = "initBaseImageTexture",
 }
 
 export type BaseLayerRenderInitData = {
@@ -67,7 +69,7 @@ export type BaseLayerRenderClearCanvasData = {
 export type BaseLayerRenderGetImageDataData = {
 	type: BaseLayerRenderMessageType.GetImageData;
 	payload: {
-		selectRect: ElementRect;
+		selectRect: ElementRect | undefined;
 	};
 };
 
@@ -75,6 +77,15 @@ export type BaseLayerRenderRenderToCanvasData = {
 	type: BaseLayerRenderMessageType.RenderToCanvas;
 	payload: {
 		selectRect: ElementRect;
+		containerId: string | undefined;
+	};
+};
+
+export type BaseLayerRenderRenderToPngData = {
+	type: BaseLayerRenderMessageType.RenderToPng;
+	payload: {
+		selectRect: ElementRect;
+		containerId: string | undefined;
 	};
 };
 
@@ -86,7 +97,7 @@ export type BaseLayerRenderAddImageToContainerData = {
 	type: BaseLayerRenderMessageType.AddImageToContainer;
 	payload: {
 		containerKey: string;
-		imageSrc: string | ImageSharedBufferData;
+		imageSrc: string | ImageSharedBufferData | { type: "base_image_texture" };
 	};
 };
 
@@ -154,6 +165,13 @@ export type BaseLayerRenderClearContextData = {
 	payload: undefined;
 };
 
+export type BaseLayerRenderInitBaseImageTextureData = {
+	type: BaseLayerRenderMessageType.InitBaseImageTexture;
+	payload: {
+		imageUrl: string;
+	};
+};
+
 export type BaseLayerRenderData =
 	| BaseLayerRenderInitData
 	| BaseLayerRenderDisposeData
@@ -162,6 +180,7 @@ export type BaseLayerRenderData =
 	| BaseLayerRenderClearCanvasData
 	| BaseLayerRenderGetImageDataData
 	| BaseLayerRenderRenderToCanvasData
+	| BaseLayerRenderRenderToPngData
 	| BaseLayerRenderCanvasRenderData
 	| BaseLayerRenderAddImageToContainerData
 	| BaseLayerRenderClearContainerData
@@ -172,7 +191,8 @@ export type BaseLayerRenderData =
 	| BaseLayerRenderDeleteBlurSpriteData
 	| BaseLayerRenderUpdateHighlightElementData
 	| BaseLayerRenderUpdateHighlightData
-	| BaseLayerRenderClearContextData;
+	| BaseLayerRenderClearContextData
+	| BaseLayerRenderInitBaseImageTextureData;
 
 export type RenderInitResult = {
 	type: BaseLayerRenderMessageType.Init;
@@ -212,6 +232,13 @@ export type RenderRenderToCanvasResult = {
 	type: BaseLayerRenderMessageType.RenderToCanvas;
 	payload: {
 		canvas: PIXI.ICanvas | undefined;
+	};
+};
+
+export type RenderRenderToPngResult = {
+	type: BaseLayerRenderMessageType.RenderToPng;
+	payload: {
+		data: ArrayBuffer | undefined;
 	};
 };
 
@@ -265,6 +292,14 @@ export type RenderClearContextResult = {
 	payload: undefined;
 };
 
+export type RenderInitBaseImageTextureResult = {
+	type: BaseLayerRenderMessageType.InitBaseImageTexture;
+	payload: {
+		width: number;
+		height: number;
+	};
+};
+
 export type RenderBlurSpriteResult =
 	| RenderCreateBlurSpriteResult
 	| RenderUpdateBlurSpriteResult
@@ -282,6 +317,7 @@ export type RenderResult =
 	| RenderClearCanvasResult
 	| RenderGetImageDataResult
 	| RenderRenderToCanvasResult
+	| RenderRenderToPngResult
 	| RenderCanvasRenderResult
 	| RenderAddImageToContainerResult
 	| RenderClearContainerResult
@@ -289,4 +325,5 @@ export type RenderResult =
 	| RenderClearContainerResult
 	| RenderUpdateWatermarkSpriteResult
 	| RenderUpdateHighlightElementResult
-	| RenderUpdateHighlightResult;
+	| RenderUpdateHighlightResult
+	| RenderInitBaseImageTextureResult;

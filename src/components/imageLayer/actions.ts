@@ -24,8 +24,10 @@ import {
 	renderDeleteBlurSpriteAction,
 	renderDisposeCanvasAction,
 	renderGetImageDataAction,
+	renderInitBaseImageTextureAction,
 	renderInitCanvasAction,
 	renderRenderToCanvasAction,
+	renderRenderToPngAction,
 	renderResizeCanvasAction,
 	renderUpdateBlurSpriteAction,
 	renderUpdateHighlightAction,
@@ -44,9 +46,11 @@ import {
 	type BaseLayerRenderDeleteBlurSpriteData,
 	type BaseLayerRenderDisposeData,
 	type BaseLayerRenderGetImageDataData,
+	type BaseLayerRenderInitBaseImageTextureData,
 	type BaseLayerRenderInitData,
 	BaseLayerRenderMessageType,
 	type BaseLayerRenderRenderToCanvasData,
+	type BaseLayerRenderRenderToPngData,
 	type BaseLayerRenderResizeCanvasData,
 	type BaseLayerRenderUpdateBlurSpriteData,
 	type BaseLayerRenderUpdateHighlightData,
@@ -117,6 +121,41 @@ export const disposeCanvasAction = async (
 		} else {
 			renderDisposeCanvasAction(canvasAppRef);
 			resolve(undefined);
+		}
+	});
+};
+
+export const initBaseImageTextureAction = async (
+	renderWorker: Worker | undefined,
+	baseImageTextureRef: RefObject<Texture | undefined>,
+	imageUrl: string,
+): Promise<{ width: number; height: number }> => {
+	return new Promise((resolve) => {
+		if (renderWorker) {
+			const handleMessage = (event: MessageEvent<RenderResult>) => {
+				const { type, payload } = event.data;
+				if (type === BaseLayerRenderMessageType.InitBaseImageTexture) {
+					resolve(payload);
+					renderWorker.removeEventListener("message", handleMessage);
+				}
+			};
+			renderWorker.addEventListener("message", handleMessage);
+
+			const InitBaseImageTextureData: BaseLayerRenderInitBaseImageTextureData =
+				{
+					type: BaseLayerRenderMessageType.InitBaseImageTexture,
+					payload: {
+						imageUrl: imageUrl,
+					},
+				};
+
+			renderWorker.postMessage(InitBaseImageTextureData);
+		} else {
+			const result = renderInitBaseImageTextureAction(
+				baseImageTextureRef,
+				imageUrl,
+			);
+			resolve(result);
 		}
 	});
 };
@@ -227,7 +266,9 @@ export const clearCanvasAction = async (
 export const renderToCanvasAction = async (
 	renderWorker: Worker | undefined,
 	canvasAppRef: RefObject<Application | undefined>,
+	canvasContainerMapRef: RefObject<Map<string, Container>>,
 	selectRect: ElementRect,
+	containerId: string | undefined,
 ): Promise<ICanvas | undefined> => {
 	return new Promise((resolve) => {
 		if (renderWorker) {
@@ -244,13 +285,57 @@ export const renderToCanvasAction = async (
 				type: BaseLayerRenderMessageType.RenderToCanvas,
 				payload: {
 					selectRect: selectRect,
+					containerId: containerId,
 				},
 			};
 
 			renderWorker.postMessage(RenderToCanvasData);
 		} else {
-			const result = renderRenderToCanvasAction(canvasAppRef, selectRect);
+			const result = renderRenderToCanvasAction(
+				canvasAppRef,
+				canvasContainerMapRef,
+				selectRect,
+				containerId,
+			);
 			resolve(result);
+		}
+	});
+};
+
+export const renderToPngAction = async (
+	renderWorker: Worker | undefined,
+	canvasAppRef: RefObject<Application | undefined>,
+	canvasContainerMapRef: RefObject<Map<string, Container>>,
+	selectRect: ElementRect,
+	containerId: string | undefined,
+): Promise<ArrayBuffer | undefined> => {
+	return new Promise((resolve) => {
+		if (renderWorker) {
+			const handleMessage = (event: MessageEvent<RenderResult>) => {
+				const { type, payload } = event.data;
+				if (type === BaseLayerRenderMessageType.RenderToPng) {
+					resolve(payload.data);
+					renderWorker.removeEventListener("message", handleMessage);
+				}
+			};
+			renderWorker.addEventListener("message", handleMessage);
+
+			const RenderToPngData: BaseLayerRenderRenderToPngData = {
+				type: BaseLayerRenderMessageType.RenderToPng,
+				payload: {
+					selectRect: selectRect,
+					containerId: containerId,
+				},
+			};
+
+			renderWorker.postMessage(RenderToPngData);
+		} else {
+			renderRenderToPngAction(
+				canvasAppRef,
+				canvasContainerMapRef,
+				selectRect,
+				containerId,
+			).then(resolve);
 		}
 	});
 };
@@ -258,7 +343,7 @@ export const renderToCanvasAction = async (
 export const getImageDataAction = async (
 	renderWorker: Worker | undefined,
 	canvasAppRef: RefObject<Application | undefined>,
-	selectRect: ElementRect,
+	selectRect: ElementRect | undefined,
 ): Promise<ImageData | undefined> => {
 	return new Promise((resolve) => {
 		if (renderWorker) {
@@ -317,8 +402,9 @@ export const addImageToContainerAction = async (
 	renderWorker: Worker | undefined,
 	canvasContainerMapRef: RefObject<Map<string, Container>>,
 	currentImageTextureRef: RefObject<Texture | undefined>,
+	baseImageTextureRef: RefObject<Texture | undefined>,
 	containerKey: string,
-	imageSrc: string | ImageSharedBufferData,
+	imageSrc: string | ImageSharedBufferData | { type: "base_image_texture" },
 ): Promise<undefined> => {
 	return new Promise((resolve) => {
 		if (renderWorker) {
@@ -344,6 +430,7 @@ export const addImageToContainerAction = async (
 			renderAddImageToContainerAction(
 				canvasContainerMapRef,
 				currentImageTextureRef,
+				baseImageTextureRef,
 				containerKey,
 				imageSrc,
 			).then(() => resolve(undefined));

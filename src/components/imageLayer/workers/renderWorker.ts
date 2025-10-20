@@ -21,8 +21,10 @@ import {
 	renderDeleteBlurSpriteAction,
 	renderDisposeCanvasAction,
 	renderGetImageDataAction,
+	renderInitBaseImageTextureAction,
 	renderInitCanvasAction,
 	renderRenderToCanvasAction,
+	renderRenderToPngAction,
 	renderResizeCanvasAction,
 	renderUpdateBlurSpriteAction,
 	renderUpdateHighlightAction,
@@ -38,9 +40,11 @@ import {
 	type BaseLayerRenderData,
 	type BaseLayerRenderDeleteBlurSpriteData,
 	type BaseLayerRenderGetImageDataData,
+	type BaseLayerRenderInitBaseImageTextureData,
 	type BaseLayerRenderInitData,
 	BaseLayerRenderMessageType,
 	type BaseLayerRenderRenderToCanvasData,
+	type BaseLayerRenderRenderToPngData,
 	type BaseLayerRenderResizeCanvasData,
 	type BaseLayerRenderUpdateBlurSpriteData,
 	type BaseLayerRenderUpdateHighlightData,
@@ -51,6 +55,9 @@ import {
 } from "./renderWorkerTypes";
 
 const canvasAppRef: RefWrap<Application | undefined> = { current: undefined };
+const baseImageTextureRef: RefWrap<Texture | undefined> = {
+	current: undefined,
+};
 const canvasContainerMapRef: RefWrap<Map<string, Container>> = {
 	current: new Map(),
 };
@@ -125,7 +132,12 @@ const handleGetImageData = (data: BaseLayerRenderGetImageDataData) => {
 };
 
 const handleRenderToCanvas = (data: BaseLayerRenderRenderToCanvasData) => {
-	return renderRenderToCanvasAction(canvasAppRef, data.payload.selectRect);
+	return renderRenderToCanvasAction(
+		canvasAppRef,
+		canvasContainerMapRef,
+		data.payload.selectRect,
+		data.payload.containerId,
+	);
 };
 
 const handleCanvasRender = () => {
@@ -138,6 +150,7 @@ const handleAddImageToContainer = async (
 	await renderAddImageToContainerAction(
 		canvasContainerMapRef,
 		currentImageTextureRef,
+		baseImageTextureRef,
 		data.payload.containerKey,
 		data.payload.imageSrc,
 	);
@@ -211,6 +224,24 @@ const handleClearContext = () => {
 		blurSpriteMapRef,
 		highlightElementMapRef,
 		lastWatermarkPropsRef,
+	);
+};
+
+const handleInitBaseImageTexture = (
+	data: BaseLayerRenderInitBaseImageTextureData,
+) => {
+	return renderInitBaseImageTextureAction(
+		baseImageTextureRef,
+		data.payload.imageUrl,
+	);
+};
+
+const handleRenderToPng = async (data: BaseLayerRenderRenderToPngData) => {
+	return await renderRenderToPngAction(
+		canvasAppRef,
+		canvasContainerMapRef,
+		data.payload.selectRect,
+		data.payload.containerId,
 	);
 };
 
@@ -340,6 +371,22 @@ self.onmessage = async ({ data }: MessageEvent<BaseLayerRenderData>) => {
 				payload: undefined,
 			};
 			break;
+		case BaseLayerRenderMessageType.InitBaseImageTexture: {
+			const result = await handleInitBaseImageTexture(data);
+			message = {
+				type: BaseLayerRenderMessageType.InitBaseImageTexture,
+				payload: result,
+			};
+			break;
+		}
+		case BaseLayerRenderMessageType.RenderToPng: {
+			const result = await handleRenderToPng(data);
+			message = {
+				type: BaseLayerRenderMessageType.RenderToPng,
+				payload: { data: result },
+			};
+			break;
+		}
 	}
 
 	self.postMessage(message);

@@ -28,12 +28,12 @@ import type {
 import type { CaptureBoundingBoxInfo } from "./extra";
 import { CaptureStep } from "./types";
 
-export const getCanvas = async (
+const getCanvasCore = async (
 	selectRectParams: SelectRectParams | undefined,
 	imageLayerAction: ImageLayerActionType,
 	drawLayerAction: DrawLayerActionType,
 	ignoreStyle?: boolean,
-): Promise<HTMLCanvasElement | undefined> => {
+): Promise<HTMLCanvasElement | ImageData | undefined> => {
 	if (!selectRectParams) {
 		return;
 	}
@@ -49,12 +49,15 @@ export const getCanvas = async (
 	}
 
 	drawLayerAction.finishDraw();
+	const drawElements =
+		drawLayerAction.getExcalidrawAPI()?.getSceneElements() ?? [];
 
 	// 获取图像数据
 	const imageLayerImageData = await imageLayerAction.getImageData(selectRect);
-	const drawLayerCanvas = drawLayerAction.getCanvas();
+	const drawLayerCanvas =
+		drawElements.length > 0 ? drawLayerAction.getCanvas() : undefined;
 
-	if (!imageLayerImageData || !drawLayerCanvas) {
+	if (!imageLayerImageData) {
 		return;
 	}
 
@@ -74,11 +77,13 @@ export const getCanvas = async (
 	}
 
 	tempCtx.putImageData(imageLayerImageData, offsetX, offsetY);
-	tempCtx.drawImage(
-		drawLayerCanvas,
-		-selectRect.min_x + offsetX,
-		-selectRect.min_y + offsetY,
-	);
+	if (drawLayerCanvas) {
+		tempCtx.drawImage(
+			drawLayerCanvas,
+			-selectRect.min_x + offsetX,
+			-selectRect.min_y + offsetY,
+		);
+	}
 
 	if (selectRectRadius > 0 || selectRectShadowWidth > 0) {
 		tempCtx.save();
@@ -140,6 +145,20 @@ export const getCanvas = async (
 	}
 
 	return tempCanvas;
+};
+
+export const getCanvas = async (
+	selectRectParams: SelectRectParams | undefined,
+	imageLayerAction: ImageLayerActionType,
+	drawLayerAction: DrawLayerActionType,
+	ignoreStyle?: boolean,
+): Promise<HTMLCanvasElement | undefined> => {
+	return getCanvasCore(
+		selectRectParams,
+		imageLayerAction,
+		drawLayerAction,
+		ignoreStyle,
+	) as Promise<HTMLCanvasElement | undefined>;
 };
 
 /**
@@ -273,7 +292,7 @@ export const fixedToScreen = async (
 	// 简单加个过渡效果
 	layerContainerElement.style.transition = "opacity 0.3s ease-in-out";
 
-	// 等待两帧，让窗口内容显示出来
+	// 等待下让窗口内容显示出来
 	await new Promise((resolve) => {
 		setTimeout(resolve, 17);
 	});
