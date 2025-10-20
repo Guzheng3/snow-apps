@@ -250,6 +250,22 @@ export const FixedContentCore: React.FC<{
 	const [isAlwaysOnTop, setIsAlwaysOnTop] = useStateRef(true);
 	const dragRegionMouseDownMousePositionRef = useRef<MousePosition>(undefined);
 
+	const [textContent, setTextContent, textContentRef] = useStateRef<
+		| {
+				content: string;
+				colorText:
+					| {
+							color: string;
+							rgb: string;
+							hex: string;
+							hsl: string;
+					  }
+					| undefined;
+		  }
+		| undefined
+	>(undefined);
+	const textContentContainerRef = useRef<HTMLDivElement>(null);
+
 	const [textScaleFactor] = useTextScaleFactor();
 	const contentScaleFactor = useMemo(() => {
 		if (
@@ -278,6 +294,44 @@ export const FixedContentCore: React.FC<{
 		},
 		[processImageConfigRef],
 	);
+
+	const copyRawToClipboard = useCallback(async () => {
+		if (
+			fixedContentTypeRef.current === FixedContentType.DrawCanvas ||
+			fixedContentTypeRef.current === FixedContentType.Image
+		) {
+			const imageLayerAction =
+				imageLayerActionRef.current?.getImageLayerAction();
+			if (!imageLayerAction) {
+				return;
+			}
+			const baseImageBuffer = await imageLayerAction.renderToPng(
+				{
+					min_x: 0,
+					min_y: 0,
+					max_x: canvasPropsRef.current.width,
+					max_y: canvasPropsRef.current.height,
+				},
+				INIT_CONTAINER_KEY,
+			);
+
+			if (!baseImageBuffer) {
+				return;
+			}
+
+			await writeImageToClipboard(baseImageBuffer);
+		} else if (
+			fixedContentTypeRef.current === FixedContentType.Html &&
+			originHtmlContentRef.current
+		) {
+			await writeHtmlToClipboard(originHtmlContentRef.current);
+		} else if (
+			fixedContentTypeRef.current === FixedContentType.Text &&
+			textContentRef.current
+		) {
+			await writeTextToClipboard(textContentRef.current.content);
+		}
+	}, [fixedContentTypeRef, textContentRef]);
 
 	const hasInitImageLayerRef = useRef(false);
 	const tryInitImageLayer = useCallback(
@@ -315,6 +369,13 @@ export const FixedContentCore: React.FC<{
 
 				// 清除 canvas 的数据
 				canvasElementRef.current = undefined;
+
+				if (
+					getAppSettings()[AppSettingsGroup.FunctionFixedContent]
+						.autoCopyToClipboard
+				) {
+					copyRawToClipboard();
+				}
 			} else if (fixedContentTypeRef.current === FixedContentType.Image) {
 				if (!imageUrlRef.current) {
 					return;
@@ -407,7 +468,13 @@ export const FixedContentCore: React.FC<{
 				await imageLayerActionRef.current.setBaseImage(imageData);
 			}
 		},
-		[fixedContentTypeRef, onImageLoad, setWindowSize],
+		[
+			fixedContentTypeRef,
+			onImageLoad,
+			setWindowSize,
+			copyRawToClipboard,
+			getAppSettings,
+		],
 	);
 
 	const [htmlContent, setHtmlContent] = useState<string | undefined>(undefined);
@@ -462,21 +529,6 @@ export const FixedContentCore: React.FC<{
 		[setFixedContentType],
 	);
 
-	const [textContent, setTextContent, textContentRef] = useStateRef<
-		| {
-				content: string;
-				colorText:
-					| {
-							color: string;
-							rgb: string;
-							hex: string;
-							hsl: string;
-					  }
-					| undefined;
-		  }
-		| undefined
-	>(undefined);
-	const textContentContainerRef = useRef<HTMLDivElement>(null);
 	const initText = useCallback(
 		(textContent: string) => {
 			setFixedContentType(FixedContentType.Text);
@@ -601,44 +653,6 @@ export const FixedContentCore: React.FC<{
 		[renderToCanvas],
 	);
 
-	const copyRawToClipboard = useCallback(async () => {
-		if (
-			fixedContentTypeRef.current === FixedContentType.DrawCanvas ||
-			fixedContentTypeRef.current === FixedContentType.Image
-		) {
-			const imageLayerAction =
-				imageLayerActionRef.current?.getImageLayerAction();
-			if (!imageLayerAction) {
-				return;
-			}
-			const baseImageBuffer = await imageLayerAction.renderToPng(
-				{
-					min_x: 0,
-					min_y: 0,
-					max_x: canvasPropsRef.current.width,
-					max_y: canvasPropsRef.current.height,
-				},
-				INIT_CONTAINER_KEY,
-			);
-
-			if (!baseImageBuffer) {
-				return;
-			}
-
-			await writeImageToClipboard(baseImageBuffer);
-		} else if (
-			fixedContentTypeRef.current === FixedContentType.Html &&
-			originHtmlContentRef.current
-		) {
-			await writeHtmlToClipboard(originHtmlContentRef.current);
-		} else if (
-			fixedContentTypeRef.current === FixedContentType.Text &&
-			textContentRef.current
-		) {
-			await writeTextToClipboard(textContentRef.current.content);
-		}
-	}, [fixedContentTypeRef, textContentRef]);
-
 	const { isReady, isReadyStatus } = usePluginServiceContext();
 	const initDraw = useCallback(
 		async (params: FixedContentInitDrawParams) => {
@@ -734,23 +748,15 @@ export const FixedContentCore: React.FC<{
 			}
 
 			onDrawLoad?.();
-
-			if (
-				getAppSettings()[AppSettingsGroup.FunctionFixedContent]
-					.autoCopyToClipboard
-			) {
-				copyRawToClipboard();
-			}
 		},
 		[
-			copyRawToClipboard,
-			getAppSettings,
 			setEnableSelectText,
 			setFixedContentType,
 			setWindowSize,
 			isReady,
 			onDrawLoad,
 			tryInitImageLayer,
+			getAppSettings,
 		],
 	);
 
