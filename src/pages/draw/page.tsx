@@ -1297,8 +1297,8 @@ const DrawPageCore: React.FC<{
 			getColorPickerCurrentColor: () => {
 				return colorPickerActionRef.current?.getCurrentColor();
 			},
-			getPopupContainer: (triggerNode: HTMLElement) => {
-				return triggerNode.parentElement ?? document.body;
+			getPopupContainer: () => {
+				return document.getElementById("layout-menu-render") ?? document.body;
 			},
 		};
 	}, []);

@@ -85,10 +85,6 @@ body {
     display: none !important;
 }
 
-.draw-core-layer .excalidraw .Island.App-menu__left {
-    overflow-y: visible;
-}
-
 .app-tauri-drag-region {
     cursor: grab;
 }
