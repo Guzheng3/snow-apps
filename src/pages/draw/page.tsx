@@ -631,6 +631,7 @@ const DrawPageCore: React.FC<{
 				type: excuteScreenshotType,
 				params,
 			});
+
 			const layerOnExecuteScreenshotPromise = Promise.all([
 				drawLayerActionRef.current?.onExecuteScreenshot(),
 				selectLayerActionRef.current?.onExecuteScreenshot(),
@@ -711,11 +712,25 @@ const DrawPageCore: React.FC<{
 			captureResult: ArrayBuffer | HTMLCanvasElement | undefined,
 			source: CaptureHistorySource | undefined,
 		) => {
-			const imageBuffer = imageBufferRef.current;
+			const screenshotType = getScreenshotType()?.type;
+			const imageBuffer =
+				screenshotType === ScreenshotType.SwitchCaptureHistory
+					? captureHistoryActionRef.current?.getCurrentCaptureHistoryItem()
+					: imageBufferRef.current;
 			const selectRect = selectLayerActionRef.current?.getSelectRect();
 			const excalidrawApi = drawCacheLayerActionRef.current?.getExcalidrawAPI();
 			const excalidrawElements = excalidrawApi?.getSceneElements();
 			const appState = excalidrawApi?.getAppState();
+
+			if (!imageBuffer) {
+				appError(
+					"[DrawPageCore] saveCaptureHistory error, invalid imageBuffer",
+					{
+						screenshotType,
+					},
+				);
+				return;
+			}
 
 			updateAppSettings(
 				AppSettingsGroup.Cache,
@@ -762,7 +777,7 @@ const DrawPageCore: React.FC<{
 				source,
 			);
 		},
-		[getAppSettings, updateAppSettings],
+		[getAppSettings, updateAppSettings, getScreenshotType],
 	);
 
 	const onSave = useCallback(

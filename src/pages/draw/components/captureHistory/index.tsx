@@ -55,7 +55,7 @@ import { encodeImage } from "./workers/encodeImage";
 
 export type CaptureHistoryActionType = {
 	saveCurrentCapture: (
-		imageBuffer: ImageBuffer | ImageSharedBufferData | undefined,
+		imageBuffer: ImageBuffer | ImageSharedBufferData | CaptureHistoryItem,
 		selectRect: ElementRect | undefined,
 		excalidrawElements:
 			| readonly Ordered<NonDeletedExcalidrawElement>[]
@@ -66,6 +66,8 @@ export type CaptureHistoryActionType = {
 	) => Promise<void>;
 	switch: (captureHistoryId: string) => Promise<void>;
 	captureFullScreen: () => Promise<void>;
+	getCurrentIndex: () => number;
+	getCurrentCaptureHistoryItem: () => CaptureHistoryItem | undefined;
 };
 
 const CaptureHistoryControllerCore: React.FC<{
@@ -162,7 +164,8 @@ const CaptureHistoryControllerCore: React.FC<{
 		useRef<readonly Ordered<NonDeletedExcalidrawElement>[]>(undefined);
 	const changeCurrentIndex = useCallback(
 		async (delta: number | string) => {
-			if (getScreenshotType()?.type === ScreenshotType.TopWindow) {
+			const screenshotType = getScreenshotType()?.type;
+			if (screenshotType === ScreenshotType.TopWindow) {
 				return;
 			}
 
@@ -180,7 +183,7 @@ const CaptureHistoryControllerCore: React.FC<{
 					0,
 					Math.min(
 						currentIndexRef.current + delta,
-						getScreenshotType()?.type === ScreenshotType.SwitchCaptureHistory
+						screenshotType === ScreenshotType.SwitchCaptureHistory
 							? Math.max(0, captureHistoryListRef.current.length - 1) // 切换截图历史时，不允许切换回截图
 							: captureHistoryListRef.current.length,
 					),
@@ -291,7 +294,7 @@ const CaptureHistoryControllerCore: React.FC<{
 				| ImageBuffer
 				| ImageSharedBufferData
 				| CaptureFullScreenResult
-				| undefined,
+				| CaptureHistoryItem,
 			selectRect: ElementRect | undefined,
 			excalidrawElements:
 				| readonly Ordered<NonDeletedExcalidrawElement>[]
@@ -324,19 +327,6 @@ const CaptureHistoryControllerCore: React.FC<{
 				return;
 			}
 
-			if (
-				!imageBuffer &&
-				getScreenshotType()?.type !== ScreenshotType.SwitchCaptureHistory
-			) {
-				appError(
-					"[CaptureHistoryController] saveCurrentCapture error, invalid imageBuffer",
-					{
-						imageBuffer: imageBuffer,
-					},
-				);
-				return;
-			}
-
 			if (!selectRect) {
 				appError(
 					"[CaptureHistoryController] saveCurrentCapture error, invalid selectRect",
@@ -348,6 +338,7 @@ const CaptureHistoryControllerCore: React.FC<{
 			}
 
 			const sharedBufferEncodeImage = await sharedBufferEncodeImagePromise;
+
 			const captureHistoryItem = await captureHistoryRef.current.save(
 				captureHistoryListRef.current[currentIndexRef.current] ??
 					(sharedBufferEncodeImage
@@ -365,7 +356,7 @@ const CaptureHistoryControllerCore: React.FC<{
 			resetCurrentIndex();
 			onCaptureHistoryChange();
 		},
-		[getScreenshotType, resetCurrentIndex],
+		[resetCurrentIndex],
 	);
 
 	const captureFullScreenAction = useCallback(async () => {
@@ -441,6 +432,9 @@ const CaptureHistoryControllerCore: React.FC<{
 			saveCurrentCapture,
 			switch: changeCurrentIndex,
 			captureFullScreen: captureFullScreenAction,
+			getCurrentIndex: () => currentIndexRef.current,
+			getCurrentCaptureHistoryItem: () =>
+				captureHistoryListRef.current[currentIndexRef.current],
 		};
 	}, [saveCurrentCapture, changeCurrentIndex, captureFullScreenAction]);
 
