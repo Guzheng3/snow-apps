@@ -94,7 +94,7 @@ const isEqualWatermarkProps = (a: WatermarkProps, b: WatermarkProps) => {
 export const WatermarkTool = () => {
 	const { updateAppSettings } = useContext(AppSettingsActionContext);
 	const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
-	const { drawCacheLayerActionRef, imageLayerActionRef, selectLayerActionRef } =
+	const { drawLayerActionRef, imageLayerActionRef, selectLayerActionRef } =
 		useContext(DrawContext);
 
 	// watermark 的绘制所需的属性
@@ -104,7 +104,7 @@ export const WatermarkTool = () => {
 		// 获取当前场景里的元素，判断是否存在 watermark 元素
 		// 如果存在则忽略
 
-		const excalidrawAPI = drawCacheLayerActionRef.current?.getExcalidrawAPI();
+		const excalidrawAPI = drawLayerActionRef.current?.getExcalidrawAPI();
 		if (!excalidrawAPI) {
 			return false;
 		}
@@ -129,7 +129,7 @@ export const WatermarkTool = () => {
 		});
 
 		return true;
-	}, [drawCacheLayerActionRef, getAppSettings]);
+	}, [drawLayerActionRef, getAppSettings]);
 
 	const updateWatermarkCore = useCallback(
 		(appState: AppState) => {
@@ -139,7 +139,7 @@ export const WatermarkTool = () => {
 				return;
 			}
 
-			const excalidrawAPI = drawCacheLayerActionRef.current?.getExcalidrawAPI();
+			const excalidrawAPI = drawLayerActionRef.current?.getExcalidrawAPI();
 			if (!excalidrawAPI) {
 				return;
 			}
@@ -203,7 +203,7 @@ export const WatermarkTool = () => {
 				watermarkPropsRef.current,
 			);
 		},
-		[drawCacheLayerActionRef, imageLayerActionRef, selectLayerActionRef],
+		[drawLayerActionRef, imageLayerActionRef, selectLayerActionRef],
 	);
 	const updateWatermark = useCallbackRender(updateWatermarkCore);
 
@@ -231,7 +231,7 @@ export const WatermarkTool = () => {
 				}
 			}
 
-			const excalidrawAPI = drawCacheLayerActionRef.current?.getExcalidrawAPI();
+			const excalidrawAPI = drawLayerActionRef.current?.getExcalidrawAPI();
 			if (!excalidrawAPI) {
 				return;
 			}
@@ -271,7 +271,7 @@ export const WatermarkTool = () => {
 				false,
 			);
 		},
-		[createWatermark, drawCacheLayerActionRef, updateAppSettings],
+		[createWatermark, drawLayerActionRef, updateAppSettings],
 	);
 
 	useStateSubscriber(

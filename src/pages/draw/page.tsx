@@ -110,8 +110,8 @@ import {
 	ColorPicker,
 	type ColorPickerActionType,
 } from "./components/colorPicker";
-import { DrawCacheLayer } from "./components/drawCacheLayer";
-import type { DrawCacheLayerActionType } from "./components/drawCacheLayer/extra";
+import { DrawLayer } from "./components/drawLayer";
+import type { DrawLayerActionType } from "./components/drawLayer/extra";
 import {
 	DrawToolbar,
 	type DrawToolbarActionType,
@@ -186,9 +186,7 @@ const DrawPageCore: React.FC<{
 	const imageLayerActionRef = useRef<ImageLayerActionType | undefined>(
 		undefined,
 	);
-	const drawCacheLayerActionRef = useRef<DrawCacheLayerActionType | undefined>(
-		undefined,
-	);
+	const drawLayerActionRef = useRef<DrawLayerActionType | undefined>(undefined);
 	const selectLayerActionRef = useRef<SelectLayerActionType | undefined>(
 		undefined,
 	);
@@ -363,7 +361,7 @@ const DrawPageCore: React.FC<{
 					imageBuffer,
 					captureBoundingBoxInfo,
 				),
-				drawCacheLayerActionRef.current?.onCaptureReady(),
+				drawLayerActionRef.current?.onCaptureReady(),
 			]);
 
 			setCaptureEvent({
@@ -481,7 +479,7 @@ const DrawPageCore: React.FC<{
 			await Promise.all([
 				imageLayerActionRef.current?.onCaptureFinish(),
 				selectLayerActionRef.current?.onCaptureFinish(),
-				drawCacheLayerActionRef.current?.onCaptureFinish(),
+				drawLayerActionRef.current?.onCaptureFinish(),
 			]);
 
 			setCaptureEvent({
@@ -720,7 +718,7 @@ const DrawPageCore: React.FC<{
 					? captureHistoryActionRef.current?.getCurrentCaptureHistoryItem()
 					: imageBufferRef.current;
 			const selectRect = selectLayerActionRef.current?.getSelectRect();
-			const excalidrawApi = drawCacheLayerActionRef.current?.getExcalidrawAPI();
+			const excalidrawApi = drawLayerActionRef.current?.getExcalidrawAPI();
 			const excalidrawElements = excalidrawApi?.getSceneElements();
 			const appState = excalidrawApi?.getAppState();
 
@@ -824,7 +822,7 @@ const DrawPageCore: React.FC<{
 			if (
 				!selectLayerActionRef.current ||
 				!imageLayerActionRef.current ||
-				!drawCacheLayerActionRef.current
+				!drawLayerActionRef.current
 			) {
 				return;
 			}
@@ -832,7 +830,7 @@ const DrawPageCore: React.FC<{
 			const imageCanvas = await getCanvas(
 				selectLayerActionRef.current.getSelectRectParams(),
 				imageLayerActionRef.current,
-				drawCacheLayerActionRef.current,
+				drawLayerActionRef.current,
 			);
 
 			saveCaptureHistory(
@@ -886,7 +884,7 @@ const DrawPageCore: React.FC<{
 		if (
 			!selectLayerActionRef.current ||
 			!imageLayerActionRef.current ||
-			!drawCacheLayerActionRef.current
+			!drawLayerActionRef.current
 		) {
 			return;
 		}
@@ -894,7 +892,7 @@ const DrawPageCore: React.FC<{
 		const imageCanvas = await getCanvas(
 			selectLayerActionRef.current.getSelectRectParams(),
 			imageLayerActionRef.current,
-			drawCacheLayerActionRef.current,
+			drawLayerActionRef.current,
 		);
 
 		const imageBuffer = await new Promise<ArrayBuffer | undefined>(
@@ -972,7 +970,7 @@ const DrawPageCore: React.FC<{
 			!selectLayerActionRef.current ||
 			!captureBoundingBoxInfoRef.current ||
 			!imageLayerActionRef.current ||
-			!drawCacheLayerActionRef.current ||
+			!drawLayerActionRef.current ||
 			!fixedContentAction ||
 			!ocrBlocksActionRef.current
 		) {
@@ -986,7 +984,7 @@ const DrawPageCore: React.FC<{
 			selectLayerActionRef.current,
 			fixedContentAction,
 			imageLayerActionRef.current,
-			drawCacheLayerActionRef.current,
+			drawLayerActionRef.current,
 			setCaptureStep,
 			// 如果当前是 OCR 识别状态，则使用已有的 OCR 结果
 			isOcrTool(getDrawState())
@@ -1035,7 +1033,7 @@ const DrawPageCore: React.FC<{
 			!captureBoundingBoxInfoRef.current ||
 			!selectLayerActionRef.current ||
 			!imageLayerActionRef.current ||
-			!drawCacheLayerActionRef.current ||
+			!drawLayerActionRef.current ||
 			!ocrBlocksActionRef.current
 		) {
 			return;
@@ -1045,7 +1043,7 @@ const DrawPageCore: React.FC<{
 			captureBoundingBoxInfoRef.current,
 			selectLayerActionRef.current,
 			imageLayerActionRef.current,
-			drawCacheLayerActionRef.current,
+			drawLayerActionRef.current,
 			ocrBlocksActionRef.current,
 			true,
 		);
@@ -1105,7 +1103,7 @@ const DrawPageCore: React.FC<{
 			if (
 				!selectLayerActionRef.current ||
 				!imageLayerActionRef.current ||
-				!drawCacheLayerActionRef.current
+				!drawLayerActionRef.current
 			) {
 				return;
 			}
@@ -1128,7 +1126,7 @@ const DrawPageCore: React.FC<{
 			const imageCanvas: HTMLCanvasElement | undefined = await getCanvas(
 				selectRectParams,
 				imageLayerActionRef.current,
-				drawCacheLayerActionRef.current,
+				drawLayerActionRef.current,
 			);
 
 			if (!imageCanvas) {
@@ -1274,7 +1272,7 @@ const DrawPageCore: React.FC<{
 			drawToolbarActionRef,
 			mousePositionRef,
 			circleCursorRef,
-			drawCacheLayerActionRef,
+			drawLayerActionRef,
 			ocrBlocksActionRef,
 			colorPickerActionRef,
 			captureBoundingBoxInfoRef,
@@ -1284,8 +1282,7 @@ const DrawPageCore: React.FC<{
 
 	const commonDrawContextValue = useMemo<CommonDrawContextType>(() => {
 		return {
-			getDrawCoreAction: () =>
-				drawCacheLayerActionRef.current?.getDrawCoreAction(),
+			getDrawCoreAction: () => drawLayerActionRef.current?.getDrawCoreAction(),
 			setTool: (drawState: DrawState) => {
 				drawToolbarActionRef.current?.onToolClick(drawState);
 			},
@@ -1344,7 +1341,7 @@ const DrawPageCore: React.FC<{
 	}, []);
 	const onDoubleClickFirstClick = useCallback(() => {
 		// 判断 excalidraw 是否在绘制中
-		const excalidrawAPI = drawCacheLayerActionRef.current?.getExcalidrawAPI();
+		const excalidrawAPI = drawLayerActionRef.current?.getExcalidrawAPI();
 		const sceneElements = excalidrawAPI?.getSceneElements();
 		const currentAppState = excalidrawAPI?.getAppState();
 		const newElement = currentAppState?.newElement;
@@ -1467,7 +1464,7 @@ const DrawPageCore: React.FC<{
 							zIndex={zIndexs.Draw_DrawLayer}
 							onInitCanvasReady={onInitCanvasReady}
 						/>
-						<DrawCacheLayer actionRef={drawCacheLayerActionRef} />
+						<DrawLayer actionRef={drawLayerActionRef} />
 					</div>
 					<SelectLayer actionRef={selectLayerActionRef} />
 					<DrawToolbar

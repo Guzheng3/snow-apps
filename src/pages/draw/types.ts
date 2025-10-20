@@ -4,7 +4,7 @@ import type { ImageBuffer } from "@/types/commands/screenshot";
 import { MousePosition } from "@/utils/mousePosition";
 import type { CaptureHistoryActionType } from "./components/captureHistory";
 import type { ColorPickerActionType } from "./components/colorPicker";
-import type { DrawCacheLayerActionType } from "./components/drawCacheLayer/extra";
+import type { DrawLayerActionType } from "./components/drawLayer/extra";
 import type { DrawToolbarActionType } from "./components/drawToolbar";
 import type { OcrBlocksActionType } from "./components/ocrBlocks";
 import type { SelectLayerActionType } from "./components/selectLayer";
@@ -35,9 +35,7 @@ export type DrawContextType = {
 	mousePositionRef: React.RefObject<MousePosition>;
 	drawToolbarActionRef: React.RefObject<DrawToolbarActionType | undefined>;
 	circleCursorRef: React.RefObject<HTMLDivElement | null>;
-	drawCacheLayerActionRef: React.RefObject<
-		DrawCacheLayerActionType | undefined
-	>;
+	drawLayerActionRef: React.RefObject<DrawLayerActionType | undefined>;
 	ocrBlocksActionRef: React.RefObject<OcrBlocksActionType | undefined>;
 	colorPickerActionRef: React.RefObject<ColorPickerActionType | undefined>;
 	captureBoundingBoxInfoRef: React.RefObject<
@@ -56,7 +54,7 @@ export const DrawContext = React.createContext<DrawContextType>({
 	selectLayerActionRef: { current: undefined },
 	drawToolbarActionRef: { current: undefined },
 	circleCursorRef: { current: null },
-	drawCacheLayerActionRef: { current: undefined },
+	drawLayerActionRef: { current: undefined },
 	ocrBlocksActionRef: { current: undefined },
 	colorPickerActionRef: { current: undefined },
 	captureBoundingBoxInfoRef: { current: undefined },

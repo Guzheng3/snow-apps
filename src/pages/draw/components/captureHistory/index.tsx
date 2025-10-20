@@ -88,7 +88,7 @@ const CaptureHistoryControllerCore: React.FC<{
 	const {
 		selectLayerActionRef,
 		imageLayerActionRef,
-		drawCacheLayerActionRef,
+		drawLayerActionRef,
 		colorPickerActionRef,
 	} = useContext(DrawContext);
 
@@ -217,11 +217,11 @@ const CaptureHistoryControllerCore: React.FC<{
 						.then(() => {
 							// 恢复绘制的内容
 							if (currentCaptureExcalidrawElementsRef.current) {
-								drawCacheLayerActionRef.current?.updateScene({
+								drawLayerActionRef.current?.updateScene({
 									elements: currentCaptureExcalidrawElementsRef.current ?? [],
 									captureUpdate: "NEVER",
 								});
-								drawCacheLayerActionRef.current?.clearHistory();
+								drawLayerActionRef.current?.clearHistory();
 								currentCaptureExcalidrawElementsRef.current = undefined;
 							}
 						}),
@@ -244,12 +244,12 @@ const CaptureHistoryControllerCore: React.FC<{
 							// 保存当前绘制的内容
 							if (currentCaptureExcalidrawElementsRef.current === undefined) {
 								currentCaptureExcalidrawElementsRef.current =
-									drawCacheLayerActionRef.current
+									drawLayerActionRef.current
 										?.getExcalidrawAPI()
 										?.getSceneElements();
 							}
 
-							drawCacheLayerActionRef.current?.updateScene({
+							drawLayerActionRef.current?.updateScene({
 								elements:
 									captureHistoryListRef.current[currentIndexRef.current]
 										.excalidraw_elements ?? [],
@@ -268,7 +268,7 @@ const CaptureHistoryControllerCore: React.FC<{
 					captureHistoryListRef.current[currentIndexRef.current],
 				);
 
-				drawCacheLayerActionRef.current?.clearHistory();
+				drawLayerActionRef.current?.clearHistory();
 
 				await switchCaptureHistoryPromise;
 			}
@@ -279,7 +279,7 @@ const CaptureHistoryControllerCore: React.FC<{
 		},
 		[
 			colorPickerActionRef,
-			drawCacheLayerActionRef,
+			drawLayerActionRef,
 			imageLayerActionRef,
 			getScreenshotType,
 			message,

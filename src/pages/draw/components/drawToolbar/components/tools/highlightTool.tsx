@@ -43,7 +43,7 @@ const isEqualHighlightSpriteProps = (
 };
 
 const HighlightToolCore: React.FC = () => {
-	const { imageLayerActionRef, drawCacheLayerActionRef, selectLayerActionRef } =
+	const { imageLayerActionRef, drawLayerActionRef, selectLayerActionRef } =
 		useContext(DrawContext);
 	const highlightSpriteMapRef = useRef<
 		Map<
@@ -75,7 +75,7 @@ const HighlightToolCore: React.FC = () => {
 					continue;
 				}
 
-				const appState = drawCacheLayerActionRef.current?.getAppState();
+				const appState = drawLayerActionRef.current?.getAppState();
 				if (!appState) {
 					return;
 				}
@@ -162,7 +162,7 @@ const HighlightToolCore: React.FC = () => {
 				imageLayerActionRef.current.canvasRender();
 			}
 		},
-		[drawCacheLayerActionRef, imageLayerActionRef, selectLayerActionRef],
+		[drawLayerActionRef, imageLayerActionRef, selectLayerActionRef],
 	);
 	const updateHighlightRender = useCallbackRender(updateHighlight);
 

@@ -6,7 +6,7 @@ import type {
 import type { DrawCoreActionType } from "@/components/drawCore/extra";
 import type { ElementRect } from "@/types/commands/screenshot";
 
-export type DrawCacheLayerActionType = {
+export type DrawLayerActionType = {
 	setActiveTool: DrawCoreActionType["setActiveTool"];
 	syncActionResult: ExcalidrawActionType["syncActionResult"];
 	updateScene: ExcalidrawImperativeAPI["updateScene"];

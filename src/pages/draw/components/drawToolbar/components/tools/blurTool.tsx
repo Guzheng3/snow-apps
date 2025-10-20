@@ -59,8 +59,7 @@ const isEqualBlurSpriteProps = (
 };
 
 const BlurToolCore: React.FC = () => {
-	const { imageLayerActionRef, drawCacheLayerActionRef } =
-		useContext(DrawContext);
+	const { imageLayerActionRef, drawLayerActionRef } = useContext(DrawContext);
 	const blurSpriteMapRef = useRef<
 		Map<
 			string,
@@ -94,7 +93,7 @@ const BlurToolCore: React.FC = () => {
 					continue;
 				}
 
-				const appState = drawCacheLayerActionRef.current?.getAppState();
+				const appState = drawLayerActionRef.current?.getAppState();
 				if (!appState) {
 					return;
 				}
@@ -171,7 +170,7 @@ const BlurToolCore: React.FC = () => {
 				imageLayerActionRef.current.canvasRender();
 			}
 		},
-		[drawCacheLayerActionRef, imageLayerActionRef],
+		[drawLayerActionRef, imageLayerActionRef],
 	);
 	const updateBlurRender = useCallbackRender(updateBlur);
 

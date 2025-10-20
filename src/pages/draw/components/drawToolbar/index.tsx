@@ -139,8 +139,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 	onOcrDetect,
 }) => {
 	const { updateAppSettings } = useContext(AppSettingsActionContext);
-	const { drawCacheLayerActionRef, selectLayerActionRef } =
-		useContext(DrawContext);
+	const { drawLayerActionRef, selectLayerActionRef } = useContext(DrawContext);
 
 	const { token } = theme.useToken();
 	const { message } = useContext(AntdContext);
@@ -302,7 +301,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 
 			if (prev === DrawState.Text) {
 				// 判断是否有未完成编辑的文本
-				const appState = drawCacheLayerActionRef.current?.getAppState();
+				const appState = drawLayerActionRef.current?.getAppState();
 				if (appState?.editingTextElement) {
 					// 将点击事件传递给 excalidraw，停止文本编辑
 					const canvas = getExcalidrawCanvas();
@@ -332,12 +331,12 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 
 			if (next === DrawState.Select || next === DrawState.Idle) {
 				// 取消正在编辑中的元素
-				drawCacheLayerActionRef.current?.finishDraw();
+				drawLayerActionRef.current?.finishDraw();
 			}
 
 			switch (next) {
 				case DrawState.Idle:
-					drawCacheLayerActionRef.current?.setActiveTool(
+					drawLayerActionRef.current?.setActiveTool(
 						{
 							type: "hand",
 						},
@@ -346,7 +345,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 					);
 					break;
 				case DrawState.Select:
-					drawCacheLayerActionRef.current?.setActiveTool(
+					drawLayerActionRef.current?.setActiveTool(
 						{
 							type: "selection",
 						},
@@ -355,7 +354,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 					);
 					break;
 				case DrawState.Rect:
-					drawCacheLayerActionRef.current?.setActiveTool(
+					drawLayerActionRef.current?.setActiveTool(
 						{
 							type: "rectangle",
 							locked: toolLocked,
@@ -365,7 +364,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 					);
 					break;
 				case DrawState.Diamond:
-					drawCacheLayerActionRef.current?.setActiveTool(
+					drawLayerActionRef.current?.setActiveTool(
 						{
 							type: "diamond",
 							locked: toolLocked,
@@ -375,7 +374,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 					);
 					break;
 				case DrawState.Ellipse:
-					drawCacheLayerActionRef.current?.setActiveTool(
+					drawLayerActionRef.current?.setActiveTool(
 						{
 							type: "ellipse",
 							locked: toolLocked,
@@ -385,7 +384,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 					);
 					break;
 				case DrawState.Arrow:
-					drawCacheLayerActionRef.current?.setActiveTool(
+					drawLayerActionRef.current?.setActiveTool(
 						{
 							type: "arrow",
 							locked: toolLocked,
@@ -395,7 +394,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 					);
 					break;
 				case DrawState.Line:
-					drawCacheLayerActionRef.current?.setActiveTool(
+					drawLayerActionRef.current?.setActiveTool(
 						{
 							type: "line",
 							locked: toolLocked,
@@ -405,7 +404,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 					);
 					break;
 				case DrawState.Pen:
-					drawCacheLayerActionRef.current?.setActiveTool(
+					drawLayerActionRef.current?.setActiveTool(
 						{
 							type: "freedraw",
 							locked: toolLocked,
@@ -415,7 +414,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 					);
 					break;
 				case DrawState.Text:
-					drawCacheLayerActionRef.current?.setActiveTool(
+					drawLayerActionRef.current?.setActiveTool(
 						{
 							type: "text",
 							locked: toolLocked,
@@ -427,7 +426,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 				case DrawState.SerialNumber:
 					break;
 				case DrawState.Blur:
-					drawCacheLayerActionRef.current?.setActiveTool(
+					drawLayerActionRef.current?.setActiveTool(
 						{
 							type: "blur",
 							locked: toolLocked,
@@ -437,7 +436,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 					);
 					break;
 				case DrawState.BlurFreeDraw:
-					drawCacheLayerActionRef.current?.setActiveTool(
+					drawLayerActionRef.current?.setActiveTool(
 						{
 							type: "blur_freedraw",
 							locked: toolLocked,
@@ -447,7 +446,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 					);
 					break;
 				case DrawState.Watermark:
-					drawCacheLayerActionRef.current?.setActiveTool(
+					drawLayerActionRef.current?.setActiveTool(
 						{
 							type: "watermark",
 							locked: toolLocked,
@@ -457,7 +456,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 					);
 					break;
 				case DrawState.Highlight:
-					drawCacheLayerActionRef.current?.setActiveTool(
+					drawLayerActionRef.current?.setActiveTool(
 						{
 							type: "highlight",
 							locked: toolLocked,
@@ -467,7 +466,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 					);
 					break;
 				case DrawState.Eraser:
-					drawCacheLayerActionRef.current?.setActiveTool(
+					drawLayerActionRef.current?.setActiveTool(
 						{
 							type: "eraser",
 							locked: toolLocked,
@@ -499,7 +498,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 			setDrawState(next);
 		},
 		[
-			drawCacheLayerActionRef,
+			drawLayerActionRef,
 			enableLockDrawToolRef,
 			getDrawState,
 			intl,

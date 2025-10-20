@@ -29,10 +29,10 @@ import { zIndexs } from "@/utils/zIndex";
 import { DrawContext } from "../../types";
 import type { DragElementOptionalConfig } from "../drawToolbar/components/dragButton";
 import { useMonitorRect } from "../statusBar";
-import type { DrawCacheLayerActionType } from "./extra";
+import type { DrawLayerActionType } from "./extra";
 
-const DrawCacheLayerCore: React.FC<{
-	actionRef: React.RefObject<DrawCacheLayerActionType | undefined>;
+const DrawLayerCore: React.FC<{
+	actionRef: React.RefObject<DrawLayerActionType | undefined>;
 }> = ({ actionRef }) => {
 	const { token } = theme.useToken();
 	const drawCoreActionRef = useRef<DrawCoreActionType | undefined>(undefined);
@@ -56,7 +56,7 @@ const DrawCacheLayerCore: React.FC<{
 		history.clear();
 	}, [history]);
 
-	useImperativeHandle(actionRef, (): DrawCacheLayerActionType => {
+	useImperativeHandle(actionRef, (): DrawLayerActionType => {
 		return {
 			setActiveTool: (...args) => {
 				drawCoreActionRef.current?.setActiveTool?.(...args);
@@ -277,4 +277,4 @@ const DrawCacheLayerCore: React.FC<{
 	);
 };
 
-export const DrawCacheLayer = React.memo(DrawCacheLayerCore);
+export const DrawLayer = React.memo(DrawLayerCore);
