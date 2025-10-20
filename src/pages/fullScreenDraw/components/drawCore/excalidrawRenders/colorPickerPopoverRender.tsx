@@ -18,7 +18,6 @@ import {
 	DrawEventPublisher,
 } from "@/pages/draw/extra";
 import { DrawContext } from "../../../extra";
-import { useGetPopupContainer } from ".";
 
 const ColorPickerCore: React.FC<{
 	color: string | null;
@@ -78,7 +77,7 @@ const ColorPickerCore: React.FC<{
 		};
 	}, [enableColorPicker, onMouseDown]);
 
-	const getPopupContainer = useGetPopupContainer();
+	const { getPopupContainer } = useContext(DrawContext);
 
 	const onChangeComplete = useCallback<
 		NonNullable<ComponentProps<typeof ColorPicker>["onChangeComplete"]>

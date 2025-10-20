@@ -1873,9 +1873,9 @@ export const FixedContentCore: React.FC<{
 			}}
 			onContextMenu={handleContextMenu}
 			onDoubleClick={onDoubleClick}
-			onMouseDown={onDragRegionMouseDown}
-			onMouseMove={onDragRegionMouseMove}
-			onMouseUp={onDragRegionMouseUp}
+			onMouseDown={!enableDraw ? onDragRegionMouseDown : undefined}
+			onMouseMove={!enableDraw ? onDragRegionMouseMove : undefined}
+			onMouseUp={!enableDraw ? onDragRegionMouseUp : undefined}
 		>
 			<HandleFocusMode disabled={disabled} />
 

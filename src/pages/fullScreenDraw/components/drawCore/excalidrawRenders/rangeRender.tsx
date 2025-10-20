@@ -1,7 +1,7 @@
 import type { ExcalidrawPropsCustomOptions } from "@mg-chao/excalidraw/types";
 import { Slider, theme } from "antd";
-import React from "react";
-import { useGetPopupContainer } from ".";
+import React, { useContext } from "react";
+import { DrawContext } from "@/pages/fullScreenDraw/extra";
 
 const RangeRenderCore: React.FC<
 	Parameters<
@@ -12,7 +12,7 @@ const RangeRenderCore: React.FC<
 > = (props) => {
 	const { token } = theme.useToken();
 
-	const getPopupContainer = useGetPopupContainer();
+	const { getPopupContainer } = useContext(DrawContext);
 
 	return (
 		<Slider
