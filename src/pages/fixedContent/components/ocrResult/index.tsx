@@ -29,7 +29,7 @@ import { AppSettingsGroup } from "@/types/appSettings";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { writeTextToClipboard } from "@/utils/clipboard";
-import { appError, appInfo } from "@/utils/log";
+import { appError } from "@/utils/log";
 import { getPlatformValue } from "@/utils/platform";
 import { randomString } from "@/utils/random";
 import { getWebViewSharedBuffer } from "@/utils/webview";
