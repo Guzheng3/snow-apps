@@ -12,13 +12,13 @@ import {
 	ExcalidrawEventCallbackPublisher,
 	ExcalidrawEventCallbackType,
 } from "@/pages/fullScreenDraw/components/drawCore/extra";
+import { DrawContext } from "@/pages/fullScreenDraw/extra";
 import {
 	convertSerialNumberElementIdToEllipseElementId,
 	convertSerialNumberElementIdToEllipseTextElementId,
 	generateSerialNumber,
 	isSerialNumberElement,
 } from "../components/serialNumberTool";
-import { useGetPopupContainer } from ".";
 
 export const useChangeFontSizeProps = (
 	isSlider: boolean,
@@ -353,7 +353,7 @@ export const FilterTypeRadioSelection = (
 		];
 	}, [intl]);
 
-	const getPopupContainer = useGetPopupContainer();
+	const { getPopupContainer } = useContext(DrawContext);
 
 	if (props.type !== "button") {
 		return undefined;

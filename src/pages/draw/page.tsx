@@ -1279,6 +1279,7 @@ const DrawPageCore: React.FC<{
 			captureHistoryActionRef,
 		};
 	}, [finishCapture]);
+
 	const commonDrawContextValue = useMemo<CommonDrawContextType>(() => {
 		return {
 			getDrawCoreAction: () =>
@@ -1295,6 +1296,9 @@ const DrawPageCore: React.FC<{
 			},
 			getColorPickerCurrentColor: () => {
 				return colorPickerActionRef.current?.getCurrentColor();
+			},
+			getPopupContainer: (triggerNode: HTMLElement) => {
+				return triggerNode.parentElement ?? document.body;
 			},
 		};
 	}, []);

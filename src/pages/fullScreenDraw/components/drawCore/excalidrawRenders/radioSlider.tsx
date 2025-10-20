@@ -1,7 +1,7 @@
 import type { ExcalidrawPropsCustomOptions } from "@mg-chao/excalidraw/types";
 import { Flex, InputNumber, Slider, theme } from "antd";
-import { useMemo } from "react";
-import { useGetPopupContainer } from ".";
+import { useContext, useMemo } from "react";
+import { DrawContext } from "@/pages/fullScreenDraw/extra";
 import { useChangeFontSizeProps } from "./radioSelection";
 
 export const STROKE_WIDTH_MAX_VALUE = 32;
@@ -30,7 +30,7 @@ export const ChangeStrokeWidthSlider: NonNullable<
 	//     };
 	// }, [maxValue]);
 
-	const getPopupContainer = useGetPopupContainer();
+	const { getPopupContainer } = useContext(DrawContext);
 
 	return (
 		<Flex gap={token.margin}>

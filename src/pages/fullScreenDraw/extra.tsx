@@ -11,6 +11,7 @@ export type DrawContextType = {
 	pickColor?: (mousePosition: MousePosition) => Promise<string | undefined>;
 	getColorPickerCurrentColor?: () => ColorInstance | undefined;
 	setColorPickerForceEnable?: (forceEnable: boolean) => void;
+	getPopupContainer?: ((triggerNode: HTMLElement) => HTMLElement) | undefined;
 };
 
 export const DrawContext = createContext<DrawContextType>({
@@ -19,6 +20,7 @@ export const DrawContext = createContext<DrawContextType>({
 	enableColorPicker: false,
 	pickColor: undefined,
 	setColorPickerForceEnable: () => {},
+	getPopupContainer: undefined,
 });
 
 export const useDrawContext = () => {
