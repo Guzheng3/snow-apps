@@ -1,5 +1,12 @@
 import { useCallback, useContext, useRef } from "react";
 import {
+	type ExcalidrawEventOnChangeParams,
+	type ExcalidrawEventParams,
+	ExcalidrawEventPublisher,
+	type ExcalidrawOnHandleEraserParams,
+	ExcalidrawOnHandleEraserPublisher,
+} from "@/components/drawCore/extra";
+import {
 	useCallbackRender,
 	useCallbackRenderSlow,
 } from "@/hooks/useCallbackRender";
@@ -10,13 +17,6 @@ import {
 	DrawEventPublisher,
 } from "@/pages/draw/extra";
 import { DrawContext } from "@/pages/draw/types";
-import {
-	type ExcalidrawEventOnChangeParams,
-	type ExcalidrawEventParams,
-	ExcalidrawEventPublisher,
-	type ExcalidrawOnHandleEraserParams,
-	ExcalidrawOnHandleEraserPublisher,
-} from "@/pages/fullScreenDraw/components/drawCore/extra";
 import { DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY } from "../../../drawLayer";
 import type { HighlightElementProps } from "../../../drawLayer/baseLayerRenderActions";
 

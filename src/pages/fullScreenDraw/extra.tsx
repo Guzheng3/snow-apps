@@ -1,8 +1,8 @@
 import type { ColorInstance } from "color";
 import { createContext, useContext } from "react";
+import type { DrawCoreActionType } from "@/components/drawCore/extra";
 import type { DrawState } from "@/types/draw";
 import type { MousePosition } from "@/utils/mousePosition";
-import type { DrawCoreActionType } from "./components/drawCore/extra";
 
 export type DrawContextType = {
 	getDrawCoreAction: () => DrawCoreActionType | undefined;

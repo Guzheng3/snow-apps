@@ -18,6 +18,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
+import { DrawStatePublisher } from "@/components/drawCore/extra";
 import {
 	AppSettingsActionContext,
 	AppSettingsPublisher,
@@ -49,7 +50,6 @@ import {
 } from "@/pages/draw/extra";
 import type { ImageSharedBufferData } from "@/pages/draw/tools";
 import { CaptureStep, DrawContext } from "@/pages/draw/types";
-import { DrawStatePublisher } from "@/pages/fullScreenDraw/components/drawCore/extra";
 import { AppSettingsGroup, ColorPickerShowMode } from "@/types/appSettings";
 import type { ImageBuffer } from "@/types/commands/screenshot";
 import { DrawToolbarKeyEventKey } from "@/types/components/drawToolbar";

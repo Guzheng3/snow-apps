@@ -19,18 +19,18 @@ import {
 	getMonitorsBoundingBox,
 	type MonitorBoundingBox,
 } from "@/commands/core";
-import { withStatePublisher } from "@/hooks/useStatePublisher";
-import { useStateSubscriber } from "@/hooks/useStateSubscriber";
-import { EnableKeyEventPublisher } from "@/pages/draw/components/drawToolbar/components/keyEventWrap/extra";
-import { DrawCore } from "@/pages/fullScreenDraw/components/drawCore";
-import { withCanvasHistory } from "@/pages/fullScreenDraw/components/drawCore/components/historyContext";
+import { DrawCore } from "@/components/drawCore";
+import { withCanvasHistory } from "@/components/drawCore/components/historyContext";
 import {
 	type DrawCoreActionType,
 	DrawCoreContext,
 	type DrawCoreContextValue,
 	DrawStatePublisher,
 	ExcalidrawEventPublisher,
-} from "@/pages/fullScreenDraw/components/drawCore/extra";
+} from "@/components/drawCore/extra";
+import { withStatePublisher } from "@/hooks/useStatePublisher";
+import { useStateSubscriber } from "@/hooks/useStateSubscriber";
+import { EnableKeyEventPublisher } from "@/pages/draw/components/drawToolbar/components/keyEventWrap/extra";
 import {
 	DrawContext,
 	type DrawContextType,

@@ -2,6 +2,11 @@ import type { ExcalidrawWatermarkElement } from "@mg-chao/excalidraw/element/typ
 import type { AppState } from "@mg-chao/excalidraw/types";
 import { useCallback, useContext, useRef } from "react";
 import {
+	DrawStatePublisher,
+	type ExcalidrawEventParams,
+	ExcalidrawEventPublisher,
+} from "@/components/drawCore/extra";
+import {
 	AppSettingsActionContext,
 	AppSettingsPublisher,
 } from "@/contexts/appSettingsActionContext";
@@ -17,11 +22,6 @@ import {
 	DrawEventPublisher,
 } from "@/pages/draw/extra";
 import { DrawContext } from "@/pages/draw/types";
-import {
-	DrawStatePublisher,
-	type ExcalidrawEventParams,
-	ExcalidrawEventPublisher,
-} from "@/pages/fullScreenDraw/components/drawCore/extra";
 import { AppSettingsGroup } from "@/types/appSettings";
 import { DrawState } from "@/types/draw";
 

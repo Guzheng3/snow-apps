@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { useHotkeysContext } from "react-hotkeys-hook";
 import { FormattedMessage, useIntl } from "react-intl";
+import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { Translator, type TranslatorActionType } from "@/components/translator";
 import { AntdContext } from "@/contexts/antdContext";
 import {
@@ -18,7 +19,6 @@ import {
 } from "@/contexts/appSettingsActionContext";
 import { useStateRef } from "@/hooks/useStateRef";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
-import { DrawStatePublisher } from "@/pages/fullScreenDraw/components/drawCore/extra";
 import {
 	type AppSettingsData,
 	AppSettingsGroup,

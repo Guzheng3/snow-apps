@@ -3,6 +3,7 @@ import { Button, Flex, message, theme } from "antd";
 import { useCallback, useContext, useState } from "react";
 import { useIntl } from "react-intl";
 import { createVideoRecordWindow } from "@/commands/core";
+import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { VideoRecordIcon } from "@/components/icons";
 import { PLUGIN_ID_FFMPEG } from "@/constants/pluginService";
 import {
@@ -12,7 +13,6 @@ import {
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import { DrawContext } from "@/pages/draw/types";
-import { DrawStatePublisher } from "@/pages/fullScreenDraw/components/drawCore/extra";
 import {
 	type AppSettingsData,
 	AppSettingsGroup,

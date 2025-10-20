@@ -1,4 +1,5 @@
 import { useCallback, useImperativeHandle, useRef } from "react";
+import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import {
@@ -7,7 +8,6 @@ import {
 	OcrResult,
 	type OcrResultActionType,
 } from "@/pages/fixedContent/components/ocrResult";
-import { DrawStatePublisher } from "@/pages/fullScreenDraw/components/drawCore/extra";
 import { AppSettingsGroup, OcrDetectAfterAction } from "@/types/appSettings";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect } from "@/types/commands/screenshot";

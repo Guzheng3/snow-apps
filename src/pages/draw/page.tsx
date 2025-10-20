@@ -38,6 +38,15 @@ import {
 	scrollScreenshotSaveToFile,
 } from "@/commands/scrollScreenshot";
 import { setExcludeFromCapture } from "@/commands/videoRecord";
+import {
+	HistoryContext,
+	withCanvasHistory,
+} from "@/components/drawCore/components/historyContext";
+import {
+	DrawStatePublisher,
+	ExcalidrawEventPublisher,
+	ExcalidrawOnHandleEraserPublisher,
+} from "@/components/drawCore/extra";
 import { EventListenerContext } from "@/components/eventListener";
 import { TextScaleFactorContextProvider } from "@/components/textScaleFactorContextProvider";
 import { AntdContext } from "@/contexts/antdContext";
@@ -81,15 +90,6 @@ import {
 	FixedContentCore,
 } from "../fixedContent/components/fixedContentCore";
 import { covertOcrResultToText } from "../fixedContent/components/ocrResult";
-import {
-	HistoryContext,
-	withCanvasHistory,
-} from "../fullScreenDraw/components/drawCore/components/historyContext";
-import {
-	DrawStatePublisher,
-	ExcalidrawEventPublisher,
-	ExcalidrawOnHandleEraserPublisher,
-} from "../fullScreenDraw/components/drawCore/extra";
 import {
 	DrawContext as CommonDrawContext,
 	type DrawContextType as CommonDrawContextType,

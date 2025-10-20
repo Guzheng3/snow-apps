@@ -18,6 +18,11 @@ import React, {
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
+	DrawStatePublisher,
+	type ExcalidrawEventParams,
+	ExcalidrawEventPublisher,
+} from "@/components/drawCore/extra";
+import {
 	ArrowSelectIcon,
 	CircleIcon,
 	EraserIcon,
@@ -42,11 +47,6 @@ import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
 import { createPublisher } from "@/hooks/useStatePublisher";
 import { useStateRef } from "@/hooks/useStateRef";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
-import {
-	DrawStatePublisher,
-	type ExcalidrawEventParams,
-	ExcalidrawEventPublisher,
-} from "@/pages/fullScreenDraw/components/drawCore/extra";
 import {
 	type AppSettingsData,
 	AppSettingsGroup,

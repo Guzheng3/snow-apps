@@ -29,6 +29,7 @@ import {
 	scrollScreenshotHandleImage,
 	scrollScreenshotInit,
 } from "@/commands/scrollScreenshot";
+import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { EventListenerContext } from "@/components/eventListener";
 import { RotateIcon } from "@/components/icons";
 import { LISTEN_KEY_SERVICE_MOUSE_DOWN_EMIT_KEY } from "@/constants/eventListener";
@@ -39,7 +40,6 @@ import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import { useMonitorRect } from "@/pages/draw/components/statusBar";
 import { DrawEvent, DrawEventPublisher } from "@/pages/draw/extra";
 import { DrawContext } from "@/pages/draw/types";
-import { DrawStatePublisher } from "@/pages/fullScreenDraw/components/drawCore/extra";
 import { AppSettingsGroup } from "@/types/appSettings";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { DrawState } from "@/types/draw";

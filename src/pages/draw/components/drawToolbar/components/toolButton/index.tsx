@@ -1,8 +1,8 @@
 import { Button } from "antd";
 import React, { useCallback, useState } from "react";
+import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import { KeyEventWrap } from "@/pages/draw/components/drawToolbar/components/keyEventWrap";
-import { DrawStatePublisher } from "@/pages/fullScreenDraw/components/drawCore/extra";
 import type { DrawToolbarKeyEventKey } from "@/types/components/drawToolbar";
 import type { HotkeysScope } from "@/types/core/appHotKeys";
 import type { DrawState } from "@/types/draw";

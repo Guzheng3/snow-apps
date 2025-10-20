@@ -13,16 +13,16 @@ import React, {
 	useMemo,
 	useRef,
 } from "react";
-import { useStateSubscriber } from "@/hooks/useStateSubscriber";
-import { DrawCore } from "@/pages/fullScreenDraw/components/drawCore";
-import { useHistory } from "@/pages/fullScreenDraw/components/drawCore/components/historyContext";
+import { DrawCore } from "@/components/drawCore";
+import { useHistory } from "@/components/drawCore/components/historyContext";
 import {
 	type DrawCoreActionType,
 	DrawCoreContext,
 	type DrawCoreContextValue,
 	DrawStatePublisher,
 	ExcalidrawEventPublisher,
-} from "@/pages/fullScreenDraw/components/drawCore/extra";
+} from "@/components/drawCore/extra";
+import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { DrawState } from "@/types/draw";
 import { zIndexs } from "@/utils/zIndex";

@@ -3,6 +3,7 @@
 import { Button, Flex, theme } from "antd";
 import { useCallback, useContext, useMemo, useState } from "react";
 import { useIntl } from "react-intl";
+import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { HighlightIcon, WatermarkIcon } from "@/components/icons";
 import {
 	AppSettingsActionContext,
@@ -10,7 +11,6 @@ import {
 } from "@/contexts/appSettingsActionContext";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import { ToolbarPopover } from "@/pages/draw/components/drawToolbar/components/toolbarPopover";
-import { DrawStatePublisher } from "@/pages/fullScreenDraw/components/drawCore/extra";
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 import { DrawState } from "@/types/draw";
 import { getButtonTypeByState } from "../../../extra";

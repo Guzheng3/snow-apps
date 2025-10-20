@@ -1,6 +1,7 @@
 import { Button } from "antd";
 import { useCallback, useRef, useState } from "react";
 import { useIntl } from "react-intl";
+import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { OcrTranslateIcon } from "@/components/icons";
 import { useStateRef } from "@/hooks/useStateRef";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
@@ -9,7 +10,6 @@ import {
 	type DrawEventParams,
 	DrawEventPublisher,
 } from "@/pages/draw/extra";
-import { DrawStatePublisher } from "@/pages/fullScreenDraw/components/drawCore/extra";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import { DrawState } from "@/types/draw";
 import { SubTools } from "../../subTools";

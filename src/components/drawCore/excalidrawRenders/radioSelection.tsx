@@ -6,12 +6,6 @@ import { useCallback, useContext, useEffect, useMemo, useRef } from "react";
 import { useIntl } from "react-intl";
 import { CircleIcon, RectIcon } from "@/components/icons";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
-import {
-	DrawCoreContext,
-	type ExcalidrawEventCallbackParams,
-	ExcalidrawEventCallbackPublisher,
-	ExcalidrawEventCallbackType,
-} from "@/pages/fullScreenDraw/components/drawCore/extra";
 import { DrawContext } from "@/pages/fullScreenDraw/extra";
 import {
 	convertSerialNumberElementIdToEllipseElementId,
@@ -19,6 +13,12 @@ import {
 	generateSerialNumber,
 	isSerialNumberElement,
 } from "../components/serialNumberTool";
+import {
+	DrawCoreContext,
+	type ExcalidrawEventCallbackParams,
+	ExcalidrawEventCallbackPublisher,
+	ExcalidrawEventCallbackType,
+} from "../extra";
 
 export const useChangeFontSizeProps = (
 	isSlider: boolean,

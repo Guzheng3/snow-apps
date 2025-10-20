@@ -17,7 +17,7 @@ import {
 	type DrawEventParams,
 	DrawEventPublisher,
 } from "@/pages/draw/extra";
-import { DrawContext } from "../../../extra";
+import { DrawContext } from "@/pages/fullScreenDraw/extra";
 
 const ColorPickerCore: React.FC<{
 	color: string | null;

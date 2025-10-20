@@ -11,13 +11,13 @@ import React, {
 } from "react";
 import { FormattedMessage } from "react-intl";
 import { captureFullScreen } from "@/commands/screenshot";
+import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { onCaptureHistoryChange } from "@/functions/screenshot";
 import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
 import { withStatePublisher } from "@/hooks/useStatePublisher";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
-import { DrawStatePublisher } from "@/pages/fullScreenDraw/components/drawCore/extra";
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 import type {
 	CaptureFullScreenResult,

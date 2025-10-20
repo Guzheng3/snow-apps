@@ -3,7 +3,7 @@ import type {
 	ExcalidrawActionType,
 	ExcalidrawImperativeAPI,
 } from "@mg-chao/excalidraw/types";
-import type { DrawCoreActionType } from "@/pages/fullScreenDraw/components/drawCore/extra";
+import type { DrawCoreActionType } from "@/components/drawCore/extra";
 import type { ElementRect } from "@/types/commands/screenshot";
 
 export type DrawCacheLayerActionType = {

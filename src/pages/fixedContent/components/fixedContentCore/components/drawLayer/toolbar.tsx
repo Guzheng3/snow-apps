@@ -12,6 +12,12 @@ import {
 import { useIntl } from "react-intl";
 import { startFreeDrag } from "@/commands/core";
 import {
+	DrawCoreContext,
+	DrawStatePublisher,
+	type ExcalidrawEventParams,
+	ExcalidrawEventPublisher,
+} from "@/components/drawCore/extra";
+import {
 	ArrowSelectIcon,
 	CircleIcon,
 	DragWindowIcon,
@@ -30,12 +36,6 @@ import { ToolButton } from "@/pages/draw/components/drawToolbar/components/toolB
 import { ArrowTool } from "@/pages/draw/components/drawToolbar/components/tools/arrowTool";
 import { RectTool } from "@/pages/draw/components/drawToolbar/components/tools/rectTool";
 import { getButtonTypeByState } from "@/pages/draw/components/drawToolbar/extra";
-import {
-	DrawCoreContext,
-	DrawStatePublisher,
-	type ExcalidrawEventParams,
-	ExcalidrawEventPublisher,
-} from "@/pages/fullScreenDraw/components/drawCore/extra";
 import type { DrawToolbarActionType } from "@/pages/fullScreenDraw/components/toolbar";
 import { useDrawContext } from "@/pages/fullScreenDraw/extra";
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";

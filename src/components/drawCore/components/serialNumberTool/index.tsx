@@ -19,15 +19,15 @@ import {
 import { useHotkeysApp } from "@/hooks/useHotkeysApp";
 import { useStateRef } from "@/hooks/useStateRef";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
+import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
+import { HotkeysScope } from "@/types/core/appHotKeys";
+import { DrawState } from "@/types/draw";
 import {
 	DrawCoreContext,
 	DrawStatePublisher,
 	type ExcalidrawEventParams,
 	ExcalidrawEventPublisher,
-} from "@/pages/fullScreenDraw/components/drawCore/extra";
-import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
-import { HotkeysScope } from "@/types/core/appHotKeys";
-import { DrawState } from "@/types/draw";
+} from "../../extra";
 
 export const isSerialNumberElement = (
 	element: ExcalidrawElement | undefined,

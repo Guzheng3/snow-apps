@@ -10,6 +10,7 @@ import {
 	useState,
 } from "react";
 import { useIntl } from "react-intl";
+import { DrawStatePublisher } from "@/components/drawCore/extra";
 import {
 	LockAspectRatioIcon,
 	RadiusIcon,
@@ -24,7 +25,6 @@ import {
 	CaptureEventPublisher,
 	ScreenshotTypePublisher,
 } from "@/pages/draw/extra";
-import { DrawStatePublisher } from "@/pages/fullScreenDraw/components/drawCore/extra";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { DrawState } from "@/types/draw";
 import { MousePosition } from "@/utils/mousePosition";

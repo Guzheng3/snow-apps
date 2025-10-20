@@ -1,6 +1,6 @@
 import { RedoOutlined, UndoOutlined } from "@ant-design/icons";
 import React, { useEffect, useState } from "react";
-import { useHistory } from "@/pages/fullScreenDraw/components/drawCore/components/historyContext";
+import { useHistory } from "@/components/drawCore/components/historyContext";
 import { DrawToolbarKeyEventKey } from "@/types/components/drawToolbar";
 import { DrawState } from "@/types/draw";
 import { ToolButton } from "../toolButton";

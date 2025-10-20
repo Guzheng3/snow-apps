@@ -9,11 +9,11 @@ import React, {
 	useRef,
 } from "react";
 import { useIntl } from "react-intl";
+import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { useCallbackRender } from "@/hooks/useCallbackRender";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import { ElementDraggingPublisher } from "@/pages/draw/extra";
 import { DrawContext } from "@/pages/draw/types";
-import { DrawStatePublisher } from "@/pages/fullScreenDraw/components/drawCore/extra";
 import type { ElementRect } from "@/types/commands/screenshot";
 import type { DrawState } from "@/types/draw";
 import { MousePosition } from "@/utils/mousePosition";

@@ -13,6 +13,7 @@ import {
 	useState,
 } from "react";
 import { FormattedMessage } from "react-intl";
+import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { KeyboardIcon, MouseIcon } from "@/components/icons";
 import { AppContext } from "@/contexts/appContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
@@ -21,7 +22,6 @@ import { useCallbackRender } from "@/hooks/useCallbackRender";
 import { useStateRef } from "@/hooks/useStateRef";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import { useContentScale } from "@/hooks/useTextScaleFactor";
-import { DrawStatePublisher } from "@/pages/fullScreenDraw/components/drawCore/extra";
 import { AppSettingsGroup, AppSettingsTheme } from "@/types/appSettings";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { DrawState } from "@/types/draw";
