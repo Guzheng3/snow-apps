@@ -20,6 +20,7 @@ import {
 	initUiElementsCache,
 } from "@/commands";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
+import type { ImageLayerActionType } from "@/components/imageLayer";
 import { AppContext } from "@/contexts/appContext";
 import {
 	AppSettingsActionContext,
@@ -59,7 +60,6 @@ import {
 } from "../../extra";
 import { CaptureStep, DrawContext } from "../../types";
 import { useMoveCursor } from "../colorPicker/extra";
-import type { DrawLayerActionType } from "../drawLayer";
 import { useMonitorRect } from "../statusBar";
 import {
 	ResizeToolbar,
@@ -718,7 +718,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 	);
 
 	const onCaptureFinish = useCallback<
-		DrawLayerActionType["onCaptureFinish"]
+		ImageLayerActionType["onCaptureFinish"]
 	>(async () => {
 		selectLayerCanvasContextRef.current?.clearRect(
 			0,
@@ -1258,7 +1258,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 	const onMouseWheelRenderCallback = useCallbackRender(onMouseWheel);
 
 	const onExecuteScreenshot = useCallback<
-		DrawLayerActionType["onExecuteScreenshot"]
+		ImageLayerActionType["onExecuteScreenshot"]
 	>(async () => {
 		await initSelectWindowElement();
 

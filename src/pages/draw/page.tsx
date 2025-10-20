@@ -48,6 +48,7 @@ import {
 	ExcalidrawOnHandleEraserPublisher,
 } from "@/components/drawCore/extra";
 import { EventListenerContext } from "@/components/eventListener";
+import { ImageLayer, type ImageLayerActionType } from "@/components/imageLayer";
 import { TextScaleFactorContextProvider } from "@/components/textScaleFactorContextProvider";
 import { AntdContext } from "@/contexts/antdContext";
 import {
@@ -111,7 +112,6 @@ import {
 } from "./components/colorPicker";
 import { DrawCacheLayer } from "./components/drawCacheLayer";
 import type { DrawCacheLayerActionType } from "./components/drawCacheLayer/extra";
-import { DrawLayer, type DrawLayerActionType } from "./components/drawLayer";
 import {
 	DrawToolbar,
 	type DrawToolbarActionType,
@@ -183,7 +183,9 @@ const DrawPageCore: React.FC<{
 	// 层级
 	const drawLayerWrapRef = useRef<HTMLDivElement>(null);
 	const layerContainerRef = useRef<HTMLDivElement>(null);
-	const drawLayerActionRef = useRef<DrawLayerActionType | undefined>(undefined);
+	const imageLayerActionRef = useRef<ImageLayerActionType | undefined>(
+		undefined,
+	);
 	const drawCacheLayerActionRef = useRef<DrawCacheLayerActionType | undefined>(
 		undefined,
 	);
@@ -230,14 +232,14 @@ const DrawPageCore: React.FC<{
 		CaptureEventPublisher,
 		undefined,
 	);
-	const onCaptureLoad = useCallback<DrawLayerActionType["onCaptureLoad"]>(
+	const onCaptureLoad = useCallback<ImageLayerActionType["onCaptureLoad"]>(
 		async (
 			imageSrc: string | undefined,
 			imageBuffer: ImageBuffer | ImageSharedBufferData | undefined,
 			captureBoundingBoxInfo: CaptureBoundingBoxInfo,
 		) => {
 			await Promise.all([
-				drawLayerActionRef.current?.onCaptureLoad(
+				imageLayerActionRef.current?.onCaptureLoad(
 					imageSrc,
 					imageBuffer,
 					captureBoundingBoxInfo,
@@ -268,7 +270,7 @@ const DrawPageCore: React.FC<{
 	const handleLayerSwitch = useCallback((layer: CanvasLayer) => {
 		switchLayer(
 			layer,
-			drawLayerActionRef.current,
+			imageLayerActionRef.current,
 			selectLayerActionRef.current,
 		);
 	}, []);
@@ -356,7 +358,7 @@ const DrawPageCore: React.FC<{
 			);
 
 			await Promise.all([
-				drawLayerActionRef.current?.onCaptureReady(
+				imageLayerActionRef.current?.onCaptureReady(
 					imageBlobUrlRef.current,
 					imageBuffer,
 					captureBoundingBoxInfo,
@@ -477,7 +479,7 @@ const DrawPageCore: React.FC<{
 
 			window.getSelection()?.removeAllRanges();
 			await Promise.all([
-				drawLayerActionRef.current?.onCaptureFinish(),
+				imageLayerActionRef.current?.onCaptureFinish(),
 				selectLayerActionRef.current?.onCaptureFinish(),
 				drawCacheLayerActionRef.current?.onCaptureFinish(),
 			]);
@@ -552,7 +554,7 @@ const DrawPageCore: React.FC<{
 						captureBoundingBoxInfoRef.current,
 					)
 				: undefined,
-			drawLayerActionRef.current?.onCaptureBoundingBoxInfoReady(
+			imageLayerActionRef.current?.onCaptureBoundingBoxInfoReady(
 				captureBoundingBoxInfoRef.current,
 			),
 		]);
@@ -633,7 +635,7 @@ const DrawPageCore: React.FC<{
 			});
 
 			const layerOnExecuteScreenshotPromise = Promise.all([
-				drawLayerActionRef.current?.onExecuteScreenshot(),
+				imageLayerActionRef.current?.onExecuteScreenshot(),
 				selectLayerActionRef.current?.onExecuteScreenshot(),
 			]);
 			setCaptureEvent({
@@ -821,7 +823,7 @@ const DrawPageCore: React.FC<{
 
 			if (
 				!selectLayerActionRef.current ||
-				!drawLayerActionRef.current ||
+				!imageLayerActionRef.current ||
 				!drawCacheLayerActionRef.current
 			) {
 				return;
@@ -829,7 +831,7 @@ const DrawPageCore: React.FC<{
 
 			const imageCanvas = await getCanvas(
 				selectLayerActionRef.current.getSelectRectParams(),
-				drawLayerActionRef.current,
+				imageLayerActionRef.current,
 				drawCacheLayerActionRef.current,
 			);
 
@@ -883,7 +885,7 @@ const DrawPageCore: React.FC<{
 
 		if (
 			!selectLayerActionRef.current ||
-			!drawLayerActionRef.current ||
+			!imageLayerActionRef.current ||
 			!drawCacheLayerActionRef.current
 		) {
 			return;
@@ -891,7 +893,7 @@ const DrawPageCore: React.FC<{
 
 		const imageCanvas = await getCanvas(
 			selectLayerActionRef.current.getSelectRectParams(),
-			drawLayerActionRef.current,
+			imageLayerActionRef.current,
 			drawCacheLayerActionRef.current,
 		);
 
@@ -969,7 +971,7 @@ const DrawPageCore: React.FC<{
 			!layerContainerRef.current ||
 			!selectLayerActionRef.current ||
 			!captureBoundingBoxInfoRef.current ||
-			!drawLayerActionRef.current ||
+			!imageLayerActionRef.current ||
 			!drawCacheLayerActionRef.current ||
 			!fixedContentAction ||
 			!ocrBlocksActionRef.current
@@ -983,7 +985,7 @@ const DrawPageCore: React.FC<{
 			layerContainerRef.current,
 			selectLayerActionRef.current,
 			fixedContentAction,
-			drawLayerActionRef.current,
+			imageLayerActionRef.current,
 			drawCacheLayerActionRef.current,
 			setCaptureStep,
 			// 如果当前是 OCR 识别状态，则使用已有的 OCR 结果
@@ -1003,7 +1005,7 @@ const DrawPageCore: React.FC<{
 
 		switchLayer(
 			undefined,
-			drawLayerActionRef.current,
+			imageLayerActionRef.current,
 			selectLayerActionRef.current,
 		);
 
@@ -1032,7 +1034,7 @@ const DrawPageCore: React.FC<{
 		if (
 			!captureBoundingBoxInfoRef.current ||
 			!selectLayerActionRef.current ||
-			!drawLayerActionRef.current ||
+			!imageLayerActionRef.current ||
 			!drawCacheLayerActionRef.current ||
 			!ocrBlocksActionRef.current
 		) {
@@ -1042,7 +1044,7 @@ const DrawPageCore: React.FC<{
 		handleOcrDetect(
 			captureBoundingBoxInfoRef.current,
 			selectLayerActionRef.current,
-			drawLayerActionRef.current,
+			imageLayerActionRef.current,
 			drawCacheLayerActionRef.current,
 			ocrBlocksActionRef.current,
 			true,
@@ -1102,7 +1104,7 @@ const DrawPageCore: React.FC<{
 		} else {
 			if (
 				!selectLayerActionRef.current ||
-				!drawLayerActionRef.current ||
+				!imageLayerActionRef.current ||
 				!drawCacheLayerActionRef.current
 			) {
 				return;
@@ -1125,7 +1127,7 @@ const DrawPageCore: React.FC<{
 				selectLayerActionRef.current.getSelectRectParams();
 			const imageCanvas: HTMLCanvasElement | undefined = await getCanvas(
 				selectRectParams,
-				drawLayerActionRef.current,
+				imageLayerActionRef.current,
 				drawCacheLayerActionRef.current,
 			);
 
@@ -1266,7 +1268,7 @@ const DrawPageCore: React.FC<{
 	const drawContextValue = useMemo<DrawContextType>(() => {
 		return {
 			finishCapture,
-			drawLayerActionRef,
+			imageLayerActionRef,
 			selectLayerActionRef,
 			imageBufferRef,
 			drawToolbarActionRef,
@@ -1460,8 +1462,8 @@ const DrawPageCore: React.FC<{
 					/>
 
 					<div className={styles.drawLayerWrap} ref={drawLayerWrapRef}>
-						<DrawLayer
-							actionRef={drawLayerActionRef}
+						<ImageLayer
+							actionRef={imageLayerActionRef}
 							zIndex={zIndexs.Draw_DrawLayer}
 							onInitCanvasReady={onInitCanvasReady}
 						/>

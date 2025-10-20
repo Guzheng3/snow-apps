@@ -6,6 +6,8 @@ import {
 	type ExcalidrawOnHandleEraserParams,
 	ExcalidrawOnHandleEraserPublisher,
 } from "@/components/drawCore/extra";
+import { DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY } from "@/components/imageLayer";
+import type { HighlightElementProps } from "@/components/imageLayer/baseLayerRenderActions";
 import {
 	useCallbackRender,
 	useCallbackRenderSlow,
@@ -17,8 +19,6 @@ import {
 	DrawEventPublisher,
 } from "@/pages/draw/extra";
 import { DrawContext } from "@/pages/draw/types";
-import { DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY } from "../../../drawLayer";
-import type { HighlightElementProps } from "../../../drawLayer/baseLayerRenderActions";
 
 const isEqualHighlightSpriteProps = (
 	a: Omit<HighlightElementProps, "valid">,
@@ -43,7 +43,7 @@ const isEqualHighlightSpriteProps = (
 };
 
 const HighlightToolCore: React.FC = () => {
-	const { drawLayerActionRef, drawCacheLayerActionRef, selectLayerActionRef } =
+	const { imageLayerActionRef, drawCacheLayerActionRef, selectLayerActionRef } =
 		useContext(DrawContext);
 	const highlightSpriteMapRef = useRef<
 		Map<
@@ -60,7 +60,7 @@ const HighlightToolCore: React.FC = () => {
 				return;
 			}
 
-			if (!drawLayerActionRef.current) {
+			if (!imageLayerActionRef.current) {
 				return;
 			}
 
@@ -126,7 +126,7 @@ const HighlightToolCore: React.FC = () => {
 					}
 				}
 
-				await drawLayerActionRef.current.updateHighlightElement(
+				await imageLayerActionRef.current.updateHighlightElement(
 					DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY,
 					element.id,
 					highlightProps,
@@ -141,7 +141,7 @@ const HighlightToolCore: React.FC = () => {
 			).filter(([, highlightSprite]) => !highlightSprite.props.valid);
 			for (const [id] of highlightSprites) {
 				highlightSpriteMapRef.current.delete(id);
-				await drawLayerActionRef.current.updateHighlightElement(
+				await imageLayerActionRef.current.updateHighlightElement(
 					DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY,
 					id,
 					undefined,
@@ -153,16 +153,16 @@ const HighlightToolCore: React.FC = () => {
 			const selectRectParams =
 				selectLayerActionRef.current?.getSelectRectParams();
 			if (needRender && selectRectParams) {
-				await drawLayerActionRef.current.updateHighlight(
+				await imageLayerActionRef.current.updateHighlight(
 					DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY,
 					{
 						selectRectParams,
 					},
 				);
-				drawLayerActionRef.current.canvasRender();
+				imageLayerActionRef.current.canvasRender();
 			}
 		},
-		[drawCacheLayerActionRef, drawLayerActionRef, selectLayerActionRef],
+		[drawCacheLayerActionRef, imageLayerActionRef, selectLayerActionRef],
 	);
 	const updateHighlightRender = useCallbackRender(updateHighlight);
 
@@ -183,15 +183,15 @@ const HighlightToolCore: React.FC = () => {
 					return;
 				}
 				highlightSprite.props.eraserAlpha = targetOpacity;
-				await drawLayerActionRef.current?.updateHighlightElement(
+				await imageLayerActionRef.current?.updateHighlightElement(
 					DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY,
 					id,
 					highlightSprite.props,
 				);
-				drawLayerActionRef.current?.canvasRender();
+				imageLayerActionRef.current?.canvasRender();
 			});
 		},
-		[drawLayerActionRef],
+		[imageLayerActionRef],
 	);
 	const handleEraserRender = useCallbackRenderSlow(handleEraser);
 
@@ -213,18 +213,18 @@ const HighlightToolCore: React.FC = () => {
 		useCallback(
 			(params: DrawEventParams | undefined) => {
 				if (params?.event === DrawEvent.SelectRectParamsAnimationChange) {
-					drawLayerActionRef.current
+					imageLayerActionRef.current
 						?.updateHighlight(DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY, {
 							selectRectParams: params.params.selectRectParams,
 						})
 						.then(() => {
-							drawLayerActionRef.current?.canvasRender();
+							imageLayerActionRef.current?.canvasRender();
 						});
 				} else if (params?.event === DrawEvent.ClearContext) {
 					highlightSpriteMapRef.current.clear();
 				}
 			},
-			[drawLayerActionRef],
+			[imageLayerActionRef],
 		),
 	);
 

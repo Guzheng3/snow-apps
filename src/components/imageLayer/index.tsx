@@ -10,13 +10,13 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { defaultWatermarkProps } from "@/pages/draw/components/drawToolbar/components/tools/drawExtraTool/components/watermarkTool";
+import type { CaptureBoundingBoxInfo } from "@/pages/draw/extra";
+import type { ImageSharedBufferData } from "@/pages/draw/tools";
 import type { ElementRect, ImageBuffer } from "@/types/commands/screenshot";
 import type { CaptureHistoryItem } from "@/utils/appStore";
 import { getCaptureHistoryImageAbsPath } from "@/utils/captureHistory";
 import { supportOffscreenCanvas } from "@/utils/environment";
-import type { CaptureBoundingBoxInfo } from "../../extra";
-import type { ImageSharedBufferData } from "../../tools";
-import { defaultWatermarkProps } from "../drawToolbar/components/tools/drawExtraTool/components/watermarkTool";
 import {
 	addImageToContainerAction,
 	canvasRenderAction,
@@ -46,7 +46,7 @@ import type {
 	WatermarkProps,
 } from "./baseLayerRenderActions";
 
-export type DrawLayerActionType = {
+export type ImageLayerActionType = {
 	/**
 	 * 初始化画布
 	 */
@@ -153,10 +153,10 @@ export type DrawLayerActionType = {
 	onCaptureFinish: () => Promise<void>;
 };
 
-export type DrawLayerProps = {
+export type ImageLayerProps = {
 	zIndex: number;
 	onInitCanvasReady: () => Promise<void>;
-	actionRef: React.RefObject<DrawLayerActionType | undefined>;
+	actionRef: React.RefObject<ImageLayerActionType | undefined>;
 };
 
 export const DRAW_LAYER_BLUR_CONTAINER_KEY = "draw_layer_blur_container";
@@ -165,7 +165,7 @@ export const DRAW_LAYER_HIGHLIGHT_CONTAINER_KEY =
 export const DRAW_LAYER_WATERMARK_CONTAINER_KEY =
 	"draw_layer_watermark_container";
 
-export const DrawLayer: React.FC<DrawLayerProps> = ({
+export const ImageLayer: React.FC<ImageLayerProps> = ({
 	zIndex,
 	onInitCanvasReady,
 	actionRef,
@@ -214,7 +214,7 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 	}, [rendererWorker]);
 
 	/** 初始化画布 */
-	const initCanvas = useCallback<DrawLayerActionType["initCanvas"]>(
+	const initCanvas = useCallback<ImageLayerActionType["initCanvas"]>(
 		async (antialias: boolean) => {
 			const canvas = document.createElement("canvas");
 			if (layerContainerElementRef.current) {
@@ -270,7 +270,7 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 	);
 
 	const clearCanvas = useCallback<
-		DrawLayerActionType["clearCanvas"]
+		ImageLayerActionType["clearCanvas"]
 	>(async () => {
 		await clearCanvasAction(
 			rendererWorker,
@@ -280,7 +280,7 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 		);
 	}, [rendererWorker]);
 
-	const changeCursor = useCallback<DrawLayerActionType["changeCursor"]>(
+	const changeCursor = useCallback<ImageLayerActionType["changeCursor"]>(
 		(cursor) => {
 			if (!layerContainerElementRef.current) {
 				return "auto";
@@ -294,17 +294,17 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 	);
 
 	const getLayerContainerElement = useCallback<
-		DrawLayerActionType["getLayerContainerElement"]
+		ImageLayerActionType["getLayerContainerElement"]
 	>(() => layerContainerElementRef.current, []);
 
-	const getImageData = useCallback<DrawLayerActionType["getImageData"]>(
+	const getImageData = useCallback<ImageLayerActionType["getImageData"]>(
 		async (selectRect: ElementRect) => {
 			return getImageDataAction(rendererWorker, canvasAppRef, selectRect);
 		},
 		[rendererWorker],
 	);
 
-	const renderToCanvas = useCallback<DrawLayerActionType["renderToCanvas"]>(
+	const renderToCanvas = useCallback<ImageLayerActionType["renderToCanvas"]>(
 		async (selectRect: ElementRect) => {
 			return renderToCanvasAction(rendererWorker, canvasAppRef, selectRect);
 		},
@@ -312,13 +312,13 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 	);
 
 	const canvasRender = useCallback<
-		DrawLayerActionType["canvasRender"]
+		ImageLayerActionType["canvasRender"]
 	>(async () => {
 		await canvasRenderAction(rendererWorker, canvasAppRef);
 	}, [rendererWorker]);
 
 	const addImageToContainer = useCallback<
-		DrawLayerActionType["addImageToContainer"]
+		ImageLayerActionType["addImageToContainer"]
 	>(
 		async (containerKey: string, imageSrc: string | ImageSharedBufferData) => {
 			await addImageToContainerAction(
@@ -332,7 +332,7 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 		[rendererWorker],
 	);
 
-	const clearContainer = useCallback<DrawLayerActionType["clearContainer"]>(
+	const clearContainer = useCallback<ImageLayerActionType["clearContainer"]>(
 		async (containerKey: string) => {
 			await clearContainerAction(
 				rendererWorker,
@@ -343,7 +343,9 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 		[rendererWorker],
 	);
 
-	const createBlurSprite = useCallback<DrawLayerActionType["createBlurSprite"]>(
+	const createBlurSprite = useCallback<
+		ImageLayerActionType["createBlurSprite"]
+	>(
 		async (blurContainerKey: string, blurElementId: string) => {
 			await createBlurSpriteAction(
 				rendererWorker,
@@ -357,7 +359,9 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 		[rendererWorker],
 	);
 
-	const updateBlurSprite = useCallback<DrawLayerActionType["updateBlurSprite"]>(
+	const updateBlurSprite = useCallback<
+		ImageLayerActionType["updateBlurSprite"]
+	>(
 		async (
 			blurElementId: string,
 			blurProps: BlurSpriteProps,
@@ -375,7 +379,9 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 		[rendererWorker],
 	);
 
-	const deleteBlurSprite = useCallback<DrawLayerActionType["deleteBlurSprite"]>(
+	const deleteBlurSprite = useCallback<
+		ImageLayerActionType["deleteBlurSprite"]
+	>(
 		async (blurElementId: string) => {
 			await deleteBlurSpriteAction(
 				rendererWorker,
@@ -387,7 +393,7 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 	);
 
 	const updateWatermarkSprite = useCallback<
-		DrawLayerActionType["updateWatermarkSprite"]
+		ImageLayerActionType["updateWatermarkSprite"]
 	>(
 		async (watermarkProps: WatermarkProps) => {
 			await updateWatermarkSpriteAction(
@@ -404,7 +410,7 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 	);
 
 	const updateHighlightElement = useCallback<
-		DrawLayerActionType["updateHighlightElement"]
+		ImageLayerActionType["updateHighlightElement"]
 	>(
 		async (
 			highlightContainerKey: string,
@@ -424,7 +430,7 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 		[rendererWorker],
 	);
 
-	const updateHighlight = useCallback<DrawLayerActionType["updateHighlight"]>(
+	const updateHighlight = useCallback<ImageLayerActionType["updateHighlight"]>(
 		async (highlightContainerKey: string, highlightProps: HighlightProps) => {
 			await updateHighlightAction(
 				rendererWorker,
@@ -438,7 +444,7 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 	);
 
 	const clearContext = useCallback<
-		DrawLayerActionType["clearContext"]
+		ImageLayerActionType["clearContext"]
 	>(async () => {
 		await clearContextAction(
 			rendererWorker,
@@ -463,7 +469,7 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 	/*
 	 * 初始化截图
 	 */
-	const onCaptureReady = useCallback<DrawLayerActionType["onCaptureReady"]>(
+	const onCaptureReady = useCallback<ImageLayerActionType["onCaptureReady"]>(
 		async (
 			imageSrc: string | undefined,
 			imageBuffer: ImageBuffer | ImageSharedBufferData | undefined,
@@ -498,18 +504,18 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 	);
 
 	const onCaptureFinish = useCallback<
-		DrawLayerActionType["onCaptureFinish"]
+		ImageLayerActionType["onCaptureFinish"]
 	>(async () => {
 		await clearCanvas();
 	}, [clearCanvas]);
 
 	const onExecuteScreenshot = useCallback<
-		DrawLayerActionType["onExecuteScreenshot"]
+		ImageLayerActionType["onExecuteScreenshot"]
 	>(async () => {}, []);
 
 	const onCaptureBoundingBoxInfoReady = useCallback(
 		async (
-			...args: Parameters<DrawLayerActionType["onCaptureBoundingBoxInfoReady"]>
+			...args: Parameters<ImageLayerActionType["onCaptureBoundingBoxInfoReady"]>
 		) => {
 			const [captureBoundingBoxInfo] = args;
 
@@ -522,7 +528,7 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({
 	);
 
 	const onCaptureLoad = useCallback<
-		DrawLayerActionType["onCaptureLoad"]
+		ImageLayerActionType["onCaptureLoad"]
 	>(async () => {}, []);
 
 	const switchCaptureHistory = useCallback(

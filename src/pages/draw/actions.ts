@@ -7,6 +7,7 @@ import {
 } from "@/commands/core";
 import { setExcludeFromCapture } from "@/commands/videoRecord";
 import { createWebViewSharedBufferChannel } from "@/commands/webview";
+import type { ImageLayerActionType } from "@/components/imageLayer";
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 import { ImageFormat, type ImagePath } from "@/types/utils/file";
 import { writeImageToClipboard } from "@/utils/clipboard";
@@ -19,7 +20,6 @@ import { setWindowRect } from "@/utils/window";
 import type { FixedContentActionType } from "../fixedContent/components/fixedContentCore";
 import type { AppOcrResult } from "../fixedContent/components/ocrResult";
 import type { DrawCacheLayerActionType } from "./components/drawCacheLayer/extra";
-import type { DrawLayerActionType } from "./components/drawLayer";
 import type { OcrBlocksActionType } from "./components/ocrBlocks";
 import type {
 	SelectLayerActionType,
@@ -30,7 +30,7 @@ import { CaptureStep } from "./types";
 
 export const getCanvas = async (
 	selectRectParams: SelectRectParams | undefined,
-	drawLayerAction: DrawLayerActionType,
+	imageLayerAction: ImageLayerActionType,
 	drawCacheLayerAction: DrawCacheLayerActionType,
 	ignoreStyle?: boolean,
 ): Promise<HTMLCanvasElement | undefined> => {
@@ -51,7 +51,7 @@ export const getCanvas = async (
 	drawCacheLayerAction.finishDraw();
 
 	// 获取图像数据
-	const drawLayerImageData = await drawLayerAction.getImageData(selectRect);
+	const drawLayerImageData = await imageLayerAction.getImageData(selectRect);
 	const drawCacheLayerCanvas = drawCacheLayerAction.getCanvas();
 
 	if (!drawLayerImageData || !drawCacheLayerCanvas) {
@@ -213,7 +213,7 @@ export const fixedToScreen = async (
 	layerContainerElement: HTMLDivElement,
 	selectLayerAction: SelectLayerActionType,
 	fixedContentAction: FixedContentActionType,
-	drawLayerAction: DrawLayerActionType,
+	imageLayerAction: ImageLayerActionType,
 	drawCacheLayerAction: DrawCacheLayerActionType,
 	setCaptureStep: (step: CaptureStep) => void,
 	/** 已有的 OCR 结果 */
@@ -232,7 +232,7 @@ export const fixedToScreen = async (
 
 	const canvas = await getCanvas(
 		selectRectParams,
-		drawLayerAction,
+		imageLayerAction,
 		drawCacheLayerAction,
 	);
 	if (!canvas) {
@@ -440,7 +440,7 @@ export const copyToClipboard = async (
 export const handleOcrDetect = async (
 	captureBoundingBoxInfo: CaptureBoundingBoxInfo,
 	selectLayerAction: SelectLayerActionType,
-	drawLayerAction: DrawLayerActionType,
+	imageLayerAction: ImageLayerActionType,
 	drawCacheLayerAction: DrawCacheLayerActionType,
 	ocrBlocksAction: OcrBlocksActionType,
 	/** 忽略如圆角、阴影等样式 */
@@ -459,7 +459,7 @@ export const handleOcrDetect = async (
 
 	const imageCanvas = await getCanvas(
 		selectRectParams,
-		drawLayerAction,
+		imageLayerAction,
 		drawCacheLayerAction,
 		ignoreStyle,
 	);

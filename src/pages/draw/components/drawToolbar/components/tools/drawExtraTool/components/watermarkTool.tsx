@@ -6,13 +6,13 @@ import {
 	type ExcalidrawEventParams,
 	ExcalidrawEventPublisher,
 } from "@/components/drawCore/extra";
+import type { WatermarkProps } from "@/components/imageLayer/baseLayerRenderActions";
 import {
 	AppSettingsActionContext,
 	AppSettingsPublisher,
 } from "@/contexts/appSettingsActionContext";
 import { useCallbackRender } from "@/hooks/useCallbackRender";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
-import type { WatermarkProps } from "@/pages/draw/components/drawLayer/baseLayerRenderActions";
 import {
 	CaptureEvent,
 	type CaptureEventParams,
@@ -94,7 +94,7 @@ const isEqualWatermarkProps = (a: WatermarkProps, b: WatermarkProps) => {
 export const WatermarkTool = () => {
 	const { updateAppSettings } = useContext(AppSettingsActionContext);
 	const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
-	const { drawCacheLayerActionRef, drawLayerActionRef, selectLayerActionRef } =
+	const { drawCacheLayerActionRef, imageLayerActionRef, selectLayerActionRef } =
 		useContext(DrawContext);
 
 	// watermark 的绘制所需的属性
@@ -199,11 +199,11 @@ export const WatermarkTool = () => {
 			}
 
 			watermarkPropsRef.current = targetProps;
-			drawLayerActionRef.current?.updateWatermarkSprite(
+			imageLayerActionRef.current?.updateWatermarkSprite(
 				watermarkPropsRef.current,
 			);
 		},
-		[drawCacheLayerActionRef, drawLayerActionRef, selectLayerActionRef],
+		[drawCacheLayerActionRef, imageLayerActionRef, selectLayerActionRef],
 	);
 	const updateWatermark = useCallbackRender(updateWatermarkCore);
 
@@ -330,12 +330,12 @@ export const WatermarkTool = () => {
 					params?.event === CaptureEvent.onCaptureFinish
 				) {
 					watermarkPropsRef.current = defaultWatermarkProps;
-					drawLayerActionRef.current?.updateWatermarkSprite(
+					imageLayerActionRef.current?.updateWatermarkSprite(
 						watermarkPropsRef.current,
 					);
 				}
 			},
-			[drawLayerActionRef],
+			[imageLayerActionRef],
 		),
 	);
 
@@ -348,7 +348,7 @@ export const WatermarkTool = () => {
 						...watermarkPropsRef.current,
 						selectRectParams: params.params.selectRectParams,
 					};
-					drawLayerActionRef.current?.updateWatermarkSprite(
+					imageLayerActionRef.current?.updateWatermarkSprite(
 						watermarkPropsRef.current,
 					);
 				}
@@ -356,7 +356,7 @@ export const WatermarkTool = () => {
 					watermarkPropsRef.current = defaultWatermarkProps;
 				}
 			},
-			[drawLayerActionRef],
+			[imageLayerActionRef],
 		),
 	);
 

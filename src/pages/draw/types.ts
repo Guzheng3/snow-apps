@@ -1,10 +1,10 @@
 import React from "react";
+import type { ImageLayerActionType } from "@/components/imageLayer";
 import type { ImageBuffer } from "@/types/commands/screenshot";
 import { MousePosition } from "@/utils/mousePosition";
 import type { CaptureHistoryActionType } from "./components/captureHistory";
 import type { ColorPickerActionType } from "./components/colorPicker";
 import type { DrawCacheLayerActionType } from "./components/drawCacheLayer/extra";
-import type { DrawLayerActionType } from "./components/drawLayer";
 import type { DrawToolbarActionType } from "./components/drawToolbar";
 import type { OcrBlocksActionType } from "./components/ocrBlocks";
 import type { SelectLayerActionType } from "./components/selectLayer";
@@ -27,7 +27,7 @@ export enum CanvasLayer {
 
 export type DrawContextType = {
 	finishCapture: (clearScrollScreenshot?: boolean) => Promise<void>;
-	drawLayerActionRef: React.RefObject<DrawLayerActionType | undefined>;
+	imageLayerActionRef: React.RefObject<ImageLayerActionType | undefined>;
 	selectLayerActionRef: React.RefObject<SelectLayerActionType | undefined>;
 	imageBufferRef: React.RefObject<
 		ImageBuffer | ImageSharedBufferData | undefined
@@ -52,7 +52,7 @@ export const DrawContext = React.createContext<DrawContextType>({
 	mousePositionRef: { current: new MousePosition(0, 0) },
 	imageBufferRef: { current: undefined },
 	finishCapture: () => Promise.resolve(),
-	drawLayerActionRef: { current: undefined },
+	imageLayerActionRef: { current: undefined },
 	selectLayerActionRef: { current: undefined },
 	drawToolbarActionRef: { current: undefined },
 	circleCursorRef: { current: null },

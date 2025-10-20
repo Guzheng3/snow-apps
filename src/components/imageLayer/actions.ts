@@ -6,8 +6,8 @@ import type {
 	Texture,
 } from "pixi.js";
 import type { RefObject } from "react";
+import type { ImageSharedBufferData } from "@/pages/draw/tools";
 import type { ElementRect } from "@/types/commands/screenshot";
-import type { ImageSharedBufferData } from "../../tools";
 import {
 	type BlurSprite,
 	type BlurSpriteProps,

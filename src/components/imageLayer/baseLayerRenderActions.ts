@@ -2,9 +2,9 @@ import type { Application, ApplicationOptions } from "pixi.js";
 import * as PIXI from "pixi.js";
 import * as PIXIFilters from "pixi-filters";
 import type { RefObject } from "react";
+import type { SelectRectParams } from "@/pages/draw/components/selectLayer";
+import type { ImageSharedBufferData } from "@/pages/draw/tools";
 import type { ElementRect } from "@/types/commands/screenshot";
-import type { ImageSharedBufferData } from "../../tools";
-import type { SelectRectParams } from "../selectLayer";
 import type { RefWrap } from "./workers/renderWorkerTypes";
 
 export type RefType<T> = RefWrap<T> | RefObject<T>;

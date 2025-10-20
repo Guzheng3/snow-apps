@@ -1,7 +1,7 @@
+import type { RefType } from "@/components/imageLayer/baseLayerRenderActions";
 import type { ImageBuffer } from "@/types/commands/screenshot";
 import { appWarn } from "@/utils/log";
 import type { ImageSharedBufferData } from "../../tools";
-import type { RefType } from "../drawLayer/baseLayerRenderActions";
 import {
 	renderGetPreviewImageDataAction,
 	renderInitImageDataAction,

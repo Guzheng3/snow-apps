@@ -24,7 +24,7 @@ const ScanQrcodeToolCore: React.FC = () => {
 
 	const { token } = theme.useToken();
 	const { message } = useContext(AntdContext);
-	const { selectLayerActionRef, drawLayerActionRef, finishCapture } =
+	const { selectLayerActionRef, imageLayerActionRef, finishCapture } =
 		useContext(DrawContext);
 
 	const containerElementRef = useRef<HTMLDivElement>(null);
@@ -50,7 +50,7 @@ const ScanQrcodeToolCore: React.FC = () => {
 		});
 
 		const imageData =
-			await drawLayerActionRef.current?.getImageData(selectRect);
+			await imageLayerActionRef.current?.getImageData(selectRect);
 		if (!imageData) {
 			return;
 		}
@@ -95,7 +95,7 @@ const ScanQrcodeToolCore: React.FC = () => {
 				}),
 			);
 		}
-	}, [selectLayerActionRef, drawLayerActionRef, message, intl]);
+	}, [selectLayerActionRef, imageLayerActionRef, message, intl]);
 
 	const inited = useRef(false);
 	useEffect(() => {

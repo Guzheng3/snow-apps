@@ -87,7 +87,7 @@ const CaptureHistoryControllerCore: React.FC<{
 	);
 	const {
 		selectLayerActionRef,
-		drawLayerActionRef,
+		imageLayerActionRef,
 		drawCacheLayerActionRef,
 		colorPickerActionRef,
 	} = useContext(DrawContext);
@@ -212,7 +212,7 @@ const CaptureHistoryControllerCore: React.FC<{
 			});
 			if (currentIndexRef.current === captureHistoryListRef.current.length) {
 				const switchCaptureHistoryPromise = Promise.all([
-					drawLayerActionRef.current
+					imageLayerActionRef.current
 						?.switchCaptureHistory(undefined)
 						.then(() => {
 							// 恢复绘制的内容
@@ -233,7 +233,7 @@ const CaptureHistoryControllerCore: React.FC<{
 				await switchCaptureHistoryPromise;
 			} else {
 				const switchCaptureHistoryPromise = Promise.all([
-					drawLayerActionRef.current
+					imageLayerActionRef.current
 						?.switchCaptureHistory(
 							captureHistoryListRef.current[currentIndexRef.current],
 						)
@@ -280,7 +280,7 @@ const CaptureHistoryControllerCore: React.FC<{
 		[
 			colorPickerActionRef,
 			drawCacheLayerActionRef,
-			drawLayerActionRef,
+			imageLayerActionRef,
 			getScreenshotType,
 			message,
 			selectLayerActionRef,

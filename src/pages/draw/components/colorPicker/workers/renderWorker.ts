@@ -1,4 +1,4 @@
-import type { RefType } from "../../drawLayer/baseLayerRenderActions";
+import type { RefType } from "@/components/imageLayer/baseLayerRenderActions";
 import {
 	renderGetPreviewImageDataAction,
 	renderInitImageDataAction,

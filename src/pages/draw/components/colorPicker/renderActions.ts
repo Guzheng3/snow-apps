@@ -1,5 +1,5 @@
+import type { RefType } from "@/components/imageLayer/baseLayerRenderActions";
 import type { ImageSharedBufferData } from "../../tools";
-import type { RefType } from "../drawLayer/baseLayerRenderActions";
 import { getPixels, terminateWebWorker } from "./workers/getPixels";
 
 export const COLOR_PICKER_PREVIEW_SCALE = 12;

@@ -2,12 +2,12 @@ import type { ColorInstance } from "color";
 import { last } from "es-toolkit";
 import Flatbush from "flatbush";
 import type { MonitorInfo } from "@/commands/core";
+import type { ImageLayerActionType } from "@/components/imageLayer";
 import { createPublisher } from "@/hooks/useStatePublisher";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect, ImageBuffer } from "@/types/commands/screenshot";
 import { MousePosition } from "@/utils/mousePosition";
 import { ScreenshotType } from "@/utils/types";
-import type { DrawLayerActionType } from "./components/drawLayer";
 import type {
 	SelectLayerActionType,
 	SelectRectParams,
@@ -17,7 +17,7 @@ import { CanvasLayer, CaptureStep } from "./types";
 
 export const switchLayer = (
 	layer: CanvasLayer | undefined,
-	drawLayerAction: DrawLayerActionType | undefined,
+	imageLayerAction: ImageLayerActionType | undefined,
 	selectLayerAction: SelectLayerActionType | undefined,
 ) => {
 	let switchDraw = false;
@@ -34,7 +34,7 @@ export const switchLayer = (
 			break;
 	}
 
-	drawLayerAction?.setEnable(switchDraw);
+	imageLayerAction?.setEnable(switchDraw);
 	selectLayerAction?.setEnable(switchSelect);
 };
 
@@ -67,14 +67,14 @@ export type CaptureEventParams =
 	  }
 	| {
 			event: CaptureEvent.onCaptureLoad;
-			params: Parameters<DrawLayerActionType["onCaptureLoad"]>;
+			params: Parameters<ImageLayerActionType["onCaptureLoad"]>;
 	  }
 	| {
 			event: CaptureEvent.onCaptureFinish;
 	  }
 	| {
 			event: CaptureEvent.onCaptureReady;
-			params: Parameters<DrawLayerActionType["onCaptureReady"]>;
+			params: Parameters<ImageLayerActionType["onCaptureReady"]>;
 	  };
 
 export const CaptureStepPublisher = createPublisher<CaptureStep>(
