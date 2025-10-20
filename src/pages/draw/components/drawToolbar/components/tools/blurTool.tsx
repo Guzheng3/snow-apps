@@ -200,6 +200,8 @@ const BlurToolCore: React.FC = () => {
 				await imageLayerAction.updateBlurSprite(id, blurSprite.props, true);
 				imageLayerAction.canvasRender();
 			});
+
+			console.log("handleEraser", params);
 		},
 		[getImageLayerAction],
 	);

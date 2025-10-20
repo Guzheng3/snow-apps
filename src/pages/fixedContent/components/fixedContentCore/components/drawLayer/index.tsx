@@ -27,6 +27,7 @@ import {
 	type DrawCoreContextValue,
 	DrawStatePublisher,
 	ExcalidrawEventPublisher,
+	ExcalidrawOnHandleEraserPublisher,
 } from "@/components/drawCore/extra";
 import type { ImageLayerActionType } from "@/components/imageLayer";
 import { withStatePublisher } from "@/hooks/useStatePublisher";
@@ -434,5 +435,6 @@ export const DrawLayer = withCanvasHistory(
 		DrawStatePublisher,
 		ExcalidrawEventPublisher,
 		EnableKeyEventPublisher,
+		ExcalidrawOnHandleEraserPublisher,
 	),
 );
