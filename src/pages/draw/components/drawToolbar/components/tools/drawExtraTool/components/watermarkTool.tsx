@@ -21,7 +21,7 @@ import {
 	type DrawEventParams,
 	DrawEventPublisher,
 } from "@/pages/draw/extra";
-import { DrawContext } from "@/pages/draw/types";
+import { DrawContext } from "@/pages/fullScreenDraw/extra";
 import { AppSettingsGroup } from "@/types/appSettings";
 import { DrawState } from "@/types/draw";
 
@@ -94,7 +94,7 @@ const isEqualWatermarkProps = (a: WatermarkProps, b: WatermarkProps) => {
 export const WatermarkTool = () => {
 	const { updateAppSettings } = useContext(AppSettingsActionContext);
 	const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
-	const { drawLayerActionRef, imageLayerActionRef, selectLayerActionRef } =
+	const { getDrawCoreAction, getImageLayerAction, getSelectRectParams } =
 		useContext(DrawContext);
 
 	// watermark 的绘制所需的属性
@@ -104,7 +104,12 @@ export const WatermarkTool = () => {
 		// 获取当前场景里的元素，判断是否存在 watermark 元素
 		// 如果存在则忽略
 
-		const excalidrawAPI = drawLayerActionRef.current?.getExcalidrawAPI();
+		const drawCoreAction = getDrawCoreAction();
+		if (!drawCoreAction) {
+			return false;
+		}
+
+		const excalidrawAPI = drawCoreAction.getExcalidrawAPI();
 		if (!excalidrawAPI) {
 			return false;
 		}
@@ -129,17 +134,26 @@ export const WatermarkTool = () => {
 		});
 
 		return true;
-	}, [drawLayerActionRef, getAppSettings]);
+	}, [getDrawCoreAction, getAppSettings]);
 
 	const updateWatermarkCore = useCallback(
 		(appState: AppState) => {
-			const selectRectParams =
-				selectLayerActionRef.current?.getSelectRectParams();
+			const selectRectParams = getSelectRectParams();
 			if (!selectRectParams) {
 				return;
 			}
 
-			const excalidrawAPI = drawLayerActionRef.current?.getExcalidrawAPI();
+			const imageLayerAction = getImageLayerAction();
+			if (!imageLayerAction) {
+				return;
+			}
+
+			const drawCoreAction = getDrawCoreAction();
+			if (!drawCoreAction) {
+				return;
+			}
+
+			const excalidrawAPI = drawCoreAction.getExcalidrawAPI();
 			if (!excalidrawAPI) {
 				return;
 			}
@@ -199,11 +213,9 @@ export const WatermarkTool = () => {
 			}
 
 			watermarkPropsRef.current = targetProps;
-			imageLayerActionRef.current?.updateWatermarkSprite(
-				watermarkPropsRef.current,
-			);
+			imageLayerAction.updateWatermarkSprite(watermarkPropsRef.current);
 		},
-		[drawLayerActionRef, imageLayerActionRef, selectLayerActionRef],
+		[getDrawCoreAction, getImageLayerAction, getSelectRectParams],
 	);
 	const updateWatermark = useCallbackRender(updateWatermarkCore);
 
@@ -231,7 +243,12 @@ export const WatermarkTool = () => {
 				}
 			}
 
-			const excalidrawAPI = drawLayerActionRef.current?.getExcalidrawAPI();
+			const drawCoreAction = getDrawCoreAction();
+			if (!drawCoreAction) {
+				return;
+			}
+
+			const excalidrawAPI = drawCoreAction.getExcalidrawAPI();
 			if (!excalidrawAPI) {
 				return;
 			}
@@ -271,7 +288,7 @@ export const WatermarkTool = () => {
 				false,
 			);
 		},
-		[createWatermark, drawLayerActionRef, updateAppSettings],
+		[createWatermark, getDrawCoreAction, updateAppSettings],
 	);
 
 	useStateSubscriber(
@@ -325,17 +342,20 @@ export const WatermarkTool = () => {
 		CaptureEventPublisher,
 		useCallback(
 			(params: CaptureEventParams | undefined) => {
+				const imageLayerAction = getImageLayerAction();
+				if (!imageLayerAction) {
+					return;
+				}
+
 				if (
 					params?.event === CaptureEvent.onExecuteScreenshot ||
 					params?.event === CaptureEvent.onCaptureFinish
 				) {
 					watermarkPropsRef.current = defaultWatermarkProps;
-					imageLayerActionRef.current?.updateWatermarkSprite(
-						watermarkPropsRef.current,
-					);
+					imageLayerAction.updateWatermarkSprite(watermarkPropsRef.current);
 				}
 			},
-			[imageLayerActionRef],
+			[getImageLayerAction],
 		),
 	);
 
@@ -343,20 +363,23 @@ export const WatermarkTool = () => {
 		DrawEventPublisher,
 		useCallback(
 			(params: DrawEventParams | undefined) => {
+				const imageLayerAction = getImageLayerAction();
+				if (!imageLayerAction) {
+					return;
+				}
+
 				if (params?.event === DrawEvent.SelectRectParamsAnimationChange) {
 					watermarkPropsRef.current = {
 						...watermarkPropsRef.current,
 						selectRectParams: params.params.selectRectParams,
 					};
-					imageLayerActionRef.current?.updateWatermarkSprite(
-						watermarkPropsRef.current,
-					);
+					imageLayerAction.updateWatermarkSprite(watermarkPropsRef.current);
 				}
 				if (params?.event === DrawEvent.ClearContext) {
 					watermarkPropsRef.current = defaultWatermarkProps;
 				}
 			},
-			[imageLayerActionRef],
+			[getImageLayerAction],
 		),
 	);
 

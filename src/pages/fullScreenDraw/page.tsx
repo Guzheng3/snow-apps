@@ -141,6 +141,9 @@ const FullScreenDrawPageCore: React.FC = () => {
 			setTool: (drawState: DrawState) => {
 				toolbarActionRef.current?.setTool(drawState);
 			},
+			getImageLayerAction: () => undefined,
+			getDrawLayerAction: () => undefined,
+			getSelectRectParams: () => undefined,
 		};
 	}, []);
 

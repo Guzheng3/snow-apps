@@ -1,8 +1,10 @@
 import type { ColorInstance } from "color";
 import { createContext, useContext } from "react";
 import type { DrawCoreActionType } from "@/components/drawCore/extra";
+import type { ImageLayerActionType } from "@/components/imageLayer";
 import type { DrawState } from "@/types/draw";
 import type { MousePosition } from "@/utils/mousePosition";
+import type { SelectRectParams } from "../draw/components/selectLayer";
 
 export type DrawContextType = {
 	getDrawCoreAction: () => DrawCoreActionType | undefined;
@@ -12,6 +14,8 @@ export type DrawContextType = {
 	getColorPickerCurrentColor?: () => ColorInstance | undefined;
 	setColorPickerForceEnable?: (forceEnable: boolean) => void;
 	getPopupContainer?: ((triggerNode: HTMLElement) => HTMLElement) | undefined;
+	getImageLayerAction: () => ImageLayerActionType | undefined;
+	getSelectRectParams: () => SelectRectParams | undefined;
 };
 
 export const DrawContext = createContext<DrawContextType>({
@@ -21,6 +25,8 @@ export const DrawContext = createContext<DrawContextType>({
 	pickColor: undefined,
 	setColorPickerForceEnable: () => {},
 	getPopupContainer: undefined,
+	getImageLayerAction: () => undefined,
+	getSelectRectParams: () => undefined,
 });
 
 export const useDrawContext = () => {

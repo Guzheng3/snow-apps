@@ -1299,6 +1299,10 @@ const DrawPageCore: React.FC<{
 			getPopupContainer: () => {
 				return document.getElementById("layout-menu-render") ?? document.body;
 			},
+			getImageLayerAction: () => imageLayerActionRef.current,
+			getDrawLayerAction: () => drawLayerActionRef.current,
+			getSelectRectParams: () =>
+				selectLayerActionRef.current?.getSelectRectParams(),
 		};
 	}, []);
 

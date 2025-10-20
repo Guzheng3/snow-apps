@@ -58,7 +58,14 @@ const WatermarkTextInput = () => {
 		[setWatermarkText, updateWatermarkText],
 	);
 
-	return <Input value={watermarkText} onChange={onChange} />;
+	return (
+		<Input
+			value={watermarkText}
+			onChange={onChange}
+			onMouseDown={(e) => e.stopPropagation()}
+			onMouseUp={(e) => e.stopPropagation()}
+		/>
+	);
 };
 
 const SubToolEditor: NonNullable<

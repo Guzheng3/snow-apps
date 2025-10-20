@@ -19,7 +19,7 @@ import {
 	type DrawEventParams,
 	DrawEventPublisher,
 } from "@/pages/draw/extra";
-import { DrawContext } from "@/pages/draw/types";
+import { DrawContext } from "@/pages/fullScreenDraw/extra";
 
 const isEqualBlurSpriteProps = (
 	a: Omit<BlurSpriteProps, "valid">,
@@ -59,7 +59,7 @@ const isEqualBlurSpriteProps = (
 };
 
 const BlurToolCore: React.FC = () => {
-	const { imageLayerActionRef, drawLayerActionRef } = useContext(DrawContext);
+	const { getImageLayerAction, getDrawCoreAction } = useContext(DrawContext);
 	const blurSpriteMapRef = useRef<
 		Map<
 			string,
@@ -75,7 +75,8 @@ const BlurToolCore: React.FC = () => {
 				return;
 			}
 
-			if (!imageLayerActionRef.current) {
+			const imageLayerAction = getImageLayerAction();
+			if (!imageLayerAction) {
 				return;
 			}
 
@@ -93,7 +94,7 @@ const BlurToolCore: React.FC = () => {
 					continue;
 				}
 
-				const appState = drawLayerActionRef.current?.getAppState();
+				const appState = getDrawCoreAction()?.getAppState();
 				if (!appState) {
 					return;
 				}
@@ -123,7 +124,7 @@ const BlurToolCore: React.FC = () => {
 
 				let blurSprite = blurSpriteMapRef.current.get(element.id);
 				if (!blurSprite) {
-					await imageLayerActionRef.current.createBlurSprite(
+					await imageLayerAction.createBlurSprite(
 						DRAW_LAYER_BLUR_CONTAINER_KEY,
 						element.id,
 					);
@@ -145,7 +146,7 @@ const BlurToolCore: React.FC = () => {
 					continue;
 				}
 
-				await imageLayerActionRef.current.updateBlurSprite(
+				await imageLayerAction.updateBlurSprite(
 					element.id,
 					blurProps,
 					blurSprite.props.blur !== blurProps.blur ||
@@ -161,22 +162,27 @@ const BlurToolCore: React.FC = () => {
 			);
 			for (const [id] of blurSprites) {
 				blurSpriteMapRef.current.delete(id);
-				await imageLayerActionRef.current.deleteBlurSprite(id);
+				await imageLayerAction.deleteBlurSprite(id);
 
 				needRender = true;
 			}
 
 			if (needRender) {
-				imageLayerActionRef.current.canvasRender();
+				imageLayerAction.canvasRender();
 			}
 		},
-		[drawLayerActionRef, imageLayerActionRef],
+		[getImageLayerAction, getDrawCoreAction],
 	);
 	const updateBlurRender = useCallbackRender(updateBlur);
 
 	const handleEraser = useCallback(
 		(params: ExcalidrawOnHandleEraserParams | undefined) => {
 			if (!params) {
+				return;
+			}
+
+			const imageLayerAction = getImageLayerAction();
+			if (!imageLayerAction) {
 				return;
 			}
 
@@ -191,15 +197,11 @@ const BlurToolCore: React.FC = () => {
 					return;
 				}
 				blurSprite.props.eraserAlpha = targetOpacity;
-				await imageLayerActionRef.current?.updateBlurSprite(
-					id,
-					blurSprite.props,
-					true,
-				);
-				imageLayerActionRef.current?.canvasRender();
+				await imageLayerAction.updateBlurSprite(id, blurSprite.props, true);
+				imageLayerAction.canvasRender();
 			});
 		},
-		[imageLayerActionRef],
+		[getImageLayerAction],
 	);
 	const handleEraserRender = useCallbackRenderSlow(handleEraser);
 

@@ -654,6 +654,7 @@ export const FixedContentCore: React.FC<{
 	);
 
 	const { isReady, isReadyStatus } = usePluginServiceContext();
+	const selectRectParamsRef = useRef<SelectRectParams | undefined>(undefined);
 	const initDraw = useCallback(
 		async (params: FixedContentInitDrawParams) => {
 			ocrResultActionRef.current?.setEnable(false);
@@ -665,6 +666,7 @@ export const FixedContentCore: React.FC<{
 			if (selectRectParams.shadowWidth > 0) {
 				setShowBorder(false);
 			}
+			selectRectParamsRef.current = selectRectParams;
 
 			const ocrRect = {
 				min_x: 0,
@@ -2018,6 +2020,25 @@ export const FixedContentCore: React.FC<{
 		tryInitImageLayer();
 	}, [tryInitImageLayer]);
 
+	const getSelectRectParams = useCallback(() => {
+		const currentSelectRectParams = selectRectParamsRef.current;
+		return {
+			rect: {
+				min_x: 0,
+				min_y: 0,
+				max_x: canvasPropsRef.current?.width ?? 0,
+				max_y: canvasPropsRef.current?.height ?? 0,
+			},
+			radius: currentSelectRectParams?.radius ?? 0,
+			shadowWidth: currentSelectRectParams?.shadowWidth ?? 0,
+			shadowColor: currentSelectRectParams?.shadowColor ?? "#000000",
+		};
+	}, []);
+
+	const getImageLayerAction = useCallback(() => {
+		return imageLayerActionRef.current?.getImageLayerAction();
+	}, []);
+
 	return (
 		<div
 			className="fixed-image-container"
@@ -2218,6 +2239,8 @@ export const FixedContentCore: React.FC<{
 					disabled={!enableDraw || !enableDrawLayer}
 					hidden={enableSelectText}
 					onConfirm={switchDraw}
+					getImageLayerAction={getImageLayerAction}
+					getSelectRectParams={getSelectRectParams}
 				/>
 			)}
 

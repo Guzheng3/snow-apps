@@ -34,6 +34,10 @@ import { useDragElement } from "@/pages/draw/components/drawToolbar/components/d
 import { HistoryControls } from "@/pages/draw/components/drawToolbar/components/historyControls";
 import { ToolButton } from "@/pages/draw/components/drawToolbar/components/toolButton";
 import { ArrowTool } from "@/pages/draw/components/drawToolbar/components/tools/arrowTool";
+import { BlurGroupTool } from "@/pages/draw/components/drawToolbar/components/tools/blurGroupTool";
+import { BlurTool } from "@/pages/draw/components/drawToolbar/components/tools/blurTool";
+import { DrawExtraTool } from "@/pages/draw/components/drawToolbar/components/tools/drawExtraTool";
+import { HighlightTool } from "@/pages/draw/components/drawToolbar/components/tools/highlightTool";
 import { RectTool } from "@/pages/draw/components/drawToolbar/components/tools/rectTool";
 import { getButtonTypeByState } from "@/pages/draw/components/drawToolbar/extra";
 import type { DrawToolbarActionType } from "@/pages/fullScreenDraw/components/toolbar";
@@ -305,6 +309,46 @@ export const FixedContentCoreDrawToolbar: React.FC<{
 					break;
 				case DrawState.SerialNumber:
 					break;
+				case DrawState.Blur:
+					drawCoreAction?.setActiveTool(
+						{
+							type: "blur",
+							locked: toolLocked,
+						},
+						undefined,
+						next,
+					);
+					break;
+				case DrawState.BlurFreeDraw:
+					drawCoreAction?.setActiveTool(
+						{
+							type: "blur_freedraw",
+							locked: toolLocked,
+						},
+						undefined,
+						next,
+					);
+					break;
+				case DrawState.Watermark:
+					drawCoreAction?.setActiveTool(
+						{
+							type: "watermark",
+							locked: toolLocked,
+						},
+						undefined,
+						next,
+					);
+					break;
+				case DrawState.Highlight:
+					drawCoreAction?.setActiveTool(
+						{
+							type: "highlight",
+							locked: toolLocked,
+						},
+						undefined,
+						next,
+					);
+					break;
 				case DrawState.Eraser:
 					drawCoreAction?.setActiveTool(
 						{
@@ -566,6 +610,13 @@ export const FixedContentCoreDrawToolbar: React.FC<{
 						}}
 					/>
 
+					{/* 模糊 */}
+					<BlurGroupTool
+						customToolbarToolHiddenMap={undefined}
+						onToolClickAction={onToolClick}
+						disable={false}
+					/>
+
 					{/* 橡皮擦 */}
 					<ToolButton
 						componentKey={DrawToolbarKeyEventKey.EraserTool}
@@ -581,6 +632,12 @@ export const FixedContentCoreDrawToolbar: React.FC<{
 						onClick={() => {
 							onToolClick(DrawState.Eraser);
 						}}
+					/>
+
+					<DrawExtraTool
+						customToolbarToolHiddenMap={undefined}
+						onToolClickAction={onToolClick}
+						disable={false}
 					/>
 
 					<div className="draw-toolbar-splitter" />
@@ -605,6 +662,9 @@ export const FixedContentCoreDrawToolbar: React.FC<{
 						}}
 					/>
 				</Flex>
+
+				<BlurTool />
+				<HighlightTool />
 			</div>
 
 			<style jsx>{`
