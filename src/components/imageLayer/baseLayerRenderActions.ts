@@ -717,6 +717,7 @@ export const renderUpdateHighlightElementPropsAction = (
 			mask: highlightBackgroundMaskContainer,
 			inverse: true,
 		});
+
 		container.addChild(highlightContainer);
 		container.addChild(highlightMaskContentContainer);
 		container.addChild(highlightBackgroundMaskContainer);

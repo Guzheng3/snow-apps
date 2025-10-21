@@ -274,7 +274,7 @@ export const FixedContentCore: React.FC<{
 	>(undefined);
 	const textContentContainerRef = useRef<HTMLDivElement>(null);
 
-	const [textScaleFactor] = useTextScaleFactor();
+	const [textScaleFactor, , textScaleFactorRef] = useTextScaleFactor();
 	const contentScaleFactor = useMemo(() => {
 		if (
 			fixedContentType === FixedContentType.DrawCanvas ||
@@ -298,6 +298,12 @@ export const FixedContentCore: React.FC<{
 				drawActionRef,
 				processImageConfigRef,
 				ignoreDrawCanvas,
+				{
+					min_x: 0,
+					min_y: 0,
+					max_x: canvasPropsRef.current.width,
+					max_y: canvasPropsRef.current.height,
+				},
 			);
 		},
 		[processImageConfigRef],
@@ -988,7 +994,7 @@ export const FixedContentCore: React.FC<{
 						(canvasPropsRef.current.scaleFactor *
 							(canvasPropsRef.current.ignoreTextScaleFactor
 								? 1
-								: textScaleFactor))),
+								: textScaleFactorRef.current))),
 			);
 			const newHeight = Math.round(
 				((canvasPropsRef.current.height * targetScale) / 100) *
@@ -996,7 +1002,7 @@ export const FixedContentCore: React.FC<{
 						(canvasPropsRef.current.scaleFactor *
 							(canvasPropsRef.current.ignoreTextScaleFactor
 								? 1
-								: textScaleFactor))),
+								: textScaleFactorRef.current))),
 			);
 
 			return {
@@ -1004,7 +1010,7 @@ export const FixedContentCore: React.FC<{
 				height: newHeight,
 			};
 		},
-		[textScaleFactor],
+		[textScaleFactorRef],
 	);
 
 	const copyToClipboard = useCallback(async () => {
@@ -2043,17 +2049,35 @@ export const FixedContentCore: React.FC<{
 
 	const getSelectRectParams = useCallback(() => {
 		const currentSelectRectParams = selectRectParamsRef.current;
-		return {
+		if (!currentSelectRectParams) {
+			return {
+				rect: {
+					min_x: 0,
+					min_y: 0,
+					max_x: canvasPropsRef.current.width,
+					max_y: canvasPropsRef.current.height,
+				},
+				radius: 0,
+				shadowWidth: 0,
+				shadowColor: "#000000",
+			};
+		}
+
+		const result = {
 			rect: {
-				min_x: 0,
-				min_y: 0,
-				max_x: canvasPropsRef.current?.width ?? 0,
-				max_y: canvasPropsRef.current?.height ?? 0,
+				min_x: currentSelectRectParams.shadowWidth,
+				min_y: currentSelectRectParams.shadowWidth,
+				max_x:
+					canvasPropsRef.current.width - currentSelectRectParams.shadowWidth,
+				max_y:
+					canvasPropsRef.current.height - currentSelectRectParams.shadowWidth,
 			},
-			radius: currentSelectRectParams?.radius ?? 0,
-			shadowWidth: currentSelectRectParams?.shadowWidth ?? 0,
-			shadowColor: currentSelectRectParams?.shadowColor ?? "#000000",
+			radius: currentSelectRectParams.radius,
+			shadowWidth: currentSelectRectParams.shadowWidth,
+			shadowColor: currentSelectRectParams.shadowColor,
 		};
+
+		return result;
 	}, []);
 
 	const getInitDrawSelectRectParams = useCallback(() => {
@@ -2071,6 +2095,18 @@ export const FixedContentCore: React.FC<{
 	const getInitDrawWindowDevicePixelRatio = useCallback(() => {
 		return initDrawWindowDevicePixelRatioRef.current;
 	}, []);
+
+	const getZoom = useCallback(() => {
+		return (
+			scaleRef.current.x /
+			100 /
+			((canvasPropsRef.current.scaleFactor *
+				(canvasPropsRef.current.ignoreTextScaleFactor
+					? 1
+					: textScaleFactorRef.current)) /
+				window.devicePixelRatio)
+		);
+	}, [scaleRef, textScaleFactorRef]);
 
 	return (
 		<div
@@ -2271,6 +2307,7 @@ export const FixedContentCore: React.FC<{
 					getInitDrawDrawElements={getInitDrawDrawElements}
 					getInitDrawSelectRectParams={getInitDrawSelectRectParams}
 					getInitDrawWindowDevicePixelRatio={getInitDrawWindowDevicePixelRatio}
+					getZoom={getZoom}
 				/>
 			)}
 

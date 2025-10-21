@@ -1635,6 +1635,9 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 	);
 	const onRadiusChange = useCallback(
 		(radius: number) => {
+			selectRectRadiusRef.current = radius;
+			resizeToolbarActionRef.current?.setRadius(radius);
+
 			const captureBoundingBoxInfo = captureBoundingBoxInfoRef.current;
 			if (!captureBoundingBoxInfo) {
 				appWarn(
@@ -1642,9 +1645,6 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 				);
 				return;
 			}
-
-			selectRectRadiusRef.current = radius;
-			resizeToolbarActionRef.current?.setRadius(radius);
 
 			const selectRect = getSelectRect();
 			if (selectRect) {

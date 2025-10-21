@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import type { ElementRect } from "@/types/commands/screenshot";
 import { appError } from "@/utils/log";
 import type { FixedContentProcessImageConfig } from ".";
 import type { FixedContentCoreDrawActionType } from "./components/drawLayer";
@@ -67,6 +68,7 @@ export const renderToCanvasAction = async (
 	drawActionRef: RefObject<FixedContentCoreDrawActionType | undefined>,
 	processImageConfigRef: RefObject<FixedContentProcessImageConfig>,
 	ignoreDrawCanvas: boolean = false,
+	renderRect: ElementRect,
 ) => {
 	const imageLayerAction = imageLayerActionRef.current?.getImageLayerAction();
 	if (!imageLayerAction) {
@@ -74,7 +76,7 @@ export const renderToCanvasAction = async (
 		return;
 	}
 
-	const sourceBuffer = await imageLayerAction.getImageData(undefined);
+	const sourceBuffer = await imageLayerAction.getImageData(renderRect);
 	if (!sourceBuffer) {
 		appError("[renderToCanvas] sourceBuffer is undefined");
 		return;

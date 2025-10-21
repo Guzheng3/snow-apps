@@ -59,7 +59,7 @@ export type ImageLayerActionType = {
 	getLayerContainerElement: () => HTMLDivElement | null;
 	changeCursor: (cursor: Required<React.CSSProperties>["cursor"]) => string;
 	getImageData: (
-		selectRect: ElementRect | undefined,
+		selectRect: ElementRect,
 		renderContainerKey?: string,
 	) => Promise<ImageData | undefined>;
 	renderToPng: (

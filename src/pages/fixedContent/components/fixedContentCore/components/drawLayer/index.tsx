@@ -77,6 +77,7 @@ const DrawLayerCore: React.FC<{
 		| FixedContentInitDrawParams["drawElements"]
 		| undefined;
 	getInitDrawWindowDevicePixelRatio: () => number | undefined;
+	getZoom: () => number;
 }> = ({
 	actionRef,
 	documentSize,
@@ -89,6 +90,7 @@ const DrawLayerCore: React.FC<{
 	getInitDrawSelectRectParams,
 	getInitDrawDrawElements,
 	getInitDrawWindowDevicePixelRatio,
+	getZoom,
 }) => {
 	const { token } = theme.useToken();
 
@@ -307,9 +309,9 @@ const DrawLayerCore: React.FC<{
 			getImageLayerAction,
 			getDrawLayerAction: () => drawCoreActionRef.current,
 			getSelectRectParams,
-			getZoom: () => scaleInfoRef.current.x / 100,
+			getZoom: getZoom,
 		};
-	}, [getImageLayerAction, getSelectRectParams]);
+	}, [getImageLayerAction, getSelectRectParams, getZoom]);
 
 	const onMouseEvent = useCallback(
 		(event: React.MouseEvent<HTMLDivElement>) => {
@@ -385,7 +387,7 @@ const DrawLayerCore: React.FC<{
 	const excalidrawHasLoadRef = useRef(false);
 	const excalidrawAppStateStoreReadyRef = useRef(false);
 	const [, , textScaleFactorRef] = useTextScaleFactor();
-	const tryShowExcalidraw = useCallback(() => {
+	const tryShowExcalidraw = useCallback(async () => {
 		if (
 			!excalidrawHasLoadRef.current ||
 			!excalidrawAppStateStoreReadyRef.current
@@ -394,7 +396,12 @@ const DrawLayerCore: React.FC<{
 		}
 		setExcalidrawReady(true);
 
+		await new Promise((resolve) => {
+			setTimeout(resolve, 17);
+		});
+
 		// 初始化元素
+		const shadowWidth = getInitDrawSelectRectParams()?.shadowWidth ?? 0;
 		const selectRect = getInitDrawSelectRectParams()?.rect ?? {
 			min_x: 0,
 			min_y: 0,
@@ -421,8 +428,14 @@ const DrawLayerCore: React.FC<{
 			elements: elements.map((element): ExcalidrawElement => {
 				return {
 					...element,
-					x: element.x - baseOffsetX / (getInitDrawDrawElements()?.zoom ?? 1),
-					y: element.y - baseOffsetY / (getInitDrawDrawElements()?.zoom ?? 1),
+					x:
+						element.x -
+						baseOffsetX / (getInitDrawDrawElements()?.zoom ?? 1) +
+						shadowWidth,
+					y:
+						element.y -
+						baseOffsetY / (getInitDrawDrawElements()?.zoom ?? 1) +
+						shadowWidth,
 					width: element.width,
 					height: element.height,
 				};
