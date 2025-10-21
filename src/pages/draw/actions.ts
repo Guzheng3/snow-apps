@@ -1,3 +1,4 @@
+import type { ExcalidrawElement } from "@mg-chao/excalidraw/element/types";
 import type { Window as AppWindow } from "@tauri-apps/api/window";
 import { createDrawWindow, saveFile } from "@/commands";
 import {
@@ -8,11 +9,12 @@ import {
 import { setExcludeFromCapture } from "@/commands/videoRecord";
 import { createWebViewSharedBufferChannel } from "@/commands/webview";
 import type { ImageLayerActionType } from "@/components/imageLayer";
+import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 import { ImageFormat, type ImagePath } from "@/types/utils/file";
 import { writeImageToClipboard } from "@/utils/clipboard";
 import { showImageDialog } from "@/utils/file";
-import { appError, appInfo } from "@/utils/log";
+import { appError } from "@/utils/log";
 import { getPlatform } from "@/utils/platform";
 import { randomString } from "@/utils/random";
 import { getWebViewSharedBuffer } from "@/utils/webview";
@@ -33,6 +35,8 @@ const getCanvasCore = async (
 	imageLayerAction: ImageLayerActionType,
 	drawLayerAction: DrawLayerActionType,
 	ignoreStyle?: boolean,
+	ignoreDrawLayer?: boolean,
+	renderContainerKey?: string,
 ): Promise<HTMLCanvasElement | ImageData | undefined> => {
 	if (!selectRectParams) {
 		return;
@@ -53,9 +57,14 @@ const getCanvasCore = async (
 		drawLayerAction.getExcalidrawAPI()?.getSceneElements() ?? [];
 
 	// 获取图像数据
-	const imageLayerImageData = await imageLayerAction.getImageData(selectRect);
+	const imageLayerImageData = await imageLayerAction.getImageData(
+		selectRect,
+		renderContainerKey,
+	);
 	const drawLayerCanvas =
-		drawElements.length > 0 ? drawLayerAction.getCanvas() : undefined;
+		!ignoreDrawLayer && drawElements.length > 0
+			? drawLayerAction.getCanvas()
+			: undefined;
 
 	if (!imageLayerImageData) {
 		return;
@@ -152,12 +161,16 @@ export const getCanvas = async (
 	imageLayerAction: ImageLayerActionType,
 	drawLayerAction: DrawLayerActionType,
 	ignoreStyle?: boolean,
+	ignoreDrawLayer?: boolean,
+	renderContainerKey?: string,
 ): Promise<HTMLCanvasElement | undefined> => {
 	return getCanvasCore(
 		selectRectParams,
 		imageLayerAction,
 		drawLayerAction,
 		ignoreStyle,
+		ignoreDrawLayer,
+		renderContainerKey,
 	) as Promise<HTMLCanvasElement | undefined>;
 };
 
@@ -241,6 +254,9 @@ export const fixedToScreen = async (
 ) => {
 	// 创建一个固定的图片
 	const selectRectParams = selectLayerAction.getSelectRectParams();
+	const appState = drawLayerAction.getAppState();
+	const elements = drawLayerAction.getExcalidrawAPI()?.getSceneElements() ?? [];
+	const windowDevicePixelRatio = window.devicePixelRatio;
 	if (!selectRectParams) {
 		return;
 	}
@@ -253,6 +269,9 @@ export const fixedToScreen = async (
 		selectRectParams,
 		imageLayerAction,
 		drawLayerAction,
+		undefined,
+		true,
+		INIT_CONTAINER_KEY,
 	);
 	if (!canvas) {
 		return;
@@ -284,8 +303,15 @@ export const fixedToScreen = async (
 		fixedContentAction.init({
 			canvas,
 			captureBoundingBoxInfo,
+			drawElements: {
+				scrollX: appState?.scrollX ?? 0,
+				scrollY: appState?.scrollY ?? 0,
+				zoom: appState?.zoom?.value ?? 1,
+				elements: elements as ExcalidrawElement[],
+			},
 			ocrResult,
 			selectRectParams,
+			windowDevicePixelRatio,
 		}),
 	]);
 

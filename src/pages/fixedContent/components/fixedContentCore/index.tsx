@@ -1,4 +1,5 @@
 import { CloseOutlined, EditOutlined } from "@ant-design/icons";
+import type { ExcalidrawElement } from "@mg-chao/excalidraw/element/types";
 import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
 import { Menu, type MenuItemOptions, Submenu } from "@tauri-apps/api/menu";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
@@ -90,6 +91,13 @@ import { getHtmlContent, getStyleProps } from "./extra";
 export type FixedContentInitDrawParams = {
 	captureBoundingBoxInfo: CaptureBoundingBoxInfo;
 	canvas: HTMLCanvasElement;
+	drawElements: {
+		scrollX: number;
+		scrollY: number;
+		zoom: number;
+		elements: ExcalidrawElement[];
+	};
+	windowDevicePixelRatio: number;
 	/** 已有的 OCR 结果 */
 	ocrResult: AppOcrResult | undefined;
 	/** 选择区域参数 */
@@ -655,8 +663,16 @@ export const FixedContentCore: React.FC<{
 
 	const { isReady, isReadyStatus } = usePluginServiceContext();
 	const selectRectParamsRef = useRef<SelectRectParams | undefined>(undefined);
+	const initDrawElementsRef = useRef<
+		FixedContentInitDrawParams["drawElements"] | undefined
+	>(undefined);
+	const initDrawWindowDevicePixelRatioRef = useRef<number | undefined>(
+		undefined,
+	);
 	const initDraw = useCallback(
 		async (params: FixedContentInitDrawParams) => {
+			initDrawElementsRef.current = params.drawElements;
+			initDrawWindowDevicePixelRatioRef.current = params.windowDevicePixelRatio;
 			ocrResultActionRef.current?.setEnable(false);
 
 			setFixedContentType(FixedContentType.DrawCanvas);
@@ -1062,13 +1078,22 @@ export const FixedContentCore: React.FC<{
 		switchSelectTextCore();
 	}, [enableDrawRef, switchSelectTextCore, switchDrawCore]);
 	const switchDraw = useCallback(async () => {
+		if (isThumbnailRef.current) {
+			return;
+		}
+
 		// 启用选择文本时则切换选择文本
 		if (enableSelectTextRef.current) {
 			switchSelectTextCore();
 		}
 
 		switchDrawCore();
-	}, [enableSelectTextRef, switchSelectTextCore, switchDrawCore]);
+	}, [
+		enableSelectTextRef,
+		isThumbnailRef,
+		switchSelectTextCore,
+		switchDrawCore,
+	]);
 
 	const switchAlwaysOnTop = useCallback(async () => {
 		setIsAlwaysOnTop((isAlwaysOnTop) => !isAlwaysOnTop);
@@ -1300,7 +1325,7 @@ export const FixedContentCore: React.FC<{
 						id: "settings.hotKeySettings.fixedContent.fixedContentEnableDraw",
 					}),
 					checked: enableDraw,
-					disabled: enableSelectText,
+					enabled: !isThumbnail,
 					accelerator: formatKey(
 						hotkeys?.[CommonKeyEventKey.FixedContentEnableDraw]?.hotKey,
 					),
@@ -1349,20 +1374,18 @@ export const FixedContentCore: React.FC<{
 				{
 					item: "Separator",
 				},
-				enableDraw
-					? undefined
-					: {
-							id: `${appWindow.label}-switchThumbnailTool`,
-							text: intl.formatMessage({ id: "draw.switchThumbnail" }),
-							checked: isThumbnail,
-							accelerator: formatKey(
-								hotkeys?.[CommonKeyEventKey.FixedContentSwitchThumbnail]
-									?.hotKey,
-							),
-							action: async () => {
-								switchThumbnail();
-							},
-						},
+				{
+					id: `${appWindow.label}-switchThumbnailTool`,
+					text: intl.formatMessage({ id: "draw.switchThumbnail" }),
+					checked: isThumbnail,
+					accelerator: formatKey(
+						hotkeys?.[CommonKeyEventKey.FixedContentSwitchThumbnail]?.hotKey,
+					),
+					enabled: !enableDraw,
+					action: async () => {
+						switchThumbnail();
+					},
+				},
 				await Submenu.new({
 					id: `${appWindow.label}-focusModeTool`,
 					text: intl.formatMessage({ id: "draw.focusMode" }),
@@ -1451,92 +1474,90 @@ export const FixedContentCore: React.FC<{
 						},
 					],
 				}),
-				enableDraw
-					? undefined
-					: await Submenu.new({
-							id: `${appWindow.label}-setScaleTool`,
+				await Submenu.new({
+					id: `${appWindow.label}-setScaleTool`,
+					text: intl.formatMessage({
+						id: "settings.hotKeySettings.fixedContent.scale",
+					}),
+					enabled: !enableDraw,
+					items: [
+						{
+							id: `${appWindow.label}-setScaleTool25`,
 							text: intl.formatMessage({
-								id: "settings.hotKeySettings.fixedContent.scale",
+								id: "settings.hotKeySettings.fixedContent.setScale.twentyFive",
 							}),
-							items: [
-								{
-									id: `${appWindow.label}-setScaleTool25`,
-									text: intl.formatMessage({
-										id: "settings.hotKeySettings.fixedContent.setScale.twentyFive",
-									}),
-									action: () => {
-										scaleWindow(25 - scaleRef.current.x, true);
-									},
-								},
-								{
-									id: `${appWindow.label}-setScaleTool50`,
-									text: intl.formatMessage({
-										id: "settings.hotKeySettings.fixedContent.setScale.fifty",
-									}),
-									action: () => {
-										scaleWindow(50 - scaleRef.current.x, true);
-									},
-								},
-								{
-									id: `${appWindow.label}-setScaleTool75`,
-									text: intl.formatMessage({
-										id: "settings.hotKeySettings.fixedContent.setScale.seventyFive",
-									}),
-									action: () => {
-										scaleWindow(75 - scaleRef.current.x, true);
-									},
-								},
-								{
-									id: `${appWindow.label}-setScaleTool100`,
-									text: intl.formatMessage({
-										id: "settings.hotKeySettings.fixedContent.setScale.hundred",
-									}),
-									action: () => {
-										scaleWindow(100 - scaleRef.current.x, true);
-									},
-								},
-							],
-						}),
-				enableDraw
-					? undefined
-					: {
-							id: `${appWindow.label}-scrollActionTool`,
-							text: intl.formatMessage({ id: "draw.scrollAction" }),
-							items: [
-								{
-									id: `${appWindow.label}-scrollActionToolZoom`,
-									text: intl.formatMessage({ id: "draw.scrollAction.zoom" }),
-									checked: scrollAction === FixedContentScrollAction.Zoom,
-									action: () => {
-										setscrollAction(FixedContentScrollAction.Zoom);
-									},
-								},
-								{
-									id: `${appWindow.label}-scrollActionToolRotateX`,
-									text: intl.formatMessage({ id: "draw.scrollAction.rotateX" }),
-									checked: scrollAction === FixedContentScrollAction.RotateX,
-									action: () => {
-										setscrollAction(FixedContentScrollAction.RotateX);
-									},
-								},
-								{
-									id: `${appWindow.label}-scrollActionToolRotateY`,
-									text: intl.formatMessage({ id: "draw.scrollAction.rotateY" }),
-									checked: scrollAction === FixedContentScrollAction.RotateY,
-									action: () => {
-										setscrollAction(FixedContentScrollAction.RotateY);
-									},
-								},
-								{
-									id: `${appWindow.label}-scrollActionToolRotateZ`,
-									text: intl.formatMessage({ id: "draw.scrollAction.rotateZ" }),
-									checked: scrollAction === FixedContentScrollAction.RotateZ,
-									action: () => {
-										setscrollAction(FixedContentScrollAction.RotateZ);
-									},
-								},
-							],
+							action: () => {
+								scaleWindow(25 - scaleRef.current.x, true);
+							},
 						},
+						{
+							id: `${appWindow.label}-setScaleTool50`,
+							text: intl.formatMessage({
+								id: "settings.hotKeySettings.fixedContent.setScale.fifty",
+							}),
+							action: () => {
+								scaleWindow(50 - scaleRef.current.x, true);
+							},
+						},
+						{
+							id: `${appWindow.label}-setScaleTool75`,
+							text: intl.formatMessage({
+								id: "settings.hotKeySettings.fixedContent.setScale.seventyFive",
+							}),
+							action: () => {
+								scaleWindow(75 - scaleRef.current.x, true);
+							},
+						},
+						{
+							id: `${appWindow.label}-setScaleTool100`,
+							text: intl.formatMessage({
+								id: "settings.hotKeySettings.fixedContent.setScale.hundred",
+							}),
+							action: () => {
+								scaleWindow(100 - scaleRef.current.x, true);
+							},
+						},
+					],
+				}),
+				{
+					id: `${appWindow.label}-scrollActionTool`,
+					text: intl.formatMessage({ id: "draw.scrollAction" }),
+					enabled: !enableDraw,
+					items: [
+						{
+							id: `${appWindow.label}-scrollActionToolZoom`,
+							text: intl.formatMessage({ id: "draw.scrollAction.zoom" }),
+							checked: scrollAction === FixedContentScrollAction.Zoom,
+							action: () => {
+								setscrollAction(FixedContentScrollAction.Zoom);
+							},
+						},
+						{
+							id: `${appWindow.label}-scrollActionToolRotateX`,
+							text: intl.formatMessage({ id: "draw.scrollAction.rotateX" }),
+							checked: scrollAction === FixedContentScrollAction.RotateX,
+							action: () => {
+								setscrollAction(FixedContentScrollAction.RotateX);
+							},
+						},
+						{
+							id: `${appWindow.label}-scrollActionToolRotateY`,
+							text: intl.formatMessage({ id: "draw.scrollAction.rotateY" }),
+							checked: scrollAction === FixedContentScrollAction.RotateY,
+							action: () => {
+								setscrollAction(FixedContentScrollAction.RotateY);
+							},
+						},
+						{
+							id: `${appWindow.label}-scrollActionToolRotateZ`,
+							text: intl.formatMessage({ id: "draw.scrollAction.rotateZ" }),
+							checked: scrollAction === FixedContentScrollAction.RotateZ,
+							action: () => {
+								setscrollAction(FixedContentScrollAction.RotateZ);
+							},
+						},
+					],
+				},
 				{
 					item: "Separator",
 				},
@@ -2035,8 +2056,20 @@ export const FixedContentCore: React.FC<{
 		};
 	}, []);
 
+	const getInitDrawSelectRectParams = useCallback(() => {
+		return selectRectParamsRef.current;
+	}, []);
+
 	const getImageLayerAction = useCallback(() => {
 		return imageLayerActionRef.current?.getImageLayerAction();
+	}, []);
+
+	const getInitDrawDrawElements = useCallback(() => {
+		return initDrawElementsRef.current;
+	}, []);
+
+	const getInitDrawWindowDevicePixelRatio = useCallback(() => {
+		return initDrawWindowDevicePixelRatioRef.current;
 	}, []);
 
 	return (
@@ -2235,6 +2268,9 @@ export const FixedContentCore: React.FC<{
 					onConfirm={switchDraw}
 					getImageLayerAction={getImageLayerAction}
 					getSelectRectParams={getSelectRectParams}
+					getInitDrawDrawElements={getInitDrawDrawElements}
+					getInitDrawSelectRectParams={getInitDrawSelectRectParams}
+					getInitDrawWindowDevicePixelRatio={getInitDrawWindowDevicePixelRatio}
 				/>
 			)}
 

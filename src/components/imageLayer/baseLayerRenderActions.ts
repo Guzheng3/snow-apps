@@ -103,10 +103,19 @@ export const renderGetImageDataAction = (
 	canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
 	imageContainerKey: string,
 	selectRect: ElementRect | undefined,
+	renderContainerKey: string | undefined,
 ): ImageData | undefined => {
 	const canvasApp = canvasAppRef.current;
 	if (!canvasApp) {
 		return;
+	}
+
+	let renderContainer = canvasApp.stage;
+	if (renderContainerKey) {
+		const container = canvasContainerMapRef.current.get(renderContainerKey);
+		if (container) {
+			renderContainer = container;
+		}
 	}
 
 	const imageContainer = canvasContainerMapRef.current.get(imageContainerKey);
@@ -117,7 +126,7 @@ export const renderGetImageDataAction = (
 	}
 
 	const pixels = canvasApp.renderer.extract.pixels({
-		target: canvasApp.stage,
+		target: renderContainer,
 		frame: selectRect
 			? new PIXI.Rectangle(
 					selectRect.min_x,

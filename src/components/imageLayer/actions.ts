@@ -352,6 +352,7 @@ export const getImageDataAction = async (
 	canvasContainerMapRef: RefObject<Map<string, Container>>,
 	imageContainerKey: string,
 	selectRect: ElementRect | undefined,
+	renderContainerKey: string | undefined,
 ): Promise<ImageData | undefined> => {
 	return new Promise((resolve) => {
 		if (renderWorker) {
@@ -369,6 +370,7 @@ export const getImageDataAction = async (
 				payload: {
 					selectRect: selectRect,
 					imageContainerKey: imageContainerKey,
+					renderContainerKey: renderContainerKey,
 				},
 			};
 
@@ -379,6 +381,7 @@ export const getImageDataAction = async (
 				canvasContainerMapRef,
 				imageContainerKey,
 				selectRect,
+				renderContainerKey,
 			);
 			resolve(result);
 		}

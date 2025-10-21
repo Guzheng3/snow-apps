@@ -1,3 +1,4 @@
+import type { ExcalidrawElement } from "@mg-chao/excalidraw/element/types";
 import type { NormalizedZoomValue } from "@mg-chao/excalidraw/types";
 import {
 	getCurrentWindow,
@@ -32,6 +33,7 @@ import {
 import type { ImageLayerActionType } from "@/components/imageLayer";
 import { withStatePublisher } from "@/hooks/useStatePublisher";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
+import { useTextScaleFactor } from "@/hooks/useTextScaleFactor";
 import { EnableKeyEventPublisher } from "@/pages/draw/components/drawToolbar/components/keyEventWrap/extra";
 import type { SelectRectParams } from "@/pages/draw/components/selectLayer";
 import {
@@ -42,7 +44,7 @@ import type { ElementRect } from "@/types/commands/screenshot";
 import { DrawState } from "@/types/draw";
 import { MousePosition } from "@/utils/mousePosition";
 import { zIndexs } from "@/utils/zIndex";
-import type { FixedContentWindowSize } from "../..";
+import type { FixedContentInitDrawParams, FixedContentWindowSize } from "../..";
 import {
 	BOX_SHADOW_WIDTH,
 	FixedContentCoreDrawToolbar,
@@ -70,6 +72,11 @@ const DrawLayerCore: React.FC<{
 	onConfirm: () => void;
 	getImageLayerAction: () => ImageLayerActionType | undefined;
 	getSelectRectParams: () => SelectRectParams | undefined;
+	getInitDrawSelectRectParams: () => SelectRectParams | undefined;
+	getInitDrawDrawElements: () =>
+		| FixedContentInitDrawParams["drawElements"]
+		| undefined;
+	getInitDrawWindowDevicePixelRatio: () => number | undefined;
 }> = ({
 	actionRef,
 	documentSize,
@@ -79,6 +86,9 @@ const DrawLayerCore: React.FC<{
 	onConfirm,
 	getImageLayerAction,
 	getSelectRectParams,
+	getInitDrawSelectRectParams,
+	getInitDrawDrawElements,
+	getInitDrawWindowDevicePixelRatio,
 }) => {
 	const { token } = theme.useToken();
 
@@ -91,6 +101,10 @@ const DrawLayerCore: React.FC<{
 		undefined,
 	);
 
+	const documentSizeRef = useRef(documentSize);
+	useEffect(() => {
+		documentSizeRef.current = documentSize;
+	}, [documentSize]);
 	const scaleInfoRef = useRef(scaleInfo);
 	useEffect(() => {
 		scaleInfoRef.current = scaleInfo;
@@ -309,6 +323,8 @@ const DrawLayerCore: React.FC<{
 		setEnableKeyEvent(!(disabled ?? false));
 	}, [disabled, setEnableKeyEvent]);
 
+	const baseZoomRef = useRef<number>(1);
+
 	useEffect(() => {
 		if (!drawCoreActionRef.current) {
 			return;
@@ -324,7 +340,8 @@ const DrawLayerCore: React.FC<{
 				scrollX: appState.scrollX,
 				scrollY: appState.scrollY,
 				zoom: {
-					value: (scaleInfo.x / 100) as NormalizedZoomValue,
+					value: (baseZoomRef.current *
+						(scaleInfo.x / 100)) as NormalizedZoomValue,
 				},
 			},
 			captureUpdate: "NEVER",
@@ -367,6 +384,7 @@ const DrawLayerCore: React.FC<{
 
 	const excalidrawHasLoadRef = useRef(false);
 	const excalidrawAppStateStoreReadyRef = useRef(false);
+	const [, , textScaleFactorRef] = useTextScaleFactor();
 	const tryShowExcalidraw = useCallback(() => {
 		if (
 			!excalidrawHasLoadRef.current ||
@@ -375,7 +393,54 @@ const DrawLayerCore: React.FC<{
 			return;
 		}
 		setExcalidrawReady(true);
-	}, []);
+
+		// 初始化元素
+		const selectRect = getInitDrawSelectRectParams()?.rect ?? {
+			min_x: 0,
+			min_y: 0,
+			max_x: documentSizeRef.current.width,
+			max_y: documentSizeRef.current.height,
+		};
+		const elements = getInitDrawDrawElements()?.elements ?? [];
+
+		if (elements.length === 0) {
+			return;
+		}
+
+		const initDrawWindowDevicePixelRatio = getInitDrawWindowDevicePixelRatio();
+		const scaleFactorRatio = initDrawWindowDevicePixelRatio
+			? initDrawWindowDevicePixelRatio / window.devicePixelRatio
+			: 1;
+		baseZoomRef.current =
+			scaleFactorRatio * (getInitDrawDrawElements()?.zoom ?? 1);
+
+		const baseOffsetX = selectRect.min_x / textScaleFactorRef.current;
+		const baseOffsetY = selectRect.min_y / textScaleFactorRef.current;
+
+		drawCoreActionRef.current?.updateScene({
+			elements: elements.map((element): ExcalidrawElement => {
+				return {
+					...element,
+					x: element.x - baseOffsetX / (getInitDrawDrawElements()?.zoom ?? 1),
+					y: element.y - baseOffsetY / (getInitDrawDrawElements()?.zoom ?? 1),
+					width: element.width,
+					height: element.height,
+				};
+			}),
+			appState: {
+				scrollX: getInitDrawDrawElements()?.scrollX ?? 0,
+				scrollY: getInitDrawDrawElements()?.scrollY ?? 0,
+				zoom: {
+					value: baseZoomRef.current as NormalizedZoomValue,
+				},
+			},
+		});
+	}, [
+		getInitDrawSelectRectParams,
+		getInitDrawDrawElements,
+		getInitDrawWindowDevicePixelRatio,
+		textScaleFactorRef,
+	]);
 
 	return (
 		<DrawContext.Provider value={drawContextValue}>

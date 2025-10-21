@@ -17,7 +17,7 @@ import type { ElementRect, ImageBuffer } from "@/types/commands/screenshot";
 import type { CaptureHistoryItem } from "@/utils/appStore";
 import { getCaptureHistoryImageAbsPath } from "@/utils/captureHistory";
 import { supportOffscreenCanvas } from "@/utils/environment";
-import { appError, appInfo } from "@/utils/log";
+import { appError } from "@/utils/log";
 import {
 	addImageToContainerAction,
 	canvasRenderAction,
@@ -60,6 +60,7 @@ export type ImageLayerActionType = {
 	changeCursor: (cursor: Required<React.CSSProperties>["cursor"]) => string;
 	getImageData: (
 		selectRect: ElementRect | undefined,
+		renderContainerKey?: string,
 	) => Promise<ImageData | undefined>;
 	renderToPng: (
 		selectRect: ElementRect,
@@ -345,13 +346,17 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 	>(() => layerContainerElementRef.current, []);
 
 	const getImageData = useCallback<ImageLayerActionType["getImageData"]>(
-		async (selectRect: ElementRect | undefined) => {
+		async (
+			selectRect: ElementRect | undefined,
+			renderContainerKey?: string,
+		) => {
 			return getImageDataAction(
 				rendererWorker,
 				canvasAppRef,
 				canvasContainerMapRef,
 				INIT_CONTAINER_KEY,
 				selectRect,
+				renderContainerKey,
 			);
 		},
 		[rendererWorker],

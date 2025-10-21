@@ -133,6 +133,7 @@ const handleGetImageData = (data: BaseLayerRenderGetImageDataData) => {
 		canvasContainerMapRef,
 		data.payload.imageContainerKey,
 		data.payload.selectRect,
+		data.payload.renderContainerKey,
 	);
 };
 

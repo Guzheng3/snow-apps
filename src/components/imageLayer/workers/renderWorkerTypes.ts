@@ -71,6 +71,7 @@ export type BaseLayerRenderGetImageDataData = {
 	payload: {
 		selectRect: ElementRect | undefined;
 		imageContainerKey: string;
+		renderContainerKey: string | undefined;
 	};
 };
 
