@@ -17,6 +17,14 @@ async fn main() {
     snow_shot_lib::run();
 }
 
+#[cfg(target_os = "windows")]
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
+#[cfg(target_os = "macos")]
+#[global_allocator]
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 #[cfg(not(feature = "dhat-heap"))]
 fn main() {
     let default_panic = std::panic::take_hook();
