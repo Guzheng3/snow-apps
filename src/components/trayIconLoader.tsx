@@ -5,15 +5,8 @@ import { Menu, type MenuItem } from "@tauri-apps/api/menu";
 import { join, resourceDir } from "@tauri-apps/api/path";
 import { TrayIcon, type TrayIconOptions } from "@tauri-apps/api/tray";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { debounce, isEqual } from "es-toolkit";
-import React, {
-	useCallback,
-	useContext,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import { isEqual } from "es-toolkit";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useIntl } from "react-intl";
 import { exitApp } from "@/commands";
 import {
@@ -32,7 +25,6 @@ import {
 	executeScreenshot,
 	executeScreenshotFocusedWindow,
 } from "@/functions/screenshot";
-import { sendErrorMessage } from "@/functions/sendMessage";
 import {
 	executeChat,
 	executeChatSelectedText,

@@ -6,7 +6,6 @@ import {
 	writeBitmapImageToClipboardWithSharedBuffer,
 	writeImagePixelsToClipboardWithSharedBuffer,
 } from "@/commands/core";
-import { setExcludeFromCapture } from "@/commands/videoRecord";
 import { createWebViewSharedBufferChannel } from "@/commands/webview";
 import type { ImageLayerActionType } from "@/components/imageLayer";
 import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
