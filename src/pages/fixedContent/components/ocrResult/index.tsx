@@ -610,7 +610,7 @@ export const OcrResult: React.FC<{
 			return;
 		}
 		const appWindow = getCurrentWindow();
-		const menu = await Menu.new({
+		return await Menu.new({
 			id: `${appWindow.label}-ocrResultMenu`,
 			items: [
 				{
@@ -622,15 +622,24 @@ export const OcrResult: React.FC<{
 				},
 			],
 		});
-		menuRef.current = menu;
 	}, [disabled, intl]);
 
 	useEffect(() => {
-		initMenu();
+		const initMenuPromise = initMenu().then((menu) => {
+			menuRef.current = menu;
+
+			return menu;
+		});
 
 		return () => {
-			menuRef.current?.close();
 			menuRef.current = undefined;
+			initMenuPromise
+				.then((menu) => {
+					menu?.close();
+				})
+				.catch((error) => {
+					appError("[ocrResult] close menu failed", error);
+				});
 		};
 	}, [initMenu]);
 

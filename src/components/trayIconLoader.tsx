@@ -88,8 +88,6 @@ export const getDefaultIconPath = async (
 	};
 };
 
-const trayIconId = "snow-shot-tray-icon";
-let trayIcon: TrayIcon | undefined;
 const TrayIconLoaderComponent = () => {
 	const intl = useIntl();
 	const { message } = useContext(AntdContext);
@@ -138,24 +136,14 @@ const TrayIconLoaderComponent = () => {
 		true,
 	);
 
-	const closeTrayIcon = useCallback(async () => {
-		try {
-			if (trayIcon) {
-				await trayIcon.close();
-				trayIcon = undefined;
-			}
-
-			const trayIcon2 = await TrayIcon.getById(trayIconId);
-			if (trayIcon2) {
-				await trayIcon2.close();
-			}
-		} catch (error) {
-			console.warn(`[closeTrayIcon] error`, error);
-		}
-	}, []);
-
 	const { isReadyStatus } = usePluginServiceContext();
-	const initTrayIcon = useCallback(async () => {
+	const initTrayIcon = useCallback(async (): Promise<
+		| {
+				trayIcon: TrayIcon | undefined;
+				trayIconMenu: Menu | undefined;
+		  }
+		| undefined
+	> => {
 		if (!isReadyStatus) {
 			return;
 		}
@@ -165,7 +153,6 @@ const TrayIconLoaderComponent = () => {
 		}
 
 		if (!enableTrayIcon) {
-			closeTrayIcon();
 			return;
 		}
 
@@ -189,8 +176,299 @@ const TrayIconLoaderComponent = () => {
 			}
 		}
 
+		const menu = await Menu.new({
+			id: `${appWindow.label}-trayIconMenu`,
+			items: [
+				{
+					id: `${appWindow.label}-screenshot`,
+					text: intl.formatMessage({ id: "home.screenshot" }),
+					accelerator: disableShortcut
+						? undefined
+						: formatKey(shortcutKeys[AppFunction.Screenshot].shortcutKey),
+					action: async () => {
+						executeScreenshot();
+					},
+				},
+				{
+					id: `${appWindow.label}-screenshot-delay`,
+					text: intl.formatMessage(
+						{
+							id: "home.screenshotFunction.screenshotDelay",
+						},
+						{
+							seconds: intl.formatMessage(
+								{
+									id: "home.screenshotFunction.screenshotDelay.seconds",
+								},
+								{
+									seconds: delayScreenshotSeconds,
+								},
+							),
+						},
+					),
+					accelerator: disableShortcut
+						? undefined
+						: formatKey(shortcutKeys[AppFunction.ScreenshotDelay].shortcutKey),
+					action: async () => {
+						executeScreenshot(ScreenshotType.Delay);
+					},
+				},
+				{
+					id: `${appWindow.label}-screenshot-fixedTool`,
+					text: intl.formatMessage({ id: "draw.fixedTool" }),
+					accelerator: disableShortcut
+						? undefined
+						: formatKey(shortcutKeys[AppFunction.ScreenshotFixed].shortcutKey),
+					action: async () => {
+						executeScreenshot(ScreenshotType.Fixed);
+					},
+				},
+				...(isReadyStatus(PLUGIN_ID_RAPID_OCR)
+					? [
+							{
+								id: `${appWindow.label}-screenshot-ocr`,
+								text: intl.formatMessage({ id: "draw.ocrDetectTool" }),
+								accelerator: disableShortcut
+									? undefined
+									: formatKey(
+											shortcutKeys[AppFunction.ScreenshotOcr].shortcutKey,
+										),
+								action: async () => {
+									executeScreenshot(ScreenshotType.OcrDetect);
+								},
+							},
+							{
+								id: `${appWindow.label}-screenshot-ocr-translate`,
+								text: intl.formatMessage({ id: "draw.ocrTranslateTool" }),
+								accelerator: disableShortcut
+									? undefined
+									: formatKey(
+											shortcutKeys[AppFunction.ScreenshotOcrTranslate]
+												.shortcutKey,
+										),
+								action: async () => {
+									executeScreenshot(ScreenshotType.OcrTranslate);
+								},
+							},
+						]
+					: []),
+				{
+					id: `${appWindow.label}-screenshot-copy`,
+					text: intl.formatMessage({
+						id: "home.screenshotFunction.screenshotCopy",
+					}),
+					accelerator: disableShortcut
+						? undefined
+						: formatKey(shortcutKeys[AppFunction.ScreenshotCopy].shortcutKey),
+					action: async () => {
+						executeScreenshot(ScreenshotType.Copy);
+					},
+				},
+				...(shortcutKeys[AppFunction.ScreenshotFocusedWindow].shortcutKey
+					? [
+							{
+								id: `${appWindow.label}-screenshot-focused-window`,
+								text: intl.formatMessage({
+									id: "home.screenshotFunction.screenshotFocusedWindow",
+								}),
+								accelerator: disableShortcut
+									? undefined
+									: formatKey(
+											shortcutKeys[AppFunction.ScreenshotFocusedWindow]
+												.shortcutKey,
+										),
+								action: async () => {
+									executeScreenshotFocusedWindow(getAppSettings());
+								},
+							},
+						]
+					: []),
+				{
+					id: `${appWindow.label}-screenshot-fullScreen`,
+					text: intl.formatMessage({
+						id: "home.screenshotFunction.screenshotFullScreen",
+					}),
+					accelerator: disableShortcut
+						? undefined
+						: formatKey(
+								shortcutKeys[AppFunction.ScreenshotFullScreen].shortcutKey,
+							),
+					action: async () => {
+						executeScreenshot(ScreenshotType.CaptureFullScreen);
+					},
+				},
+				...(isReadyStatus(PLUGIN_ID_AI_CHAT)
+					? [
+							{
+								item: "Separator",
+							} as unknown as MenuItem,
+							{
+								id: `${appWindow.label}-chat`,
+								text: intl.formatMessage({ id: "home.chat" }),
+								accelerator: disableShortcut
+									? undefined
+									: formatKey(shortcutKeys[AppFunction.Chat].shortcutKey),
+								action: async () => {
+									executeChat();
+								},
+							},
+							...(shortcutKeys[AppFunction.ChatSelectText].shortcutKey
+								? [
+										{
+											id: `${appWindow.label}-chat-selectText`,
+											text: intl.formatMessage({ id: "home.chatSelectText" }),
+											accelerator: disableShortcut
+												? undefined
+												: formatKey(
+														shortcutKeys[AppFunction.ChatSelectText]
+															.shortcutKey,
+													),
+											action: async () => {
+												executeChatSelectedText();
+											},
+										},
+									]
+								: []),
+						]
+					: []),
+				{
+					item: "Separator",
+				},
+				{
+					id: `${appWindow.label}-translation`,
+					text: intl.formatMessage({ id: "home.translation" }),
+					accelerator: disableShortcut
+						? undefined
+						: formatKey(shortcutKeys[AppFunction.Translation].shortcutKey),
+					action: async () => {
+						executeTranslate();
+					},
+				},
+				...(shortcutKeys[AppFunction.TranslationSelectText].shortcutKey
+					? [
+							{
+								id: `${appWindow.label}-translation-selectText`,
+								text: intl.formatMessage({
+									id: "home.translationSelectText",
+								}),
+								accelerator: disableShortcut
+									? undefined
+									: formatKey(
+											shortcutKeys[AppFunction.TranslationSelectText]
+												.shortcutKey,
+										),
+								action: async () => {
+									executeTranslateSelectedText();
+								},
+							},
+						]
+					: []),
+				...(isReadyStatus(PLUGIN_ID_FFMPEG)
+					? [
+							{
+								item: "Separator",
+							} as unknown as MenuItem,
+						]
+					: []),
+				...(isReadyStatus(PLUGIN_ID_FFMPEG)
+					? [
+							{
+								id: `${appWindow.label}-screenshot-videoRecord`,
+								text: intl.formatMessage({
+									id: "draw.extraTool.videoRecord",
+								}),
+								accelerator: disableShortcut
+									? undefined
+									: formatKey(
+											shortcutKeys[AppFunction.VideoRecord].shortcutKey,
+										),
+								action: async () => {
+									executeScreenshot(ScreenshotType.VideoRecord);
+								},
+							},
+							{
+								id: `${appWindow.label}-screenshot-videoRecord-copy`,
+								text: intl.formatMessage({
+									id: "home.videoRecordFunction.copyVideo",
+								}),
+								action: async () => {
+									startOrCopyVideo();
+								},
+							},
+						]
+					: []),
+				{
+					item: "Separator",
+				},
+				{
+					id: `${appWindow.label}-screenshot-fixedContent`,
+					text: intl.formatMessage({ id: "home.fixedContent" }),
+					accelerator: disableShortcut
+						? undefined
+						: formatKey(shortcutKeys[AppFunction.FixedContent].shortcutKey),
+					action: async () => {
+						createFixedContentWindow();
+					},
+				},
+				...getPlatformValue(
+					[
+						{
+							id: `${appWindow.label}-screenshot-topWindow`,
+							text: intl.formatMessage({ id: "home.topWindow" }),
+							accelerator: disableShortcut
+								? undefined
+								: formatKey(shortcutKeys[AppFunction.TopWindow].shortcutKey),
+							action: async () => {
+								executeScreenshot(ScreenshotType.TopWindow);
+							},
+						},
+					],
+					[],
+				),
+				{
+					id: `${appWindow.label}-screenshot-fullScreenDraw`,
+					text: intl.formatMessage({ id: "home.fullScreenDraw" }),
+					accelerator: disableShortcut
+						? undefined
+						: formatKey(shortcutKeys[AppFunction.FullScreenDraw].shortcutKey),
+					action: async () => {
+						createFullScreenDrawWindow();
+					},
+				},
+				{
+					item: "Separator",
+				},
+				{
+					id: `${appWindow.label}-disableShortcut`,
+					text: intl.formatMessage({ id: "home.disableShortcut" }),
+					checked: disableShortcut,
+					action: async () => {
+						setTrayIconState({
+							disableShortcut: !disableShortcut,
+						});
+					},
+				},
+				{
+					id: `${appWindow.label}-show-main-window`,
+					text: intl.formatMessage({ id: "home.showMainWindow" }),
+					action: async () => {
+						showWindow();
+					},
+				},
+				{
+					item: "Separator",
+				},
+				{
+					id: `${appWindow.label}-exit`,
+					text: intl.formatMessage({ id: "home.exit" }),
+					action: async () => {
+						exitApp();
+					},
+				},
+			],
+		});
+
 		const options: TrayIconOptions = {
-			id: trayIconId,
 			icon: iconImage
 				? iconImage
 				: ((await (async () => {
@@ -223,317 +501,19 @@ const TrayIconLoaderComponent = () => {
 						break;
 				}
 			},
-			menu: await Menu.new({
-				id: `${appWindow.label}-trayIconMenu`,
-				items: [
-					{
-						id: `${appWindow.label}-screenshot`,
-						text: intl.formatMessage({ id: "home.screenshot" }),
-						accelerator: disableShortcut
-							? undefined
-							: formatKey(shortcutKeys[AppFunction.Screenshot].shortcutKey),
-						action: async () => {
-							executeScreenshot();
-						},
-					},
-					{
-						id: `${appWindow.label}-screenshot-delay`,
-						text: intl.formatMessage(
-							{
-								id: "home.screenshotFunction.screenshotDelay",
-							},
-							{
-								seconds: intl.formatMessage(
-									{
-										id: "home.screenshotFunction.screenshotDelay.seconds",
-									},
-									{
-										seconds: delayScreenshotSeconds,
-									},
-								),
-							},
-						),
-						accelerator: disableShortcut
-							? undefined
-							: formatKey(
-									shortcutKeys[AppFunction.ScreenshotDelay].shortcutKey,
-								),
-						action: async () => {
-							executeScreenshot(ScreenshotType.Delay);
-						},
-					},
-					{
-						id: `${appWindow.label}-screenshot-fixedTool`,
-						text: intl.formatMessage({ id: "draw.fixedTool" }),
-						accelerator: disableShortcut
-							? undefined
-							: formatKey(
-									shortcutKeys[AppFunction.ScreenshotFixed].shortcutKey,
-								),
-						action: async () => {
-							executeScreenshot(ScreenshotType.Fixed);
-						},
-					},
-					...(isReadyStatus(PLUGIN_ID_RAPID_OCR)
-						? [
-								{
-									id: `${appWindow.label}-screenshot-ocr`,
-									text: intl.formatMessage({ id: "draw.ocrDetectTool" }),
-									accelerator: disableShortcut
-										? undefined
-										: formatKey(
-												shortcutKeys[AppFunction.ScreenshotOcr].shortcutKey,
-											),
-									action: async () => {
-										executeScreenshot(ScreenshotType.OcrDetect);
-									},
-								},
-								{
-									id: `${appWindow.label}-screenshot-ocr-translate`,
-									text: intl.formatMessage({ id: "draw.ocrTranslateTool" }),
-									accelerator: disableShortcut
-										? undefined
-										: formatKey(
-												shortcutKeys[AppFunction.ScreenshotOcrTranslate]
-													.shortcutKey,
-											),
-									action: async () => {
-										executeScreenshot(ScreenshotType.OcrTranslate);
-									},
-								},
-							]
-						: []),
-					{
-						id: `${appWindow.label}-screenshot-copy`,
-						text: intl.formatMessage({
-							id: "home.screenshotFunction.screenshotCopy",
-						}),
-						accelerator: disableShortcut
-							? undefined
-							: formatKey(shortcutKeys[AppFunction.ScreenshotCopy].shortcutKey),
-						action: async () => {
-							executeScreenshot(ScreenshotType.Copy);
-						},
-					},
-					...(shortcutKeys[AppFunction.ScreenshotFocusedWindow].shortcutKey
-						? [
-								{
-									id: `${appWindow.label}-screenshot-focused-window`,
-									text: intl.formatMessage({
-										id: "home.screenshotFunction.screenshotFocusedWindow",
-									}),
-									accelerator: disableShortcut
-										? undefined
-										: formatKey(
-												shortcutKeys[AppFunction.ScreenshotFocusedWindow]
-													.shortcutKey,
-											),
-									action: async () => {
-										executeScreenshotFocusedWindow(getAppSettings());
-									},
-								},
-							]
-						: []),
-					{
-						id: `${appWindow.label}-screenshot-fullScreen`,
-						text: intl.formatMessage({
-							id: "home.screenshotFunction.screenshotFullScreen",
-						}),
-						accelerator: disableShortcut
-							? undefined
-							: formatKey(
-									shortcutKeys[AppFunction.ScreenshotFullScreen].shortcutKey,
-								),
-						action: async () => {
-							executeScreenshot(ScreenshotType.CaptureFullScreen);
-						},
-					},
-					...(isReadyStatus(PLUGIN_ID_AI_CHAT)
-						? [
-								{
-									item: "Separator",
-								} as unknown as MenuItem,
-								{
-									id: `${appWindow.label}-chat`,
-									text: intl.formatMessage({ id: "home.chat" }),
-									accelerator: disableShortcut
-										? undefined
-										: formatKey(shortcutKeys[AppFunction.Chat].shortcutKey),
-									action: async () => {
-										executeChat();
-									},
-								},
-								...(shortcutKeys[AppFunction.ChatSelectText].shortcutKey
-									? [
-											{
-												id: `${appWindow.label}-chat-selectText`,
-												text: intl.formatMessage({ id: "home.chatSelectText" }),
-												accelerator: disableShortcut
-													? undefined
-													: formatKey(
-															shortcutKeys[AppFunction.ChatSelectText]
-																.shortcutKey,
-														),
-												action: async () => {
-													executeChatSelectedText();
-												},
-											},
-										]
-									: []),
-							]
-						: []),
-					{
-						item: "Separator",
-					},
-					{
-						id: `${appWindow.label}-translation`,
-						text: intl.formatMessage({ id: "home.translation" }),
-						accelerator: disableShortcut
-							? undefined
-							: formatKey(shortcutKeys[AppFunction.Translation].shortcutKey),
-						action: async () => {
-							executeTranslate();
-						},
-					},
-					...(shortcutKeys[AppFunction.TranslationSelectText].shortcutKey
-						? [
-								{
-									id: `${appWindow.label}-translation-selectText`,
-									text: intl.formatMessage({
-										id: "home.translationSelectText",
-									}),
-									accelerator: disableShortcut
-										? undefined
-										: formatKey(
-												shortcutKeys[AppFunction.TranslationSelectText]
-													.shortcutKey,
-											),
-									action: async () => {
-										executeTranslateSelectedText();
-									},
-								},
-							]
-						: []),
-					...(isReadyStatus(PLUGIN_ID_FFMPEG)
-						? [
-								{
-									item: "Separator",
-								} as unknown as MenuItem,
-							]
-						: []),
-					...(isReadyStatus(PLUGIN_ID_FFMPEG)
-						? [
-								{
-									id: `${appWindow.label}-screenshot-videoRecord`,
-									text: intl.formatMessage({
-										id: "draw.extraTool.videoRecord",
-									}),
-									accelerator: disableShortcut
-										? undefined
-										: formatKey(
-												shortcutKeys[AppFunction.VideoRecord].shortcutKey,
-											),
-									action: async () => {
-										executeScreenshot(ScreenshotType.VideoRecord);
-									},
-								},
-								{
-									id: `${appWindow.label}-screenshot-videoRecord-copy`,
-									text: intl.formatMessage({
-										id: "home.videoRecordFunction.copyVideo",
-									}),
-									action: async () => {
-										startOrCopyVideo();
-									},
-								},
-							]
-						: []),
-					{
-						item: "Separator",
-					},
-					{
-						id: `${appWindow.label}-screenshot-fixedContent`,
-						text: intl.formatMessage({ id: "home.fixedContent" }),
-						accelerator: disableShortcut
-							? undefined
-							: formatKey(shortcutKeys[AppFunction.FixedContent].shortcutKey),
-						action: async () => {
-							createFixedContentWindow();
-						},
-					},
-					...getPlatformValue(
-						[
-							{
-								id: `${appWindow.label}-screenshot-topWindow`,
-								text: intl.formatMessage({ id: "home.topWindow" }),
-								accelerator: disableShortcut
-									? undefined
-									: formatKey(shortcutKeys[AppFunction.TopWindow].shortcutKey),
-								action: async () => {
-									executeScreenshot(ScreenshotType.TopWindow);
-								},
-							},
-						],
-						[],
-					),
-					{
-						id: `${appWindow.label}-screenshot-fullScreenDraw`,
-						text: intl.formatMessage({ id: "home.fullScreenDraw" }),
-						accelerator: disableShortcut
-							? undefined
-							: formatKey(shortcutKeys[AppFunction.FullScreenDraw].shortcutKey),
-						action: async () => {
-							createFullScreenDrawWindow();
-						},
-					},
-					{
-						item: "Separator",
-					},
-					{
-						id: `${appWindow.label}-disableShortcut`,
-						text: intl.formatMessage({ id: "home.disableShortcut" }),
-						checked: disableShortcut,
-						action: async () => {
-							setTrayIconState({
-								disableShortcut: !disableShortcut,
-							});
-						},
-					},
-					{
-						id: `${appWindow.label}-show-main-window`,
-						text: intl.formatMessage({ id: "home.showMainWindow" }),
-						action: async () => {
-							showWindow();
-						},
-					},
-					{
-						item: "Separator",
-					},
-					{
-						id: `${appWindow.label}-exit`,
-						text: intl.formatMessage({ id: "home.exit" }),
-						action: async () => {
-							exitApp();
-						},
-					},
-				],
-			}),
+			menu,
 		};
 
-		try {
-			await closeTrayIcon();
-			trayIcon = await TrayIcon.new(options);
-		} catch (error) {
-			appError(`[initTrayIcon] create tray icon failed`, error);
-			sendErrorMessage(intl.formatMessage({ id: "home.trayIcon.error" }));
-		}
+		return {
+			trayIcon: await TrayIcon.new(options),
+			trayIconMenu: menu,
+		};
 	}, [
 		shortcutKeys,
 		enableTrayIcon,
 		intl,
 		disableShortcut,
 		delayScreenshotSeconds,
-		closeTrayIcon,
 		iconPath,
 		message,
 		defaultIcon,
@@ -551,19 +531,38 @@ const TrayIconLoaderComponent = () => {
 			return;
 		}
 
-		initTrayIcon();
+		const trayIconPromise = initTrayIcon();
 
 		const handleBeforeUnload = async () => {
-			await closeTrayIcon();
+			trayIconPromise
+				.then((trayIcon) => {
+					if (trayIcon) {
+						trayIcon.trayIconMenu?.close();
+						trayIcon.trayIcon?.close();
+					}
+				})
+				.catch((error) => {
+					appError(`[TrayIconLoader] beforeunload event failed`, error);
+				});
 		};
 
 		window.addEventListener("beforeunload", handleBeforeUnload);
 
 		return () => {
-			handleBeforeUnload();
+			trayIconPromise
+				.then((trayIcon) => {
+					if (trayIcon) {
+						trayIcon.trayIconMenu?.close();
+						trayIcon.trayIcon?.close();
+					}
+				})
+				.catch((error) => {
+					appError(`[TrayIconLoader] close tray icon failed`, error);
+				});
+
 			window.removeEventListener("beforeunload", handleBeforeUnload);
 		};
-	}, [closeTrayIcon, initTrayIcon, isReadyStatus, shortcutKeys]);
+	}, [initTrayIcon, isReadyStatus, shortcutKeys]);
 
 	return null;
 };
