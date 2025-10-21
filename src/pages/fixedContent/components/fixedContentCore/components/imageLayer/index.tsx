@@ -50,6 +50,7 @@ export const FixedContentImageLayer = ({
 				undefined,
 				imageData,
 				hideImageSprite,
+				true,
 			);
 		} else if (imageData instanceof ImageData) {
 			await imageLayerActionRef.current?.onCaptureReady(
@@ -60,6 +61,7 @@ export const FixedContentImageLayer = ({
 					height: imageData.height,
 				},
 				hideImageSprite,
+				true,
 			);
 		}
 	}, []);

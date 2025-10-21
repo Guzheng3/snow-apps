@@ -6,8 +6,10 @@ import type { AppState } from "@mg-chao/excalidraw/types";
 import React, {
 	useCallback,
 	useContext,
+	useEffect,
 	useImperativeHandle,
 	useRef,
+	useState,
 } from "react";
 import { FormattedMessage } from "react-intl";
 import { captureFullScreen } from "@/commands/screenshot";
@@ -36,6 +38,7 @@ import {
 	CaptureHistory,
 	getCaptureHistoryImageAbsPath,
 } from "@/utils/captureHistory";
+import { supportOffscreenCanvas } from "@/utils/environment";
 import { getImagePathFromSettings } from "@/utils/file";
 import { appError } from "@/utils/log";
 import { ScreenshotType } from "@/utils/types";
@@ -289,6 +292,22 @@ const CaptureHistoryControllerCore: React.FC<{
 		],
 	);
 
+	const [encodeImageWorker, setEncodeImageWorker] = useState<
+		Worker | undefined
+	>(undefined);
+	useEffect(() => {
+		if (!supportOffscreenCanvas()) {
+			return;
+		}
+		const worker = new Worker(
+			new URL("./workers/encodeImageWorker.ts", import.meta.url),
+		);
+		setEncodeImageWorker(worker);
+		return () => {
+			worker.terminate();
+		};
+	}, []);
+
 	const saveCurrentCapture = useCallback(
 		async (
 			imageBuffer:
@@ -313,6 +332,7 @@ const CaptureHistoryControllerCore: React.FC<{
 				!captureHistoryListRef.current[captureHistoryIndex]
 			) {
 				sharedBufferEncodeImagePromise = encodeImage(
+					encodeImageWorker,
 					imageBuffer.width,
 					imageBuffer.height,
 					imageBuffer.sharedBuffer,
@@ -358,7 +378,7 @@ const CaptureHistoryControllerCore: React.FC<{
 			resetCurrentIndex();
 			onCaptureHistoryChange();
 		},
-		[resetCurrentIndex],
+		[resetCurrentIndex, encodeImageWorker],
 	);
 
 	const captureFullScreenAction = useCallback(async () => {

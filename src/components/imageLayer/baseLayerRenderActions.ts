@@ -84,6 +84,8 @@ export const renderClearCanvasAction = (
 	canvasAppRef: RefType<Application | undefined>,
 	canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
 	canvasContainerChildCountRef: RefType<number>,
+	currentImageTextureRef: RefType<PIXI.Texture | undefined>,
+	baseImageTextureRef: RefType<PIXI.Texture | undefined>,
 ) => {
 	const canvasApp = canvasAppRef.current;
 	if (!canvasApp) {
@@ -94,6 +96,8 @@ export const renderClearCanvasAction = (
 	}
 	canvasContainerMapRef.current.clear();
 	canvasContainerChildCountRef.current = 0;
+	currentImageTextureRef.current = undefined;
+	baseImageTextureRef.current = undefined;
 
 	canvasApp.render();
 };
@@ -266,6 +270,7 @@ export const renderAddImageToContainerAction = async (
 		if ("type" in imageSrc) {
 			if (imageSrc.type === "base_image_texture") {
 				texture = baseImageTextureRef.current;
+				baseImageTextureRef.current = undefined;
 			}
 		} else {
 			texture = new PIXI.Texture({

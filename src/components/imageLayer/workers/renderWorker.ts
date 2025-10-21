@@ -124,6 +124,8 @@ const handleClearCanvas = () => {
 		canvasAppRef,
 		canvasContainerMapRef,
 		canvasContainerChildCountRef,
+		currentImageTextureRef,
+		baseImageTextureRef,
 	);
 };
 

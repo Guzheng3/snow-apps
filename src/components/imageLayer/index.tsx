@@ -148,6 +148,7 @@ export type ImageLayerActionType = {
 			| { type: "base_image_texture" }
 			| undefined,
 		hideImageSprite?: boolean,
+		ignoreCaptureImageSrc?: boolean,
 	) => Promise<void>;
 	/**
 	 * 显示器信息准备
@@ -325,6 +326,8 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 			canvasAppRef,
 			canvasContainerMapRef,
 			canvasContainerChildCountRef,
+			currentImageTextureRef,
+			baseImageTextureRef,
 		);
 	}, [rendererWorker]);
 
@@ -559,12 +562,15 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 				| { type: "base_image_texture" }
 				| undefined,
 			hideImageSprite?: boolean,
+			ignoreCaptureImageSrc?: boolean,
 		): Promise<void> => {
 			// 底图作为单独的层级显示
 			const isSharedBuffer = imageBuffer && "sharedBuffer" in imageBuffer;
-			currentCaptureImageSrcRef.current = isSharedBuffer
-				? imageBuffer
-				: imageSrc;
+			if (!ignoreCaptureImageSrc) {
+				currentCaptureImageSrcRef.current = isSharedBuffer
+					? imageBuffer
+					: imageSrc;
+			}
 			// 可能是切换截图历史，这种情况下不存在截图数据
 			if (imageSrc) {
 				await addImageToContainer(
@@ -613,7 +619,17 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 		ImageLayerActionType["onCaptureFinish"]
 	>(async () => {
 		await clearCanvas();
+		currentCaptureImageSrcRef.current = undefined;
 	}, [clearCanvas]);
+
+	useEffect(() => {
+		return () => {
+			currentCaptureImageSrcRef.current = undefined;
+			blurContainerKeyRef.current = undefined;
+			highlightContainerKeyRef.current = undefined;
+			watermarkContainerKeyRef.current = undefined;
+		};
+	}, []);
 
 	const onExecuteScreenshot = useCallback<
 		ImageLayerActionType["onExecuteScreenshot"]

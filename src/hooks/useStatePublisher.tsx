@@ -3,6 +3,7 @@ import {
 	createContext,
 	type RefObject,
 	useCallback,
+	useEffect,
 	useMemo,
 	useRef,
 } from "react";
@@ -100,6 +101,14 @@ export function PublisherProvider<Value>({
 		}),
 		[publish, subscribe, reset],
 	);
+
+	useEffect(() => {
+		return () => {
+			stateRef.current = defaultValue;
+			stateListenersRef.current.clear();
+			listenerIdRef.current = 0;
+		};
+	}, [defaultValue]);
 
 	return (
 		<StatePublisherContext.Provider value={publisherValue}>

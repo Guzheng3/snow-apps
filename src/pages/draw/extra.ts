@@ -84,7 +84,7 @@ export const CaptureLoadingPublisher = createPublisher<boolean>(true);
 export const ElementDraggingPublisher = createPublisher<boolean>(false);
 export const CaptureEventPublisher = createPublisher<
 	CaptureEventParams | undefined
->(undefined);
+>(undefined, true);
 export const ScreenshotTypePublisher = createPublisher<{
 	type: ScreenshotType;
 	params: {

@@ -1,22 +1,16 @@
-import { supportOffscreenCanvas } from "@/utils/environment";
-
 export type DecodeResult = {
 	data: ImageData;
 	width: number;
 	height: number;
 };
 
-const decodeWorker: Worker =
-	typeof window !== "undefined" && supportOffscreenCanvas()
-		? new Worker(new URL("./encodeImageWorker.ts", import.meta.url))
-		: (undefined as unknown as Worker);
-
 export async function encodeImage(
+	encodeImageWorker: Worker | undefined,
 	width: number,
 	height: number,
 	imageBuffer: Uint8ClampedArray,
 ): Promise<ArrayBuffer | undefined> {
-	if (!supportOffscreenCanvas()) {
+	if (!encodeImageWorker) {
 		const canvase = new HTMLCanvasElement();
 		canvase.width = width;
 		canvase.height = height;
@@ -50,7 +44,12 @@ export async function encodeImage(
 	}
 
 	return new Promise((resolve, reject) => {
-		decodeWorker.onmessage = async (
+		if (!encodeImageWorker) {
+			reject(new Error("[encodeImage] encodeImageWorker is not registered"));
+			return;
+		}
+
+		encodeImageWorker.onmessage = async (
 			event: MessageEvent<{
 				image: ArrayBuffer;
 			}>,
@@ -58,14 +57,10 @@ export async function encodeImage(
 			resolve(event.data.image);
 		};
 
-		decodeWorker.onerror = (error) => {
+		encodeImageWorker.onerror = (error) => {
 			reject(error);
 		};
 
-		decodeWorker.postMessage({ imageBuffer, width, height });
+		encodeImageWorker.postMessage({ imageBuffer, width, height });
 	});
-}
-
-export function getEncodeImageWorker() {
-	return decodeWorker;
 }
