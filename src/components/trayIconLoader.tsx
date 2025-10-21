@@ -542,22 +542,16 @@ const TrayIconLoaderComponent = () => {
 		isReadyStatus,
 	]);
 
-	const initTrayIconPendingRef = useRef(false);
-	const initTrayIconDebounce = useMemo(() => {
-		return debounce(async () => {
-			if (initTrayIconPendingRef.current) {
-				return;
-			}
-
-			initTrayIconPendingRef.current = true;
-			initTrayIcon().finally(() => {
-				initTrayIconPendingRef.current = false;
-			});
-		}, 100);
-	}, [initTrayIcon]);
-
 	useEffect(() => {
-		initTrayIconDebounce();
+		if (!isReadyStatus) {
+			return;
+		}
+
+		if (!shortcutKeys) {
+			return;
+		}
+
+		initTrayIcon();
 
 		const handleBeforeUnload = async () => {
 			await closeTrayIcon();
@@ -569,7 +563,7 @@ const TrayIconLoaderComponent = () => {
 			handleBeforeUnload();
 			window.removeEventListener("beforeunload", handleBeforeUnload);
 		};
-	}, [closeTrayIcon, initTrayIconDebounce]);
+	}, [closeTrayIcon, initTrayIcon, isReadyStatus, shortcutKeys]);
 
 	return null;
 };
