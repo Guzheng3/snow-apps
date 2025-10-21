@@ -70,6 +70,7 @@ export type BaseLayerRenderGetImageDataData = {
 	type: BaseLayerRenderMessageType.GetImageData;
 	payload: {
 		selectRect: ElementRect | undefined;
+		imageContainerKey: string;
 	};
 };
 
@@ -77,6 +78,7 @@ export type BaseLayerRenderRenderToCanvasData = {
 	type: BaseLayerRenderMessageType.RenderToCanvas;
 	payload: {
 		selectRect: ElementRect;
+		imageContainerKey: string;
 		containerId: string | undefined;
 	};
 };
@@ -85,6 +87,7 @@ export type BaseLayerRenderRenderToPngData = {
 	type: BaseLayerRenderMessageType.RenderToPng;
 	payload: {
 		selectRect: ElementRect;
+		imageContainerKey: string;
 		containerId: string | undefined;
 	};
 };
@@ -98,6 +101,7 @@ export type BaseLayerRenderAddImageToContainerData = {
 	payload: {
 		containerKey: string;
 		imageSrc: string | ImageSharedBufferData | { type: "base_image_texture" };
+		hideImageSprite?: boolean;
 	};
 };
 

@@ -434,9 +434,6 @@ export const copyToClipboard = async (
 			if (
 				await copyBitmapImageToClipboardWithSharedBuffer(imageData, "image")
 			) {
-				appInfo(
-					"[copyToClipboard] copyImagePixelsToClipboardWithSharedBuffer success",
-				);
 				return;
 			}
 		}

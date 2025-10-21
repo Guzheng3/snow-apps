@@ -100,11 +100,20 @@ export const renderClearCanvasAction = (
 
 export const renderGetImageDataAction = (
 	canvasAppRef: RefType<Application | undefined>,
+	canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
+	imageContainerKey: string,
 	selectRect: ElementRect | undefined,
 ): ImageData | undefined => {
 	const canvasApp = canvasAppRef.current;
 	if (!canvasApp) {
 		return;
+	}
+
+	const imageContainer = canvasContainerMapRef.current.get(imageContainerKey);
+	let hasChangeAlpha = false;
+	if (imageContainer?.children[0] && imageContainer.children[0].alpha === 0) {
+		imageContainer.children[0].alpha = 1;
+		hasChangeAlpha = true;
 	}
 
 	const pixels = canvasApp.renderer.extract.pixels({
@@ -119,6 +128,10 @@ export const renderGetImageDataAction = (
 			: undefined,
 	});
 
+	if (imageContainer?.children[0] && hasChangeAlpha) {
+		imageContainer.children[0].alpha = 0;
+	}
+
 	const res = new ImageData(
 		pixels.pixels as ImageDataArray,
 		pixels.width,
@@ -131,6 +144,7 @@ export const renderGetImageDataAction = (
 export const renderRenderToCanvasAction = (
 	canvasAppRef: RefType<Application | undefined>,
 	canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
+	imageContainerKey: string,
 	selectRect: ElementRect,
 	containerId: string | undefined,
 ): PIXI.ICanvas | undefined => {
@@ -139,9 +153,20 @@ export const renderRenderToCanvasAction = (
 		return;
 	}
 
+	const imageContainer = canvasContainerMapRef.current.get(imageContainerKey);
+	let hasChangeAlpha = false;
+	if (imageContainer?.children[0] && imageContainer.children[0].alpha === 0) {
+		imageContainer.children[0].alpha = 1;
+		hasChangeAlpha = true;
+	}
+
 	const container = containerId
 		? canvasContainerMapRef.current.get(containerId)
 		: undefined;
+
+	if (imageContainer?.children[0] && hasChangeAlpha) {
+		imageContainer.children[0].alpha = 0;
+	}
 
 	return canvasApp.renderer.extract.canvas({
 		target: container ?? canvasApp.stage,
@@ -157,6 +182,7 @@ export const renderRenderToCanvasAction = (
 export const renderRenderToPngAction = async (
 	canvasAppRef: RefType<Application | undefined>,
 	canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
+	imageContainerKey: string,
 	selectRect: ElementRect,
 	containerId: string | undefined,
 ): Promise<ArrayBuffer | undefined> => {
@@ -169,6 +195,13 @@ export const renderRenderToPngAction = async (
 		? canvasContainerMapRef.current.get(containerId)
 		: undefined;
 
+	const imageContainer = canvasContainerMapRef.current.get(imageContainerKey);
+	let hasChangeAlpha = false;
+	if (imageContainer?.children[0] && imageContainer.children[0].alpha === 0) {
+		imageContainer.children[0].alpha = 1;
+		hasChangeAlpha = true;
+	}
+
 	const canvas = canvasApp.renderer.extract.canvas({
 		target: container ?? canvasApp.stage,
 		frame: new PIXI.Rectangle(
@@ -178,6 +211,10 @@ export const renderRenderToPngAction = async (
 			selectRect.max_y - selectRect.min_y,
 		),
 	});
+
+	if (imageContainer?.children[0] && hasChangeAlpha) {
+		imageContainer.children[0].alpha = 0;
+	}
 
 	const blob = await canvas.convertToBlob?.({
 		type: "image/png",
@@ -208,6 +245,7 @@ export const renderAddImageToContainerAction = async (
 	baseImageTextureRef: RefType<PIXI.Texture | undefined>,
 	containerKey: string,
 	imageSrc: string | ImageSharedBufferData | { type: "base_image_texture" },
+	hideImageSprite?: boolean,
 ): Promise<void> => {
 	const container = canvasContainerMapRef.current.get(containerKey);
 	if (!container) {
@@ -220,9 +258,6 @@ export const renderAddImageToContainerAction = async (
 			if (imageSrc.type === "base_image_texture") {
 				texture = baseImageTextureRef.current;
 			}
-			console.log("[renderAddImageToContainerAction] texture", {
-				texture,
-			});
 		} else {
 			texture = new PIXI.Texture({
 				source: new PIXI.BufferImageSource({
@@ -240,9 +275,12 @@ export const renderAddImageToContainerAction = async (
 		});
 	}
 
-	const image = new PIXI.Sprite(texture);
 	container.removeChildren();
+
+	const image = new PIXI.Sprite(texture);
+	image.alpha = hideImageSprite ? 0 : 1;
 	container.addChild(image);
+
 	currentImageTextureRef.current = texture;
 };
 

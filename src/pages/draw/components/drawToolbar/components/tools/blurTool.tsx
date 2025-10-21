@@ -59,7 +59,8 @@ const isEqualBlurSpriteProps = (
 };
 
 const BlurToolCore: React.FC = () => {
-	const { getImageLayerAction, getDrawCoreAction } = useContext(DrawContext);
+	const { getImageLayerAction, getDrawCoreAction, getZoom } =
+		useContext(DrawContext);
 	const blurSpriteMapRef = useRef<
 		Map<
 			string,
@@ -113,7 +114,7 @@ const BlurToolCore: React.FC = () => {
 					height: Math.round(element.height * window.devicePixelRatio),
 					angle: element.angle,
 					opacity: element.opacity,
-					zoom: zoom.value,
+					zoom: zoom.value / (getZoom?.() ?? 1),
 					valid: true,
 					eraserAlpha: undefined,
 					points: element.type === "blur_freedraw" ? element.points : undefined,
@@ -171,7 +172,7 @@ const BlurToolCore: React.FC = () => {
 				imageLayerAction.canvasRender();
 			}
 		},
-		[getImageLayerAction, getDrawCoreAction],
+		[getImageLayerAction, getDrawCoreAction, getZoom],
 	);
 	const updateBlurRender = useCallbackRender(updateBlur);
 
@@ -200,8 +201,6 @@ const BlurToolCore: React.FC = () => {
 				await imageLayerAction.updateBlurSprite(id, blurSprite.props, true);
 				imageLayerAction.canvasRender();
 			});
-
-			console.log("handleEraser", params);
 		},
 		[getImageLayerAction],
 	);

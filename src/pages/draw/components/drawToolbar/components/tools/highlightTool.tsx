@@ -43,8 +43,12 @@ const isEqualHighlightSpriteProps = (
 };
 
 const HighlightToolCore: React.FC = () => {
-	const { getImageLayerAction, getDrawCoreAction, getSelectRectParams } =
-		useContext(DrawContext);
+	const {
+		getImageLayerAction,
+		getDrawCoreAction,
+		getSelectRectParams,
+		getZoom,
+	} = useContext(DrawContext);
 	const highlightSpriteMapRef = useRef<
 		Map<
 			string,
@@ -99,7 +103,7 @@ const HighlightToolCore: React.FC = () => {
 					height: Math.round(element.height * window.devicePixelRatio),
 					angle: element.angle,
 					opacity: element.opacity,
-					zoom: zoom.value,
+					zoom: zoom.value / (getZoom?.() ?? 1),
 					valid: true,
 					strokeColor: element.strokeColor,
 					backgroundColor: element.backgroundColor,
@@ -167,7 +171,7 @@ const HighlightToolCore: React.FC = () => {
 				imageLayerAction.canvasRender();
 			}
 		},
-		[getDrawCoreAction, getImageLayerAction, getSelectRectParams],
+		[getDrawCoreAction, getImageLayerAction, getSelectRectParams, getZoom],
 	);
 	const updateHighlightRender = useCallbackRender(updateHighlight);
 

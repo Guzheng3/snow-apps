@@ -128,13 +128,19 @@ const handleClearCanvas = () => {
 };
 
 const handleGetImageData = (data: BaseLayerRenderGetImageDataData) => {
-	return renderGetImageDataAction(canvasAppRef, data.payload.selectRect);
+	return renderGetImageDataAction(
+		canvasAppRef,
+		canvasContainerMapRef,
+		data.payload.imageContainerKey,
+		data.payload.selectRect,
+	);
 };
 
 const handleRenderToCanvas = (data: BaseLayerRenderRenderToCanvasData) => {
 	return renderRenderToCanvasAction(
 		canvasAppRef,
 		canvasContainerMapRef,
+		data.payload.imageContainerKey,
 		data.payload.selectRect,
 		data.payload.containerId,
 	);
@@ -153,6 +159,7 @@ const handleAddImageToContainer = async (
 		baseImageTextureRef,
 		data.payload.containerKey,
 		data.payload.imageSrc,
+		data.payload.hideImageSprite,
 	);
 };
 
@@ -240,6 +247,7 @@ const handleRenderToPng = async (data: BaseLayerRenderRenderToPngData) => {
 	return await renderRenderToPngAction(
 		canvasAppRef,
 		canvasContainerMapRef,
+		data.payload.imageContainerKey,
 		data.payload.selectRect,
 		data.payload.containerId,
 	);

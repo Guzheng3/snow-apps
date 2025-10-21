@@ -82,6 +82,7 @@ export type ImageLayerActionType = {
 	addImageToContainer: (
 		containerKey: string,
 		imageSrc: string | ImageSharedBufferData | { type: "base_image_texture" },
+		hideImageSprite?: boolean,
 	) => Promise<void>;
 	/**
 	 * 清空画布容器
@@ -145,6 +146,7 @@ export type ImageLayerActionType = {
 			| ImageSharedBufferData
 			| { type: "base_image_texture" }
 			| undefined,
+		hideImageSprite?: boolean,
 	) => Promise<void>;
 	/**
 	 * 显示器信息准备
@@ -296,7 +298,6 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 				offscreenCanvasRef.current ? [offscreenCanvasRef.current] : undefined,
 			);
 
-			appInfo("[ImageLayer] initCanvas", disabled);
 			await onInitCanvasReady?.();
 		},
 		[rendererWorker, onInitCanvasReady, disabled, hasInitRendererWorker],
@@ -345,7 +346,13 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 
 	const getImageData = useCallback<ImageLayerActionType["getImageData"]>(
 		async (selectRect: ElementRect | undefined) => {
-			return getImageDataAction(rendererWorker, canvasAppRef, selectRect);
+			return getImageDataAction(
+				rendererWorker,
+				canvasAppRef,
+				canvasContainerMapRef,
+				INIT_CONTAINER_KEY,
+				selectRect,
+			);
 		},
 		[rendererWorker],
 	);
@@ -356,6 +363,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 				rendererWorker,
 				canvasAppRef,
 				canvasContainerMapRef,
+				INIT_CONTAINER_KEY,
 				selectRect,
 				containerId,
 			);
@@ -369,6 +377,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 				rendererWorker,
 				canvasAppRef,
 				canvasContainerMapRef,
+				INIT_CONTAINER_KEY,
 				selectRect,
 				containerId,
 			);
@@ -385,7 +394,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 	const addImageToContainer = useCallback<
 		ImageLayerActionType["addImageToContainer"]
 	>(
-		async (containerKey, imageSrc) => {
+		async (containerKey, imageSrc, hideImageSprite) => {
 			await addImageToContainerAction(
 				rendererWorker,
 				canvasContainerMapRef,
@@ -393,6 +402,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 				baseImageTextureRef,
 				containerKey,
 				imageSrc,
+				hideImageSprite,
 			);
 		},
 		[rendererWorker],
@@ -543,6 +553,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 				| ImageSharedBufferData
 				| { type: "base_image_texture" }
 				| undefined,
+			hideImageSprite?: boolean,
 		): Promise<void> => {
 			// 底图作为单独的层级显示
 			const isSharedBuffer = imageBuffer && "sharedBuffer" in imageBuffer;
@@ -551,15 +562,27 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 				: imageSrc;
 			// 可能是切换截图历史，这种情况下不存在截图数据
 			if (imageSrc) {
-				await addImageToContainer(INIT_CONTAINER_KEY, imageSrc);
+				await addImageToContainer(
+					INIT_CONTAINER_KEY,
+					imageSrc,
+					hideImageSprite,
+				);
 			} else if (isSharedBuffer) {
-				await addImageToContainer(INIT_CONTAINER_KEY, imageBuffer);
+				await addImageToContainer(
+					INIT_CONTAINER_KEY,
+					imageBuffer,
+					hideImageSprite,
+				);
 			} else if (
 				imageBuffer &&
 				"type" in imageBuffer &&
 				imageBuffer.type === "base_image_texture"
 			) {
-				await addImageToContainer(INIT_CONTAINER_KEY, imageBuffer);
+				await addImageToContainer(
+					INIT_CONTAINER_KEY,
+					imageBuffer,
+					hideImageSprite,
+				);
 			} else {
 				appError("[ImageLayer] imageBuffer is not supported", imageBuffer);
 			}

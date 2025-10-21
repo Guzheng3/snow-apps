@@ -91,6 +91,11 @@ const DrawLayerCore: React.FC<{
 		undefined,
 	);
 
+	const scaleInfoRef = useRef(scaleInfo);
+	useEffect(() => {
+		scaleInfoRef.current = scaleInfo;
+	}, [scaleInfo]);
+
 	const [excalidrawReady, setExcalidrawReady] = useState(false);
 
 	const mousePositionRef = useRef<MousePosition | undefined>(undefined);
@@ -288,6 +293,7 @@ const DrawLayerCore: React.FC<{
 			getImageLayerAction,
 			getDrawLayerAction: () => drawCoreActionRef.current,
 			getSelectRectParams,
+			getZoom: () => scaleInfoRef.current.x / 100,
 		};
 	}, [getImageLayerAction, getSelectRectParams]);
 

@@ -58,12 +58,20 @@ const WatermarkTextInput = () => {
 		[setWatermarkText, updateWatermarkText],
 	);
 
+	const onMouseDown = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
+		e.stopPropagation();
+	}, []);
+
+	const onMouseUp = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
+		e.stopPropagation();
+	}, []);
+
 	return (
 		<Input
 			value={watermarkText}
 			onChange={onChange}
-			onMouseDown={(e) => e.stopPropagation()}
-			onMouseUp={(e) => e.stopPropagation()}
+			onMouseDown={onMouseDown}
+			onMouseUp={onMouseUp}
 		/>
 	);
 };

@@ -1,6 +1,6 @@
 import type { ExcalidrawPropsCustomOptions } from "@mg-chao/excalidraw/types";
 import { Flex, InputNumber, Slider, theme } from "antd";
-import { useContext, useMemo } from "react";
+import { useCallback, useContext, useMemo } from "react";
 import { DrawContext } from "@/pages/fullScreenDraw/extra";
 import { useChangeFontSizeProps } from "./radioSelection";
 
@@ -32,6 +32,14 @@ export const ChangeStrokeWidthSlider: NonNullable<
 
 	const { getPopupContainer } = useContext(DrawContext);
 
+	const onMouseDown = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
+		e.stopPropagation();
+	}, []);
+
+	const onMouseUp = useCallback((e: React.MouseEvent<HTMLInputElement>) => {
+		e.stopPropagation();
+	}, []);
+
 	return (
 		<Flex gap={token.margin}>
 			<Slider
@@ -57,6 +65,8 @@ export const ChangeStrokeWidthSlider: NonNullable<
 
 					onChange(value);
 				}}
+				onMouseDown={onMouseDown}
+				onMouseUp={onMouseUp}
 				changeOnWheel
 			/>
 		</Flex>

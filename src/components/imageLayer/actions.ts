@@ -267,6 +267,7 @@ export const renderToCanvasAction = async (
 	renderWorker: Worker | undefined,
 	canvasAppRef: RefObject<Application | undefined>,
 	canvasContainerMapRef: RefObject<Map<string, Container>>,
+	imageContainerKey: string,
 	selectRect: ElementRect,
 	containerId: string | undefined,
 ): Promise<ICanvas | undefined> => {
@@ -284,6 +285,7 @@ export const renderToCanvasAction = async (
 			const RenderToCanvasData: BaseLayerRenderRenderToCanvasData = {
 				type: BaseLayerRenderMessageType.RenderToCanvas,
 				payload: {
+					imageContainerKey: imageContainerKey,
 					selectRect: selectRect,
 					containerId: containerId,
 				},
@@ -294,6 +296,7 @@ export const renderToCanvasAction = async (
 			const result = renderRenderToCanvasAction(
 				canvasAppRef,
 				canvasContainerMapRef,
+				imageContainerKey,
 				selectRect,
 				containerId,
 			);
@@ -306,6 +309,7 @@ export const renderToPngAction = async (
 	renderWorker: Worker | undefined,
 	canvasAppRef: RefObject<Application | undefined>,
 	canvasContainerMapRef: RefObject<Map<string, Container>>,
+	imageContainerKey: string,
 	selectRect: ElementRect,
 	containerId: string | undefined,
 ): Promise<ArrayBuffer | undefined> => {
@@ -324,6 +328,7 @@ export const renderToPngAction = async (
 				type: BaseLayerRenderMessageType.RenderToPng,
 				payload: {
 					selectRect: selectRect,
+					imageContainerKey: imageContainerKey,
 					containerId: containerId,
 				},
 			};
@@ -333,6 +338,7 @@ export const renderToPngAction = async (
 			renderRenderToPngAction(
 				canvasAppRef,
 				canvasContainerMapRef,
+				imageContainerKey,
 				selectRect,
 				containerId,
 			).then(resolve);
@@ -343,6 +349,8 @@ export const renderToPngAction = async (
 export const getImageDataAction = async (
 	renderWorker: Worker | undefined,
 	canvasAppRef: RefObject<Application | undefined>,
+	canvasContainerMapRef: RefObject<Map<string, Container>>,
+	imageContainerKey: string,
 	selectRect: ElementRect | undefined,
 ): Promise<ImageData | undefined> => {
 	return new Promise((resolve) => {
@@ -360,12 +368,18 @@ export const getImageDataAction = async (
 				type: BaseLayerRenderMessageType.GetImageData,
 				payload: {
 					selectRect: selectRect,
+					imageContainerKey: imageContainerKey,
 				},
 			};
 
 			renderWorker.postMessage(GetImageDataData);
 		} else {
-			const result = renderGetImageDataAction(canvasAppRef, selectRect);
+			const result = renderGetImageDataAction(
+				canvasAppRef,
+				canvasContainerMapRef,
+				imageContainerKey,
+				selectRect,
+			);
 			resolve(result);
 		}
 	});
@@ -405,6 +419,7 @@ export const addImageToContainerAction = async (
 	baseImageTextureRef: RefObject<Texture | undefined>,
 	containerKey: string,
 	imageSrc: string | ImageSharedBufferData | { type: "base_image_texture" },
+	hideImageSprite?: boolean,
 ): Promise<undefined> => {
 	return new Promise((resolve) => {
 		if (renderWorker) {
@@ -422,6 +437,7 @@ export const addImageToContainerAction = async (
 				payload: {
 					containerKey: containerKey,
 					imageSrc: imageSrc,
+					hideImageSprite: hideImageSprite,
 				},
 			};
 
@@ -433,6 +449,7 @@ export const addImageToContainerAction = async (
 				baseImageTextureRef,
 				containerKey,
 				imageSrc,
+				hideImageSprite,
 			).then(() => resolve(undefined));
 		}
 	});

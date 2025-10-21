@@ -16,6 +16,7 @@ export type DrawContextType = {
 	getPopupContainer?: ((triggerNode: HTMLElement) => HTMLElement) | undefined;
 	getImageLayerAction: () => ImageLayerActionType | undefined;
 	getSelectRectParams: () => SelectRectParams | undefined;
+	getZoom?: () => number;
 };
 
 export const DrawContext = createContext<DrawContextType>({
@@ -27,6 +28,7 @@ export const DrawContext = createContext<DrawContextType>({
 	getPopupContainer: undefined,
 	getImageLayerAction: () => undefined,
 	getSelectRectParams: () => undefined,
+	getZoom: () => 1,
 });
 
 export const useDrawContext = () => {

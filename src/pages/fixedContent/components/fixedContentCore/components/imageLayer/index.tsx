@@ -10,6 +10,7 @@ export type FixedContentImageLayerActionType = {
 			| {
 					type: "base_image_texture";
 			  },
+		hideImageSprite?: boolean,
 	) => Promise<void>;
 	initImageLayer: (width: number, height: number) => Promise<void>;
 	initBaseImageTexture: (
@@ -43,15 +44,23 @@ export const FixedContentImageLayer = ({
 
 	const setBaseImage = useCallback<
 		FixedContentImageLayerActionType["setBaseImage"]
-	>(async (imageData) => {
+	>(async (imageData, hideImageSprite) => {
 		if ("type" in imageData && imageData.type === "base_image_texture") {
-			await imageLayerActionRef.current?.onCaptureReady(undefined, imageData);
+			await imageLayerActionRef.current?.onCaptureReady(
+				undefined,
+				imageData,
+				hideImageSprite,
+			);
 		} else if (imageData instanceof ImageData) {
-			await imageLayerActionRef.current?.onCaptureReady(undefined, {
-				sharedBuffer: imageData.data,
-				width: imageData.width,
-				height: imageData.height,
-			});
+			await imageLayerActionRef.current?.onCaptureReady(
+				undefined,
+				{
+					sharedBuffer: imageData.data,
+					width: imageData.width,
+					height: imageData.height,
+				},
+				hideImageSprite,
+			);
 		}
 	}, []);
 

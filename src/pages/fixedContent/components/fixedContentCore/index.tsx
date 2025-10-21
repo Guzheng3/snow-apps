@@ -465,7 +465,7 @@ export const FixedContentCore: React.FC<{
 					sourceCanvas.width,
 					sourceCanvas.height,
 				);
-				await imageLayerActionRef.current.setBaseImage(imageData);
+				await imageLayerActionRef.current.setBaseImage(imageData, true);
 			}
 		},
 		[
@@ -2079,26 +2079,6 @@ export const FixedContentCore: React.FC<{
 					}}
 				/>
 
-				<div
-					className="fixed-image-layer-container"
-					style={{
-						...getStyleProps(
-							(windowSize.width * scale.x) / 100 / contentScaleFactor,
-							(windowSize.height * scale.y) / 100 / contentScaleFactor,
-							processImageConfig,
-						),
-						opacity:
-							fixedContentType === FixedContentType.Html && !enableDraw
-								? 0
-								: undefined,
-					}}
-				>
-					<FixedContentImageLayer
-						actionRef={imageLayerActionRef}
-						onImageLayerReady={onImageLayerReady}
-					/>
-				</div>
-
 				{htmlContent && (
 					<iframe
 						title="fixed-html-content"
@@ -2123,7 +2103,6 @@ export const FixedContentCore: React.FC<{
 							right: 0,
 							bottom: 0,
 							backgroundColor: token.colorBgContainer,
-							opacity: enableDraw ? 0 : undefined,
 						}}
 						ref={htmlContentContainerRef}
 						srcDoc={getHtmlContent(token, htmlContent)}
@@ -2153,7 +2132,6 @@ export const FixedContentCore: React.FC<{
 							left: 0,
 							right: 0,
 							bottom: 0,
-							opacity: enableDraw ? 0 : undefined,
 						}}
 						onMouseDown={(event) => {
 							event.stopPropagation();
@@ -2229,6 +2207,22 @@ export const FixedContentCore: React.FC<{
 						</div>
 					</div>
 				)}
+
+				<div
+					className="fixed-image-layer-container"
+					style={{
+						...getStyleProps(
+							(windowSize.width * scale.x) / 100 / contentScaleFactor,
+							(windowSize.height * scale.y) / 100 / contentScaleFactor,
+							processImageConfig,
+						),
+					}}
+				>
+					<FixedContentImageLayer
+						actionRef={imageLayerActionRef}
+						onImageLayerReady={onImageLayerReady}
+					/>
+				</div>
 			</div>
 
 			{!disabled && (
