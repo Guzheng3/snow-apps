@@ -161,7 +161,9 @@ enum DrawPageState {
 
 const DrawPageCore: React.FC<{
 	getFixedContentAction: () => FixedContentActionType | undefined;
-}> = ({ getFixedContentAction }) => {
+	onFixedContentLoad: () => void;
+	showFixedContent: () => void;
+}> = ({ getFixedContentAction, onFixedContentLoad, showFixedContent }) => {
 	const { message } = useContext(AntdContext);
 	const intl = useIntl();
 
@@ -994,8 +996,8 @@ const DrawPageCore: React.FC<{
 			isOcrTool(getDrawState())
 				? ocrBlocksActionRef.current?.getOcrResultAction()?.getOcrResult()
 				: undefined,
-			(canvas: HTMLCanvasElement) => {
-				saveCaptureHistory(
+			async (canvas: HTMLCanvasElement) => {
+				await saveCaptureHistory(
 					getAppSettings()[AppSettingsGroup.SystemScreenshot]
 						.historySaveEditResult
 						? canvas
@@ -1003,6 +1005,8 @@ const DrawPageCore: React.FC<{
 					CaptureHistorySource.Fixed,
 				);
 			},
+			onFixedContentLoad,
+			showFixedContent,
 		);
 
 		switchLayer(
@@ -1020,6 +1024,8 @@ const DrawPageCore: React.FC<{
 		saveCaptureHistory,
 		setCaptureStep,
 		setCaptureStateAction,
+		onFixedContentLoad,
+		showFixedContent,
 	]);
 
 	const onTopWindow = useCallback(async () => {
@@ -1531,18 +1537,28 @@ export const DrawPage: React.FC = () => {
 		return fixedContentActionRef.current;
 	}, []);
 
+	const onFixedContentLoad = useCallback(() => {
+		setIsFixed(true);
+	}, []);
+
+	const [fixedContentDisabled, setFixedContentDisabled] = useState(true);
+	const showFixedContent = useCallback(() => {
+		setFixedContentDisabled(false);
+	}, []);
+
 	return (
 		<TextScaleFactorContextProvider>
 			{!isFixed && (
-				<DrawPageContent getFixedContentAction={getFixedContentAction} />
+				<DrawPageContent
+					getFixedContentAction={getFixedContentAction}
+					onFixedContentLoad={onFixedContentLoad}
+					showFixedContent={showFixedContent}
+				/>
 			)}
 			<div>
 				<FixedContentCore
 					actionRef={fixedContentActionRef}
-					onDrawLoad={() => {
-						setIsFixed(true);
-					}}
-					disabled={!isFixed}
+					disabled={fixedContentDisabled}
 				/>
 			</div>
 		</TextScaleFactorContextProvider>

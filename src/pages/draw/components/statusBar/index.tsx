@@ -164,7 +164,15 @@ const StatusBar: React.FC = () => {
 
 	const statusBarRef = useRef<HTMLDivElement>(null);
 	const { selectLayerActionRef } = useContext(DrawContext);
-	const [getCaptureStep] = useStateSubscriber(CaptureStepPublisher, undefined);
+
+	const [isFixed, setIsFixed] = useState(false);
+
+	const [getCaptureStep] = useStateSubscriber(
+		CaptureStepPublisher,
+		useCallback((captureStep: CaptureStep) => {
+			setIsFixed(captureStep === CaptureStep.Fixed);
+		}, []),
+	);
 	const [getDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
 	const [isHover, setIsHover] = useState(false);
 	const onCaptureLoadingChange = useCallback((captureLoading: boolean) => {
@@ -434,6 +442,10 @@ const StatusBar: React.FC = () => {
 			document.removeEventListener("mousemove", handleMouseMove);
 		};
 	}, [getCaptureLoading, onMouseMoveRender]);
+
+	if (isFixed) {
+		return null;
+	}
 
 	return (
 		<div

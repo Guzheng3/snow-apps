@@ -250,7 +250,9 @@ export const fixedToScreen = async (
 	setCaptureStep: (step: CaptureStep) => void,
 	/** 已有的 OCR 结果 */
 	ocrResult: AppOcrResult | undefined,
-	saveCaptureHistory: (canvas: HTMLCanvasElement) => void,
+	saveCaptureHistory: (canvas: HTMLCanvasElement) => Promise<void>,
+	onFixedContentLoad: () => void,
+	showFixedContent: () => void,
 ) => {
 	// 创建一个固定的图片
 	const selectRectParams = selectLayerAction.getSelectRectParams();
@@ -262,10 +264,9 @@ export const fixedToScreen = async (
 	}
 
 	layerContainerElement.style.opacity = "0";
-	layerContainerElement.style.width = "100%";
-	layerContainerElement.style.height = "100%";
+	layerContainerElement.style.pointerEvents = "none";
 
-	const canvas = await getCanvas(
+	const canvasPromise = getCanvas(
 		selectRectParams,
 		imageLayerAction,
 		drawLayerAction,
@@ -273,57 +274,72 @@ export const fixedToScreen = async (
 		true,
 		INIT_CONTAINER_KEY,
 	);
-	if (!canvas) {
-		return;
-	}
 
-	saveCaptureHistory(canvas);
+	const initPreloadPromise = fixedContentAction.initDrawPreload(
+		selectRectParams.rect.max_x -
+			selectRectParams.rect.min_x +
+			selectRectParams.shadowWidth * 2,
+		selectRectParams.rect.max_y -
+			selectRectParams.rect.min_y +
+			selectRectParams.shadowWidth * 2,
+	);
 
 	setCaptureStep(CaptureStep.Fixed);
 	createDrawWindow();
+	showFixedContent();
 
-	await Promise.all([
-		appWindow.hide(),
+	const [canvas] = await Promise.all([
+		canvasPromise.then((canvas) => {
+			if (!canvas) {
+				return;
+			}
+
+			saveCaptureHistory(canvas).then(() => {
+				onFixedContentLoad();
+			});
+			return canvas;
+		}),
 		appWindow.setTitle("Snow Shot - Fixed Content"),
-	]);
-
-	await setWindowRect(
-		appWindow,
-		captureBoundingBoxInfo.transformWindowRect({
-			min_x: selectRectParams.rect.min_x - selectRectParams.shadowWidth,
-			min_y: selectRectParams.rect.min_y - selectRectParams.shadowWidth,
-			max_x: selectRectParams.rect.max_x + selectRectParams.shadowWidth,
-			max_y: selectRectParams.rect.max_y + selectRectParams.shadowWidth,
+		new Promise((resolve) => {
+			setTimeout(() => {
+				resolve(true);
+			}, 17);
+		}).then(() => {
+			return setWindowRect(
+				appWindow,
+				captureBoundingBoxInfo.transformWindowRect({
+					min_x: selectRectParams.rect.min_x - selectRectParams.shadowWidth,
+					min_y: selectRectParams.rect.min_y - selectRectParams.shadowWidth,
+					max_x: selectRectParams.rect.max_x + selectRectParams.shadowWidth,
+					max_y: selectRectParams.rect.max_y + selectRectParams.shadowWidth,
+				}),
+			);
 		}),
-	);
-	setExcludeFromCapture(false);
-	await Promise.all([
-		appWindow.show(),
 		appWindow.setAlwaysOnTop(true),
-		fixedContentAction.init({
-			canvas,
-			captureBoundingBoxInfo,
-			drawElements: {
-				scrollX: appState?.scrollX ?? 0,
-				scrollY: appState?.scrollY ?? 0,
-				zoom: appState?.zoom?.value ?? 1,
-				elements: elements as ExcalidrawElement[],
-			},
-			ocrResult,
-			selectRectParams,
-			windowDevicePixelRatio,
-		}),
 	]);
 
-	// 简单加个过渡效果
-	layerContainerElement.style.transition = "opacity 0.3s ease-in-out";
+	if (!canvas) {
+		appError("[fixedToScreen] canvas is undefined");
+		return;
+	}
 
-	// 等待下让窗口内容显示出来
-	await new Promise((resolve) => {
-		setTimeout(resolve, 17);
-	});
-
-	layerContainerElement.style.opacity = "1";
+	await Promise.all([
+		await initPreloadPromise.then(() => {
+			return fixedContentAction.init({
+				canvas,
+				captureBoundingBoxInfo,
+				drawElements: {
+					scrollX: appState?.scrollX ?? 0,
+					scrollY: appState?.scrollY ?? 0,
+					zoom: appState?.zoom?.value ?? 1,
+					elements: elements as ExcalidrawElement[],
+				},
+				ocrResult,
+				selectRectParams,
+				windowDevicePixelRatio,
+			});
+		}),
+	]);
 };
 
 const copyBitmapImageToClipboardWithSharedBuffer = async (

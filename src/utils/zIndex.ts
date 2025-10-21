@@ -76,4 +76,6 @@ export const zIndexs = {
 	/** 关闭按钮 */
 	FixedToScreen_CloseButton: 208,
 	// 固定到屏幕窗口 END
+
+	Max: 9999,
 };

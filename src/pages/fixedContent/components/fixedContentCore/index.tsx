@@ -124,6 +124,7 @@ export type FixedContentActionType = {
 			| FixedContentInitTextParams
 			| FixedContentInitImageParams,
 	) => Promise<void>;
+	initDrawPreload: (width: number, height: number) => Promise<void>;
 };
 
 export enum FixedContentType {
@@ -353,11 +354,6 @@ export const FixedContentCore: React.FC<{
 					return;
 				}
 				hasInitImageLayerRef.current = true;
-
-				await imageLayerActionRef.current.initImageLayer(
-					canvasPropsRef.current.width,
-					canvasPropsRef.current.height,
-				);
 
 				const context = canvasElementRef.current.getContext("2d");
 				if (!context) {
@@ -665,13 +661,20 @@ export const FixedContentCore: React.FC<{
 	const initDrawWindowDevicePixelRatioRef = useRef<number | undefined>(
 		undefined,
 	);
+	const initDrawPreload = useCallback<
+		FixedContentActionType["initDrawPreload"]
+	>(
+		async (width: number, height: number) => {
+			setFixedContentType(FixedContentType.DrawCanvas);
+			await imageLayerActionRef.current?.initImageLayer(width, height);
+		},
+		[setFixedContentType],
+	);
 	const initDraw = useCallback(
 		async (params: FixedContentInitDrawParams) => {
 			initDrawElementsRef.current = params.drawElements;
 			initDrawWindowDevicePixelRatioRef.current = params.windowDevicePixelRatio;
 			ocrResultActionRef.current?.setEnable(false);
-
-			setFixedContentType(FixedContentType.DrawCanvas);
 
 			const { canvas, captureBoundingBoxInfo, selectRectParams } = params;
 
@@ -765,7 +768,6 @@ export const FixedContentCore: React.FC<{
 		},
 		[
 			setEnableSelectText,
-			setFixedContentType,
 			setWindowSize,
 			isReady,
 			onDrawLoad,
@@ -803,8 +805,9 @@ export const FixedContentCore: React.FC<{
 					initImage(params.imageContent);
 				}
 			},
+			initDrawPreload,
 		}),
-		[initDraw, initHtml, initImage, initText],
+		[initDraw, initDrawPreload, initHtml, initImage, initText],
 	);
 
 	const [scrollAction, setscrollAction, scrollActionRef] =
@@ -2139,6 +2142,15 @@ export const FixedContentCore: React.FC<{
 		);
 	}, [scaleRef, textScaleFactorRef]);
 
+	let containerOpacity = 0;
+	if (disabled) {
+		containerOpacity = 0;
+	} else if (isThumbnail) {
+		containerOpacity = 0.72;
+	} else if (contentOpacity) {
+		containerOpacity = contentOpacity;
+	}
+
 	return (
 		<div
 			className="fixed-image-container"
@@ -2148,7 +2160,8 @@ export const FixedContentCore: React.FC<{
 				height: `${documentSize.height}px`,
 				zIndex: zIndexs.Draw_FixedImage,
 				pointerEvents: disabled ? "none" : "auto",
-				opacity: isThumbnail ? 0.72 : contentOpacity,
+				opacity: containerOpacity,
+				transition: `opacity ${token.motionDurationFast} ${token.motionEaseInOut}`,
 				userSelect: isThumbnail || !enableSelectText ? "none" : undefined,
 			}}
 			onContextMenu={handleContextMenu}
@@ -2424,10 +2437,6 @@ export const FixedContentCore: React.FC<{
 			</div>
 
 			<style jsx>{`
-                .fixed-image-container {
-                    display: ${disabled ? "none" : "block"};
-                }
-
                 .fixed-image-container-content {
                     transformorigin: center center;
                     transform: rotateX(${rotateAngles.x}deg) rotateY(${rotateAngles.y}deg)
