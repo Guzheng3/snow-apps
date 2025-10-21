@@ -56,6 +56,7 @@ import { encodeImage } from "./workers/encodeImage";
 export type CaptureHistoryActionType = {
 	saveCurrentCapture: (
 		imageBuffer: ImageBuffer | ImageSharedBufferData | CaptureHistoryItem,
+		captureHistoryIndex: number,
 		selectRect: ElementRect | undefined,
 		excalidrawElements:
 			| readonly Ordered<NonDeletedExcalidrawElement>[]
@@ -295,6 +296,7 @@ const CaptureHistoryControllerCore: React.FC<{
 				| ImageSharedBufferData
 				| CaptureFullScreenResult
 				| CaptureHistoryItem,
+			captureHistoryIndex: number,
 			selectRect: ElementRect | undefined,
 			excalidrawElements:
 				| readonly Ordered<NonDeletedExcalidrawElement>[]
@@ -308,7 +310,7 @@ const CaptureHistoryControllerCore: React.FC<{
 			if (
 				imageBuffer &&
 				"sharedBuffer" in imageBuffer &&
-				!captureHistoryListRef.current[currentIndexRef.current]
+				!captureHistoryListRef.current[captureHistoryIndex]
 			) {
 				sharedBufferEncodeImagePromise = encodeImage(
 					imageBuffer.width,
@@ -340,7 +342,7 @@ const CaptureHistoryControllerCore: React.FC<{
 			const sharedBufferEncodeImage = await sharedBufferEncodeImagePromise;
 
 			const captureHistoryItem = await captureHistoryRef.current.save(
-				captureHistoryListRef.current[currentIndexRef.current] ??
+				captureHistoryListRef.current[captureHistoryIndex] ??
 					(sharedBufferEncodeImage
 						? {
 								encodeData: sharedBufferEncodeImage,

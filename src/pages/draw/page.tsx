@@ -712,11 +712,14 @@ const DrawPageCore: React.FC<{
 			captureResult: ArrayBuffer | HTMLCanvasElement | undefined,
 			source: CaptureHistorySource | undefined,
 		) => {
+			if (!captureHistoryActionRef.current) {
+				return;
+			}
+
 			const screenshotType = getScreenshotType()?.type;
-			const imageBuffer =
-				screenshotType === ScreenshotType.SwitchCaptureHistory
-					? captureHistoryActionRef.current?.getCurrentCaptureHistoryItem()
-					: imageBufferRef.current;
+			const captureHistoryIndex =
+				captureHistoryActionRef.current.getCurrentIndex();
+			const imageBuffer = imageBufferRef.current;
 			const selectRect = selectLayerActionRef.current?.getSelectRect();
 			const excalidrawApi = drawLayerActionRef.current?.getExcalidrawAPI();
 			const excalidrawElements = excalidrawApi?.getSceneElements();
@@ -770,6 +773,7 @@ const DrawPageCore: React.FC<{
 
 			await captureHistoryActionRef.current?.saveCurrentCapture(
 				imageBuffer,
+				captureHistoryIndex,
 				selectRect,
 				excalidrawElements,
 				appState,
