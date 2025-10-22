@@ -49,6 +49,7 @@ import {
 } from "@/components/drawCore/extra";
 import { EventListenerContext } from "@/components/eventListener";
 import { ImageLayer, type ImageLayerActionType } from "@/components/imageLayer";
+import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
 import { TextScaleFactorContextProvider } from "@/components/textScaleFactorContextProvider";
 import { AntdContext } from "@/contexts/antdContext";
 import {
@@ -67,6 +68,7 @@ import {
 	type ElementRect,
 	type ImageBuffer,
 	ImageBufferType,
+	ImageEncoder,
 } from "@/types/commands/screenshot";
 import { DrawState } from "@/types/draw";
 import { getCorrectHdrColorAlgorithm } from "@/utils/appSettings";
@@ -718,13 +720,34 @@ const DrawPageCore: React.FC<{
 				return;
 			}
 
+			let imageBuffer: ImageBuffer | undefined;
+			if (imageBufferRef.current && "sharedBuffer" in imageBufferRef.current) {
+				// 截图的图像数据已经被 transfer 到了 worker，无法在此访问
+				// 所以直接从 ImageLayer 渲染出 PNG 数据
+				const pngBuffer = await imageLayerActionRef.current?.renderToPng(
+					{
+						min_x: 0,
+						min_y: 0,
+						max_x: imageBufferRef.current.width,
+						max_y: imageBufferRef.current.height,
+					},
+					INIT_CONTAINER_KEY,
+				);
+				if (pngBuffer) {
+					imageBuffer = {
+						encoder: ImageEncoder.Png,
+						data: undefined as unknown as Blob,
+						bufferType: ImageBufferType.Pixels,
+						buffer: pngBuffer,
+					};
+				}
+			} else {
+				imageBuffer = imageBufferRef.current;
+			}
+
 			const screenshotType = getScreenshotType()?.type;
 			const captureHistoryIndex =
 				captureHistoryActionRef.current.getCurrentIndex();
-			const imageBuffer =
-				screenshotType === ScreenshotType.SwitchCaptureHistory
-					? captureHistoryActionRef.current.getCurrentCaptureHistoryItem()
-					: imageBufferRef.current;
 			const selectRect = selectLayerActionRef.current?.getSelectRect();
 			const excalidrawApi = drawLayerActionRef.current?.getExcalidrawAPI();
 			const excalidrawElements = excalidrawApi?.getSceneElements();

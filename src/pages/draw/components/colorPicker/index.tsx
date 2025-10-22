@@ -698,7 +698,18 @@ const ColorPickerCore: React.FC<{
 
 	const onCaptureImageBufferReady = useCallback(
 		async (imageBuffer: ImageBuffer | ImageSharedBufferData) => {
-			await initImageData(imageBuffer);
+			let buffer = imageBuffer;
+			// 克隆给 worker 使用
+			if ("sharedBuffer" in imageBuffer) {
+				buffer = {
+					...imageBuffer,
+					sharedBuffer: new Uint8ClampedArray(
+						imageBuffer.sharedBuffer.buffer.slice(0),
+					),
+				};
+			}
+
+			await initImageData(buffer);
 		},
 		[initImageData],
 	);

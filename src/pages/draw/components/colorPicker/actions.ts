@@ -114,7 +114,13 @@ export const initImageDataAction = async (
 
 			renderWorker.addEventListener("message", handleMessage);
 
-			renderWorker.postMessage(InitImageDataData);
+			if ("sharedBuffer" in imageBuffer && imageBuffer.sharedBuffer.buffer) {
+				renderWorker.postMessage(InitImageDataData, {
+					transfer: [imageBuffer.sharedBuffer.buffer],
+				});
+			} else {
+				renderWorker.postMessage(InitImageDataData);
+			}
 		} else {
 			renderInitImageDataAction(
 				previewCanvasRef,
