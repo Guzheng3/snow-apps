@@ -2271,7 +2271,14 @@ export const FixedContentCore: React.FC<{
 							event.stopPropagation();
 						}}
 					>
-						<div ref={textContentContainerRef} className="fixed-text-content">
+						<div
+							ref={textContentContainerRef}
+							className="fixed-text-content"
+							style={{
+								width: windowSize.width > 0 ? windowSize.width : undefined,
+								height: windowSize.height > 0 ? windowSize.height : undefined,
+							}}
+						>
 							{!textContent?.colorText && (
 								<div style={{ userSelect: "text", display: "inline-block" }}>
 									{textContent?.content}
@@ -2473,6 +2480,7 @@ export const FixedContentCore: React.FC<{
                 }
 
                 .fixed-image-layer-container {
+                    pointer-events: none;
                 }
 
 
