@@ -1,10 +1,12 @@
 use snow_shot_app_shared::{ElementRect, EnigoManager};
+use snow_shot_global_state::WebViewSharedBufferState;
 use snow_shot_tauri_commands_core::{
     FullScreenDrawWindowLabels, MonitorsBoundingBox, VideoRecordWindowLabels,
 };
 use std::{path::PathBuf, sync::Arc};
 use tauri::{Manager, command, ipc::Response};
 use tauri_plugin_autostart::ManagerExt;
+use tauri_plugin_clipboard_manager::ClipboardExt;
 use tokio::sync::Mutex;
 
 #[command]
@@ -70,14 +72,51 @@ pub async fn create_fixed_content_window(
 }
 
 #[command]
-pub async fn read_image_from_clipboard(handle: tauri::AppHandle) -> Response {
+pub async fn read_image_from_clipboard(
+    handle: tauri::AppHandle,
+    webview_shared_buffer_state: tauri::State<'_, WebViewSharedBufferState>,
+    #[allow(unused_variables)] webview: tauri::Webview,
+) -> Result<Response, String> {
+    if *webview_shared_buffer_state.enable.read().await {
+        let image_data = match handle.clipboard().read_image() {
+            Ok(image) => image,
+            Err(_) => return Ok(Response::new(vec![])),
+        };
+
+        let mut extra_data = vec![0; 8];
+        unsafe {
+            let image_width = image_data.width();
+            let image_height = image_data.height();
+            std::ptr::copy_nonoverlapping(
+                &image_width as *const u32 as *const u8,
+                extra_data.as_mut_ptr(),
+                4,
+            );
+            std::ptr::copy_nonoverlapping(
+                &image_height as *const u32 as *const u8,
+                extra_data.as_mut_ptr().add(4),
+                4,
+            );
+        }
+
+        snow_shot_webview::create_shared_buffer(
+            webview,
+            image_data.rgba(),
+            &extra_data,
+            "read_image_from_clipboard".to_string(),
+        )
+        .await?;
+
+        return Ok(Response::new(vec![1]));
+    }
+
     let clipboard = handle.state::<tauri_plugin_clipboard::Clipboard>();
     let image_data = match tauri_plugin_clipboard::Clipboard::read_image_binary(&clipboard) {
         Ok(image_data) => image_data,
-        Err(_) => return Response::new(vec![]),
+        Err(_) => return Ok(Response::new(vec![])),
     };
 
-    return Response::new(image_data);
+    return Ok(Response::new(image_data));
 }
 
 /// 创建全屏绘制窗口

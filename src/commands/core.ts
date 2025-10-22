@@ -46,14 +46,16 @@ export const createFixedContentWindow = async (scrollScreenshot?: boolean) => {
 	return result;
 };
 
-export const readImageFromClipboard = async (): Promise<Blob | undefined> => {
+export const readImageFromClipboard = async (): Promise<
+	ArrayBuffer | undefined
+> => {
 	const result = await invoke<ArrayBuffer>("read_image_from_clipboard");
 
 	if (result.byteLength === 0) {
 		return undefined;
 	}
 
-	return new Blob([result]);
+	return result;
 };
 
 export const createFullScreenDrawWindow = async () => {

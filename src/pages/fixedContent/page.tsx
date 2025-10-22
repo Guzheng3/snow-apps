@@ -71,9 +71,23 @@ export const FixedContentPage: React.FC = () => {
 			}
 		} else {
 			try {
-				const imageBlob = await readImageFromClipboard();
-				if (imageBlob) {
-					fixedContentActionRef.current?.init({ imageContent: imageBlob });
+				const imageSharedBufferPromise = getImageBufferFromSharedBuffer(
+					"read_image_from_clipboard",
+				);
+				let imageData: ArrayBuffer | ImageSharedBufferData | undefined =
+					await readImageFromClipboard();
+				if (
+					imageData &&
+					imageData.byteLength === 1 &&
+					new Uint8Array(imageData)[0] === 1
+				) {
+					imageData = await imageSharedBufferPromise;
+				}
+
+				if (imageData) {
+					fixedContentActionRef.current?.init({
+						imageContent: imageData,
+					});
 					return;
 				}
 			} catch {}
