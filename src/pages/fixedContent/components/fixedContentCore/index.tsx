@@ -2354,33 +2354,20 @@ export const FixedContentCore: React.FC<{
 			</div>
 
 			{!disabled && (
-				<div
-					className="fixed-draw-layer-container"
-					style={{
-						...getStyleProps(
-							windowSize.width / contentScaleFactor,
-							windowSize.height / contentScaleFactor,
-							processImageConfig,
-						),
-					}}
-				>
-					<DrawLayer
-						actionRef={drawActionRef}
-						documentSize={documentSize}
-						scaleInfo={scale}
-						disabled={!enableDraw || !enableDrawLayer}
-						hidden={enableSelectText}
-						onConfirm={switchDraw}
-						getImageLayerAction={getImageLayerAction}
-						getSelectRectParams={getSelectRectParams}
-						getInitDrawDrawElements={getInitDrawDrawElements}
-						getInitDrawSelectRectParams={getInitDrawSelectRectParams}
-						getInitDrawWindowDevicePixelRatio={
-							getInitDrawWindowDevicePixelRatio
-						}
-						getZoom={getZoom}
-					/>
-				</div>
+				<DrawLayer
+					actionRef={drawActionRef}
+					documentSize={documentSize}
+					scaleInfo={scale}
+					disabled={!enableDraw || !enableDrawLayer}
+					hidden={enableSelectText}
+					onConfirm={switchDraw}
+					getImageLayerAction={getImageLayerAction}
+					getSelectRectParams={getSelectRectParams}
+					getInitDrawDrawElements={getInitDrawDrawElements}
+					getInitDrawSelectRectParams={getInitDrawSelectRectParams}
+					getInitDrawWindowDevicePixelRatio={getInitDrawWindowDevicePixelRatio}
+					getZoom={getZoom}
+				/>
 			)}
 
 			<div
@@ -2488,11 +2475,6 @@ export const FixedContentCore: React.FC<{
                 .fixed-image-layer-container {
                 }
 
-                .fixed-draw-layer-container {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                }
 
                 .fixed-image-container-inner {
                     width: calc(${isThumbnail ? "100vw" : `${documentSize.width}px`});
