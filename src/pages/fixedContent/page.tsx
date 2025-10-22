@@ -20,7 +20,6 @@ import {
 	AppSettingsFixedContentInitialPosition,
 	AppSettingsGroup,
 } from "@/types/appSettings";
-import { appInfo } from "@/utils/log";
 import { setWindowRect, showWindow } from "@/utils/window";
 import {
 	getImageBufferFromSharedBuffer,
