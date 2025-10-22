@@ -17,7 +17,7 @@ import type { ElementRect, ImageBuffer } from "@/types/commands/screenshot";
 import type { CaptureHistoryItem } from "@/utils/appStore";
 import { getCaptureHistoryImageAbsPath } from "@/utils/captureHistory";
 import { supportOffscreenCanvas } from "@/utils/environment";
-import { appError, appWarn } from "@/utils/log";
+import { appWarn } from "@/utils/log";
 import {
 	addImageToContainerAction,
 	canvasRenderAction,

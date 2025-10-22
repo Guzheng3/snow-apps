@@ -33,7 +33,6 @@ import {
 import type { ImageLayerActionType } from "@/components/imageLayer";
 import { withStatePublisher } from "@/hooks/useStatePublisher";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
-import { useTextScaleFactor } from "@/hooks/useTextScaleFactor";
 import { EnableKeyEventPublisher } from "@/pages/draw/components/drawToolbar/components/keyEventWrap/extra";
 import type { SelectRectParams } from "@/pages/draw/components/selectLayer";
 import {
