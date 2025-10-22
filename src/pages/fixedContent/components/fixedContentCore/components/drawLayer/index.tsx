@@ -386,7 +386,6 @@ const DrawLayerCore: React.FC<{
 
 	const excalidrawHasLoadRef = useRef(false);
 	const excalidrawAppStateStoreReadyRef = useRef(false);
-	const [, , textScaleFactorRef] = useTextScaleFactor();
 	const tryShowExcalidraw = useCallback(async () => {
 		if (
 			!excalidrawHasLoadRef.current ||
@@ -414,15 +413,15 @@ const DrawLayerCore: React.FC<{
 			return;
 		}
 
-		const initDrawWindowDevicePixelRatio = getInitDrawWindowDevicePixelRatio();
-		const scaleFactorRatio = initDrawWindowDevicePixelRatio
-			? initDrawWindowDevicePixelRatio / window.devicePixelRatio
-			: 1;
+		const initDrawWindowDevicePixelRatio =
+			getInitDrawWindowDevicePixelRatio() ?? window.devicePixelRatio;
+		const scaleFactorRatio =
+			initDrawWindowDevicePixelRatio / window.devicePixelRatio;
 		baseZoomRef.current =
 			scaleFactorRatio * (getInitDrawDrawElements()?.zoom ?? 1);
 
-		const baseOffsetX = selectRect.min_x / textScaleFactorRef.current;
-		const baseOffsetY = selectRect.min_y / textScaleFactorRef.current;
+		const baseOffsetX = selectRect.min_x / initDrawWindowDevicePixelRatio;
+		const baseOffsetY = selectRect.min_y / initDrawWindowDevicePixelRatio;
 
 		drawCoreActionRef.current?.updateScene({
 			elements: elements.map((element): ExcalidrawElement => {
@@ -452,7 +451,6 @@ const DrawLayerCore: React.FC<{
 		getInitDrawSelectRectParams,
 		getInitDrawDrawElements,
 		getInitDrawWindowDevicePixelRatio,
-		textScaleFactorRef,
 	]);
 
 	return (
