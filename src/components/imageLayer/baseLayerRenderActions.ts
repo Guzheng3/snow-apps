@@ -250,9 +250,14 @@ export const renderCanvasRenderAction = (
 export const renderAddImageToContainerAction = async (
 	canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
 	currentImageTextureRef: RefType<PIXI.Texture | undefined>,
+	sharedBufferImageTextureRef: RefType<PIXI.Texture | undefined>,
 	baseImageTextureRef: RefType<PIXI.Texture | undefined>,
 	containerKey: string,
-	imageSrc: string | ImageSharedBufferData | { type: "base_image_texture" },
+	imageSrc:
+		| string
+		| ImageSharedBufferData
+		| { type: "base_image_texture" }
+		| { type: "shared_buffer_image_texture" },
 	hideImageSprite?: boolean,
 ): Promise<void> => {
 	const container = canvasContainerMapRef.current.get(containerKey);
@@ -266,6 +271,8 @@ export const renderAddImageToContainerAction = async (
 			if (imageSrc.type === "base_image_texture") {
 				texture = baseImageTextureRef.current;
 				baseImageTextureRef.current = undefined;
+			} else if (imageSrc.type === "shared_buffer_image_texture") {
+				texture = sharedBufferImageTextureRef.current;
 			}
 		} else {
 			texture = new PIXI.Texture({
@@ -276,6 +283,7 @@ export const renderAddImageToContainerAction = async (
 					alphaMode: "no-premultiply-alpha",
 				}),
 			});
+			sharedBufferImageTextureRef.current = texture;
 		}
 	} else if (typeof imageSrc === "string") {
 		texture = await PIXI.Assets.load<PIXI.Texture>({

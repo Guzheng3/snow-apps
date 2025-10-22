@@ -60,6 +60,7 @@ const getCanvasCore = async (
 		selectRect,
 		renderContainerKey,
 	);
+
 	const drawLayerCanvas =
 		!ignoreDrawLayer && drawElements.length > 0
 			? drawLayerAction.getCanvas()
@@ -73,7 +74,6 @@ const getCanvasCore = async (
 	const offsetY = selectRectShadowWidth;
 
 	const tempCanvas = document.createElement("canvas");
-
 	const contentWidth = selectRect.max_x - selectRect.min_x;
 	const contentHeight = selectRect.max_y - selectRect.min_y;
 

@@ -72,7 +72,10 @@ import {
 } from "@/types/commands/screenshot";
 import { DrawState } from "@/types/draw";
 import { getCorrectHdrColorAlgorithm } from "@/utils/appSettings";
-import { CaptureHistorySource } from "@/utils/appStore";
+import {
+	type CaptureHistoryItem,
+	CaptureHistorySource,
+} from "@/utils/appStore";
 import {
 	writeFilePathToClipboard,
 	writeTextToClipboard,
@@ -720,7 +723,15 @@ const DrawPageCore: React.FC<{
 				return;
 			}
 
-			let imageBuffer: ImageBuffer | undefined;
+			const screenshotType = getScreenshotType()?.type;
+			const captureHistoryIndex =
+				captureHistoryActionRef.current.getCurrentIndex();
+			const selectRect = selectLayerActionRef.current?.getSelectRect();
+			const excalidrawApi = drawLayerActionRef.current?.getExcalidrawAPI();
+			const excalidrawElements = excalidrawApi?.getSceneElements();
+			const appState = excalidrawApi?.getAppState();
+
+			let imageBuffer: ImageBuffer | CaptureHistoryItem | undefined;
 			if (imageBufferRef.current && "sharedBuffer" in imageBufferRef.current) {
 				// 截图的图像数据已经被 transfer 到了 worker，无法在此访问
 				// 所以直接从 ImageLayer 渲染出 PNG 数据
@@ -741,17 +752,12 @@ const DrawPageCore: React.FC<{
 						buffer: pngBuffer,
 					};
 				}
+			} else if (screenshotType === ScreenshotType.SwitchCaptureHistory) {
+				imageBuffer =
+					captureHistoryActionRef.current.getCurrentCaptureHistoryItem();
 			} else {
 				imageBuffer = imageBufferRef.current;
 			}
-
-			const screenshotType = getScreenshotType()?.type;
-			const captureHistoryIndex =
-				captureHistoryActionRef.current.getCurrentIndex();
-			const selectRect = selectLayerActionRef.current?.getSelectRect();
-			const excalidrawApi = drawLayerActionRef.current?.getExcalidrawAPI();
-			const excalidrawElements = excalidrawApi?.getSceneElements();
-			const appState = excalidrawApi?.getAppState();
 
 			if (!imageBuffer) {
 				appError(
@@ -1164,7 +1170,6 @@ const DrawPageCore: React.FC<{
 				imageLayerActionRef.current,
 				drawLayerActionRef.current,
 			);
-
 			if (!imageCanvas) {
 				return;
 			}

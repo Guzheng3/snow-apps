@@ -6,10 +6,8 @@ import type { AppState } from "@mg-chao/excalidraw/types";
 import React, {
 	useCallback,
 	useContext,
-	useEffect,
 	useImperativeHandle,
 	useRef,
-	useState,
 } from "react";
 import { FormattedMessage } from "react-intl";
 import { captureFullScreen } from "@/commands/screenshot";
@@ -38,7 +36,6 @@ import {
 	CaptureHistory,
 	getCaptureHistoryImageAbsPath,
 } from "@/utils/captureHistory";
-import { supportOffscreenCanvas } from "@/utils/environment";
 import { getImagePathFromSettings } from "@/utils/file";
 import { appError } from "@/utils/log";
 import { ScreenshotType } from "@/utils/types";
@@ -50,15 +47,13 @@ import {
 	DrawEventPublisher,
 	ScreenshotTypePublisher,
 } from "../../extra";
-import type { ImageSharedBufferData } from "../../tools";
 import { DrawContext } from "../../types";
 import { KeyEventWrap } from "../drawToolbar/components/keyEventWrap";
 import { EnableKeyEventPublisher } from "../drawToolbar/components/keyEventWrap/extra";
-import { encodeImage } from "./workers/encodeImage";
 
 export type CaptureHistoryActionType = {
 	saveCurrentCapture: (
-		imageBuffer: ImageBuffer | ImageSharedBufferData | CaptureHistoryItem,
+		imageBuffer: ImageBuffer | CaptureHistoryItem,
 		captureHistoryIndex: number,
 		selectRect: ElementRect | undefined,
 		excalidrawElements:
@@ -292,29 +287,9 @@ const CaptureHistoryControllerCore: React.FC<{
 		],
 	);
 
-	const [encodeImageWorker, setEncodeImageWorker] = useState<
-		Worker | undefined
-	>(undefined);
-	useEffect(() => {
-		if (!supportOffscreenCanvas()) {
-			return;
-		}
-		const worker = new Worker(
-			new URL("./workers/encodeImageWorker.ts", import.meta.url),
-		);
-		setEncodeImageWorker(worker);
-		return () => {
-			worker.terminate();
-		};
-	}, []);
-
 	const saveCurrentCapture = useCallback(
 		async (
-			imageBuffer:
-				| ImageBuffer
-				| ImageSharedBufferData
-				| CaptureFullScreenResult
-				| CaptureHistoryItem,
+			imageBuffer: ImageBuffer | CaptureFullScreenResult | CaptureHistoryItem,
 			captureHistoryIndex: number,
 			selectRect: ElementRect | undefined,
 			excalidrawElements:
@@ -324,21 +299,6 @@ const CaptureHistoryControllerCore: React.FC<{
 			captureResult?: ArrayBuffer,
 			source?: CaptureHistorySource,
 		) => {
-			let sharedBufferEncodeImagePromise: Promise<ArrayBuffer | undefined> =
-				Promise.resolve(undefined);
-			if (
-				imageBuffer &&
-				"sharedBuffer" in imageBuffer &&
-				!captureHistoryListRef.current[captureHistoryIndex]
-			) {
-				sharedBufferEncodeImagePromise = encodeImage(
-					encodeImageWorker,
-					imageBuffer.width,
-					imageBuffer.height,
-					imageBuffer.sharedBuffer,
-				);
-			}
-
 			if (!captureHistoryRef.current) {
 				appError(
 					"[CaptureHistoryController] saveCurrentCapture error, invalid state",
@@ -359,15 +319,8 @@ const CaptureHistoryControllerCore: React.FC<{
 				return;
 			}
 
-			const sharedBufferEncodeImage = await sharedBufferEncodeImagePromise;
-
 			const captureHistoryItem = await captureHistoryRef.current.save(
-				captureHistoryListRef.current[captureHistoryIndex] ??
-					(sharedBufferEncodeImage
-						? {
-								encodeData: sharedBufferEncodeImage,
-							}
-						: imageBuffer),
+				captureHistoryListRef.current[captureHistoryIndex] ?? imageBuffer,
 				excalidrawElements,
 				appState,
 				selectRect,
@@ -378,7 +331,7 @@ const CaptureHistoryControllerCore: React.FC<{
 			resetCurrentIndex();
 			onCaptureHistoryChange();
 		},
-		[resetCurrentIndex, encodeImageWorker],
+		[resetCurrentIndex],
 	);
 
 	const captureFullScreenAction = useCallback(async () => {

@@ -665,7 +665,6 @@ export const ScrollScreenshot: React.FC<{
 
 	useEffect(() => {
 		return () => {
-			scrollScreenshotClear();
 			clearContext();
 		};
 	}, [clearContext]);

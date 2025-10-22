@@ -423,8 +423,13 @@ export const addImageToContainerAction = async (
 	canvasContainerMapRef: RefObject<Map<string, Container>>,
 	currentImageTextureRef: RefObject<Texture | undefined>,
 	baseImageTextureRef: RefObject<Texture | undefined>,
+	sharedBufferImageTextureRef: RefObject<Texture | undefined>,
 	containerKey: string,
-	imageSrc: string | ImageSharedBufferData | { type: "base_image_texture" },
+	imageSrc:
+		| string
+		| ImageSharedBufferData
+		| { type: "base_image_texture" }
+		| { type: "shared_buffer_image_texture" },
 	hideImageSprite?: boolean,
 ): Promise<undefined> => {
 	return new Promise((resolve) => {
@@ -447,15 +452,22 @@ export const addImageToContainerAction = async (
 				},
 			};
 
-			// 使用 transferable objects 实现零拷贝传输 ImageSharedBufferData，避免性能开销
 			if (
 				typeof imageSrc === "object" &&
 				"sharedBuffer" in imageSrc &&
 				imageSrc.sharedBuffer?.buffer
 			) {
-				renderWorker.postMessage(AddImageToContainerData, {
-					transfer: [imageSrc.sharedBuffer.buffer],
-				});
+				if (imageSrc.sharedBuffer.buffer.byteLength > 0) {
+					renderWorker.postMessage(AddImageToContainerData, {
+						transfer: [imageSrc.sharedBuffer.buffer],
+					});
+				} else {
+					// SharedBuffer 已经传递给了 Worker，传递标记给 Worker 使用，避免报错
+					AddImageToContainerData.payload.imageSrc = {
+						type: "shared_buffer_image_texture",
+					};
+					renderWorker.postMessage(AddImageToContainerData);
+				}
 			} else {
 				renderWorker.postMessage(AddImageToContainerData);
 			}
@@ -463,6 +475,7 @@ export const addImageToContainerAction = async (
 			renderAddImageToContainerAction(
 				canvasContainerMapRef,
 				currentImageTextureRef,
+				sharedBufferImageTextureRef,
 				baseImageTextureRef,
 				containerKey,
 				imageSrc,

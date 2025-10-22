@@ -100,7 +100,11 @@ export type BaseLayerRenderAddImageToContainerData = {
 	type: BaseLayerRenderMessageType.AddImageToContainer;
 	payload: {
 		containerKey: string;
-		imageSrc: string | ImageSharedBufferData | { type: "base_image_texture" };
+		imageSrc:
+			| string
+			| ImageSharedBufferData
+			| { type: "base_image_texture" }
+			| { type: "shared_buffer_image_texture" };
 		hideImageSprite?: boolean;
 	};
 };

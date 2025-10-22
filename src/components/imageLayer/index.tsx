@@ -82,7 +82,11 @@ export type ImageLayerActionType = {
 	 */
 	addImageToContainer: (
 		containerKey: string,
-		imageSrc: string | ImageSharedBufferData | { type: "base_image_texture" },
+		imageSrc:
+			| string
+			| ImageSharedBufferData
+			| { type: "base_image_texture" }
+			| { type: "shared_buffer_image_texture" },
 		hideImageSprite?: boolean,
 	) => Promise<void>;
 	/**
@@ -201,6 +205,9 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 	const offscreenCanvasRef = useRef<OffscreenCanvas | undefined>(undefined);
 	const canvasAppRef = useRef<PIXI.Application | undefined>(undefined);
 	const baseImageTextureRef = useRef<PIXI.Texture | undefined>(undefined);
+	const sharedBufferImageTextureRef = useRef<PIXI.Texture | undefined>(
+		undefined,
+	);
 	const canvasContainerMapRef = useRef<Map<string, PIXI.Container>>(new Map());
 	const canvasContainerChildCountRef = useRef<number>(0);
 	const currentImageTextureRef = useRef<PIXI.Texture | undefined>(undefined);
@@ -408,6 +415,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 				canvasContainerMapRef,
 				currentImageTextureRef,
 				baseImageTextureRef,
+				sharedBufferImageTextureRef,
 				containerKey,
 				imageSrc,
 				hideImageSprite,

@@ -58,6 +58,9 @@ const canvasAppRef: RefWrap<Application | undefined> = { current: undefined };
 const baseImageTextureRef: RefWrap<Texture | undefined> = {
 	current: undefined,
 };
+const sharedBufferImageTextureRef: RefWrap<Texture | undefined> = {
+	current: undefined,
+};
 const canvasContainerMapRef: RefWrap<Map<string, Container>> = {
 	current: new Map(),
 };
@@ -149,6 +152,7 @@ const handleAddImageToContainer = async (
 	await renderAddImageToContainerAction(
 		canvasContainerMapRef,
 		currentImageTextureRef,
+		sharedBufferImageTextureRef,
 		baseImageTextureRef,
 		data.payload.containerKey,
 		data.payload.imageSrc,
