@@ -286,30 +286,35 @@ export const FixedContentCore: React.FC<{
 			horizontalFlip: false,
 			verticalFlip: false,
 		});
+
+	const getmageLayerRenderRect = useCallback(() => {
+		const swapWidthAndHeight = needSwapWidthAndHeight(
+			processImageConfigRef.current.angle,
+		);
+
+		return {
+			min_x: 0,
+			min_y: 0,
+			max_x: swapWidthAndHeight
+				? canvasPropsRef.current.height
+				: canvasPropsRef.current.width,
+			max_y: swapWidthAndHeight
+				? canvasPropsRef.current.width
+				: canvasPropsRef.current.height,
+		};
+	}, [processImageConfigRef]);
+
 	const renderToCanvas = useCallback(
 		async (ignoreDrawCanvas: boolean = false) => {
-			const swapWidthAndHeight = needSwapWidthAndHeight(
-				processImageConfigRef.current.angle,
-			);
-
 			return renderToCanvasAction(
 				imageLayerActionRef,
 				drawActionRef,
 				processImageConfigRef,
 				ignoreDrawCanvas,
-				{
-					min_x: 0,
-					min_y: 0,
-					max_x: swapWidthAndHeight
-						? canvasPropsRef.current.height
-						: canvasPropsRef.current.width,
-					max_y: swapWidthAndHeight
-						? canvasPropsRef.current.width
-						: canvasPropsRef.current.height,
-				},
+				getmageLayerRenderRect(),
 			);
 		},
-		[processImageConfigRef],
+		[processImageConfigRef, getmageLayerRenderRect],
 	);
 
 	const copyRawToClipboard = useCallback(async () => {
@@ -323,12 +328,7 @@ export const FixedContentCore: React.FC<{
 				return;
 			}
 			const baseImageBuffer = await imageLayerAction.renderToPng(
-				{
-					min_x: 0,
-					min_y: 0,
-					max_x: canvasPropsRef.current.width,
-					max_y: canvasPropsRef.current.height,
-				},
+				getmageLayerRenderRect(),
 				INIT_CONTAINER_KEY,
 			);
 
@@ -348,7 +348,7 @@ export const FixedContentCore: React.FC<{
 		) {
 			await writeTextToClipboard(textContentRef.current.content);
 		}
-	}, [fixedContentTypeRef, textContentRef]);
+	}, [fixedContentTypeRef, textContentRef, getmageLayerRenderRect]);
 
 	const hasInitImageLayerRef = useRef(false);
 	const tryInitImageLayer = useCallback(
@@ -664,11 +664,10 @@ export const FixedContentCore: React.FC<{
 		],
 	);
 
-	const initOcrParams = useRef<OcrResultInitDrawCanvasParams | undefined>(
-		undefined,
-	);
+	const initOcrParamsRef = useRef<
+		Omit<OcrResultInitDrawCanvasParams, "canvas"> | undefined
+	>(undefined);
 
-	const imageRef = useRef<HTMLImageElement>(null);
 	const imageOcrSignRef = useRef<boolean>(false);
 	const initImage = useCallback(
 		(imageContent: FixedContentInitImageParams["imageContent"]) => {
@@ -752,10 +751,9 @@ export const FixedContentCore: React.FC<{
 				) &&
 				!params.ocrResult
 			) {
-				initOcrParams.current = {
+				initOcrParamsRef.current = {
 					selectRect: ocrRect,
 					captureBoundingBoxInfo,
-					canvas,
 					ocrResult: undefined,
 				};
 			}
@@ -1108,18 +1106,57 @@ export const FixedContentCore: React.FC<{
 
 	const switchSelectTextCore = useCallback(async () => {
 		if (getSelectTextMode(fixedContentTypeRef.current) === "ocr") {
-			if (initOcrParams.current) {
-				ocrResultActionRef.current?.init(initOcrParams.current);
-				initOcrParams.current = undefined;
-			} else if (
-				fixedContentTypeRef.current === FixedContentType.Image &&
-				imageRef.current &&
-				!imageOcrSignRef.current
-			) {
+			if (initOcrParamsRef.current) {
+				const imageBitmap = await imageLayerActionRef.current
+					?.getImageLayerAction()
+					?.getImageBitmap(getmageLayerRenderRect(), INIT_CONTAINER_KEY);
+				if (!imageBitmap) {
+					appError("[switchSelectTextCore] getImageBitmap failed");
+					return;
+				}
+
+				const canvas = document.createElement("canvas");
+				canvas.width = canvasPropsRef.current.width;
+				canvas.height = canvasPropsRef.current.height;
+				const ctx = canvas.getContext("2d");
+				if (!ctx) {
+					appError("[switchSelectTextCore] getContext failed");
+					return;
+				}
+				ctx.drawImage(imageBitmap, 0, 0);
+
 				ocrResultActionRef.current?.init({
-					imageElement: imageRef.current,
+					...initOcrParamsRef.current,
+					canvas,
+				});
+				initOcrParamsRef.current = undefined;
+			} else if (
+				!imageOcrSignRef.current &&
+				fixedContentTypeRef.current === FixedContentType.Image
+			) {
+				const imageBitmap = await imageLayerActionRef.current
+					?.getImageLayerAction()
+					?.getImageBitmap(getmageLayerRenderRect(), INIT_CONTAINER_KEY);
+				if (!imageBitmap) {
+					appError("[switchSelectTextCore] getImageBitmap failed");
+					return;
+				}
+
+				const canvas = document.createElement("canvas");
+				canvas.width = canvasPropsRef.current.width;
+				canvas.height = canvasPropsRef.current.height;
+				const ctx = canvas.getContext("2d");
+				if (!ctx) {
+					appError("[switchSelectTextCore] getContext failed");
+					return;
+				}
+				ctx.drawImage(imageBitmap, 0, 0);
+
+				ocrResultActionRef.current?.init({
+					canvas,
 					monitorScaleFactor: window.devicePixelRatio,
 				});
+
 				imageOcrSignRef.current = true;
 			}
 
@@ -1127,7 +1164,7 @@ export const FixedContentCore: React.FC<{
 		}
 
 		setEnableSelectText((enable) => !enable);
-	}, [fixedContentTypeRef, setEnableSelectText]);
+	}, [fixedContentTypeRef, setEnableSelectText, getmageLayerRenderRect]);
 	const switchDrawCore = useCallback(async () => {
 		setEnableDraw((enable) => !enable);
 	}, [setEnableDraw]);

@@ -52,7 +52,7 @@ export type OcrResultInitDrawCanvasParams = {
 };
 
 export type OcrResultInitImageParams = {
-	imageElement: HTMLImageElement;
+	canvas: HTMLCanvasElement;
 	monitorScaleFactor: number;
 };
 
@@ -497,30 +497,20 @@ export const OcrResult: React.FC<{
 				return;
 			}
 
-			const { imageElement } = params;
-
-			const tempCanvas = document.createElement("canvas");
-			tempCanvas.width = imageElement.naturalWidth;
-			tempCanvas.height = imageElement.naturalHeight;
-			const tempCtx = tempCanvas.getContext("2d");
-			if (!tempCtx) {
-				return;
-			}
-
-			tempCtx.drawImage(imageElement, 0, 0);
+			const { canvas } = params;
 
 			selectRectRef.current = {
 				min_x: 0,
 				min_y: 0,
-				max_x: imageElement.naturalWidth,
-				max_y: imageElement.naturalHeight,
+				max_x: canvas.width,
+				max_y: canvas.height,
 			};
 			monitorScaleFactorRef.current = params.monitorScaleFactor;
 
 			let ocrResult: OcrDetectResult | undefined;
 			try {
 				ocrResult = await ocrDetectByCanvas(
-					tempCanvas,
+					canvas,
 					monitorScaleFactorRef.current,
 					getAppSettings()[AppSettingsGroup.SystemScreenshot].ocrDetectAngle,
 				);
@@ -559,6 +549,8 @@ export const OcrResult: React.FC<{
 			init: async (
 				params: OcrResultInitDrawCanvasParams | OcrResultInitImageParams,
 			) => {
+				console.log("init", params);
+
 				const hideLoading = message.loading(
 					<FormattedMessage id="draw.ocrLoading" />,
 					60,
@@ -566,7 +558,7 @@ export const OcrResult: React.FC<{
 
 				if ("selectRect" in params) {
 					await initDrawCanvas(params);
-				} else if ("imageElement" in params) {
+				} else if ("canvas" in params) {
 					await initImage(params);
 				}
 

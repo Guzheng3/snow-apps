@@ -65,75 +65,114 @@ export const FixedContentPage: React.FC = () => {
 				imageData = await imageSharedBufferPromise;
 			}
 
-			if (imageData) {
-				fixedContentActionRef.current?.init({ imageContent: imageData });
+			if (!imageData) {
+				getCurrentWindow().close();
 				return;
 			}
-		} else {
-			try {
-				const imageSharedBufferPromise = getImageBufferFromSharedBuffer(
-					"read_image_from_clipboard",
-				);
-				let imageData: ArrayBuffer | ImageSharedBufferData | undefined =
-					await readImageFromClipboard();
-				if (
-					imageData &&
-					imageData.byteLength === 1 &&
-					new Uint8Array(imageData)[0] === 1
-				) {
-					imageData = await imageSharedBufferPromise;
-				}
 
-				if (imageData) {
+			fixedContentActionRef.current?.init({ imageContent: imageData });
+		} else {
+			let hasInit = false;
+
+			const imageSharedBufferPromise = getImageBufferFromSharedBuffer(
+				"read_image_from_clipboard",
+			);
+
+			const readImagePromise = readImageFromClipboard()
+				.then(async (result) => {
+					if (hasInit) {
+						return;
+					}
+
+					let imageData: ArrayBuffer | ImageSharedBufferData | undefined =
+						result;
+					if (
+						imageData &&
+						imageData.byteLength === 1 &&
+						new Uint8Array(imageData)[0] === 1
+					) {
+						imageData = await imageSharedBufferPromise;
+					}
+
+					if (!imageData) {
+						return;
+					}
+
+					hasInit = true;
 					fixedContentActionRef.current?.init({
 						imageContent: imageData,
 					});
-					return;
-				}
-			} catch {}
+				})
+				.catch(() => {});
 
-			try {
-				const htmlContent = await extraClipboard.readHtml();
-				if (htmlContent) {
-					fixedContentActionRef.current?.init({ htmlContent });
-					return;
-				}
-			} catch {}
-
-			try {
-				const textContent = await extraClipboard.readText();
-
-				if (textContent) {
-					fixedContentActionRef.current?.init({ textContent });
-					return;
-				}
-			} catch {}
-
-			try {
-				const fileUris = await extraClipboard.readFilesURIs();
-				let imageFileUri: string | undefined;
-				for (const fileUri of fileUris) {
-					if (
-						fileUri.endsWith(".png") ||
-						fileUri.endsWith(".jpg") ||
-						fileUri.endsWith(".jpeg") ||
-						fileUri.endsWith(".webp")
-					) {
-						imageFileUri = fileUri;
-						break;
+			const readHtmlPromise = extraClipboard
+				.readHtml()
+				.then((htmlContent) => {
+					if (hasInit) {
+						return;
 					}
-				}
 
-				if (imageFileUri) {
+					hasInit = true;
+					fixedContentActionRef.current?.init({ htmlContent });
+				})
+				.catch(() => {});
+
+			const readTextPromise = extraClipboard
+				.readText()
+				.then((textContent) => {
+					if (hasInit) {
+						return;
+					}
+
+					hasInit = true;
+					fixedContentActionRef.current?.init({ textContent });
+				})
+				.catch(() => {});
+
+			const readFilesURIsPromise = extraClipboard
+				.readFilesURIs()
+				.then((fileUris) => {
+					if (hasInit) {
+						return;
+					}
+
+					let imageFileUri: string | undefined;
+					for (const fileUri of fileUris) {
+						if (
+							fileUri.endsWith(".png") ||
+							fileUri.endsWith(".jpg") ||
+							fileUri.endsWith(".jpeg") ||
+							fileUri.endsWith(".webp")
+						) {
+							imageFileUri = fileUri;
+							break;
+						}
+					}
+
+					if (!imageFileUri) {
+						return;
+					}
+
+					hasInit = true;
 					fixedContentActionRef.current?.init({
 						imageContent: convertFileSrc(imageFileUri),
 					});
-					return;
-				}
-			} catch {}
-		}
+				})
+				.catch(() => {});
 
-		getCurrentWindow().close();
+			await Promise.all([
+				readImagePromise,
+				readHtmlPromise,
+				readTextPromise,
+				readFilesURIsPromise,
+			]);
+
+			if (hasInit) {
+				return;
+			}
+
+			getCurrentWindow().close();
+		}
 	}, []);
 
 	useEffect(() => {
