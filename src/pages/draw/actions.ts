@@ -56,7 +56,7 @@ const getCanvasCore = async (
 		drawLayerAction.getExcalidrawAPI()?.getSceneElements() ?? [];
 
 	// 获取图像数据
-	const imageLayerImageData = await imageLayerAction.getImageData(
+	const imageLayerImageBitmap = await imageLayerAction.getImageBitmap(
 		selectRect,
 		renderContainerKey,
 	);
@@ -65,7 +65,7 @@ const getCanvasCore = async (
 			? drawLayerAction.getCanvas()
 			: undefined;
 
-	if (!imageLayerImageData) {
+	if (!imageLayerImageBitmap) {
 		return;
 	}
 
@@ -84,7 +84,7 @@ const getCanvasCore = async (
 		return;
 	}
 
-	tempCtx.putImageData(imageLayerImageData, offsetX, offsetY);
+	tempCtx.drawImage(imageLayerImageBitmap, offsetX, offsetY);
 	if (drawLayerCanvas) {
 		tempCtx.drawImage(
 			drawLayerCanvas,

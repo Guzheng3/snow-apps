@@ -15,14 +15,21 @@ export const isAdminWithCache = async () => {
 
 /**
  * 判断是否支持 OffscreenCanvas
+ * 支持主线程和 Worker 环境
  * @returns 是否支持
  */
 export const supportOffscreenCanvas = () => {
-	if (typeof window === "undefined") {
-		return false;
+	// 主线程环境
+	if (typeof window !== "undefined") {
+		return "OffscreenCanvas" in window;
 	}
 
-	return "OffscreenCanvas" in window;
+	// Worker 环境
+	if (typeof self !== "undefined") {
+		return "OffscreenCanvas" in self;
+	}
+
+	return false;
 };
 
 let getAppConfigBaseDirCache: string | undefined;

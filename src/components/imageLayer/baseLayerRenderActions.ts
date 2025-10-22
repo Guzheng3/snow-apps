@@ -102,13 +102,13 @@ export const renderClearCanvasAction = (
 	canvasApp.render();
 };
 
-export const renderGetImageDataAction = (
+export const renderGetImageBitmapAction = async (
 	canvasAppRef: RefType<Application | undefined>,
 	canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
 	imageContainerKey: string,
 	selectRect: ElementRect | undefined,
 	renderContainerKey: string | undefined,
-): ImageData | undefined => {
+): Promise<ImageBitmap | undefined> => {
 	const canvasApp = canvasAppRef.current;
 	if (!canvasApp) {
 		return;
@@ -129,7 +129,7 @@ export const renderGetImageDataAction = (
 		hasChangeAlpha = true;
 	}
 
-	const pixels = canvasApp.renderer.extract.pixels({
+	const canvas = canvasApp.renderer.extract.canvas({
 		target: renderContainer,
 		frame: selectRect
 			? new PIXI.Rectangle(
@@ -145,13 +145,8 @@ export const renderGetImageDataAction = (
 		imageContainer.children[0].alpha = 0;
 	}
 
-	const res = new ImageData(
-		pixels.pixels as ImageDataArray,
-		pixels.width,
-		pixels.height,
-	);
-
-	return res;
+	const result = await self.createImageBitmap(canvas as OffscreenCanvas);
+	return result;
 };
 
 export const renderRenderToCanvasAction = (

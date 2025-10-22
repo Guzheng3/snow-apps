@@ -28,7 +28,7 @@ import {
 	createNewCanvasContainerAction,
 	deleteBlurSpriteAction,
 	disposeCanvasAction,
-	getImageDataAction,
+	getImageBitmapAction,
 	INIT_CONTAINER_KEY,
 	initBaseImageTextureAction,
 	initCanvasAction,
@@ -58,10 +58,10 @@ export type ImageLayerActionType = {
 	clearCanvas: () => Promise<void>;
 	getLayerContainerElement: () => HTMLDivElement | null;
 	changeCursor: (cursor: Required<React.CSSProperties>["cursor"]) => string;
-	getImageData: (
+	getImageBitmap: (
 		selectRect: ElementRect,
 		renderContainerKey?: string,
-	) => Promise<ImageData | undefined>;
+	) => Promise<ImageBitmap | undefined>;
 	renderToPng: (
 		selectRect: ElementRect,
 		containerId: string | undefined,
@@ -348,12 +348,12 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 		ImageLayerActionType["getLayerContainerElement"]
 	>(() => layerContainerElementRef.current, []);
 
-	const getImageData = useCallback<ImageLayerActionType["getImageData"]>(
+	const getImageBitmap = useCallback<ImageLayerActionType["getImageBitmap"]>(
 		async (
 			selectRect: ElementRect | undefined,
 			renderContainerKey?: string,
 		) => {
-			return getImageDataAction(
+			return getImageBitmapAction(
 				rendererWorker,
 				canvasAppRef,
 				canvasContainerMapRef,
@@ -706,7 +706,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 			clearCanvas,
 			getLayerContainerElement,
 			createNewCanvasContainer,
-			getImageData,
+			getImageBitmap,
 			renderToPng,
 			renderToCanvas,
 			initCanvas,
@@ -735,7 +735,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 			clearCanvas,
 			getLayerContainerElement,
 			createNewCanvasContainer,
-			getImageData,
+			getImageBitmap,
 			renderToCanvas,
 			renderToPng,
 			initCanvas,

@@ -36,7 +36,7 @@ export type DrawCoreActionType = {
 	) => void;
 	syncActionResult: ExcalidrawActionType["syncActionResult"];
 	updateScene: ExcalidrawImperativeAPI["updateScene"];
-	getImageData: (selectRect: ElementRect) => Promise<ImageData | undefined>;
+	getImageBitmap: (selectRect: ElementRect) => Promise<ImageBitmap | undefined>;
 	getCanvasContext: () => CanvasRenderingContext2D | null | undefined;
 	getCanvas: () => HTMLCanvasElement | null;
 	getAppState: () => AppState | undefined;

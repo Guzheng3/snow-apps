@@ -86,7 +86,7 @@ import {
 	type FixedContentImageLayerActionType,
 } from "./components/imageLayer";
 import { ResizeWindow } from "./components/resizeWindow";
-import { getHtmlContent, getStyleProps } from "./extra";
+import { getHtmlContent, getStyleProps, needSwapWidthAndHeight } from "./extra";
 
 export type FixedContentInitDrawParams = {
 	captureBoundingBoxInfo: CaptureBoundingBoxInfo;
@@ -284,6 +284,10 @@ export const FixedContentCore: React.FC<{
 		});
 	const renderToCanvas = useCallback(
 		async (ignoreDrawCanvas: boolean = false) => {
+			const swapWidthAndHeight = needSwapWidthAndHeight(
+				processImageConfigRef.current.angle,
+			);
+
 			return renderToCanvasAction(
 				imageLayerActionRef,
 				drawActionRef,
@@ -292,8 +296,12 @@ export const FixedContentCore: React.FC<{
 				{
 					min_x: 0,
 					min_y: 0,
-					max_x: canvasPropsRef.current.width,
-					max_y: canvasPropsRef.current.height,
+					max_x: swapWidthAndHeight
+						? canvasPropsRef.current.height
+						: canvasPropsRef.current.width,
+					max_y: swapWidthAndHeight
+						? canvasPropsRef.current.width
+						: canvasPropsRef.current.height,
 				},
 			);
 		},

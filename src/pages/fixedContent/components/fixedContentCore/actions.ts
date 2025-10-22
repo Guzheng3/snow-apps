@@ -76,9 +76,9 @@ export const renderToCanvasAction = async (
 		return;
 	}
 
-	const sourceBuffer = await imageLayerAction.getImageData(renderRect);
-	if (!sourceBuffer) {
-		appError("[renderToCanvas] sourceBuffer is undefined");
+	const sourceBitmap = await imageLayerAction.getImageBitmap(renderRect);
+	if (!sourceBitmap) {
+		appError("[renderToCanvas] sourceBitmap is undefined");
 		return;
 	}
 
@@ -86,11 +86,11 @@ export const renderToCanvasAction = async (
 
 	// 根据旋转角度设置 canvas 尺寸
 	if (needSwapWidthAndHeight(processImageConfigRef.current.angle)) {
-		canvas.width = sourceBuffer.height;
-		canvas.height = sourceBuffer.width;
+		canvas.width = sourceBitmap.height;
+		canvas.height = sourceBitmap.width;
 	} else {
-		canvas.width = sourceBuffer.width;
-		canvas.height = sourceBuffer.height;
+		canvas.width = sourceBitmap.width;
+		canvas.height = sourceBitmap.height;
 	}
 
 	const context = canvas.getContext("2d");
@@ -110,7 +110,13 @@ export const renderToCanvasAction = async (
 	);
 
 	// 绘制源 canvas（旋转后的坐标系中绘制）
-	context.putImageData(sourceBuffer, 0, 0);
+	context.drawImage(
+		sourceBitmap,
+		0,
+		0,
+		sourceBitmap.width,
+		sourceBitmap.height,
+	);
 
 	// 恢复上下文状态
 	context.restore();

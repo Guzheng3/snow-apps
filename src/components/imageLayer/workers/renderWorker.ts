@@ -20,7 +20,7 @@ import {
 	renderCreateNewCanvasContainerAction,
 	renderDeleteBlurSpriteAction,
 	renderDisposeCanvasAction,
-	renderGetImageDataAction,
+	renderGetImageBitmapAction,
 	renderInitBaseImageTextureAction,
 	renderInitCanvasAction,
 	renderRenderToCanvasAction,
@@ -39,7 +39,7 @@ import {
 	type BaseLayerRenderCreateNewCanvasContainerData,
 	type BaseLayerRenderData,
 	type BaseLayerRenderDeleteBlurSpriteData,
-	type BaseLayerRenderGetImageDataData,
+	type BaseLayerRenderGetImageBitmapData,
 	type BaseLayerRenderInitBaseImageTextureData,
 	type BaseLayerRenderInitData,
 	BaseLayerRenderMessageType,
@@ -126,16 +126,6 @@ const handleClearCanvas = () => {
 		canvasContainerChildCountRef,
 		currentImageTextureRef,
 		baseImageTextureRef,
-	);
-};
-
-const handleGetImageData = (data: BaseLayerRenderGetImageDataData) => {
-	return renderGetImageDataAction(
-		canvasAppRef,
-		canvasContainerMapRef,
-		data.payload.imageContainerKey,
-		data.payload.selectRect,
-		data.payload.renderContainerKey,
 	);
 };
 
@@ -256,6 +246,17 @@ const handleRenderToPng = async (data: BaseLayerRenderRenderToPngData) => {
 	);
 };
 
+const handleGetImageBitmap = async (
+	data: BaseLayerRenderGetImageBitmapData,
+) => {
+	return await renderGetImageBitmapAction(
+		canvasAppRef,
+		canvasContainerMapRef,
+		data.payload.imageContainerKey,
+		data.payload.selectRect,
+		data.payload.renderContainerKey,
+	);
+};
 self.onmessage = async ({ data }: MessageEvent<BaseLayerRenderData>) => {
 	let message: RenderResult;
 
@@ -296,20 +297,17 @@ self.onmessage = async ({ data }: MessageEvent<BaseLayerRenderData>) => {
 				payload: undefined,
 			};
 			break;
-		case BaseLayerRenderMessageType.GetImageData: {
-			const imageData = handleGetImageData(data);
-			message = {
-				type: BaseLayerRenderMessageType.GetImageData,
-				payload: { imageData },
-			};
-			break;
-		}
 		case BaseLayerRenderMessageType.RenderToCanvas: {
 			const canvas = handleRenderToCanvas(data);
 			message = {
 				type: BaseLayerRenderMessageType.RenderToCanvas,
 				payload: { canvas },
 			};
+			// 使用 transferable objects 传输 OffscreenCanvas，避免性能开销
+			if (canvas && canvas instanceof OffscreenCanvas) {
+				self.postMessage(message, { transfer: [canvas] });
+				return;
+			}
 			break;
 		}
 		case BaseLayerRenderMessageType.CanvasRender:
@@ -396,6 +394,24 @@ self.onmessage = async ({ data }: MessageEvent<BaseLayerRenderData>) => {
 				type: BaseLayerRenderMessageType.RenderToPng,
 				payload: { data: result },
 			};
+			// 使用 transferable objects 传输 ArrayBuffer，避免性能开销
+			if (result) {
+				self.postMessage(message, { transfer: [result] });
+				return;
+			}
+			break;
+		}
+		case BaseLayerRenderMessageType.GetImageBitmap: {
+			const result = await handleGetImageBitmap(data);
+			message = {
+				type: BaseLayerRenderMessageType.GetImageBitmap,
+				payload: { imageBitmap: result },
+			};
+			// 使用 transferable objects 实现零拷贝传输 ImageBitmap，避免性能开销
+			if (result) {
+				self.postMessage(message, { transfer: [result] });
+				return;
+			}
 			break;
 		}
 	}

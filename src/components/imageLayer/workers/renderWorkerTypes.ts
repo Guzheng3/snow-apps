@@ -19,7 +19,7 @@ export enum BaseLayerRenderMessageType {
 	CreateNewCanvasContainer = "createNewCanvasContainer",
 	ResizeCanvas = "resizeCanvas",
 	ClearCanvas = "clearCanvas",
-	GetImageData = "getImageData",
+	GetImageBitmap = "getImageBitmap",
 	RenderToCanvas = "renderToCanvas",
 	RenderToPng = "renderToPng",
 	CanvasRender = "canvasRender",
@@ -66,15 +66,14 @@ export type BaseLayerRenderClearCanvasData = {
 	type: BaseLayerRenderMessageType.ClearCanvas;
 };
 
-export type BaseLayerRenderGetImageDataData = {
-	type: BaseLayerRenderMessageType.GetImageData;
+export type BaseLayerRenderGetImageBitmapData = {
+	type: BaseLayerRenderMessageType.GetImageBitmap;
 	payload: {
 		selectRect: ElementRect | undefined;
 		imageContainerKey: string;
 		renderContainerKey: string | undefined;
 	};
 };
-
 export type BaseLayerRenderRenderToCanvasData = {
 	type: BaseLayerRenderMessageType.RenderToCanvas;
 	payload: {
@@ -183,7 +182,7 @@ export type BaseLayerRenderData =
 	| BaseLayerRenderCreateNewCanvasContainerData
 	| BaseLayerRenderResizeCanvasData
 	| BaseLayerRenderClearCanvasData
-	| BaseLayerRenderGetImageDataData
+	| BaseLayerRenderGetImageBitmapData
 	| BaseLayerRenderRenderToCanvasData
 	| BaseLayerRenderRenderToPngData
 	| BaseLayerRenderCanvasRenderData
@@ -226,10 +225,10 @@ export type RenderClearCanvasResult = {
 	payload: undefined;
 };
 
-export type RenderGetImageDataResult = {
-	type: BaseLayerRenderMessageType.GetImageData;
+export type RenderGetImageBitmapResult = {
+	type: BaseLayerRenderMessageType.GetImageBitmap;
 	payload: {
-		imageData: ImageData | undefined;
+		imageBitmap: ImageBitmap | undefined;
 	};
 };
 
@@ -320,7 +319,7 @@ export type RenderResult =
 	| RenderCreateNewCanvasContainerResult
 	| RenderResizeCanvasResult
 	| RenderClearCanvasResult
-	| RenderGetImageDataResult
+	| RenderGetImageBitmapResult
 	| RenderRenderToCanvasResult
 	| RenderRenderToPngResult
 	| RenderCanvasRenderResult

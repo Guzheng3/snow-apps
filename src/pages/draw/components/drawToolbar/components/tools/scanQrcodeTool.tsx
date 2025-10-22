@@ -49,9 +49,9 @@ const ScanQrcodeToolCore: React.FC = () => {
 			opacity: 1,
 		});
 
-		const imageData =
-			await imageLayerActionRef.current?.getImageData(selectRect);
-		if (!imageData) {
+		const imageBitmap =
+			await imageLayerActionRef.current?.getImageBitmap(selectRect);
+		if (!imageBitmap) {
 			return;
 		}
 
@@ -63,7 +63,7 @@ const ScanQrcodeToolCore: React.FC = () => {
 			return;
 		}
 
-		tempCtx.putImageData(imageData, 0, 0);
+		tempCtx.drawImage(imageBitmap, 0, 0);
 
 		// biome-ignore lint/suspicious/noExplicitAny: 方便 CDN 加载
 		let QrCodeScanner: any;

@@ -12,7 +12,7 @@ export type DrawLayerActionType = {
 	updateScene: ExcalidrawImperativeAPI["updateScene"];
 	onCaptureReady: () => Promise<void>;
 	onCaptureFinish: () => Promise<void>;
-	getImageData: (selectRect: ElementRect) => Promise<ImageData | undefined>;
+	getImageBitmap: (selectRect: ElementRect) => Promise<ImageBitmap | undefined>;
 	getCanvasContext: () => CanvasRenderingContext2D | null | undefined;
 	getCanvas: () => HTMLCanvasElement | null | undefined;
 	getAppState: () => AppState | undefined;

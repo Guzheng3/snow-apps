@@ -207,21 +207,22 @@ const DrawCoreComponent: React.FC<{
 		return canvas.getContext("2d");
 	}, [getCanvas]);
 
-	const getImageData = useCallback<DrawCoreActionType["getImageData"]>(
+	const getImageBitmap = useCallback<DrawCoreActionType["getImageBitmap"]>(
 		async (selectRect: ElementRect) => {
-			const canvasContext = getCanvasContext();
-			if (!canvasContext) {
+			const canvas = getCanvas();
+			if (!canvas) {
 				return;
 			}
 
-			return canvasContext.getImageData(
+			return window.createImageBitmap(
+				canvas,
 				selectRect.min_x,
 				selectRect.min_y,
 				selectRect.max_x - selectRect.min_x,
 				selectRect.max_y - selectRect.min_y,
 			);
 		},
-		[getCanvasContext],
+		[getCanvas],
 	);
 
 	const excalidrawAppStateStoreRef = useRef<ExcalidrawAppStateStore>(undefined);
@@ -574,7 +575,7 @@ const DrawCoreComponent: React.FC<{
 			getAppState: () => {
 				return excalidrawAPIRef.current?.getAppState();
 			},
-			getImageData,
+			getImageBitmap,
 			getCanvasContext,
 			getCanvas,
 			getDrawCacheLayerElement: () => drawCacheLayerElementRef.current,
@@ -599,7 +600,7 @@ const DrawCoreComponent: React.FC<{
 			getAppStateStorageKey,
 			getCanvas,
 			getCanvasContext,
-			getImageData,
+			getImageBitmap,
 			needSaveAppState,
 			updateScene,
 		],

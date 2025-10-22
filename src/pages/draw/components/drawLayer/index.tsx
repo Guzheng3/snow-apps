@@ -102,8 +102,8 @@ const DrawLayerCore: React.FC<{
 			getAppState: () => {
 				return drawCoreActionRef.current?.getAppState();
 			},
-			getImageData: async (...args) => {
-				return await drawCoreActionRef.current?.getImageData(...args);
+			getImageBitmap: async (...args) => {
+				return await drawCoreActionRef.current?.getImageBitmap(...args);
 			},
 			getCanvasContext: () => {
 				return drawCoreActionRef.current?.getCanvasContext();

@@ -23,7 +23,7 @@ import {
 	renderCreateNewCanvasContainerAction,
 	renderDeleteBlurSpriteAction,
 	renderDisposeCanvasAction,
-	renderGetImageDataAction,
+	renderGetImageBitmapAction,
 	renderInitBaseImageTextureAction,
 	renderInitCanvasAction,
 	renderRenderToCanvasAction,
@@ -45,7 +45,7 @@ import {
 	type BaseLayerRenderCreateNewCanvasContainerData,
 	type BaseLayerRenderDeleteBlurSpriteData,
 	type BaseLayerRenderDisposeData,
-	type BaseLayerRenderGetImageDataData,
+	type BaseLayerRenderGetImageBitmapData,
 	type BaseLayerRenderInitBaseImageTextureData,
 	type BaseLayerRenderInitData,
 	BaseLayerRenderMessageType,
@@ -350,27 +350,27 @@ export const renderToPngAction = async (
 	});
 };
 
-export const getImageDataAction = async (
+export const getImageBitmapAction = async (
 	renderWorker: Worker | undefined,
 	canvasAppRef: RefObject<Application | undefined>,
 	canvasContainerMapRef: RefObject<Map<string, Container>>,
 	imageContainerKey: string,
 	selectRect: ElementRect | undefined,
 	renderContainerKey: string | undefined,
-): Promise<ImageData | undefined> => {
+): Promise<ImageBitmap | undefined> => {
 	return new Promise((resolve) => {
 		if (renderWorker) {
 			const handleMessage = (event: MessageEvent<RenderResult>) => {
 				const { type, payload } = event.data;
-				if (type === BaseLayerRenderMessageType.GetImageData) {
-					resolve(payload.imageData);
+				if (type === BaseLayerRenderMessageType.GetImageBitmap) {
+					resolve(payload.imageBitmap);
 					renderWorker.removeEventListener("message", handleMessage);
 				}
 			};
 			renderWorker.addEventListener("message", handleMessage);
 
-			const GetImageDataData: BaseLayerRenderGetImageDataData = {
-				type: BaseLayerRenderMessageType.GetImageData,
+			const GetImageBitmapData: BaseLayerRenderGetImageBitmapData = {
+				type: BaseLayerRenderMessageType.GetImageBitmap,
 				payload: {
 					selectRect: selectRect,
 					imageContainerKey: imageContainerKey,
@@ -378,16 +378,15 @@ export const getImageDataAction = async (
 				},
 			};
 
-			renderWorker.postMessage(GetImageDataData);
+			renderWorker.postMessage(GetImageBitmapData);
 		} else {
-			const result = renderGetImageDataAction(
+			renderGetImageBitmapAction(
 				canvasAppRef,
 				canvasContainerMapRef,
 				imageContainerKey,
 				selectRect,
 				renderContainerKey,
-			);
-			resolve(result);
+			).then(resolve);
 		}
 	});
 };
@@ -448,7 +447,18 @@ export const addImageToContainerAction = async (
 				},
 			};
 
-			renderWorker.postMessage(AddImageToContainerData);
+			// 使用 transferable objects 实现零拷贝传输 ImageSharedBufferData，避免性能开销
+			if (
+				typeof imageSrc === "object" &&
+				"sharedBuffer" in imageSrc &&
+				imageSrc.sharedBuffer?.buffer
+			) {
+				renderWorker.postMessage(AddImageToContainerData, {
+					transfer: [imageSrc.sharedBuffer.buffer],
+				});
+			} else {
+				renderWorker.postMessage(AddImageToContainerData);
+			}
 		} else {
 			renderAddImageToContainerAction(
 				canvasContainerMapRef,
