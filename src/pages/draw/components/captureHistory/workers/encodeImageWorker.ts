@@ -14,7 +14,6 @@ self.onmessage = async (
 		throw new Error("[encodeImageWorker] OffscreenCanvas is not supported");
 	}
 
-	// eslint-disable-next-line compat/compat
 	const canvase = new OffscreenCanvas(width, height);
 	const ctx = canvase.getContext("2d");
 	if (!ctx) {
