@@ -721,7 +721,10 @@ const DrawPageCore: React.FC<{
 			const screenshotType = getScreenshotType()?.type;
 			const captureHistoryIndex =
 				captureHistoryActionRef.current.getCurrentIndex();
-			const imageBuffer = imageBufferRef.current;
+			const imageBuffer =
+				screenshotType === ScreenshotType.SwitchCaptureHistory
+					? captureHistoryActionRef.current.getCurrentCaptureHistoryItem()
+					: imageBufferRef.current;
 			const selectRect = selectLayerActionRef.current?.getSelectRect();
 			const excalidrawApi = drawLayerActionRef.current?.getExcalidrawAPI();
 			const excalidrawElements = excalidrawApi?.getSceneElements();
