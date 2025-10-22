@@ -9,10 +9,10 @@ export type ImageSharedBufferData = {
 	height: number;
 };
 
-export const getImageBufferFromSharedBuffer = async (): Promise<
-	ImageSharedBufferData | undefined
-> => {
-	const data = await getWebViewSharedBuffer(undefined, "screenshot");
+export const getImageBufferFromSharedBuffer = async (
+	transferType: string,
+): Promise<ImageSharedBufferData | undefined> => {
+	const data = await getWebViewSharedBuffer(undefined, transferType);
 	if (!data) {
 		return undefined;
 	}

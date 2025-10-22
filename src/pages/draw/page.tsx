@@ -583,7 +583,7 @@ const DrawPageCore: React.FC<{
 			}
 
 			const imageBufferFromSharedBufferPromise =
-				getImageBufferFromSharedBuffer();
+				getImageBufferFromSharedBuffer("screenshot");
 
 			let result: ImageBuffer | ImageSharedBufferData | undefined =
 				await captureAllMonitors(

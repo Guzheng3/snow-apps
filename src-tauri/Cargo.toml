@@ -5,6 +5,7 @@ members = [
     "src-crates/app-services",
     "src-crates/app-scroll-screenshot-service",
     "src-crates/app-os",
+    "src-crates/global_state",
     "src-crates/tauri-commands/core",
     "src-crates/tauri-commands/file",
     "src-crates/tauri-commands/ocr",
@@ -80,6 +81,7 @@ snow-shot-tauri-commands-http-service = { path = "src-crates/tauri-commands/http
 snow-shot-plugin-service = { path = "src-crates/plugin-service" }
 snow-shot-webview = { path = "src-crates/webview" }
 snow-shot-http-services = { path = "src-crates/http-services" }
+snow-shot-global-state = { path = "src-crates/global_state" }
 
 
 [dependencies]
@@ -97,6 +99,7 @@ snow-shot-app-utils = { workspace = true }
 snow-shot-webview = { workspace = true }
 snow-shot-http-services = { workspace = true }
 snow-shot-tauri-commands-http-service = { workspace = true }
+snow-shot-global-state = { workspace = true }
 
 # workspace 依赖
 tokio = { workspace = true }
@@ -151,6 +154,7 @@ debug = false
 [profile.dev.package.snow-shot-app-utils]
 [profile.dev.package.snow-shot-app-shared]
 [profile.dev.package.snow-shot-app-scroll-screenshot-service]
+[profile.dev.package.snow-shot-global-state]
 [profile.dev.package.snow-shot-tauri-commands-core]
 [profile.dev.package.snow-shot-tauri-commands-file]
 [profile.dev.package.snow-shot-tauri-commands-ocr]

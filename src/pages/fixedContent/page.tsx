@@ -20,7 +20,12 @@ import {
 	AppSettingsFixedContentInitialPosition,
 	AppSettingsGroup,
 } from "@/types/appSettings";
+import { appInfo } from "@/utils/log";
 import { setWindowRect, showWindow } from "@/utils/window";
+import {
+	getImageBufferFromSharedBuffer,
+	type ImageSharedBufferData,
+} from "../draw/tools";
 import {
 	type FixedContentActionType,
 	FixedContentCore,
@@ -46,10 +51,22 @@ export const FixedContentPage: React.FC = () => {
 		const urlParams = new URLSearchParams(window.location.search);
 
 		if (urlParams.get("scroll_screenshot") === "true") {
-			const imageBlob = await scrollScreenshotGetImageData();
+			// 可能通过 SharedBuffer 传递
+			const imageSharedBufferPromise =
+				getImageBufferFromSharedBuffer("scroll_screenshot");
+			let imageData: ArrayBuffer | ImageSharedBufferData | undefined =
+				await scrollScreenshotGetImageData();
 			scrollScreenshotClear();
-			if (imageBlob) {
-				fixedContentActionRef.current?.init({ imageContent: imageBlob });
+			if (
+				imageData &&
+				imageData.byteLength === 1 &&
+				new Uint8Array(imageData)[0] === 1
+			) {
+				imageData = await imageSharedBufferPromise;
+			}
+
+			if (imageData) {
+				fixedContentActionRef.current?.init({ imageContent: imageData });
 				return;
 			}
 		} else {

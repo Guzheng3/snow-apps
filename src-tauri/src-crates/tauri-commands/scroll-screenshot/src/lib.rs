@@ -4,6 +4,7 @@ use serde::Serialize;
 use snow_shot_app_scroll_screenshot_service::scroll_screenshot_capture_service::ScrollScreenshotCaptureService;
 use snow_shot_app_shared::ElementRect;
 use snow_shot_app_utils::monitor_info::{CaptureOption, ColorFormat, CorrectHdrColorAlgorithm};
+use snow_shot_global_state::WebViewSharedBufferState;
 use std::path::PathBuf;
 use tauri::ipc::Response;
 use tokio::sync::Mutex;
@@ -91,7 +92,7 @@ pub async fn scroll_screenshot_capture(
                 crop_region,
                 Some(&window),
                 CaptureOption {
-                    color_format: ColorFormat::Rgb8,
+                    color_format: ColorFormat::Rgba8,
                     correct_hdr_color_algorithm,
                     correct_color_filter,
                 },
@@ -276,6 +277,8 @@ pub async fn scroll_screenshot_clear(
 
 pub async fn scroll_screenshot_get_image_data(
     scroll_screenshot_service: tauri::State<'_, Mutex<ScrollScreenshotService>>,
+    webview_shared_buffer_state: tauri::State<'_, WebViewSharedBufferState>,
+    #[allow(unused_variables)] webview: tauri::Webview,
 ) -> Result<Response, String> {
     let mut scroll_screenshot_service = scroll_screenshot_service.lock().await;
 
@@ -288,6 +291,35 @@ pub async fn scroll_screenshot_get_image_data(
             ));
         }
     };
+
+    // 判断是否支持通过 SharedBuffer 传递
+    if *webview_shared_buffer_state.enable.read().await {
+        let mut extra_data = vec![0; 8];
+        unsafe {
+            let image_width = image_data.width();
+            let image_height = image_data.height();
+            std::ptr::copy_nonoverlapping(
+                &image_width as *const u32 as *const u8,
+                extra_data.as_mut_ptr(),
+                4,
+            );
+            std::ptr::copy_nonoverlapping(
+                &image_height as *const u32 as *const u8,
+                extra_data.as_mut_ptr().add(4),
+                4,
+            );
+        }
+
+        snow_shot_webview::create_shared_buffer(
+            webview,
+            image_data.as_bytes(),
+            &extra_data,
+            "scroll_screenshot".to_string(),
+        )
+        .await?;
+
+        return Ok(Response::new(vec![1])); // 特殊标记，表示支持通过 SharedBuffer 传递
+    }
 
     let mut buf = Vec::new();
 

@@ -1,12 +1,7 @@
 use tauri::command;
 use tokio::sync::Mutex;
 
-use serde::{Deserialize, Serialize};
-
-#[derive(Clone, Serialize, Deserialize)]
-pub struct CaptureState {
-    pub capturing: bool,
-}
+use snow_shot_global_state::CaptureState;
 
 #[command]
 pub async fn set_capture_state(

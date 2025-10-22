@@ -51,6 +51,7 @@ import { useTextScaleFactor } from "@/hooks/useTextScaleFactor";
 import { copyToClipboard as copyToClipboardDrawAction } from "@/pages/draw/actions";
 import type { SelectRectParams } from "@/pages/draw/components/selectLayer";
 import type { CaptureBoundingBoxInfo } from "@/pages/draw/extra";
+import type { ImageSharedBufferData } from "@/pages/draw/tools";
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 import {
 	CommonKeyEventKey,
@@ -113,7 +114,7 @@ export type FixedContentInitTextParams = {
 };
 
 export type FixedContentInitImageParams = {
-	imageContent: Blob | string;
+	imageContent: ArrayBuffer | ImageSharedBufferData | Blob | string;
 };
 
 export type FixedContentActionType = {
@@ -228,7 +229,9 @@ export const FixedContentCore: React.FC<{
 		ignoreTextScaleFactor: false,
 	});
 	const canvasElementRef = useRef<HTMLCanvasElement | undefined>(undefined);
-	const imageUrlRef = useRef<string | undefined>(undefined);
+	const imageDataRef = useRef<string | ImageSharedBufferData | undefined>(
+		undefined,
+	);
 	const [scale, setScale, scaleRef] = useStateRef<{
 		x: number;
 		y: number;
@@ -385,17 +388,39 @@ export const FixedContentCore: React.FC<{
 					copyRawToClipboard();
 				}
 			} else if (fixedContentTypeRef.current === FixedContentType.Image) {
-				if (!imageUrlRef.current) {
+				if (!imageDataRef.current) {
 					return;
 				}
 				hasInitImageLayerRef.current = true;
 
-				const baseImageSize =
-					await imageLayerActionRef.current.initBaseImageTexture(
-						imageUrlRef.current,
+				const monitorInfoPromise = getCurrentMonitorInfo();
+
+				let baseImageSize: { width: number; height: number } | undefined;
+				if (typeof imageDataRef.current === "string") {
+					baseImageSize =
+						await imageLayerActionRef.current.initBaseImageTexture(
+							imageDataRef.current,
+						);
+				} else if ("sharedBuffer" in imageDataRef.current) {
+					baseImageSize = {
+						width: imageDataRef.current.width,
+						height: imageDataRef.current.height,
+					};
+				} else {
+					appError(
+						"[FixedContentCore] tryInitImageLayer error, invalid imageData",
+					);
+					return;
+				}
+
+				const initImageLayerPromise =
+					imageLayerActionRef.current.initImageLayer(
+						baseImageSize.width,
+						baseImageSize.height,
 					);
 
-				const monitorInfo = await getCurrentMonitorInfo();
+				const monitorInfo = await monitorInfoPromise;
+
 				onImageLoad?.(
 					{
 						naturalWidth: baseImageSize.width,
@@ -420,17 +445,16 @@ export const FixedContentCore: React.FC<{
 					ignoreTextScaleFactor: false,
 				};
 
-				await imageLayerActionRef.current.initImageLayer(
-					canvasPropsRef.current.width,
-					canvasPropsRef.current.height,
-				);
-
-				await imageLayerActionRef.current.setBaseImage({
-					type: "base_image_texture",
-				});
-				// 清除 imageUrl
-				URL.revokeObjectURL(imageUrlRef.current);
-				imageUrlRef.current = undefined;
+				await initImageLayerPromise;
+				if (typeof imageDataRef.current === "string") {
+					await imageLayerActionRef.current.setBaseImage({
+						type: "base_image_texture",
+					});
+					URL.revokeObjectURL(imageDataRef.current);
+				} else if ("sharedBuffer" in imageDataRef.current) {
+					await imageLayerActionRef.current.setBaseImage(imageDataRef.current);
+				}
+				imageDataRef.current = undefined;
 			} else if (
 				fixedContentTypeRef.current === FixedContentType.Html ||
 				fixedContentTypeRef.current === FixedContentType.Text
@@ -627,13 +651,17 @@ export const FixedContentCore: React.FC<{
 	const imageRef = useRef<HTMLImageElement>(null);
 	const imageOcrSignRef = useRef<boolean>(false);
 	const initImage = useCallback(
-		(imageContent: Blob | string) => {
+		(imageContent: FixedContentInitImageParams["imageContent"]) => {
 			setFixedContentType(FixedContentType.Image);
 
 			if (typeof imageContent === "string") {
-				imageUrlRef.current = imageContent;
+				imageDataRef.current = imageContent;
+			} else if ("sharedBuffer" in imageContent) {
+				imageDataRef.current = imageContent;
+			} else if (imageContent instanceof Blob) {
+				imageDataRef.current = URL.createObjectURL(imageContent);
 			} else {
-				imageUrlRef.current = URL.createObjectURL(imageContent);
+				imageDataRef.current = URL.createObjectURL(new Blob([imageContent]));
 			}
 
 			imageOcrSignRef.current = false;

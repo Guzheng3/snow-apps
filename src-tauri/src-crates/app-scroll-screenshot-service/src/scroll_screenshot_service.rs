@@ -891,12 +891,12 @@ impl ScrollScreenshotService {
             )
         };
 
-        const RGB_CHANNEL_COUNT: usize = 3;
+        const RGBA_CHANNEL_COUNT: usize = 4;
 
         // 创建最终大小的图片
         let mut final_image = unsafe {
-            let mut vec = Vec::with_capacity(total_width * total_height * RGB_CHANNEL_COUNT);
-            vec.set_len(total_width * total_height * RGB_CHANNEL_COUNT);
+            let mut vec = Vec::with_capacity(total_width * total_height * RGBA_CHANNEL_COUNT);
+            vec.set_len(total_width * total_height * RGBA_CHANNEL_COUNT);
             vec
         };
 
@@ -925,7 +925,7 @@ impl ScrollScreenshotService {
                     img,
                     0,
                     (offset_y - overlay_size) as usize,
-                    RGB_CHANNEL_COUNT,
+                    RGBA_CHANNEL_COUNT,
                 );
 
                 offset_y += (img.height() as i32 - overlay_size) as i32;
@@ -937,7 +937,7 @@ impl ScrollScreenshotService {
                     img,
                     (offset_x - overlay_size) as usize,
                     0,
-                    RGB_CHANNEL_COUNT,
+                    RGBA_CHANNEL_COUNT,
                 );
                 offset_x += (img.width() as i32 - overlay_size) as i32;
             }
@@ -964,7 +964,7 @@ impl ScrollScreenshotService {
                     img,
                     0,
                     (offset_y - actual_height) as usize,
-                    RGB_CHANNEL_COUNT,
+                    RGBA_CHANNEL_COUNT,
                 );
 
                 offset_y -= actual_height;
@@ -978,14 +978,14 @@ impl ScrollScreenshotService {
                     img,
                     (offset_x - actual_width) as usize,
                     0,
-                    RGB_CHANNEL_COUNT,
+                    RGBA_CHANNEL_COUNT,
                 );
                 offset_x -= actual_width;
             }
         }
 
-        Some(image::DynamicImage::ImageRgb8(
-            image::RgbImage::from_raw(total_width as u32, total_height as u32, final_image)
+        Some(image::DynamicImage::ImageRgba8(
+            image::RgbaImage::from_raw(total_width as u32, total_height as u32, final_image)
                 .unwrap(),
         ))
     }

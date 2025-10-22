@@ -189,7 +189,7 @@ export const scrollScreenshotClear = async () => {
 };
 
 export const scrollScreenshotGetImageData = async (): Promise<
-	Blob | undefined
+	ArrayBuffer | undefined
 > => {
 	let result: ArrayBuffer | undefined;
 	try {
@@ -203,5 +203,5 @@ export const scrollScreenshotGetImageData = async (): Promise<
 		return undefined;
 	}
 
-	return new Blob([result]);
+	return result;
 };

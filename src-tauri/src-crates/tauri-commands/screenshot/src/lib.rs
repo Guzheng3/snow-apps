@@ -6,6 +6,7 @@ use snow_shot_app_shared::ElementRect;
 use snow_shot_app_utils::monitor_info::{
     CaptureOption, ColorFormat, CorrectHdrColorAlgorithm, MonitorList,
 };
+use snow_shot_global_state::WebViewSharedBufferState;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -49,7 +50,10 @@ pub async fn capture_all_monitors(
     app_handle: tauri::AppHandle,
     window: tauri::Window,
     #[allow(unused_variables)] webview: tauri::Webview,
-    #[allow(unused_variables)] support_webview_shared_buffer: tauri::State<'_, Mutex<bool>>,
+    #[allow(unused_variables)] webview_shared_buffer_state: tauri::State<
+        '_,
+        WebViewSharedBufferState,
+    >,
     enable_multiple_monitor: bool,
     correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
     correct_color_filter: bool,
@@ -96,7 +100,7 @@ pub async fn capture_all_monitors(
         )
         .await?;
 
-        if *support_webview_shared_buffer.lock().await {
+        if *webview_shared_buffer_state.enable.read().await {
             let mut extra_data = vec![0; 8];
             unsafe {
                 let image_width = image.width();

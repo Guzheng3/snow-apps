@@ -1,6 +1,6 @@
+use snow_shot_global_state::WebViewSharedBufferState;
 use snow_shot_webview::create_shared_buffer;
 use tauri::command;
-use tokio::sync::Mutex;
 
 #[command]
 pub async fn create_webview_shared_buffer(
@@ -15,10 +15,10 @@ pub async fn create_webview_shared_buffer(
 
 #[command]
 pub async fn set_support_webview_shared_buffer(
-    support_webview_shared_buffer: tauri::State<'_, Mutex<bool>>,
+    webview_shared_buffer_state: tauri::State<'_, WebViewSharedBufferState>,
     value: bool,
 ) -> Result<(), String> {
-    *support_webview_shared_buffer.lock().await = value;
+    *webview_shared_buffer_state.enable.write().await = value;
 
     Ok(())
 }
@@ -26,13 +26,13 @@ pub async fn set_support_webview_shared_buffer(
 #[cfg(target_os = "windows")]
 #[command]
 pub async fn create_webview_shared_buffer_channel(
-    support_webview_shared_buffer: tauri::State<'_, Mutex<bool>>,
+    webview_shared_buffer_state: tauri::State<'_, WebViewSharedBufferState>,
     shared_buffer_service: tauri::State<'_, std::sync::Arc<snow_shot_webview::SharedBufferService>>,
     webview: tauri::Webview,
     channel_id: String,
     data_size: usize,
 ) -> Result<bool, String> {
-    if !*support_webview_shared_buffer.lock().await {
+    if !*webview_shared_buffer_state.enable.read().await {
         return Ok(false);
     }
 

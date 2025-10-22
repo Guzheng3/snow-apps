@@ -1,5 +1,6 @@
 import { useCallback, useImperativeHandle, useRef } from "react";
 import { ImageLayer, type ImageLayerActionType } from "@/components/imageLayer";
+import type { ImageSharedBufferData } from "@/pages/draw/tools";
 import { appError } from "@/utils/log";
 import { zIndexs } from "@/utils/zIndex";
 
@@ -7,6 +8,7 @@ export type FixedContentImageLayerActionType = {
 	setBaseImage: (
 		imageData:
 			| ImageData
+			| ImageSharedBufferData
 			| {
 					type: "base_image_texture";
 			  },
@@ -60,6 +62,13 @@ export const FixedContentImageLayer = ({
 					width: imageData.width,
 					height: imageData.height,
 				},
+				hideImageSprite,
+				true,
+			);
+		} else if ("sharedBuffer" in imageData) {
+			await imageLayerActionRef.current?.onCaptureReady(
+				undefined,
+				imageData,
 				hideImageSprite,
 				true,
 			);

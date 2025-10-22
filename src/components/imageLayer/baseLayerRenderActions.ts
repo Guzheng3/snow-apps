@@ -283,7 +283,11 @@ export const renderAddImageToContainerAction = async (
 					alphaMode: "no-premultiply-alpha",
 				}),
 			});
-			sharedBufferImageTextureRef.current = texture;
+			// hideImageSprite 一般是来自于固定到屏幕的显示
+			// 而 sharedBufferImageTextureRef 用于截图历史的切换，这里不多余记录
+			if (!hideImageSprite) {
+				sharedBufferImageTextureRef.current = texture;
+			}
 		}
 	} else if (typeof imageSrc === "string") {
 		texture = await PIXI.Assets.load<PIXI.Texture>({

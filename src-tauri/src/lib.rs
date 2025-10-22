@@ -19,7 +19,6 @@ use tokio::sync::Mutex;
 
 use tauri::Manager;
 
-use crate::global_state::CaptureState;
 use snow_shot_app_os::ui_automation::UIElements;
 use snow_shot_app_scroll_screenshot_service::scroll_screenshot_capture_service;
 use snow_shot_app_scroll_screenshot_service::scroll_screenshot_image_service;
@@ -32,6 +31,7 @@ use snow_shot_app_services::ocr_service::OcrService;
 use snow_shot_app_services::resize_window_service;
 use snow_shot_app_services::video_record_service;
 use snow_shot_app_shared::EnigoManager;
+use snow_shot_global_state::{CaptureState, WebViewSharedBufferState};
 use snow_shot_plugin_service::plugin_service;
 
 #[cfg(feature = "dhat-heap")]
@@ -75,7 +75,7 @@ pub fn run() {
     let full_screen_draw_window_labels = Mutex::new(Option::<FullScreenDrawWindowLabels>::None);
     let video_record_window_label = Mutex::new(Option::<VideoRecordWindowLabels>::None);
 
-    let support_webview_shared_buffer = Mutex::new(false);
+    let webview_shared_buffer_state = WebViewSharedBufferState::new(false);
 
     use tauri_plugin_log::{Target, TargetKind};
 
@@ -205,7 +205,7 @@ pub fn run() {
         .manage(enable_run_log_clone)
         .manage(plugin_service)
         .manage(full_screen_draw_window_labels)
-        .manage(support_webview_shared_buffer)
+        .manage(webview_shared_buffer_state)
         .manage(hot_load_page_service)
         .manage(video_record_window_label)
         .manage(capture_state)

@@ -9,6 +9,7 @@ use snow_shot_app_scroll_screenshot_service::scroll_screenshot_image_service::Sc
 use snow_shot_app_scroll_screenshot_service::scroll_screenshot_service::{
     ScrollDirection, ScrollImageList, ScrollScreenshotService,
 };
+use snow_shot_global_state::WebViewSharedBufferState;
 
 #[command]
 pub async fn scroll_screenshot_init(
@@ -110,7 +111,7 @@ pub async fn scroll_screenshot_save_to_clipboard(
 ) -> Result<(), String> {
     snow_shot_tauri_commands_scroll_screenshot::scroll_screenshot_save_to_clipboard(
         |image| match app.clipboard().write_image(&tauri::image::Image::new(
-            image.to_rgba8().as_raw(),
+            image.as_bytes(),
             image.width(),
             image.height(),
         )) {
@@ -142,9 +143,13 @@ pub async fn scroll_screenshot_clear(
 #[command]
 pub async fn scroll_screenshot_get_image_data(
     scroll_screenshot_service: tauri::State<'_, Mutex<ScrollScreenshotService>>,
+    webview_shared_buffer_state: tauri::State<'_, WebViewSharedBufferState>,
+    webview: tauri::Webview,
 ) -> Result<Response, String> {
     snow_shot_tauri_commands_scroll_screenshot::scroll_screenshot_get_image_data(
         scroll_screenshot_service,
+        webview_shared_buffer_state,
+        webview,
     )
     .await
 }

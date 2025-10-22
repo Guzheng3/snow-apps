@@ -13,6 +13,7 @@ xcap = { workspace = true }
 snow-shot-app-utils = { workspace = true }
 snow-shot-app-scroll-screenshot-service = { workspace = true }
 snow-shot-app-shared = { workspace = true }
+snow-shot-global-state = { workspace = true }
 
 [target.'cfg(any(target_os = "macos"))'.dependencies]
 scap = { workspace = true }

@@ -6506,6 +6506,7 @@ dependencies = [
  "snow-shot-app-services",
  "snow-shot-app-shared",
  "snow-shot-app-utils",
+ "snow-shot-global-state",
  "snow-shot-http-services",
  "snow-shot-plugin-service",
  "snow-shot-tauri-commands-core",
@@ -6628,6 +6629,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "snow-shot-global-state"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "snow-shot-http-services"
 version = "0.1.0"
 dependencies = [
@@ -6726,6 +6735,7 @@ dependencies = [
  "snow-shot-app-os",
  "snow-shot-app-shared",
  "snow-shot-app-utils",
+ "snow-shot-global-state",
  "snow-shot-webview",
  "tauri",
  "tokio",
@@ -6745,6 +6755,7 @@ dependencies = [
  "snow-shot-app-scroll-screenshot-service",
  "snow-shot-app-shared",
  "snow-shot-app-utils",
+ "snow-shot-global-state",
  "snow-shot-webview",
  "tauri",
  "tokio",

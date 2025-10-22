@@ -6,6 +6,7 @@ use tokio::sync::Mutex;
 use snow_shot_app_os::ui_automation::UIElements;
 use snow_shot_app_shared::ElementRect;
 use snow_shot_app_utils::monitor_info::CorrectHdrColorAlgorithm;
+use snow_shot_global_state::WebViewSharedBufferState;
 use snow_shot_tauri_commands_screenshot::{CaptureFullScreenResult, WindowElement};
 
 #[command]
@@ -21,7 +22,7 @@ pub async fn capture_all_monitors(
     app: tauri::AppHandle,
     window: tauri::Window,
     webview: tauri::Webview,
-    support_webview_shared_buffer: tauri::State<'_, Mutex<bool>>,
+    webview_shared_buffer_state: tauri::State<'_, WebViewSharedBufferState>,
     enable_multiple_monitor: bool,
     correct_hdr_color_algorithm: CorrectHdrColorAlgorithm,
     correct_color_filter: bool,
@@ -30,7 +31,7 @@ pub async fn capture_all_monitors(
         app,
         window,
         webview,
-        support_webview_shared_buffer,
+        webview_shared_buffer_state,
         enable_multiple_monitor,
         correct_hdr_color_algorithm,
         correct_color_filter,
