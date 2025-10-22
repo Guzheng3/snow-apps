@@ -17,7 +17,7 @@ import type { ElementRect, ImageBuffer } from "@/types/commands/screenshot";
 import type { CaptureHistoryItem } from "@/utils/appStore";
 import { getCaptureHistoryImageAbsPath } from "@/utils/captureHistory";
 import { supportOffscreenCanvas } from "@/utils/environment";
-import { appError } from "@/utils/log";
+import { appError, appWarn } from "@/utils/log";
 import {
 	addImageToContainerAction,
 	canvasRenderAction,
@@ -571,7 +571,6 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 					? imageBuffer
 					: imageSrc;
 			}
-			// 可能是切换截图历史，这种情况下不存在截图数据
 			if (imageSrc) {
 				await addImageToContainer(
 					INIT_CONTAINER_KEY,
@@ -595,7 +594,11 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 					hideImageSprite,
 				);
 			} else {
-				appError("[ImageLayer] imageBuffer is not supported", imageBuffer);
+				// 可能是切换截图历史，这种情况下不存在截图数据
+				appWarn(
+					"[ImageLayer] onCaptureReady imageBuffer is not supported",
+					imageBuffer,
+				);
 			}
 			// 水印层
 			watermarkContainerKeyRef.current = await createNewCanvasContainer(
