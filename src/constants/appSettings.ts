@@ -165,6 +165,7 @@ export const defaultAppSettingsData: AppSettingsData = {
 	},
 	[AppSettingsGroup.FunctionFixedContent]: {
 		zoomWithMouse: true,
+		autoResizeWindow: true,
 		autoOcr: true,
 		autoCopyToClipboard: false,
 		initialPosition: AppSettingsFixedContentInitialPosition.MousePosition,

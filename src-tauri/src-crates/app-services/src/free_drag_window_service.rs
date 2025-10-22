@@ -1,5 +1,7 @@
 use device_query::{DeviceQuery, MouseButton, MousePosition};
+use serde::Serialize;
 use std::sync::{Arc, Mutex};
+use tauri::Emitter;
 
 use crate::device_event_handler_service::DeviceEventHandlerService;
 
@@ -9,6 +11,11 @@ pub struct FreeDragWindowService {
     _mouse_move_guard: Arc<Mutex<Option<Box<dyn std::any::Any + Send>>>>,
     _mouse_up_guard: Arc<Mutex<Option<Box<dyn std::any::Any + Send>>>>,
     device_event_handler: Arc<Mutex<DeviceEventHandlerService>>,
+}
+
+#[derive(Serialize, Clone)]
+pub struct FreeDragWindowStopEvent {
+    pub label: String,
 }
 
 impl FreeDragWindowService {
@@ -115,6 +122,19 @@ impl FreeDragWindowService {
                 move |button: &MouseButton| {
                     // 当鼠标左键抬起时完全停止拖动，清除所有相关状态
                     if *button == 1 {
+                        if let Ok(target_window) = target_window_for_button.lock() {
+                            if let Some(target_window) = target_window.as_ref() {
+                                target_window
+                                    .emit(
+                                        "free-drag-window-service:stop",
+                                        FreeDragWindowStopEvent {
+                                            label: target_window.label().to_owned(),
+                                        },
+                                    )
+                                    .unwrap();
+                            }
+                        }
+
                         Self::stop_drag_core(
                             &target_window_for_button,
                             &_mouse_move_guard_clone,

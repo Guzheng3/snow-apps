@@ -391,6 +391,8 @@ export type AppSettingsData = {
 	[AppSettingsGroup.FunctionFixedContent]: {
 		/** 以鼠标为中心缩放 */
 		zoomWithMouse: boolean;
+		/** 自动缩放窗口 */
+		autoResizeWindow: boolean;
 		/** 固定屏幕后自动 OCR */
 		autoOcr: boolean;
 		/** 固定截图后自动复制到剪贴板 */

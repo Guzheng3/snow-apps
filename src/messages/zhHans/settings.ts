@@ -351,6 +351,10 @@ export const settings = {
 	"settings.functionSettings.fixedContentSettings": "固定到屏幕",
 	"settings.functionSettings.fixedContentSettings.zoomWithMouse":
 		"以鼠标为中心缩放",
+	"settings.functionSettings.fixedContentSettings.autoResizeWindow":
+		"自动缩放窗口",
+	"settings.functionSettings.fixedContentSettings.autoResizeWindow.tip":
+		"固定的内容超出显示器时，自动缩放窗口以适应显示器大小",
 	"settings.functionSettings.fixedContentSettings.initialPosition":
 		"窗口初始位置",
 	"settings.functionSettings.fixedContentSettings.initialPosition.tip":

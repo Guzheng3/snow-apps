@@ -413,6 +413,10 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 					event: "resize-window-service:resize-window",
 					callback: async () => {},
 				});
+				defaultListener.push({
+					event: "free-drag-window-service:stop",
+					callback: async () => {},
+				});
 			}
 		}
 

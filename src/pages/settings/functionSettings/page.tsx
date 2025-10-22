@@ -1087,6 +1087,23 @@ export const FunctionSettingsPage = () => {
 
 						<Col span={12}>
 							<ProFormSwitch
+								name="autoResizeWindow"
+								layout="horizontal"
+								label={
+									<IconLabel
+										label={
+											<FormattedMessage id="settings.functionSettings.fixedContentSettings.autoResizeWindow" />
+										}
+										tooltipTitle={
+											<FormattedMessage id="settings.functionSettings.fixedContentSettings.autoResizeWindow.tip" />
+										}
+									/>
+								}
+							/>
+						</Col>
+
+						<Col span={12}>
+							<ProFormSwitch
 								label={
 									<FormattedMessage id="settings.functionSettings.fixedContentSettings.autoCopyToClipboard" />
 								}

@@ -77,6 +77,7 @@ const DrawLayerCore: React.FC<{
 		| undefined;
 	getInitDrawWindowDevicePixelRatio: () => number | undefined;
 	getZoom: () => number;
+	switchDraw: () => void;
 }> = ({
 	actionRef,
 	documentSize,
@@ -90,6 +91,7 @@ const DrawLayerCore: React.FC<{
 	getInitDrawDrawElements,
 	getInitDrawWindowDevicePixelRatio,
 	getZoom,
+	switchDraw,
 }) => {
 	const { token } = theme.useToken();
 
@@ -481,9 +483,8 @@ const DrawLayerCore: React.FC<{
 						actionRef={drawToolbarActionRef}
 						disabled={!toolbarEnable}
 						documentSize={documentSize}
-						onConfirm={() => {
-							onConfirm();
-						}}
+						onConfirm={onConfirm}
+						switchDraw={switchDraw}
 					/>
 				</DrawCoreContext.Provider>
 

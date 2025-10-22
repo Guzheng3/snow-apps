@@ -154,6 +154,7 @@ export const FixedContentPage: React.FC = () => {
 					| { naturalWidth: number; naturalHeight: number }
 					| HTMLDivElement;
 				monitorInfo?: MonitorInfo;
+				initialScale?: number;
 		  }
 		| undefined
 	>();
@@ -165,8 +166,9 @@ export const FixedContentPage: React.FC = () => {
 				| { naturalWidth: number; naturalHeight: number }
 				| HTMLDivElement,
 			monitorInfo?: MonitorInfo,
+			initialScale?: number,
 		) => {
-			setLoadParams({ container, monitorInfo });
+			setLoadParams({ container, monitorInfo, initialScale });
 		},
 		[],
 	);
@@ -177,6 +179,8 @@ export const FixedContentPage: React.FC = () => {
 		}
 
 		const { container } = loadParams;
+
+		const initialScale = loadParams.initialScale ?? 1;
 
 		(async () => {
 			const appWindow = getCurrentWindow();
@@ -202,8 +206,8 @@ export const FixedContentPage: React.FC = () => {
 			}
 
 			if (width > 0 && height > 0) {
-				const windowWidth = Math.floor(width);
-				const windowHeight = Math.floor(height);
+				const windowWidth = Math.floor(width * initialScale);
+				const windowHeight = Math.floor(height * initialScale);
 
 				let targetX = monitorInfo.monitor_x + monitorInfo.mouse_x;
 				let targetY = monitorInfo.monitor_y + monitorInfo.mouse_y;

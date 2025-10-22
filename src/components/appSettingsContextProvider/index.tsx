@@ -1090,6 +1090,11 @@ const AppSettingsContextProviderCore: React.FC<{
 						typeof newSettings?.zoomWithMouse === "boolean"
 							? newSettings.zoomWithMouse
 							: (prevSettings?.zoomWithMouse ?? false),
+					autoResizeWindow:
+						typeof newSettings?.autoResizeWindow === "boolean"
+							? newSettings.autoResizeWindow
+							: (prevSettings?.autoResizeWindow ??
+								defaultAppSettingsData[group].autoResizeWindow),
 					autoOcr:
 						typeof newSettings?.autoOcr === "boolean"
 							? newSettings.autoOcr

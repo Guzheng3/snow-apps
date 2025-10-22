@@ -1,4 +1,5 @@
 import { CheckOutlined, HolderOutlined, LockOutlined } from "@ant-design/icons";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Button, type ButtonProps, Flex, theme } from "antd";
 import {
 	useCallback,
@@ -17,6 +18,7 @@ import {
 	type ExcalidrawEventParams,
 	ExcalidrawEventPublisher,
 } from "@/components/drawCore/extra";
+import { EventListenerContext } from "@/components/eventListener";
 import {
 	ArrowSelectIcon,
 	CircleIcon,
@@ -60,7 +62,8 @@ export const FixedContentCoreDrawToolbar: React.FC<{
 	documentSize: FixedContentWindowSize;
 	disabled?: boolean;
 	onConfirm: () => void;
-}> = ({ actionRef, documentSize, disabled, onConfirm }) => {
+	switchDraw: () => void;
+}> = ({ actionRef, documentSize, disabled, onConfirm, switchDraw }) => {
 	const { token } = theme.useToken();
 	const intl = useIntl();
 
@@ -486,6 +489,42 @@ export const FixedContentCoreDrawToolbar: React.FC<{
 		return intl.formatMessage({ id: "draw.dragWindow" });
 	}, [intl]);
 
+	const { addListener, removeListener } = useContext(EventListenerContext);
+
+	const isDragToolRef = useRef(false);
+	const startFreeDragAction = useCallback(() => {
+		isDragToolRef.current = true;
+		switchDraw();
+		startFreeDrag();
+	}, [switchDraw]);
+
+	useEffect(() => {
+		const windowLabel = getCurrentWindow().label;
+		const listenerId = addListener("free-drag-window-service:stop", (args) => {
+			const payload = (
+				args as {
+					payload: {
+						size: { width: number; height: number };
+						label: string;
+					};
+				}
+			).payload;
+
+			if (payload.label !== windowLabel) {
+				return;
+			}
+
+			if (isDragToolRef.current) {
+				switchDraw();
+			}
+			isDragToolRef.current = false;
+		});
+
+		return () => {
+			removeListener(listenerId);
+		};
+	}, [addListener, removeListener, switchDraw]);
+
 	return (
 		<div className="fixed-content-draw-toolbar-container">
 			<div className="fixed-content-draw-toolbar" ref={toolbarElementRef}>
@@ -509,8 +548,7 @@ export const FixedContentCoreDrawToolbar: React.FC<{
 						}
 						type={getButtonTypeByState(false)}
 						title={dragWindowButtonTitle}
-						onClick={() => {}}
-						onMouseDown={startFreeDrag}
+						onMouseDown={startFreeDragAction}
 					/>
 
 					{/* 选择状态 */}

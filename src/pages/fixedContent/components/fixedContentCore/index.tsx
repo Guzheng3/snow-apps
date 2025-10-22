@@ -178,6 +178,7 @@ export const FixedContentCore: React.FC<{
 	onImageLoad?: (
 		container: { naturalWidth: number; naturalHeight: number },
 		monitorInfo: MonitorInfo,
+		initialScale: number,
 	) => void;
 	disabled?: boolean;
 }> = ({
@@ -421,13 +422,31 @@ export const FixedContentCore: React.FC<{
 
 				const monitorInfo = await monitorInfoPromise;
 
+				// 如果自动缩放窗口，则根据显示器大小和图片大小计算初始缩放比例
+				const initialScale = getAppSettings()[
+					AppSettingsGroup.FunctionFixedContent
+				].autoResizeWindow
+					? Math.min(
+							1,
+							Math.min(
+								monitorInfo.monitor_width / baseImageSize.width,
+								monitorInfo.monitor_height / baseImageSize.height,
+							),
+						)
+					: 1;
+
 				onImageLoad?.(
 					{
 						naturalWidth: baseImageSize.width,
 						naturalHeight: baseImageSize.height,
 					},
 					monitorInfo,
+					initialScale,
 				);
+				setScale({
+					x: initialScale * 100,
+					y: initialScale * 100,
+				});
 
 				const imageWidth =
 					baseImageSize.width / monitorInfo.monitor_scale_factor;
@@ -506,6 +525,7 @@ export const FixedContentCore: React.FC<{
 			setWindowSize,
 			copyRawToClipboard,
 			getAppSettings,
+			setScale,
 		],
 	);
 
@@ -2410,6 +2430,7 @@ export const FixedContentCore: React.FC<{
 					getInitDrawSelectRectParams={getInitDrawSelectRectParams}
 					getInitDrawWindowDevicePixelRatio={getInitDrawWindowDevicePixelRatio}
 					getZoom={getZoom}
+					switchDraw={switchDraw}
 				/>
 			)}
 

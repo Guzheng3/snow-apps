@@ -933,12 +933,11 @@ export const ScrollScreenshot: React.FC<{
                 }
 
                 .scroll-screenshot-tool-touch-area .tip {
-                    color: white;
+                    color: ${token.colorWhite};
                     text-align: center;
                     width: 100%;
-                    transform: scale(${contentScale}) translateY(-100%);
+                    transform: scale(${contentScale}) translateY(calc(-100% - ${token.marginXXS}px));
                     line-height: 1.2em;
-                    opacity: 0.83;
                     pointer-events: none;
                 }
 
