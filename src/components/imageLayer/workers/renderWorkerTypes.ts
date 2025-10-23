@@ -1,6 +1,7 @@
 import type * as PIXI from "pixi.js";
 import type { ApplicationOptions } from "pixi.js";
 import type { ImageSharedBufferData } from "@/pages/draw/tools";
+import type { FixedContentProcessImageConfig } from "@/pages/fixedContent/components/fixedContentCore";
 import type { ElementRect } from "@/types/commands/screenshot";
 import type {
 	BlurSpriteProps,
@@ -35,6 +36,7 @@ export enum BaseLayerRenderMessageType {
 	ClearContext = "clearContext",
 	TransferImageSharedBuffer = "transferImageSharedBuffer",
 	InitBaseImageTexture = "initBaseImageTexture",
+	ApplyProcessImageConfigToCanvas = "applyProcessImageConfigToCanvas",
 }
 
 export type BaseLayerRenderInitData = {
@@ -186,6 +188,16 @@ export type BaseLayerRenderInitBaseImageTextureData = {
 	};
 };
 
+export type BaseLayerRenderApplyProcessImageConfigToCanvasData = {
+	type: BaseLayerRenderMessageType.ApplyProcessImageConfigToCanvas;
+	payload: {
+		imageContainerKey: string;
+		processImageConfig: FixedContentProcessImageConfig;
+		canvasWidth: number;
+		canvasHeight: number;
+	};
+};
+
 export type BaseLayerRenderData =
 	| BaseLayerRenderInitData
 	| BaseLayerRenderDisposeData
@@ -207,7 +219,8 @@ export type BaseLayerRenderData =
 	| BaseLayerRenderUpdateHighlightData
 	| BaseLayerRenderClearContextData
 	| BaseLayerRenderInitBaseImageTextureData
-	| BaseLayerRenderTransferImageSharedBufferData;
+	| BaseLayerRenderTransferImageSharedBufferData
+	| BaseLayerRenderApplyProcessImageConfigToCanvasData;
 
 export type RenderInitResult = {
 	type: BaseLayerRenderMessageType.Init;
@@ -315,6 +328,11 @@ export type RenderInitBaseImageTextureResult = {
 	};
 };
 
+export type RenderApplyProcessImageConfigToCanvasResult = {
+	type: BaseLayerRenderMessageType.ApplyProcessImageConfigToCanvas;
+	payload: undefined;
+};
+
 export type RenderTransferImageSharedBufferResult = {
 	type: BaseLayerRenderMessageType.TransferImageSharedBuffer;
 	payload: {
@@ -349,4 +367,5 @@ export type RenderResult =
 	| RenderUpdateHighlightElementResult
 	| RenderUpdateHighlightResult
 	| RenderInitBaseImageTextureResult
-	| RenderTransferImageSharedBufferResult;
+	| RenderTransferImageSharedBufferResult
+	| RenderApplyProcessImageConfigToCanvasResult;

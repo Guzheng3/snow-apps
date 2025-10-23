@@ -7,6 +7,7 @@ import type {
 } from "pixi.js";
 import type { RefObject } from "react";
 import type { ImageSharedBufferData } from "@/pages/draw/tools";
+import type { FixedContentProcessImageConfig } from "@/pages/fixedContent/components/fixedContentCore";
 import type { ElementRect } from "@/types/commands/screenshot";
 import {
 	type BlurSprite,
@@ -15,6 +16,7 @@ import {
 	type HighlightElementProps,
 	type HighlightProps,
 	renderAddImageToContainerAction,
+	renderApplyProcessImageConfigToCanvasAction,
 	renderCanvasRenderAction,
 	renderClearCanvasAction,
 	renderClearContainerAction,
@@ -38,6 +40,7 @@ import {
 } from "./baseLayerRenderActions";
 import {
 	type BaseLayerRenderAddImageToContainerData,
+	type BaseLayerRenderApplyProcessImageConfigToCanvasData,
 	type BaseLayerRenderCanvasRenderData,
 	type BaseLayerRenderClearCanvasData,
 	type BaseLayerRenderClearContainerData,
@@ -823,6 +826,53 @@ export const transferImageSharedBufferAction = async (
 			const result =
 				renderTransferImageSharedBufferAction(imageSharedBufferRef);
 			resolve(result);
+		}
+	});
+};
+
+export const applyProcessImageConfigToCanvasAction = async (
+	renderWorker: Worker | undefined,
+	canvasAppRef: RefObject<Application | undefined>,
+	canvasContainerMapRef: RefObject<Map<string, Container>>,
+	imageContainerKey: string,
+	processImageConfig: FixedContentProcessImageConfig,
+	canvasWidth: number,
+	canvasHeight: number,
+): Promise<undefined> => {
+	return new Promise((resolve) => {
+		if (renderWorker) {
+			const ApplyProcessImageConfigToCanvasData: BaseLayerRenderApplyProcessImageConfigToCanvasData =
+				{
+					type: BaseLayerRenderMessageType.ApplyProcessImageConfigToCanvas,
+					payload: {
+						imageContainerKey: imageContainerKey,
+						processImageConfig: processImageConfig,
+						canvasWidth: canvasWidth,
+						canvasHeight: canvasHeight,
+					},
+				};
+			const handleMessage = (event: MessageEvent<RenderResult>) => {
+				const { type, payload } = event.data;
+				if (
+					type === BaseLayerRenderMessageType.ApplyProcessImageConfigToCanvas
+				) {
+					resolve(payload);
+					renderWorker.removeEventListener("message", handleMessage);
+				}
+			};
+			renderWorker.addEventListener("message", handleMessage);
+
+			renderWorker.postMessage(ApplyProcessImageConfigToCanvasData);
+		} else {
+			renderApplyProcessImageConfigToCanvasAction(
+				canvasAppRef,
+				canvasContainerMapRef,
+				imageContainerKey,
+				processImageConfig,
+				canvasWidth,
+				canvasHeight,
+			);
+			resolve(undefined);
 		}
 	});
 };

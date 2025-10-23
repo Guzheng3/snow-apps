@@ -4,6 +4,7 @@ import * as PIXIFilters from "pixi-filters";
 import type { RefObject } from "react";
 import type { SelectRectParams } from "@/pages/draw/components/selectLayer";
 import type { ImageSharedBufferData } from "@/pages/draw/tools";
+import type { FixedContentProcessImageConfig } from "@/pages/fixedContent/components/fixedContentCore";
 import type { ElementRect } from "@/types/commands/screenshot";
 import type { RefWrap } from "./workers/renderWorkerTypes";
 
@@ -1009,4 +1010,93 @@ export const renderClearContextAction = (
 			shadowColor: "#000000",
 		},
 	};
+};
+
+export const renderApplyProcessImageConfigToCanvasAction = (
+	canvasAppRef: RefType<Application | undefined>,
+	canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
+	imageContainerKey: string,
+	processImageConfig: FixedContentProcessImageConfig,
+	canvasWidth: number,
+	canvasHeight: number,
+) => {
+	const canvasApp = canvasAppRef.current;
+	if (!canvasApp) {
+		return;
+	}
+
+	const container = canvasContainerMapRef.current.get(imageContainerKey);
+	if (!container) {
+		return;
+	}
+
+	renderResizeCanvasAction(canvasAppRef, canvasWidth, canvasHeight);
+
+	// 归一化角度到 0~3
+	let angle = processImageConfig.angle % 4;
+	if (angle < 0) {
+		angle += 4;
+	}
+
+	// 重置基础变换
+	container.x = 0;
+	container.y = 0;
+	container.pivot.x = 0;
+	container.pivot.y = 0;
+	container.scale.x = 1;
+	container.scale.y = 1;
+	container.rotation = 0;
+
+	// 翻转缩放
+	const sx = processImageConfig.horizontalFlip ? -1 : 1;
+	const sy = processImageConfig.verticalFlip ? -1 : 1;
+
+	// 原始内容尺寸（优先读取子 sprite 尺寸）
+	const firstChild = container.children[0] as PIXI.Sprite | undefined;
+	const baseWidth = firstChild?.width ?? canvasWidth;
+	const baseHeight = firstChild?.height ?? canvasHeight;
+
+	// 计算矩形四点在（scale -> rotate）后的坐标
+	const transformPoint = (x: number, y: number) => {
+		const x1 = sx * x;
+		const y1 = sy * y;
+		let xr = x1;
+		let yr = y1;
+		switch (angle) {
+			case 0:
+				xr = x1;
+				yr = y1;
+				break;
+			case 1: // 逆时针 90°
+				xr = -y1;
+				yr = x1;
+				break;
+			case 2: // 180°
+				xr = -x1;
+				yr = -y1;
+				break;
+			case 3: // 逆时针 270°
+				xr = y1;
+				yr = -x1;
+				break;
+		}
+		return { x: xr, y: yr };
+	};
+
+	const p00 = transformPoint(0, 0);
+	const p10 = transformPoint(baseWidth, 0);
+	const p01 = transformPoint(0, baseHeight);
+	const p11 = transformPoint(baseWidth, baseHeight);
+
+	const minX = Math.min(p00.x, p10.x, p01.x, p11.x);
+	const minY = Math.min(p00.y, p10.y, p01.y, p11.y);
+
+	// 应用到容器：先缩放（翻转），再旋转，最后位移到 (0,0)
+	container.scale.x = sx;
+	container.scale.y = sy;
+	container.rotation = angle * (Math.PI / 2);
+	container.x = -minX;
+	container.y = -minY;
+
+	canvasApp.render();
 };

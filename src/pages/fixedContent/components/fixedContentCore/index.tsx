@@ -1088,6 +1088,8 @@ export const FixedContentCore: React.FC<{
 			return;
 		}
 
+		const canvasBlobPromise = renderToBlob();
+
 		const filePath = await dialog.save({
 			filters: [
 				{
@@ -1106,7 +1108,8 @@ export const FixedContentCore: React.FC<{
 			return;
 		}
 
-		const canvasBlob = await renderToBlob();
+		const canvasBlob = await canvasBlobPromise;
+
 		if (!canvasBlob) {
 			return;
 		}
@@ -1315,6 +1318,17 @@ export const FixedContentCore: React.FC<{
 	);
 	const scaleWindowRender = useCallbackRender(scaleWindow);
 
+	const applyProcessImageConfigToImageLayerAction = useCallback(async () => {
+		imageLayerActionRef.current
+			?.getImageLayerAction()
+			?.applyProcessImageConfigToCanvas(
+				INIT_CONTAINER_KEY,
+				processImageConfigRef.current,
+				canvasPropsRef.current.width,
+				canvasPropsRef.current.height,
+			);
+	}, [processImageConfigRef]);
+
 	const rotateImage = useCallback(
 		async (angle: number) => {
 			// 将角度映射到 0 到 3 之间
@@ -1331,14 +1345,10 @@ export const FixedContentCore: React.FC<{
 			const appWindow = appWindowRef.current;
 			if (!appWindow) return;
 
-			const [oldWindowSize, oldWindowPosition] = await Promise.all([
+			const windowSizePositionPromise = Promise.all([
 				appWindow.outerSize(),
 				appWindow.outerPosition(),
 			]);
-
-			// 计算旋转前窗口的中心点
-			const centerX = oldWindowPosition.x + oldWindowSize.width / 2;
-			const centerY = oldWindowPosition.y + oldWindowSize.height / 2;
 
 			// 如果角度为 1 或 3，则需要交换宽高，刚好和上一次旋转的结果相反
 			setWindowSize({
@@ -1351,18 +1361,25 @@ export const FixedContentCore: React.FC<{
 				height: canvasPropsRef.current.width,
 			};
 			const currentWindowSize = getWindowPhysicalSize(scaleRef.current.x);
+			applyProcessImageConfigToImageLayerAction();
 
-			// 先设置新的窗口大小
-			await appWindow.setSize(
-				new PhysicalSize(currentWindowSize.width, currentWindowSize.height),
-			);
+			const [oldWindowSize, oldWindowPosition] =
+				await windowSizePositionPromise;
+
+			// 计算旋转前窗口的中心点
+			const centerX = oldWindowPosition.x + oldWindowSize.width / 2;
+			const centerY = oldWindowPosition.y + oldWindowSize.height / 2;
 
 			// 根据新的窗口大小和原中心点，计算新的窗口位置
+			// 设置新的窗口位置，保持中心点不变
 			const newX = Math.round(centerX - currentWindowSize.width / 2);
 			const newY = Math.round(centerY - currentWindowSize.height / 2);
-
-			// 设置新的窗口位置，保持中心点不变
-			await appWindow.setPosition(new PhysicalPosition(newX, newY));
+			await Promise.all([
+				appWindow.setSize(
+					new PhysicalSize(currentWindowSize.width, currentWindowSize.height),
+				),
+				appWindow.setPosition(new PhysicalPosition(newX, newY)),
+			]);
 		},
 		[
 			getWindowPhysicalSize,
@@ -1371,6 +1388,7 @@ export const FixedContentCore: React.FC<{
 			setProcessImageConfig,
 			setWindowSize,
 			windowSizeRef,
+			applyProcessImageConfigToImageLayerAction,
 		],
 	);
 
@@ -1601,6 +1619,7 @@ export const FixedContentCore: React.FC<{
 									...prev,
 									horizontalFlip: !prev.horizontalFlip,
 								}));
+								applyProcessImageConfigToImageLayerAction();
 							},
 						},
 						{
@@ -1611,6 +1630,7 @@ export const FixedContentCore: React.FC<{
 									...prev,
 									verticalFlip: !prev.verticalFlip,
 								}));
+								applyProcessImageConfigToImageLayerAction();
 							},
 						},
 					],
@@ -1732,6 +1752,7 @@ export const FixedContentCore: React.FC<{
 		scaleWindow,
 		scaleRef,
 		setscrollAction,
+		applyProcessImageConfigToImageLayerAction,
 	]);
 
 	useEffect(() => {
@@ -2449,11 +2470,8 @@ export const FixedContentCore: React.FC<{
 				<div
 					className="fixed-image-layer-container"
 					style={{
-						...getStyleProps(
-							(windowSize.width * scale.x) / 100 / contentScaleFactor,
-							(windowSize.height * scale.y) / 100 / contentScaleFactor,
-							processImageConfig,
-						),
+						width: `${documentSize.width}px`,
+						height: `${documentSize.height}px`,
 					}}
 				>
 					<FixedContentImageLayer

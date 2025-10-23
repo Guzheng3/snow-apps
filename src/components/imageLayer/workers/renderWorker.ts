@@ -13,6 +13,7 @@ import {
 	type BlurSprite,
 	type HighlightElement,
 	renderAddImageToContainerAction,
+	renderApplyProcessImageConfigToCanvasAction,
 	renderCanvasRenderAction,
 	renderClearCanvasAction,
 	renderClearContainerAction,
@@ -36,6 +37,7 @@ import {
 } from "../baseLayerRenderActions";
 import {
 	type BaseLayerRenderAddImageToContainerData,
+	type BaseLayerRenderApplyProcessImageConfigToCanvasData,
 	type BaseLayerRenderClearContainerData,
 	type BaseLayerRenderCreateBlurSpriteData,
 	type BaseLayerRenderCreateNewCanvasContainerData,
@@ -272,6 +274,19 @@ const handleTransferImageSharedBuffer = () => {
 	return renderTransferImageSharedBufferAction(imageSharedBufferRef);
 };
 
+const handleApplyProcessImageConfigToCanvas = (
+	data: BaseLayerRenderApplyProcessImageConfigToCanvasData,
+) => {
+	renderApplyProcessImageConfigToCanvasAction(
+		canvasAppRef,
+		canvasContainerMapRef,
+		data.payload.imageContainerKey,
+		data.payload.processImageConfig,
+		data.payload.canvasWidth,
+		data.payload.canvasHeight,
+	);
+};
+
 self.onmessage = async ({ data }: MessageEvent<BaseLayerRenderData>) => {
 	let message: RenderResult;
 
@@ -440,6 +455,14 @@ self.onmessage = async ({ data }: MessageEvent<BaseLayerRenderData>) => {
 				self.postMessage(message, { transfer: [result.sharedBuffer.buffer] });
 				return;
 			}
+			break;
+		}
+		case BaseLayerRenderMessageType.ApplyProcessImageConfigToCanvas: {
+			handleApplyProcessImageConfigToCanvas(data);
+			message = {
+				type: BaseLayerRenderMessageType.ApplyProcessImageConfigToCanvas,
+				payload: undefined,
+			};
 			break;
 		}
 	}
