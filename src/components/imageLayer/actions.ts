@@ -29,6 +29,7 @@ import {
 	renderRenderToCanvasAction,
 	renderRenderToPngAction,
 	renderResizeCanvasAction,
+	renderTransferImageSharedBufferAction,
 	renderUpdateBlurSpriteAction,
 	renderUpdateHighlightAction,
 	renderUpdateHighlightElementPropsAction,
@@ -52,6 +53,7 @@ import {
 	type BaseLayerRenderRenderToCanvasData,
 	type BaseLayerRenderRenderToPngData,
 	type BaseLayerRenderResizeCanvasData,
+	type BaseLayerRenderTransferImageSharedBufferData,
 	type BaseLayerRenderUpdateBlurSpriteData,
 	type BaseLayerRenderUpdateHighlightData,
 	type BaseLayerRenderUpdateHighlightElementData,
@@ -422,8 +424,9 @@ export const addImageToContainerAction = async (
 	renderWorker: Worker | undefined,
 	canvasContainerMapRef: RefObject<Map<string, Container>>,
 	currentImageTextureRef: RefObject<Texture | undefined>,
-	baseImageTextureRef: RefObject<Texture | undefined>,
 	sharedBufferImageTextureRef: RefObject<Texture | undefined>,
+	imageSharedBufferRef: RefObject<ImageSharedBufferData | undefined>,
+	baseImageTextureRef: RefObject<Texture | undefined>,
 	containerKey: string,
 	imageSrc:
 		| string
@@ -476,6 +479,7 @@ export const addImageToContainerAction = async (
 				canvasContainerMapRef,
 				currentImageTextureRef,
 				sharedBufferImageTextureRef,
+				imageSharedBufferRef,
 				baseImageTextureRef,
 				containerKey,
 				imageSrc,
@@ -789,6 +793,36 @@ export const clearContextAction = async (
 				lastWatermarkPropsRef,
 			);
 			resolve(undefined);
+		}
+	});
+};
+
+export const transferImageSharedBufferAction = async (
+	renderWorker: Worker | undefined,
+	imageSharedBufferRef: RefObject<ImageSharedBufferData | undefined>,
+): Promise<ImageSharedBufferData | undefined> => {
+	return new Promise((resolve) => {
+		if (renderWorker) {
+			const TransferImageSharedBufferData: BaseLayerRenderTransferImageSharedBufferData =
+				{
+					type: BaseLayerRenderMessageType.TransferImageSharedBuffer,
+					payload: undefined,
+				};
+			const handleMessage = (event: MessageEvent<RenderResult>) => {
+				const { type, payload } = event.data;
+				if (type === BaseLayerRenderMessageType.TransferImageSharedBuffer) {
+					resolve(payload.imageSharedBuffer);
+					renderWorker.removeEventListener("message", handleMessage);
+				}
+			};
+
+			renderWorker.addEventListener("message", handleMessage);
+
+			renderWorker.postMessage(TransferImageSharedBufferData);
+		} else {
+			const result =
+				renderTransferImageSharedBufferAction(imageSharedBufferRef);
+			resolve(result);
 		}
 	});
 };

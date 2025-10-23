@@ -35,6 +35,7 @@ import {
 	renderToCanvasAction,
 	renderToPngAction,
 	resizeCanvasAction,
+	transferImageSharedBufferAction,
 	updateBlurSpriteAction,
 	updateHighlightAction,
 	updateHighlightElementAction,
@@ -48,6 +49,7 @@ import type {
 	HighlightProps,
 	WatermarkProps,
 } from "./baseLayerRenderActions";
+import { encodeImage } from "./workers/encodeImage";
 
 export type ImageLayerActionType = {
 	/**
@@ -58,6 +60,8 @@ export type ImageLayerActionType = {
 	clearCanvas: () => Promise<void>;
 	getLayerContainerElement: () => HTMLDivElement | null;
 	changeCursor: (cursor: Required<React.CSSProperties>["cursor"]) => string;
+	transferImageSharedBuffer: () => Promise<ImageSharedBufferData | undefined>;
+	renderImageSharedBufferToPng: () => Promise<ArrayBuffer | undefined>;
 	getImageBitmap: (
 		selectRect: ElementRect,
 		renderContainerKey?: string,
@@ -206,6 +210,9 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 	const canvasAppRef = useRef<PIXI.Application | undefined>(undefined);
 	const baseImageTextureRef = useRef<PIXI.Texture | undefined>(undefined);
 	const sharedBufferImageTextureRef = useRef<PIXI.Texture | undefined>(
+		undefined,
+	);
+	const imageSharedBufferRef = useRef<ImageSharedBufferData | undefined>(
 		undefined,
 	);
 	const canvasContainerMapRef = useRef<Map<string, PIXI.Container>>(new Map());
@@ -372,6 +379,44 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 		[rendererWorker],
 	);
 
+	const transferImageSharedBuffer = useCallback<
+		ImageLayerActionType["transferImageSharedBuffer"]
+	>(async () => {
+		return await transferImageSharedBufferAction(
+			rendererWorker,
+			imageSharedBufferRef,
+		);
+	}, [rendererWorker]);
+
+	const [encodeImageWorker, setEncodeImageWorker] = useState<
+		Worker | undefined
+	>(undefined);
+	useEffect(() => {
+		let worker: Worker | undefined;
+		if (supportOffscreenCanvas()) {
+			worker = new Worker(
+				new URL("./workers/encodeImageWorker.ts", import.meta.url),
+			);
+		}
+		setEncodeImageWorker(worker);
+		return () => {
+			worker?.terminate();
+		};
+	}, []);
+
+	const renderImageSharedBufferToPng = useCallback<
+		ImageLayerActionType["renderImageSharedBufferToPng"]
+	>(async () => {
+		const imageSharedBuffer = await transferImageSharedBufferAction(
+			rendererWorker,
+			imageSharedBufferRef,
+		);
+		if (!imageSharedBuffer) {
+			return undefined;
+		}
+		return await encodeImage(encodeImageWorker, imageSharedBuffer);
+	}, [encodeImageWorker, rendererWorker]);
+
 	const renderToPng = useCallback<ImageLayerActionType["renderToPng"]>(
 		async (selectRect: ElementRect, containerId: string | undefined) => {
 			return renderToPngAction(
@@ -414,8 +459,9 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 				rendererWorker,
 				canvasContainerMapRef,
 				currentImageTextureRef,
-				baseImageTextureRef,
 				sharedBufferImageTextureRef,
+				imageSharedBufferRef,
+				baseImageTextureRef,
 				containerKey,
 				imageSrc,
 				hideImageSprite,
@@ -737,6 +783,8 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 			onCaptureBoundingBoxInfoReady,
 			onCaptureLoad,
 			initBaseImageTexture,
+			transferImageSharedBuffer,
+			renderImageSharedBufferToPng,
 		}),
 		[
 			resizeCanvas,
@@ -765,6 +813,8 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 			onCaptureReady,
 			onCaptureLoad,
 			initBaseImageTexture,
+			transferImageSharedBuffer,
+			renderImageSharedBufferToPng,
 		],
 	);
 

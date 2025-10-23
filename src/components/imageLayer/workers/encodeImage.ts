@@ -1,3 +1,5 @@
+import type { ImageSharedBufferData } from "@/pages/draw/tools";
+
 export type DecodeResult = {
 	data: ImageData;
 	width: number;
@@ -6,21 +8,23 @@ export type DecodeResult = {
 
 export async function encodeImage(
 	encodeImageWorker: Worker | undefined,
-	width: number,
-	height: number,
-	imageBuffer: Uint8ClampedArray,
+	imageSharedBuffer: ImageSharedBufferData,
 ): Promise<ArrayBuffer | undefined> {
 	if (!encodeImageWorker) {
 		const canvase = new HTMLCanvasElement();
-		canvase.width = width;
-		canvase.height = height;
+		canvase.width = imageSharedBuffer.width;
+		canvase.height = imageSharedBuffer.height;
 		const ctx = canvase.getContext("2d");
 		if (!ctx) {
 			return undefined;
 		}
 
 		ctx.putImageData(
-			new ImageData(imageBuffer as ImageDataArray, width, height),
+			new ImageData(
+				imageSharedBuffer.sharedBuffer,
+				imageSharedBuffer.width,
+				imageSharedBuffer.height,
+			),
 			0,
 			0,
 		);
@@ -61,6 +65,11 @@ export async function encodeImage(
 			reject(error);
 		};
 
-		encodeImageWorker.postMessage({ imageBuffer, width, height });
+		encodeImageWorker.postMessage(
+			{ imageSharedBuffer },
+			{
+				transfer: [imageSharedBuffer.sharedBuffer.buffer],
+			},
+		);
 	});
 }

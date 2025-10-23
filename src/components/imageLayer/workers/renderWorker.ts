@@ -8,6 +8,7 @@ import {
 
 DOMAdapter.set(WebWorkerAdapter);
 
+import type { ImageSharedBufferData } from "@/pages/draw/tools";
 import {
 	type BlurSprite,
 	type HighlightElement,
@@ -26,6 +27,7 @@ import {
 	renderRenderToCanvasAction,
 	renderRenderToPngAction,
 	renderResizeCanvasAction,
+	renderTransferImageSharedBufferAction,
 	renderUpdateBlurSpriteAction,
 	renderUpdateHighlightAction,
 	renderUpdateHighlightElementPropsAction,
@@ -59,6 +61,9 @@ const baseImageTextureRef: RefWrap<Texture | undefined> = {
 	current: undefined,
 };
 const sharedBufferImageTextureRef: RefWrap<Texture | undefined> = {
+	current: undefined,
+};
+const imageSharedBufferRef: RefWrap<ImageSharedBufferData | undefined> = {
 	current: undefined,
 };
 const canvasContainerMapRef: RefWrap<Map<string, Container>> = {
@@ -153,6 +158,7 @@ const handleAddImageToContainer = async (
 		canvasContainerMapRef,
 		currentImageTextureRef,
 		sharedBufferImageTextureRef,
+		imageSharedBufferRef,
 		baseImageTextureRef,
 		data.payload.containerKey,
 		data.payload.imageSrc,
@@ -261,6 +267,11 @@ const handleGetImageBitmap = async (
 		data.payload.renderContainerKey,
 	);
 };
+
+const handleTransferImageSharedBuffer = () => {
+	return renderTransferImageSharedBufferAction(imageSharedBufferRef);
+};
+
 self.onmessage = async ({ data }: MessageEvent<BaseLayerRenderData>) => {
 	let message: RenderResult;
 
@@ -415,6 +426,18 @@ self.onmessage = async ({ data }: MessageEvent<BaseLayerRenderData>) => {
 			// 使用 transferable objects 实现零拷贝传输 ImageBitmap，避免性能开销
 			if (result) {
 				self.postMessage(message, { transfer: [result] });
+				return;
+			}
+			break;
+		}
+		case BaseLayerRenderMessageType.TransferImageSharedBuffer: {
+			const result = handleTransferImageSharedBuffer();
+			message = {
+				type: BaseLayerRenderMessageType.TransferImageSharedBuffer,
+				payload: { imageSharedBuffer: result },
+			};
+			if (result) {
+				self.postMessage(message, { transfer: [result.sharedBuffer.buffer] });
 				return;
 			}
 			break;

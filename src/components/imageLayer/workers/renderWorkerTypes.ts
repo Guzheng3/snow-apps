@@ -33,6 +33,7 @@ export enum BaseLayerRenderMessageType {
 	UpdateHighlightElement = "updateHighlightElement",
 	UpdateHighlight = "updateHighlight",
 	ClearContext = "clearContext",
+	TransferImageSharedBuffer = "transferImageSharedBuffer",
 	InitBaseImageTexture = "initBaseImageTexture",
 }
 
@@ -173,6 +174,11 @@ export type BaseLayerRenderClearContextData = {
 	payload: undefined;
 };
 
+export type BaseLayerRenderTransferImageSharedBufferData = {
+	type: BaseLayerRenderMessageType.TransferImageSharedBuffer;
+	payload: undefined;
+};
+
 export type BaseLayerRenderInitBaseImageTextureData = {
 	type: BaseLayerRenderMessageType.InitBaseImageTexture;
 	payload: {
@@ -200,7 +206,8 @@ export type BaseLayerRenderData =
 	| BaseLayerRenderUpdateHighlightElementData
 	| BaseLayerRenderUpdateHighlightData
 	| BaseLayerRenderClearContextData
-	| BaseLayerRenderInitBaseImageTextureData;
+	| BaseLayerRenderInitBaseImageTextureData
+	| BaseLayerRenderTransferImageSharedBufferData;
 
 export type RenderInitResult = {
 	type: BaseLayerRenderMessageType.Init;
@@ -308,6 +315,13 @@ export type RenderInitBaseImageTextureResult = {
 	};
 };
 
+export type RenderTransferImageSharedBufferResult = {
+	type: BaseLayerRenderMessageType.TransferImageSharedBuffer;
+	payload: {
+		imageSharedBuffer: ImageSharedBufferData | undefined;
+	};
+};
+
 export type RenderBlurSpriteResult =
 	| RenderCreateBlurSpriteResult
 	| RenderUpdateBlurSpriteResult
@@ -334,4 +348,5 @@ export type RenderResult =
 	| RenderUpdateWatermarkSpriteResult
 	| RenderUpdateHighlightElementResult
 	| RenderUpdateHighlightResult
-	| RenderInitBaseImageTextureResult;
+	| RenderInitBaseImageTextureResult
+	| RenderTransferImageSharedBufferResult;

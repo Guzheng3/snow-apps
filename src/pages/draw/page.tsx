@@ -49,7 +49,6 @@ import {
 } from "@/components/drawCore/extra";
 import { EventListenerContext } from "@/components/eventListener";
 import { ImageLayer, type ImageLayerActionType } from "@/components/imageLayer";
-import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
 import { TextScaleFactorContextProvider } from "@/components/textScaleFactorContextProvider";
 import { AntdContext } from "@/contexts/antdContext";
 import {
@@ -474,6 +473,8 @@ const DrawPageCore: React.FC<{
 				appError("[DrawPageCore] listenKeyStop error", error);
 			});
 
+			// 快速隐藏窗口
+			appWindowRef.current.setIgnoreCursorEvents(true);
 			if (layerContainerRef.current) {
 				layerContainerRef.current.style.opacity = "0";
 			}
@@ -631,10 +632,6 @@ const DrawPageCore: React.FC<{
 			setCaptureStateAction(true);
 			drawToolbarActionRef.current?.setEnable(false);
 
-			if (layerContainerRef.current) {
-				layerContainerRef.current.style.opacity = "1";
-			}
-
 			setExcludeFromCapture(true);
 
 			const initCaptureBoundingBoxInfoPromise =
@@ -743,15 +740,8 @@ const DrawPageCore: React.FC<{
 			if (imageBufferRef.current && "sharedBuffer" in imageBufferRef.current) {
 				// 截图的图像数据已经被 transfer 到了 worker，无法在此访问
 				// 所以直接从 ImageLayer 渲染出 PNG 数据
-				const pngBuffer = await imageLayerActionRef.current?.renderToPng(
-					{
-						min_x: 0,
-						min_y: 0,
-						max_x: imageBufferRef.current.width,
-						max_y: imageBufferRef.current.height,
-					},
-					INIT_CONTAINER_KEY,
-				);
+				const pngBuffer =
+					await imageLayerActionRef.current?.renderImageSharedBufferToPng();
 				if (pngBuffer) {
 					imageBuffer = {
 						encoder: ImageEncoder.Png,

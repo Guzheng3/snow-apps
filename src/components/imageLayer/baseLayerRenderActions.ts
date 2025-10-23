@@ -249,6 +249,7 @@ export const renderAddImageToContainerAction = async (
 	canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
 	currentImageTextureRef: RefType<PIXI.Texture | undefined>,
 	sharedBufferImageTextureRef: RefType<PIXI.Texture | undefined>,
+	imageSharedBufferRef: RefType<ImageSharedBufferData | undefined>,
 	baseImageTextureRef: RefType<PIXI.Texture | undefined>,
 	containerKey: string,
 	imageSrc:
@@ -281,6 +282,7 @@ export const renderAddImageToContainerAction = async (
 					alphaMode: "no-premultiply-alpha",
 				}),
 			});
+			imageSharedBufferRef.current = imageSrc;
 			// hideImageSprite 一般是来自于固定到屏幕的显示
 			// 而 sharedBufferImageTextureRef 用于截图历史的切换，这里不多余记录
 			if (!hideImageSprite) {
@@ -301,6 +303,16 @@ export const renderAddImageToContainerAction = async (
 	container.addChild(image);
 
 	currentImageTextureRef.current = texture;
+};
+
+export const renderTransferImageSharedBufferAction = (
+	imageSharedBufferRef: RefType<ImageSharedBufferData | undefined>,
+) => {
+	if (!imageSharedBufferRef.current) {
+		return;
+	}
+
+	return imageSharedBufferRef.current;
 };
 
 export const renderClearContainerAction = (

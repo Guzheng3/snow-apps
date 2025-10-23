@@ -58,11 +58,7 @@ import {
 	type CommonKeyEventValue,
 } from "@/types/core/commonKeyEvent";
 import { ImageFormat } from "@/types/utils/file";
-import {
-	writeHtmlToClipboard,
-	writeImageToClipboard,
-	writeTextToClipboard,
-} from "@/utils/clipboard";
+import { writeHtmlToClipboard, writeTextToClipboard } from "@/utils/clipboard";
 import { generateImageFileName } from "@/utils/file";
 import { formatKey } from "@/utils/format";
 import { appError } from "@/utils/log";
@@ -287,7 +283,7 @@ export const FixedContentCore: React.FC<{
 			verticalFlip: false,
 		});
 
-	const getmageLayerRenderRect = useCallback(() => {
+	const getImageLayerRenderRect = useCallback(() => {
 		const swapWidthAndHeight = needSwapWidthAndHeight(
 			processImageConfigRef.current.angle,
 		);
@@ -311,10 +307,10 @@ export const FixedContentCore: React.FC<{
 				drawActionRef,
 				processImageConfigRef,
 				ignoreDrawCanvas,
-				getmageLayerRenderRect(),
+				getImageLayerRenderRect(),
 			);
 		},
-		[processImageConfigRef, getmageLayerRenderRect],
+		[processImageConfigRef, getImageLayerRenderRect],
 	);
 
 	const copyRawToClipboard = useCallback(async () => {
@@ -327,16 +323,30 @@ export const FixedContentCore: React.FC<{
 			if (!imageLayerAction) {
 				return;
 			}
-			const baseImageBuffer = await imageLayerAction.renderToPng(
-				getmageLayerRenderRect(),
+
+			const baseImageBitmapPromise = imageLayerAction.getImageBitmap(
+				getImageLayerRenderRect(),
 				INIT_CONTAINER_KEY,
 			);
 
-			if (!baseImageBuffer) {
+			const renderRect = getImageLayerRenderRect();
+			const tempCanvas = document.createElement("canvas");
+			tempCanvas.width = renderRect.max_x - renderRect.min_x;
+			tempCanvas.height = renderRect.max_y - renderRect.min_y;
+			const ctx = tempCanvas.getContext("2d");
+			if (!ctx) {
 				return;
 			}
 
-			await writeImageToClipboard(baseImageBuffer);
+			const baseImageBitmap = await baseImageBitmapPromise;
+
+			if (!baseImageBitmap) {
+				return;
+			}
+
+			ctx.drawImage(baseImageBitmap, 0, 0);
+
+			await copyToClipboardDrawAction(tempCanvas, undefined, undefined);
 		} else if (
 			fixedContentTypeRef.current === FixedContentType.Html &&
 			originHtmlContentRef.current
@@ -348,7 +358,7 @@ export const FixedContentCore: React.FC<{
 		) {
 			await writeTextToClipboard(textContentRef.current.content);
 		}
-	}, [fixedContentTypeRef, textContentRef, getmageLayerRenderRect]);
+	}, [fixedContentTypeRef, textContentRef, getImageLayerRenderRect]);
 
 	const hasInitImageLayerRef = useRef(false);
 	const tryInitImageLayer = useCallback(
@@ -1109,7 +1119,7 @@ export const FixedContentCore: React.FC<{
 			if (initOcrParamsRef.current) {
 				const imageBitmap = await imageLayerActionRef.current
 					?.getImageLayerAction()
-					?.getImageBitmap(getmageLayerRenderRect(), INIT_CONTAINER_KEY);
+					?.getImageBitmap(getImageLayerRenderRect(), INIT_CONTAINER_KEY);
 				if (!imageBitmap) {
 					appError("[switchSelectTextCore] getImageBitmap failed");
 					return;
@@ -1136,7 +1146,7 @@ export const FixedContentCore: React.FC<{
 			) {
 				const imageBitmap = await imageLayerActionRef.current
 					?.getImageLayerAction()
-					?.getImageBitmap(getmageLayerRenderRect(), INIT_CONTAINER_KEY);
+					?.getImageBitmap(getImageLayerRenderRect(), INIT_CONTAINER_KEY);
 				if (!imageBitmap) {
 					appError("[switchSelectTextCore] getImageBitmap failed");
 					return;
@@ -1164,7 +1174,7 @@ export const FixedContentCore: React.FC<{
 		}
 
 		setEnableSelectText((enable) => !enable);
-	}, [fixedContentTypeRef, setEnableSelectText, getmageLayerRenderRect]);
+	}, [fixedContentTypeRef, setEnableSelectText, getImageLayerRenderRect]);
 	const switchDrawCore = useCallback(async () => {
 		setEnableDraw((enable) => !enable);
 	}, [setEnableDraw]);
