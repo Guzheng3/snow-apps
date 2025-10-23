@@ -294,13 +294,14 @@ self.onmessage = async ({ data }: MessageEvent<BaseLayerRenderData>) => {
 				payload: undefined,
 			};
 			break;
-		case BaseLayerRenderMessageType.ClearCanvas:
+		case BaseLayerRenderMessageType.ClearCanvas: {
 			handleClearCanvas();
 			message = {
 				type: BaseLayerRenderMessageType.ClearCanvas,
 				payload: undefined,
 			};
 			break;
+		}
 		case BaseLayerRenderMessageType.RenderToCanvas: {
 			const canvas = handleRenderToCanvas(data);
 			message = {

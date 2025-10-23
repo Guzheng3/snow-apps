@@ -1,5 +1,7 @@
 use log;
 use paddle_ocr_rs::ocr_result::TextBlock;
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::ParallelIterator;
 use serde::Deserialize;
 use serde::Serialize;
 use snow_shot_app_services::ocr_service::{OcrModel, OcrService};
@@ -29,6 +31,7 @@ pub struct OcrDetectResult {
     pub scale_factor: f32,
 }
 
+
 fn convert_rgba_to_rgb(image: &[u8]) -> Vec<u8> {
     let pixel_count = image.len() / 4;
     let mut rgb_data = Vec::with_capacity(pixel_count * 3);
@@ -36,15 +39,18 @@ fn convert_rgba_to_rgb(image: &[u8]) -> Vec<u8> {
     unsafe {
         rgb_data.set_len(pixel_count * 3);
 
-        let image_ptr = image.as_ptr();
-        let rgb_ptr: *mut u8 = rgb_data.as_mut_ptr();
+        let image_ptr_address = image.as_ptr() as usize;
+        let rgb_ptr_address = rgb_data.as_mut_ptr() as usize;
 
-        for i in 0..pixel_count {
+        (0..pixel_count).into_par_iter().for_each(|i| {
             let image_base = i * 4;
             let rgb_base = i * 3;
-
-            std::ptr::copy_nonoverlapping(image_ptr.add(image_base), rgb_ptr.add(rgb_base), 3);
-        }
+            std::ptr::copy_nonoverlapping(
+                (image_ptr_address as *const u8).add(image_base),
+                (rgb_ptr_address as *mut u8).add(rgb_base),
+                3,
+            );
+        });
     }
 
     rgb_data

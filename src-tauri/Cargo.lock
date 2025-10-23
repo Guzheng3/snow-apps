@@ -6717,6 +6717,7 @@ dependencies = [
  "image",
  "log",
  "paddle-ocr-rs",
+ "rayon",
  "serde",
  "snow-shot-app-services",
  "snow-shot-webview",

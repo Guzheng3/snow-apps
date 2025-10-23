@@ -91,9 +91,7 @@ export const renderClearCanvasAction = (
 	if (!canvasApp) {
 		return;
 	}
-	while (canvasApp.stage.children[0]) {
-		canvasApp.stage.removeChild(canvasApp.stage.children[0]);
-	}
+	canvasApp.stage.removeChildren();
 	canvasContainerMapRef.current.clear();
 	canvasContainerChildCountRef.current = 0;
 	currentImageTextureRef.current = undefined;

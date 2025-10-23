@@ -474,6 +474,10 @@ const DrawPageCore: React.FC<{
 				appError("[DrawPageCore] listenKeyStop error", error);
 			});
 
+			if (layerContainerRef.current) {
+				layerContainerRef.current.style.opacity = "0";
+			}
+
 			drawPageStateRef.current = DrawPageState.WaitRelease;
 			releasePage();
 
@@ -626,6 +630,10 @@ const DrawPageCore: React.FC<{
 			capturingRef.current = true;
 			setCaptureStateAction(true);
 			drawToolbarActionRef.current?.setEnable(false);
+
+			if (layerContainerRef.current) {
+				layerContainerRef.current.style.opacity = "1";
+			}
 
 			setExcludeFromCapture(true);
 
@@ -1112,6 +1120,7 @@ const DrawPageCore: React.FC<{
 			]).finally(() => {
 				scrollScreenshotClear();
 			});
+
 			finishCapture(false);
 			return;
 		}
