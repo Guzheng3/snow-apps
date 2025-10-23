@@ -464,15 +464,30 @@ pub fn capture_target_monitor(
         };
         capturer.stop_capture();
 
-        match image::RgbImage::from_raw(
-            frame.width as u32,
-            frame.height as u32,
-            bgra_to_rgb(&frame.data),
-        ) {
-            Some(rgb_image) => Some(image::DynamicImage::ImageRgb8(rgb_image)),
-            None => {
-                log::error!("[capture_current_monitor_with_scap] failed to create image");
-                return None;
+        match color_format {
+            ColorFormat::Rgb8 => match image::RgbImage::from_raw(
+                frame.width as u32,
+                frame.height as u32,
+                bgra_to_rgb(&frame.data),
+            ) {
+                Some(rgb_image) => Some(image::DynamicImage::ImageRgb8(rgb_image)),
+                None => {
+                    log::error!("[capture_current_monitor_with_scap] failed to create image");
+                    return None;
+                }
+            },
+            ColorFormat::Rgba8 => {
+                match image::RgbaImage::from_raw(
+                    frame.width as u32,
+                    frame.height as u32,
+                    bgra_to_rgba(&frame.data),
+                ) {
+                    Some(rgba_image) => Some(image::DynamicImage::ImageRgba8(rgba_image)),
+                    None => {
+                        log::error!("[capture_current_monitor_with_scap] failed to create image");
+                        return None;
+                    }
+                }
             }
         }
     }
@@ -486,20 +501,45 @@ pub fn bgra_to_rgb(bgra_data: &[u8]) -> Vec<u8> {
     unsafe {
         rgb_data.set_len(pixel_count * 3);
 
-        let bgra_ptr = bgra_data.as_ptr();
-        let rgb_ptr: *mut u8 = rgb_data.as_mut_ptr();
+        let bgra_ptr_address = bgra_data.as_ptr() as usize;
+        let rgb_ptr_address = rgb_data.as_mut_ptr() as usize;
 
-        for i in 0..pixel_count {
-            let bgra_base = i * 4;
-            let rgb_base = i * 3;
+        (0..pixel_count).into_par_iter().for_each(|i| {
+            let rgb_ptr = (rgb_ptr_address as *mut u8).add(i * 3);
+            let bgra_ptr = (bgra_ptr_address as *const u8).add(i * 4);
 
-            *rgb_ptr.add(rgb_base) = *bgra_ptr.add(bgra_base + 2); // R
-            *rgb_ptr.add(rgb_base + 1) = *bgra_ptr.add(bgra_base + 1); // G
-            *rgb_ptr.add(rgb_base + 2) = *bgra_ptr.add(bgra_base); // B
-        }
+            rgb_ptr.write(*bgra_ptr.add(2)); // R
+            rgb_ptr.add(1).write(*bgra_ptr.add(1)); // G
+            rgb_ptr.add(2).write(*bgra_ptr.add(0)); // B
+        });
     }
 
     rgb_data
+}
+
+#[cfg(target_os = "macos")]
+pub fn bgra_to_rgba(bgra_data: &[u8]) -> Vec<u8> {
+    let pixel_count = bgra_data.len() / 4;
+    let mut rgba_data = Vec::with_capacity(pixel_count * 4);
+
+    unsafe {
+        rgba_data.set_len(pixel_count * 4);
+
+        let bgra_ptr_address = bgra_data.as_ptr() as usize;
+        let rgba_ptr_address = rgba_data.as_mut_ptr() as usize;
+
+        (0..pixel_count).into_par_iter().for_each(|i| {
+            let rgba_ptr = (rgba_ptr_address as *mut u8).add(i * 4);
+            let bgra_ptr = (bgra_ptr_address as *const u8).add(i * 4);
+
+            rgba_ptr.write(*bgra_ptr.add(2)); // R
+            rgba_ptr.add(1).write(*bgra_ptr.add(1)); // G
+            rgba_ptr.add(2).write(*bgra_ptr.add(0)); // B
+            rgba_ptr.add(3).write(*bgra_ptr.add(3)); // A
+        });
+    }
+
+    rgba_data
 }
 
 pub enum ImageEncoder {

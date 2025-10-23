@@ -359,10 +359,16 @@ impl MonitorList {
             // 有些捕获失败的显示器，返回一个空图像，这里需要特殊处理
             if let Some(capture_image) = capture_image.as_ref() {
                 if capture_image.width() == 1 && capture_image.height() == 1 {
-                    return Ok(image::DynamicImage::new_rgb8(
-                        (first_monitor.rect.max_x - first_monitor.rect.min_x) as u32,
-                        (first_monitor.rect.max_y - first_monitor.rect.min_y) as u32,
-                    ));
+                    return match capture_option.color_format {
+                        ColorFormat::Rgb8 => Ok(image::DynamicImage::new_rgb8(
+                            (first_monitor.rect.max_x - first_monitor.rect.min_x) as u32,
+                            (first_monitor.rect.max_y - first_monitor.rect.min_y) as u32,
+                        )),
+                        ColorFormat::Rgba8 => Ok(image::DynamicImage::new_rgba8(
+                            (first_monitor.rect.max_x - first_monitor.rect.min_x) as u32,
+                            (first_monitor.rect.max_y - first_monitor.rect.min_y) as u32,
+                        )),
+                    };
                 }
             }
 
