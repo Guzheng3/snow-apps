@@ -13,7 +13,7 @@ import * as TWEEN from "@tweenjs/tween.js";
 import { Button, Descriptions, Space, Typography, theme } from "antd";
 import Color from "color";
 import { toCanvas as htmlToCanvas } from "html-to-image";
-import {
+import React, {
 	useCallback,
 	useContext,
 	useEffect,
@@ -44,13 +44,18 @@ import {
 	fixedContentFocusModeShowAllWindow,
 } from "@/functions/fixedContent";
 import { useCallbackRender } from "@/hooks/useCallbackRender";
+import { withStatePublisher } from "@/hooks/useStatePublisher";
 import { useStateRef } from "@/hooks/useStateRef";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import { useTempInfo } from "@/hooks/useTempInfo";
 import { useTextScaleFactor } from "@/hooks/useTextScaleFactor";
 import { copyToClipboard as copyToClipboardDrawAction } from "@/pages/draw/actions";
 import type { SelectRectParams } from "@/pages/draw/components/selectLayer";
-import type { CaptureBoundingBoxInfo } from "@/pages/draw/extra";
+import {
+	type CaptureBoundingBoxInfo,
+	DrawEvent,
+	DrawEventPublisher,
+} from "@/pages/draw/extra";
 import type { ImageSharedBufferData } from "@/pages/draw/tools";
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 import {
@@ -166,7 +171,7 @@ export type FixedContentProcessImageConfig = {
 export const SCALE_WINDOW_MAX_SCALE = 200;
 export const SCALE_WINDOW_MIN_SCALE = 20;
 
-export const FixedContentCore: React.FC<{
+const FixedContentCoreInner: React.FC<{
 	actionRef: React.RefObject<FixedContentActionType | undefined>;
 	onDrawLoad?: () => void;
 	onHtmlLoad?: ({ width, height }: { width: number; height: number }) => void;
@@ -1318,6 +1323,40 @@ export const FixedContentCore: React.FC<{
 	);
 	const scaleWindowRender = useCallbackRender(scaleWindow);
 
+	const getSelectRectParams = useCallback(() => {
+		const currentSelectRectParams = selectRectParamsRef.current;
+		if (!currentSelectRectParams) {
+			return {
+				rect: {
+					min_x: 0,
+					min_y: 0,
+					max_x: canvasPropsRef.current.width,
+					max_y: canvasPropsRef.current.height,
+				},
+				radius: 0,
+				shadowWidth: 0,
+				shadowColor: "#000000",
+			};
+		}
+
+		const result = {
+			rect: {
+				min_x: currentSelectRectParams.shadowWidth,
+				min_y: currentSelectRectParams.shadowWidth,
+				max_x:
+					canvasPropsRef.current.width - currentSelectRectParams.shadowWidth,
+				max_y:
+					canvasPropsRef.current.height - currentSelectRectParams.shadowWidth,
+			},
+			radius: currentSelectRectParams.radius,
+			shadowWidth: currentSelectRectParams.shadowWidth,
+			shadowColor: currentSelectRectParams.shadowColor,
+		};
+
+		return result;
+	}, []);
+
+	const [, setDrawEvent] = useStateSubscriber(DrawEventPublisher, undefined);
 	const applyProcessImageConfigToImageLayerAction = useCallback(async () => {
 		imageLayerActionRef.current
 			?.getImageLayerAction()
@@ -1327,7 +1366,13 @@ export const FixedContentCore: React.FC<{
 				canvasPropsRef.current.width,
 				canvasPropsRef.current.height,
 			);
-	}, [processImageConfigRef]);
+		setDrawEvent({
+			event: DrawEvent.SelectRectParamsAnimationChange,
+			params: {
+				selectRectParams: getSelectRectParams(),
+			},
+		});
+	}, [processImageConfigRef, getSelectRectParams, setDrawEvent]);
 
 	const rotateImage = useCallback(
 		async (angle: number) => {
@@ -2220,39 +2265,6 @@ export const FixedContentCore: React.FC<{
 		tryInitImageLayer();
 	}, [tryInitImageLayer]);
 
-	const getSelectRectParams = useCallback(() => {
-		const currentSelectRectParams = selectRectParamsRef.current;
-		if (!currentSelectRectParams) {
-			return {
-				rect: {
-					min_x: 0,
-					min_y: 0,
-					max_x: canvasPropsRef.current.width,
-					max_y: canvasPropsRef.current.height,
-				},
-				radius: 0,
-				shadowWidth: 0,
-				shadowColor: "#000000",
-			};
-		}
-
-		const result = {
-			rect: {
-				min_x: currentSelectRectParams.shadowWidth,
-				min_y: currentSelectRectParams.shadowWidth,
-				max_x:
-					canvasPropsRef.current.width - currentSelectRectParams.shadowWidth,
-				max_y:
-					canvasPropsRef.current.height - currentSelectRectParams.shadowWidth,
-			},
-			radius: currentSelectRectParams.radius,
-			shadowWidth: currentSelectRectParams.shadowWidth,
-			shadowColor: currentSelectRectParams.shadowColor,
-		};
-
-		return result;
-	}, []);
-
 	const getInitDrawSelectRectParams = useCallback(() => {
 		return selectRectParamsRef.current;
 	}, []);
@@ -2735,3 +2747,7 @@ export const FixedContentCore: React.FC<{
 		</div>
 	);
 };
+
+export const FixedContentCore = React.memo(
+	withStatePublisher(FixedContentCoreInner, DrawEventPublisher),
+);

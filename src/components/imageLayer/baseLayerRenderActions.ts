@@ -362,14 +362,6 @@ export const renderCreateBlurSpriteAction = (
 	};
 
 	blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
-	blurSprite.sprite.x = blurSprite.spriteBackground.x = 0;
-	blurSprite.sprite.y = blurSprite.spriteBackground.y = 0;
-	blurSprite.sprite.width = imageTexture.width;
-	blurSprite.sprite.height = imageTexture.height;
-	blurSprite.spriteBackground.setSize({
-		width: imageTexture.width,
-		height: imageTexture.height,
-	});
 	blurSprite.spriteContainer.setMask({
 		mask: blurSprite.spriteMask,
 	});
@@ -1015,6 +1007,8 @@ export const renderClearContextAction = (
 export const renderApplyProcessImageConfigToCanvasAction = (
 	canvasAppRef: RefType<Application | undefined>,
 	canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
+	blurSpriteMapRef: RefType<Map<string, BlurSprite>>,
+	currentImageTextureRef: RefType<PIXI.Texture | undefined>,
 	imageContainerKey: string,
 	processImageConfig: FixedContentProcessImageConfig,
 	canvasWidth: number,
@@ -1032,11 +1026,7 @@ export const renderApplyProcessImageConfigToCanvasAction = (
 
 	renderResizeCanvasAction(canvasAppRef, canvasWidth, canvasHeight);
 
-	// 归一化角度到 0~3
-	let angle = processImageConfig.angle % 4;
-	if (angle < 0) {
-		angle += 4;
-	}
+	const angle = processImageConfig.angle;
 
 	// 重置基础变换
 	container.x = 0;
@@ -1097,6 +1087,27 @@ export const renderApplyProcessImageConfigToCanvasAction = (
 	container.rotation = angle * (Math.PI / 2);
 	container.x = -minX;
 	container.y = -minY;
+
+	// renderer.extract 渲染 image container 不会保留变换
+	// 为了避免其它元素影响，先隐藏再显示
+	for (const child of canvasApp.stage.children) {
+		child.visible = false;
+	}
+	container.visible = true;
+
+	// 将 ImageContainer 渲染出来，作为 Filter 元素的纹理
+	const imageTexture = canvasApp.renderer.extract.texture({
+		target: canvasApp.stage,
+		frame: new PIXI.Rectangle(0, 0, canvasWidth, canvasHeight),
+	});
+	currentImageTextureRef.current = imageTexture;
+	for (const blurSprite of blurSpriteMapRef.current.values()) {
+		blurSprite.sprite.texture = imageTexture;
+	}
+
+	for (const child of canvasApp.stage.children) {
+		child.visible = true;
+	}
 
 	canvasApp.render();
 };

@@ -616,6 +616,8 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 				rendererWorker,
 				canvasAppRef,
 				canvasContainerMapRef,
+				blurSpriteMapRef,
+				currentImageTextureRef,
 				imageContainerKey,
 				processImageConfig,
 				canvasWidth,

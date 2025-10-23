@@ -834,6 +834,8 @@ export const applyProcessImageConfigToCanvasAction = async (
 	renderWorker: Worker | undefined,
 	canvasAppRef: RefObject<Application | undefined>,
 	canvasContainerMapRef: RefObject<Map<string, Container>>,
+	blurSpriteMapRef: RefObject<Map<string, BlurSprite>>,
+	currentImageTextureRef: RefObject<Texture | undefined>,
 	imageContainerKey: string,
 	processImageConfig: FixedContentProcessImageConfig,
 	canvasWidth: number,
@@ -867,6 +869,8 @@ export const applyProcessImageConfigToCanvasAction = async (
 			renderApplyProcessImageConfigToCanvasAction(
 				canvasAppRef,
 				canvasContainerMapRef,
+				blurSpriteMapRef,
+				currentImageTextureRef,
 				imageContainerKey,
 				processImageConfig,
 				canvasWidth,

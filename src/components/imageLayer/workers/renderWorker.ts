@@ -280,6 +280,8 @@ const handleApplyProcessImageConfigToCanvas = (
 	renderApplyProcessImageConfigToCanvasAction(
 		canvasAppRef,
 		canvasContainerMapRef,
+		blurSpriteMapRef,
+		currentImageTextureRef,
 		data.payload.imageContainerKey,
 		data.payload.processImageConfig,
 		data.payload.canvasWidth,
