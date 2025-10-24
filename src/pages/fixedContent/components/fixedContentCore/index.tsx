@@ -75,7 +75,6 @@ import {
 	type AppOcrResult,
 	OcrResult,
 	type OcrResultActionType,
-	type OcrResultInitDrawCanvasParams,
 } from "../ocrResult";
 import { renderToCanvasAction } from "./actions";
 import {
