@@ -289,33 +289,24 @@ const FixedContentCoreInner: React.FC<{
 		});
 
 	const getImageLayerRenderRect = useCallback(() => {
-		const swapWidthAndHeight = needSwapWidthAndHeight(
-			processImageConfigRef.current.angle,
-		);
-
 		return {
 			min_x: 0,
 			min_y: 0,
-			max_x: swapWidthAndHeight
-				? canvasPropsRef.current.height
-				: canvasPropsRef.current.width,
-			max_y: swapWidthAndHeight
-				? canvasPropsRef.current.width
-				: canvasPropsRef.current.height,
+			max_x: canvasPropsRef.current.width,
+			max_y: canvasPropsRef.current.height,
 		};
-	}, [processImageConfigRef]);
+	}, []);
 
 	const renderToCanvas = useCallback(
 		async (ignoreDrawCanvas: boolean = false) => {
 			return renderToCanvasAction(
 				imageLayerActionRef,
 				drawActionRef,
-				processImageConfigRef,
 				ignoreDrawCanvas,
 				getImageLayerRenderRect(),
 			);
 		},
-		[processImageConfigRef, getImageLayerRenderRect],
+		[getImageLayerRenderRect],
 	);
 
 	const copyRawToClipboard = useCallback(async () => {
