@@ -88,7 +88,7 @@ import {
 	type FixedContentImageLayerActionType,
 } from "./components/imageLayer";
 import { ResizeWindow } from "./components/resizeWindow";
-import { getHtmlContent, getStyleProps } from "./extra";
+import { getHtmlContent, getStyleProps, needSwapWidthAndHeight } from "./extra";
 
 export type FixedContentInitDrawParams = {
 	captureBoundingBoxInfo: CaptureBoundingBoxInfo;
@@ -670,10 +670,6 @@ const FixedContentCoreInner: React.FC<{
 		],
 	);
 
-	const initOcrParamsRef = useRef<
-		Omit<OcrResultInitDrawCanvasParams, "canvas"> | undefined
-	>(undefined);
-
 	const imageOcrSignRef = useRef<boolean>(false);
 	const initImage = useCallback(
 		(imageContent: FixedContentInitImageParams["imageContent"]) => {
@@ -744,12 +740,6 @@ const FixedContentCoreInner: React.FC<{
 			}
 			selectRectParamsRef.current = selectRectParams;
 
-			const ocrRect = {
-				min_x: 0,
-				min_y: 0,
-				max_x: canvas.width,
-				max_y: canvas.height,
-			};
 			if (
 				!(
 					isReady?.(PLUGIN_ID_RAPID_OCR) &&
@@ -757,11 +747,7 @@ const FixedContentCoreInner: React.FC<{
 				) &&
 				!params.ocrResult
 			) {
-				initOcrParamsRef.current = {
-					selectRect: ocrRect,
-					captureBoundingBoxInfo,
-					ocrResult: undefined,
-				};
+				imageOcrSignRef.current = false;
 			}
 
 			const scaleFactor = await getCurrentWindow().scaleFactor();
@@ -1115,45 +1101,30 @@ const FixedContentCoreInner: React.FC<{
 
 	const switchSelectTextCore = useCallback(async () => {
 		if (getSelectTextMode(fixedContentTypeRef.current) === "ocr") {
-			if (initOcrParamsRef.current) {
+			if (!imageOcrSignRef.current) {
 				const imageBitmap = await imageLayerActionRef.current
 					?.getImageLayerAction()
-					?.getImageBitmap(getImageLayerRenderRect(), INIT_CONTAINER_KEY);
+					?.getImageBitmap(
+						{
+							min_x: 0,
+							min_y: 0,
+							max_x: needSwapWidthAndHeight(processImageConfigRef.current.angle)
+								? canvasPropsRef.current.height
+								: canvasPropsRef.current.width,
+							max_y: needSwapWidthAndHeight(processImageConfigRef.current.angle)
+								? canvasPropsRef.current.width
+								: canvasPropsRef.current.height,
+						},
+						INIT_CONTAINER_KEY,
+					);
 				if (!imageBitmap) {
 					appError("[switchSelectTextCore] getImageBitmap failed");
 					return;
 				}
 
 				const canvas = document.createElement("canvas");
-				canvas.width = canvasPropsRef.current.width;
-				canvas.height = canvasPropsRef.current.height;
-				const ctx = canvas.getContext("2d");
-				if (!ctx) {
-					appError("[switchSelectTextCore] getContext failed");
-					return;
-				}
-				ctx.drawImage(imageBitmap, 0, 0);
-
-				ocrResultActionRef.current?.init({
-					...initOcrParamsRef.current,
-					canvas,
-				});
-				initOcrParamsRef.current = undefined;
-			} else if (
-				!imageOcrSignRef.current &&
-				fixedContentTypeRef.current === FixedContentType.Image
-			) {
-				const imageBitmap = await imageLayerActionRef.current
-					?.getImageLayerAction()
-					?.getImageBitmap(getImageLayerRenderRect(), INIT_CONTAINER_KEY);
-				if (!imageBitmap) {
-					appError("[switchSelectTextCore] getImageBitmap failed");
-					return;
-				}
-
-				const canvas = document.createElement("canvas");
-				canvas.width = canvasPropsRef.current.width;
-				canvas.height = canvasPropsRef.current.height;
+				canvas.width = imageBitmap.width;
+				canvas.height = imageBitmap.height;
 				const ctx = canvas.getContext("2d");
 				if (!ctx) {
 					appError("[switchSelectTextCore] getContext failed");
@@ -1173,7 +1144,7 @@ const FixedContentCoreInner: React.FC<{
 		}
 
 		setEnableSelectText((enable) => !enable);
-	}, [fixedContentTypeRef, setEnableSelectText, getImageLayerRenderRect]);
+	}, [fixedContentTypeRef, setEnableSelectText, processImageConfigRef]);
 	const switchDrawCore = useCallback(async () => {
 		setEnableDraw((enable) => !enable);
 	}, [setEnableDraw]);
