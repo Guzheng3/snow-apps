@@ -88,7 +88,7 @@ import {
 	type FixedContentImageLayerActionType,
 } from "./components/imageLayer";
 import { ResizeWindow } from "./components/resizeWindow";
-import { getHtmlContent, getStyleProps, needSwapWidthAndHeight } from "./extra";
+import { getHtmlContent, getStyleProps } from "./extra";
 
 export type FixedContentInitDrawParams = {
 	captureBoundingBoxInfo: CaptureBoundingBoxInfo;

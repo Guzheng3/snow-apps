@@ -569,6 +569,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 			await updateHighlightElementAction(
 				rendererWorker,
 				canvasContainerMapRef,
+				currentImageTextureRef,
 				highlightElementMapRef,
 				highlightContainerKey,
 				highlightElementId,

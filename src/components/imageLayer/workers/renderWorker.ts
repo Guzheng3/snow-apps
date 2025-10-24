@@ -201,6 +201,7 @@ const handleUpdateHighlightElement = (
 ) => {
 	renderUpdateHighlightElementPropsAction(
 		canvasContainerMapRef,
+		currentImageTextureRef,
 		highlightElementMapRef,
 		data.payload.highlightContainerKey,
 		data.payload.highlightElementId,

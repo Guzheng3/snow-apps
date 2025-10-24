@@ -685,6 +685,7 @@ const drawShapeHighlightElementGraphicsAction = (
  */
 export const renderUpdateHighlightElementPropsAction = (
 	canvasContainerMapRef: RefType<Map<string, PIXI.Container>>,
+	currentImageTextureRef: RefType<PIXI.Texture | undefined>,
 	highlightElementMapRef: RefType<Map<string, HighlightElement>>,
 	highlightContainerKey: string,
 	highlightElementId: string,
@@ -709,16 +710,28 @@ export const renderUpdateHighlightElementPropsAction = (
 		return;
 	}
 
+	const currentImageTexture = currentImageTextureRef.current;
+	if (!currentImageTexture) {
+		return;
+	}
+
 	// 判断是否创建 highlight 的 graphics
-	let highlightContainer = container.children[0] as PIXI.Container | undefined; // 渲染 highlight 的背景
-	let highlightBackgroundGraphics = container.children[1]
-		?.children?.[0] as PIXI.Graphics; // 渲染 highlight 的背景遮罩
-	let highlightStrokeContainer = container.children[1]
+	let highlightBaseImageSprite = container.children[0]?.children?.[0] as
+		| PIXI.Sprite
+		| undefined; // 渲染 highlight 的底图，用来处理高亮效果，避免底图透明时高亮效果不生效
+	let highlightContainer = container.children[1] as PIXI.Container | undefined; // 渲染 highlight 的背景
+	let highlightBackgroundGraphics = container.children[2]
+		?.children?.[0] as PIXI.Graphics; // 渲染 highlight 的背景
+	let highlightStrokeContainer = container.children[2]
 		?.children?.[1] as PIXI.Container; // 渲染 highlight 的描边
 	let highlightBackgroundMaskContainer = container
-		.children[2] as PIXI.Container; // 渲染 highlight 的背景遮罩
+		.children[3] as PIXI.Container; // 渲染 highlight 的描边遮罩
 	if (!highlightContainer) {
 		highlightContainer = new PIXI.Container();
+
+		const highlightBaseImageContainer = new PIXI.Container();
+		highlightBaseImageSprite = new PIXI.Sprite(currentImageTexture);
+		highlightBaseImageContainer.addChild(highlightBaseImageSprite);
 
 		const highlightMaskContentContainer = new PIXI.Container();
 		highlightBackgroundGraphics = new PIXI.Graphics();
@@ -728,11 +741,16 @@ export const renderUpdateHighlightElementPropsAction = (
 
 		highlightBackgroundMaskContainer = new PIXI.Container();
 
+		highlightBaseImageContainer.setMask({
+			mask: highlightBackgroundMaskContainer,
+		});
+
 		highlightMaskContentContainer.setMask({
 			mask: highlightBackgroundMaskContainer,
 			inverse: true,
 		});
 
+		container.addChild(highlightBaseImageContainer);
 		container.addChild(highlightContainer);
 		container.addChild(highlightMaskContentContainer);
 		container.addChild(highlightBackgroundMaskContainer);
@@ -805,7 +823,7 @@ export const renderUpdateHighlightAction = (
 		return;
 	}
 
-	const highlightBackgroundGraphics = container.children[1]?.children?.[0] as
+	const highlightBackgroundGraphics = container.children[2]?.children?.[0] as
 		| PIXI.Graphics
 		| undefined; // 渲染 highlight 的背景遮罩
 	if (!highlightBackgroundGraphics) {

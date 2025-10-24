@@ -684,6 +684,7 @@ export const updateWatermarkSpriteAction = async (
 export const updateHighlightElementAction = async (
 	renderWorker: Worker | undefined,
 	canvasContainerMapRef: RefObject<Map<string, Container>>,
+	currentImageTextureRef: RefObject<Texture | undefined>,
 	highlightElementMapRef: RefObject<Map<string, HighlightElement>>,
 	highlightContainerKey: string,
 	highlightElementId: string,
@@ -716,6 +717,7 @@ export const updateHighlightElementAction = async (
 		} else {
 			renderUpdateHighlightElementPropsAction(
 				canvasContainerMapRef,
+				currentImageTextureRef,
 				highlightElementMapRef,
 				highlightContainerKey,
 				highlightElementId,
