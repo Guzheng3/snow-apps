@@ -519,6 +519,8 @@ export const handleOcrDetect = async (
 		imageLayerAction,
 		drawLayerAction,
 		ignoreStyle,
+		true,
+		INIT_CONTAINER_KEY,
 	);
 	if (!imageCanvas) {
 		return;
