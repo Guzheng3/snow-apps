@@ -2317,7 +2317,7 @@ const FixedContentCoreInner: React.FC<{
 			<div className="fixed-image-container-content">
 				<OcrResult
 					actionRef={ocrResultActionRef}
-					zIndex={1}
+					zIndex={zIndexs.Draw_OcrResult}
 					onWheel={onWheel}
 					onContextMenu={handleContextMenu}
 					disabled={disabled || getSelectTextMode(fixedContentType) !== "ocr"}
