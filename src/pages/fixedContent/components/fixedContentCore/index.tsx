@@ -748,6 +748,8 @@ const FixedContentCoreInner: React.FC<{
 				!params.ocrResult
 			) {
 				imageOcrSignRef.current = false;
+			} else {
+				imageOcrSignRef.current = true;
 			}
 
 			const scaleFactor = await getCurrentWindow().scaleFactor();
