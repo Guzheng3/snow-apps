@@ -7,8 +7,8 @@ import { appError } from "@/utils/log";
 export const getUrl = (url: string, params?: Record<string, any>) => {
 	let baseUrl: string;
 	if (process.env.NODE_ENV === "development") {
-		// baseUrl = 'http://127.0.0.1:5101/';
-		baseUrl = "https://snowshot.top/";
+		baseUrl = "http://127.0.0.1:5101/";
+		// baseUrl = "https://snowshot.top/";
 		// baseUrl = 'http://120.79.232.67/';
 	} else {
 		baseUrl = "https://snowshot.top/";

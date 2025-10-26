@@ -65,10 +65,6 @@ import type {
 	CommonKeyEventValue,
 } from "@/types/core/commonKeyEvent";
 import { DrawState } from "@/types/draw";
-import {
-	TranslationDomain,
-	TranslationType,
-} from "@/types/servies/translation";
 import { ImageFormat } from "@/types/utils/file";
 import { getConfigDirPath } from "@/utils/environment";
 import { appError, appWarn, formatErrorDetails } from "@/utils/log";
@@ -277,33 +273,13 @@ const AppSettingsContextProviderCore: React.FC<{
 					chatModel:
 						typeof newSettings?.chatModel === "string"
 							? newSettings.chatModel
-							: (prevSettings?.chatModel ?? "deepseek-reasoner"),
-					translationType:
-						typeof newSettings?.translationType === "number" ||
-						typeof newSettings?.translationType === "string"
-							? newSettings.translationType
-							: (prevSettings?.translationType ?? TranslationType.Youdao),
-					translationDomain:
-						typeof newSettings?.translationDomain === "string"
-							? newSettings.translationDomain
-							: (prevSettings?.translationDomain ?? TranslationDomain.General),
-					targetLanguage:
-						typeof newSettings?.targetLanguage === "string"
-							? newSettings.targetLanguage
-							: (prevSettings?.targetLanguage ?? ""),
-					ocrTranslateAutoReplace:
-						typeof newSettings?.ocrTranslateAutoReplace === "boolean"
-							? newSettings.ocrTranslateAutoReplace
-							: (prevSettings?.ocrTranslateAutoReplace ?? true),
-					ocrTranslateShowProcess:
-						typeof newSettings?.ocrTranslateShowProcess === "boolean"
-							? newSettings.ocrTranslateShowProcess
-							: (prevSettings?.ocrTranslateShowProcess ??
-								defaultAppSettingsData[group].ocrTranslateShowProcess),
-					ocrTranslateKeepLayout:
-						typeof newSettings?.ocrTranslateKeepLayout === "boolean"
-							? newSettings.ocrTranslateKeepLayout
-							: (prevSettings?.ocrTranslateKeepLayout ?? false),
+							: (prevSettings?.chatModel ??
+								defaultAppSettingsData[group].chatModel),
+					chatModelEnableThinking:
+						typeof newSettings?.chatModelEnableThinking === "boolean"
+							? newSettings.chatModelEnableThinking
+							: (prevSettings?.chatModelEnableThinking ??
+								defaultAppSettingsData[group].chatModelEnableThinking),
 					colorPickerColorFormatIndex:
 						typeof newSettings?.colorPickerColorFormatIndex === "number"
 							? newSettings.colorPickerColorFormatIndex
@@ -759,10 +735,11 @@ const AppSettingsContextProviderCore: React.FC<{
 					| undefined;
 
 				settings = {
-					chatPrompt:
-						typeof newSettings?.chatPrompt === "string"
-							? newSettings.chatPrompt
-							: (prevSettings?.chatPrompt ?? ""),
+					translationSystemPrompt:
+						typeof newSettings?.translationSystemPrompt === "string"
+							? newSettings.translationSystemPrompt
+							: (prevSettings?.translationSystemPrompt ??
+								defaultAppSettingsData[group].translationSystemPrompt),
 					translationApiConfigList: Array.isArray(
 						newSettings?.translationApiConfigList,
 					)
@@ -777,6 +754,27 @@ const AppSettingsContextProviderCore: React.FC<{
 							}))
 						: (prevSettings?.translationApiConfigList ??
 							defaultAppSettingsData[group].translationApiConfigList),
+					sourceLanguage:
+						typeof newSettings?.sourceLanguage === "string"
+							? newSettings.sourceLanguage
+							: (prevSettings?.sourceLanguage ??
+								defaultAppSettingsData[group].sourceLanguage),
+					targetLanguage:
+						typeof newSettings?.targetLanguage === "string"
+							? newSettings.targetLanguage
+							: (prevSettings?.targetLanguage ??
+								defaultAppSettingsData[group].targetLanguage),
+					translationDomain:
+						typeof newSettings?.translationDomain === "string"
+							? newSettings.translationDomain
+							: (prevSettings?.translationDomain ??
+								defaultAppSettingsData[group].translationDomain),
+					translationType:
+						typeof newSettings?.translationType === "number" ||
+						typeof newSettings?.translationType === "string"
+							? newSettings.translationType
+							: (prevSettings?.translationType ??
+								defaultAppSettingsData[group].translationType),
 				};
 			} else if (group === AppSettingsGroup.FunctionScreenshot) {
 				newSettings = newSettings as AppSettingsData[typeof group];

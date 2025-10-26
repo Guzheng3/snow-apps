@@ -69,13 +69,8 @@ export const defaultAppSettingsData: AppSettingsData = {
 	},
 	[AppSettingsGroup.Cache]: {
 		menuCollapsed: false,
-		chatModel: "deepseek-reasoner",
-		translationType: TranslationType.Youdao,
-		translationDomain: TranslationDomain.General,
-		targetLanguage: "",
-		ocrTranslateAutoReplace: true,
-		ocrTranslateKeepLayout: false,
-		ocrTranslateShowProcess: false,
+		chatModel: "qwen-flash",
+		chatModelEnableThinking: false,
 		colorPickerColorFormatIndex: 0,
 		prevImageFormat: ImageFormat.PNG,
 		prevSelectRect: {
@@ -125,8 +120,12 @@ export const defaultAppSettingsData: AppSettingsData = {
 		chatApiConfigList: [],
 	},
 	[AppSettingsGroup.FunctionTranslation]: {
-		chatPrompt: defaultTranslationPrompt,
+		translationSystemPrompt: defaultTranslationPrompt,
 		translationApiConfigList: [],
+		sourceLanguage: "auto",
+		targetLanguage: "zh-CHS",
+		translationDomain: TranslationDomain.General,
+		translationType: TranslationType.Youdao,
 	},
 	[AppSettingsGroup.FunctionScreenshot]: {
 		findChildrenElements: true,

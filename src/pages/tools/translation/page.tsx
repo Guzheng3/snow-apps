@@ -73,14 +73,24 @@ const TranslationCore = () => {
 			return;
 		}
 
-		copyText(translatorActionRef.current.getTranslatedContentRef());
+		copyText(
+			translatorActionRef.current
+				.getTranslatedContent()
+				.map((item) => item.content)
+				.join("\n"),
+		);
 	}, []);
 	const onCopyAndHide = useCallback(() => {
 		if (!translatorActionRef.current) {
 			return;
 		}
 
-		copyTextAndHide(translatorActionRef.current.getTranslatedContentRef());
+		copyTextAndHide(
+			translatorActionRef.current
+				.getTranslatedContent()
+				.map((item) => item.content)
+				.join("\n"),
+		);
 	}, []);
 
 	useHotkeys(

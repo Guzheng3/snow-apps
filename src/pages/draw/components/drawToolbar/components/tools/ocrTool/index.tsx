@@ -1,22 +1,15 @@
 import { Button } from "antd";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useIntl } from "react-intl";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { OcrTranslateIcon } from "@/components/icons";
-import { useStateRef } from "@/hooks/useStateRef";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import {
-	DrawEvent,
-	type DrawEventParams,
-	DrawEventPublisher,
-} from "@/pages/draw/extra";
-import type { OcrDetectResult } from "@/types/commands/ocr";
+	type AppOcrResult,
+	OcrResultType,
+} from "@/pages/fixedContent/components/ocrResult";
 import { DrawState } from "@/types/draw";
 import { SubTools } from "../../subTools";
-import {
-	ModalTranslator,
-	type ModalTranslatorActionType,
-} from "./components/modalTranslator";
 
 export const isOcrTool = (drawState: DrawState) => {
 	return (
@@ -25,50 +18,35 @@ export const isOcrTool = (drawState: DrawState) => {
 };
 
 const OcrTool: React.FC<{
-	onReplace: (result: OcrDetectResult, ignoreScale?: boolean) => void;
-}> = ({ onReplace }) => {
+	onSwitchOcrResult: (ocrResultType: OcrResultType) => void;
+	onTranslate: () => void;
+	currentOcrResult:
+		| (AppOcrResult & { ocrResultType: OcrResultType })
+		| undefined;
+	ocrResult: AppOcrResult | undefined;
+	translatedOcrResult: AppOcrResult | undefined;
+	translateLoading: boolean;
+}> = ({
+	onSwitchOcrResult,
+	onTranslate,
+	currentOcrResult,
+	ocrResult,
+	translatedOcrResult,
+	translateLoading,
+}) => {
 	const intl = useIntl();
 
-	const modalTranslatorActionRef = useRef<ModalTranslatorActionType>(undefined);
-
 	const [enabled, setEnabled] = useState(false);
-	const [ocrResult, setOcrResult, ocrResultRef] = useStateRef<
-		OcrDetectResult | undefined
-	>(undefined);
-	const getOcrResult = useCallback(() => {
-		return ocrResultRef.current;
-	}, [ocrResultRef]);
 
-	const [getDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
 	useStateSubscriber(
 		DrawStatePublisher,
-		useCallback(
-			(drawState: DrawState) => {
-				if (isOcrTool(drawState)) {
-					setEnabled(true);
-				} else {
-					setEnabled(false);
-					setOcrResult(undefined);
-				}
-			},
-			[setOcrResult],
-		),
-	);
-	useStateSubscriber(
-		DrawEventPublisher,
-		useCallback(
-			(drawEvent: DrawEventParams) => {
-				if (drawEvent?.event === DrawEvent.OcrDetect) {
-					setOcrResult(drawEvent.params.result);
-
-					// 自动进行翻译
-					if (getDrawState() === DrawState.OcrTranslate) {
-						modalTranslatorActionRef.current?.startTranslate();
-					}
-				}
-			},
-			[getDrawState, setOcrResult],
-		),
+		useCallback((drawState: DrawState) => {
+			if (isOcrTool(drawState)) {
+				setEnabled(true);
+			} else {
+				setEnabled(false);
+			}
+		}, []),
 	);
 
 	if (!enabled) {
@@ -76,27 +54,35 @@ const OcrTool: React.FC<{
 	}
 
 	return (
-		<>
-			<SubTools
-				buttons={[
-					<Button
-						disabled={!ocrResult}
-						onClick={() => {
-							modalTranslatorActionRef.current?.startTranslate();
-						}}
-						icon={<OcrTranslateIcon />}
-						title={intl.formatMessage({ id: "draw.ocrDetect.translate" })}
-						type={"text"}
-						key="translate"
-					/>,
-				]}
-			/>
-			<ModalTranslator
-				actionRef={modalTranslatorActionRef}
-				getOcrResult={getOcrResult}
-				onReplace={onReplace}
-			/>
-		</>
+		<SubTools
+			buttons={[
+				<Button
+					disabled={!currentOcrResult}
+					loading={translateLoading}
+					onClick={() => {
+						if (ocrResult) {
+							if (translatedOcrResult) {
+								onSwitchOcrResult(
+									currentOcrResult?.ocrResultType === OcrResultType.Translated
+										? OcrResultType.Ocr
+										: OcrResultType.Translated,
+								);
+							} else {
+								onTranslate();
+							}
+						}
+					}}
+					type={
+						currentOcrResult?.ocrResultType === OcrResultType.Translated
+							? "primary"
+							: "text"
+					}
+					icon={<OcrTranslateIcon />}
+					title={intl.formatMessage({ id: "draw.ocrDetect.translate" })}
+					key="translate"
+				/>,
+			]}
+		/>
 	);
 };
 

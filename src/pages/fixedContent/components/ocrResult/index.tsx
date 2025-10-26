@@ -18,8 +18,10 @@ import { PLUGIN_ID_RAPID_OCR } from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
+import { useTranslationRequest } from "@/core/translations";
 import { releaseOcrSession } from "@/functions/ocr";
 import { useHotkeysApp } from "@/hooks/useHotkeysApp";
+import { useStateRef } from "@/hooks/useStateRef";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import {
 	type CaptureBoundingBoxInfo,
@@ -63,17 +65,20 @@ export type OcrResultActionType = {
 	setEnable: (enable: boolean | ((enable: boolean) => boolean)) => void;
 	setScale: (scale: number) => void;
 	clear: () => void;
-	updateOcrTextElements: (
-		ocrResult: OcrDetectResult,
-		ignoreScale?: boolean,
-	) => void;
 	getOcrResult: () => AppOcrResult | undefined;
 	getSelectedText: () => string | undefined;
+	startTranslate: () => void;
+	switchOcrResult: (ocrResultType: OcrResultType) => void;
 };
 
 export const covertOcrResultToText = (ocrResult: OcrDetectResult) => {
 	return ocrResult.text_blocks.map((block) => block.text).join("\n");
 };
+
+export enum OcrResultType {
+	Ocr = "ocr",
+	Translated = "translated",
+}
 
 export const OcrResult: React.FC<{
 	zIndex: number;
@@ -86,7 +91,13 @@ export const OcrResult: React.FC<{
 	onMouseDown?: (event: React.MouseEvent<HTMLDivElement>) => void;
 	onMouseMove?: (event: React.MouseEvent<HTMLDivElement>) => void;
 	onMouseUp?: (event: React.MouseEvent<HTMLDivElement>) => void;
+	onCurrentOcrResultChange?: (
+		ocrResult: (AppOcrResult & { ocrResultType: OcrResultType }) | undefined,
+	) => void;
+	onTranslatedResultChange?: (ocrResult: AppOcrResult | undefined) => void;
+	onOcrResultChange?: (ocrResult: AppOcrResult | undefined) => void;
 	style?: React.CSSProperties;
+	onTranslateLoading?: (loading: boolean) => void;
 }> = ({
 	zIndex,
 	actionRef,
@@ -99,6 +110,10 @@ export const OcrResult: React.FC<{
 	onMouseMove,
 	onMouseUp,
 	style,
+	onTranslatedResultChange,
+	onOcrResultChange,
+	onCurrentOcrResultChange,
+	onTranslateLoading,
 }) => {
 	const intl = useIntl();
 	const { token } = theme.useToken();
@@ -112,7 +127,10 @@ export const OcrResult: React.FC<{
 
 	const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
 
-	const currentOcrResultRef = useRef<AppOcrResult | undefined>(undefined);
+	const [currentOcrResult, setCurrentOcrResult, currentOcrResultRef] =
+		useStateRef<(AppOcrResult & { ocrResultType: OcrResultType }) | undefined>(
+			undefined,
+		);
 
 	const enableRef = useRef<boolean>(false);
 	const setEnable = useCallback(
@@ -141,7 +159,14 @@ export const OcrResult: React.FC<{
 	const selectRectRef = useRef<ElementRect>(undefined);
 	const monitorScaleFactorRef = useRef<number>(undefined);
 	const updateOcrTextElements = useCallback(
-		async (ocrResult: OcrDetectResult, ignoreScale?: boolean) => {
+		async (
+			ocrResult: OcrDetectResult,
+			ignoreScale: boolean,
+			ocrResultType: OcrResultType,
+			options?: {
+				ignoreResetValue?: boolean;
+			},
+		) => {
 			const monitorScaleFactor = monitorScaleFactorRef.current;
 			const selectRect = selectRectRef.current;
 
@@ -149,10 +174,11 @@ export const OcrResult: React.FC<{
 				return;
 			}
 
-			currentOcrResultRef.current = {
+			setCurrentOcrResult({
 				result: ocrResult,
-				ignoreScale: ignoreScale ?? false,
-			};
+				ignoreScale: ignoreScale,
+				ocrResultType: ocrResultType,
+			});
 
 			const transformScale = 1 / monitorScaleFactor;
 
@@ -166,7 +192,7 @@ export const OcrResult: React.FC<{
 				return;
 			}
 
-			if (containerElementRef.current) {
+			if (containerElementRef.current && !options?.ignoreResetValue) {
 				containerElementRef.current.style.opacity = "0";
 			}
 
@@ -321,7 +347,7 @@ export const OcrResult: React.FC<{
 				containerElementRef.current.style.opacity = "1";
 			}
 		},
-		[token.colorBgContainer, token.colorText],
+		[token.colorBgContainer, token.colorText, setCurrentOcrResult],
 	);
 	const setScale = useCallback((scale: number) => {
 		if (
@@ -426,14 +452,24 @@ export const OcrResult: React.FC<{
 		[ocrDetectWithSharedBufferAction],
 	);
 
-	/** 请求 ID，避免 OCR 检测中切换工具后任然触发 OCR 结果 */
+	/** 请求 ID，避免 OCR 检测中切换工具后仍然触发 OCR 结果 */
 	const requestIdRef = useRef<number>(0);
 	const { isReady } = usePluginServiceContext();
+
+	const [ocrResult, setOcrResult, ocrResultRef] = useStateRef<
+		AppOcrResult | undefined
+	>(undefined);
+	const [translatorOcrResult, setTranslatorOcrResult, translatorOcrResultRef] =
+		useStateRef<AppOcrResult | undefined>(undefined);
 	const initDrawCanvas = useCallback(
 		async (params: OcrResultInitDrawCanvasParams) => {
 			if (!isReady?.(PLUGIN_ID_RAPID_OCR)) {
 				return;
 			}
+
+			setCurrentOcrResult(undefined);
+			setOcrResult(undefined);
+			setTranslatorOcrResult(undefined);
 
 			requestIdRef.current++;
 			const currentRequestId = requestIdRef.current;
@@ -479,7 +515,15 @@ export const OcrResult: React.FC<{
 			}
 
 			selectRectRef.current = selectRect;
-			updateOcrTextElements(ocrResult.result, ocrResult.ignoreScale);
+			setOcrResult({
+				result: ocrResult.result,
+				ignoreScale: ocrResult.ignoreScale,
+			});
+			updateOcrTextElements(
+				ocrResult.result,
+				ocrResult.ignoreScale,
+				OcrResultType.Ocr,
+			);
 			onOcrDetect?.(ocrResult.result);
 		},
 		[
@@ -488,6 +532,9 @@ export const OcrResult: React.FC<{
 			onOcrDetect,
 			updateOcrTextElements,
 			ocrDetectByCanvas,
+			setOcrResult,
+			setTranslatorOcrResult,
+			setCurrentOcrResult,
 		],
 	);
 
@@ -496,6 +543,10 @@ export const OcrResult: React.FC<{
 			if (!isReady?.(PLUGIN_ID_RAPID_OCR)) {
 				return;
 			}
+
+			setCurrentOcrResult(undefined);
+			setOcrResult(undefined);
+			setTranslatorOcrResult(undefined);
 
 			const { canvas } = params;
 
@@ -523,7 +574,11 @@ export const OcrResult: React.FC<{
 				return;
 			}
 
-			updateOcrTextElements(ocrResult);
+			setOcrResult({
+				result: ocrResult,
+				ignoreScale: false,
+			});
+			updateOcrTextElements(ocrResult, false, OcrResultType.Ocr);
 			onOcrDetect?.(ocrResult);
 		},
 		[
@@ -532,6 +587,9 @@ export const OcrResult: React.FC<{
 			onOcrDetect,
 			updateOcrTextElements,
 			ocrDetectByCanvas,
+			setOcrResult,
+			setTranslatorOcrResult,
+			setCurrentOcrResult,
 		],
 	);
 
@@ -542,52 +600,6 @@ export const OcrResult: React.FC<{
 			?.toString()
 			.trim();
 	}, []);
-
-	useImperativeHandle(
-		actionRef,
-		() => ({
-			init: async (
-				params: OcrResultInitDrawCanvasParams | OcrResultInitImageParams,
-			) => {
-				console.log("init", params);
-
-				const hideLoading = message.loading(
-					<FormattedMessage id="draw.ocrLoading" />,
-					60,
-				);
-
-				if ("selectRect" in params) {
-					await initDrawCanvas(params);
-				} else if ("canvas" in params) {
-					await initImage(params);
-				}
-
-				hideLoading();
-			},
-			setEnable,
-			setScale,
-			clear: () => {
-				setTextContainerContent("");
-				if (textContainerElementRef.current) {
-					textContainerElementRef.current.innerHTML = "";
-				}
-			},
-			updateOcrTextElements,
-			getOcrResult: () => {
-				return currentOcrResultRef.current;
-			},
-			getSelectedText,
-		}),
-		[
-			getSelectedText,
-			initDrawCanvas,
-			initImage,
-			message,
-			setEnable,
-			setScale,
-			updateOcrTextElements,
-		],
-	);
 
 	const menuRef = useRef<Menu>(undefined);
 
@@ -796,6 +808,164 @@ export const OcrResult: React.FC<{
 		},
 		[],
 	);
+
+	const { requestTranslate } = useTranslationRequest(
+		useMemo(() => {
+			return {
+				onComplete: (result, requestId) => {
+					if (requestId !== requestIdRef.current || !ocrResultRef.current) {
+						return;
+					}
+
+					const translatorOcrResult = {
+						ignoreScale: ocrResultRef.current.ignoreScale,
+						result: {
+							...ocrResultRef.current.result,
+							text_blocks: ocrResultRef.current.result.text_blocks.map(
+								(block, index) => ({
+									...block,
+									text: result[index]?.content ?? block.text,
+								}),
+							),
+						},
+					};
+
+					setTranslatorOcrResult(translatorOcrResult);
+					updateOcrTextElements(
+						translatorOcrResult.result,
+						translatorOcrResult.ignoreScale,
+						OcrResultType.Translated,
+					);
+				},
+			};
+		}, [setTranslatorOcrResult, ocrResultRef, updateOcrTextElements]),
+	);
+
+	const requestTranslateLoadingIdRef = useRef<number | undefined>(undefined);
+	useImperativeHandle(
+		actionRef,
+		() => ({
+			init: async (
+				params: OcrResultInitDrawCanvasParams | OcrResultInitImageParams,
+			) => {
+				const hideLoading = message.loading(
+					<FormattedMessage id="draw.ocrLoading" />,
+					20,
+				);
+
+				if ("selectRect" in params) {
+					await initDrawCanvas(params);
+				} else if ("canvas" in params) {
+					await initImage(params);
+				}
+
+				hideLoading();
+			},
+			setEnable,
+			setScale,
+			clear: () => {
+				setTextContainerContent("");
+				if (textContainerElementRef.current) {
+					textContainerElementRef.current.innerHTML = "";
+				}
+			},
+			getOcrResult: () => {
+				return currentOcrResultRef.current;
+			},
+			getSelectedText,
+			startTranslate: async () => {
+				if (
+					!ocrResultRef.current ||
+					ocrResultRef.current.result.text_blocks.length === 0
+				) {
+					message.error(intl.formatMessage({ id: "draw.ocrResultEmpty" }));
+					return;
+				}
+
+				if (
+					requestTranslateLoadingIdRef.current &&
+					requestTranslateLoadingIdRef.current === requestIdRef.current
+				) {
+					return;
+				}
+
+				setTranslatorOcrResult(undefined);
+
+				requestTranslateLoadingIdRef.current = requestIdRef.current;
+				const hideLoading = message.loading(
+					intl.formatMessage({ id: "draw.ocrResult.translating" }),
+					20,
+				);
+				onTranslateLoading?.(true);
+
+				try {
+					await requestTranslate(
+						ocrResultRef.current.result.text_blocks.map((block) => block.text),
+						requestIdRef.current,
+					);
+				} catch (error) {
+					appError("[OcrResult.startTranslate] requestTranslate error", error);
+					message.error(
+						intl.formatMessage({ id: "draw.ocrResult.translateError" }),
+					);
+				}
+
+				hideLoading();
+				requestTranslateLoadingIdRef.current = undefined;
+				onTranslateLoading?.(false);
+			},
+			switchOcrResult: (ocrResultType: OcrResultType) => {
+				if (ocrResultType === OcrResultType.Ocr && ocrResultRef.current) {
+					updateOcrTextElements(
+						ocrResultRef.current.result,
+						ocrResultRef.current.ignoreScale,
+						OcrResultType.Ocr,
+						{
+							ignoreResetValue: true,
+						},
+					);
+				} else if (
+					ocrResultType === OcrResultType.Translated &&
+					translatorOcrResultRef.current
+				) {
+					updateOcrTextElements(
+						translatorOcrResultRef.current.result,
+						translatorOcrResultRef.current.ignoreScale,
+						OcrResultType.Translated,
+						{
+							ignoreResetValue: true,
+						},
+					);
+				}
+			},
+		}),
+		[
+			getSelectedText,
+			initDrawCanvas,
+			initImage,
+			message,
+			setEnable,
+			setScale,
+			ocrResultRef,
+			requestTranslate,
+			setTranslatorOcrResult,
+			intl,
+			currentOcrResultRef,
+			translatorOcrResultRef,
+			updateOcrTextElements,
+			onTranslateLoading,
+		],
+	);
+
+	useEffect(() => {
+		onOcrResultChange?.(ocrResult);
+	}, [ocrResult, onOcrResultChange]);
+	useEffect(() => {
+		onTranslatedResultChange?.(translatorOcrResult);
+	}, [translatorOcrResult, onTranslatedResultChange]);
+	useEffect(() => {
+		onCurrentOcrResultChange?.(currentOcrResult);
+	}, [currentOcrResult, onCurrentOcrResultChange]);
 
 	const enableDrag = !!(onMouseDown && onMouseMove && onMouseUp);
 

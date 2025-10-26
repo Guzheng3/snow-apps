@@ -134,8 +134,17 @@ export const SubTools: React.FC<{
 		}, []),
 	);
 
+	const onDoubleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+		e.stopPropagation();
+		e.preventDefault();
+	}, []);
+
 	return (
-		<div className="sub-tools-container" ref={subToolsContainerRef}>
+		<div
+			className="sub-tools-container"
+			ref={subToolsContainerRef}
+			onDoubleClick={onDoubleClick}
+		>
 			<div className="sub-tools" ref={subToolsRef}>
 				<div
 					className="drag-button"
@@ -182,6 +191,9 @@ export const SubTools: React.FC<{
 
                 .sub-tools :global(.ant-btn) :global(.ant-btn-icon) {
                     font-size: 24px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
                 }
             `}</style>
 		</div>

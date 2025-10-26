@@ -18,7 +18,7 @@ export interface TranslateParams {
 	/**
 	 * 需要翻译的内容
 	 */
-	content: string;
+	content: string[];
 	/**
 	 * 源语言
 	 */
@@ -41,7 +41,9 @@ export interface TranslateData {
 	/**
 	 * 翻译后的内容
 	 */
-	delta_content: string;
+	results: {
+		content: string;
+	}[];
 	/**
 	 * 源语言
 	 */
@@ -51,15 +53,6 @@ export interface TranslateData {
 	 */
 	to?: string;
 }
-
-export type GoogleWebTranslateResult = {
-	sentences: {
-		trans: string;
-		orig: string;
-	}[];
-	src: string;
-	confidence: number;
-};
 
 export type TranslationTypeOption = {
 	type: TranslationType;

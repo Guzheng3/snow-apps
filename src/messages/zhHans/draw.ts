@@ -197,4 +197,7 @@ export const draw = {
 	"draw.processImage.rotateLeft": "逆时针 90°",
 	"draw.processImage.horizontalFlip": "水平翻转",
 	"draw.processImage.verticalFlip": "垂直翻转",
+	"draw.ocrResultEmpty": "文本识别结果为空",
+	"draw.ocrResult.translating": "翻译中",
+	"draw.ocrResult.translateError": "翻译失败",
 };

@@ -22,6 +22,7 @@ import {
 	Card,
 	Drawer,
 	Select,
+	type SelectProps,
 	Space,
 	Spin,
 	Typography,
@@ -52,7 +53,7 @@ import remarkGfm from "remark-gfm";
 import urlJoin from "url-join";
 import { EventListenerContext } from "@/components/eventListener";
 import { HotkeysMenu } from "@/components/hotkeysMenu";
-import { BotIcon, SidebarIcon } from "@/components/icons";
+import { BotIcon, SidebarIcon, ThinkingIcon } from "@/components/icons";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppContext } from "@/contexts/appContext";
 import {
@@ -223,27 +224,13 @@ const MarkdownContent: React.FC<{
 };
 
 const modelRequest = XRequest({
-	baseURL: getUrl("/api/v1/chat/chat/completions"),
+	baseURL: getUrl("/api/v1/chat/completions"),
 	fetch: appFetch,
 });
 
 type ChatModelConfig = ChatModel & {
 	customConfig?: ChatApiConfig;
 };
-
-const defaultModel = "deepseek-reasoner";
-const defaultModles: ChatModelConfig[] = [
-	{
-		model: "deepseek-chat",
-		name: "DeepSeek-V3",
-		thinking: false,
-	},
-	{
-		model: "deepseek-reasoner",
-		name: "DeepSeek-R1",
-		thinking: true,
-	},
-];
 
 const fliterErrorMessages = (messages: BubbleDataType[] | undefined) => {
 	if (!messages) {
@@ -301,7 +288,7 @@ const fliterErrorMessages = (messages: BubbleDataType[] | undefined) => {
 	return finalMessages;
 };
 
-const CUSTOM_MODEL_PREFIX = "snow_shot_custom_";
+export const CUSTOM_MODEL_PREFIX = "snow_shot_custom_";
 
 const Chat = () => {
 	const intl = useIntl();
@@ -325,26 +312,34 @@ const Chat = () => {
 	const [onlineModelConfigList, setOnlineModelConfigList] = useState<
 		ChatModel[]
 	>([]);
-	const [supportedModels, setSupportedModels, supportedModelsRef] =
-		useStateRef<ChatModelConfig[]>(defaultModles);
-	const [selectedModel, setSelectedModel, selectedModelRef] =
-		useStateRef<string>(defaultModel);
+	const [supportedModels, setSupportedModels, supportedModelsRef] = useStateRef<
+		ChatModelConfig[]
+	>([]);
+	const [selectedModel, setSelectedModel, selectedModelRef] = useStateRef<
+		string | undefined
+	>(undefined);
+	const [enableThinking, setEnableThinking, enableThinkingRef] =
+		useStateRef<boolean>(false);
 	const [sendQueueMessages, setSendQueueMessages, sendQueueMessagesRef] =
 		useStateRef<SendQueueMessage[]>([]);
 
 	const { updateAppSettings } = useContext(AppSettingsActionContext);
 	const { currentTheme } = useContext(AppContext);
-	const [getAppSettings] = useStateSubscriber(
-		AppSettingsPublisher,
+	const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
+	useAppSettingsLoad(
 		useCallback(
 			(settings: AppSettingsData) => {
 				setSelectedModel(settings[AppSettingsGroup.Cache].chatModel);
+				setEnableThinking(
+					settings[AppSettingsGroup.Cache].chatModelEnableThinking,
+				);
 				setCustomModelConfigList(
 					settings[AppSettingsGroup.FunctionChat].chatApiConfigList,
 				);
 			},
-			[setSelectedModel],
+			[setSelectedModel, setEnableThinking],
 		),
+		true,
 	);
 
 	const [
@@ -364,7 +359,7 @@ const Chat = () => {
 				return;
 			}
 
-			setOnlineModelConfigList(res.data ?? defaultModles);
+			setOnlineModelConfigList(res.data ?? []);
 		});
 	}, [setSupportedModelsLoading, supportedModelsLoadingRef]);
 
@@ -372,7 +367,7 @@ const Chat = () => {
 		setSupportedModels([
 			...customModelConfigList.map((item) => {
 				return {
-					model: `${CUSTOM_MODEL_PREFIX}${item.api_model}${item.support_thinking ? "_thinking" : ""}`,
+					model: `${CUSTOM_MODEL_PREFIX}${item.api_model}`,
 					name: item.model_name,
 					thinking: item.support_thinking,
 					customConfig: item,
@@ -428,6 +423,13 @@ const Chat = () => {
 		useMemo(() => {
 			return {
 				request: (input, callbacks) => {
+					if (!selectedModelRef.current) {
+						message.error(
+							intl.formatMessage({ id: "tools.chat.noSelectedModel" }),
+						);
+						return;
+					}
+
 					const inputMessages = input.messages?.slice(-20);
 					let newInputMessages = fliterErrorMessages(inputMessages);
 
@@ -507,8 +509,7 @@ const Chat = () => {
 								getAppSettings()[AppSettingsGroup.SystemChat].temperature,
 							max_tokens:
 								getAppSettings()[AppSettingsGroup.SystemChat].maxTokens,
-							enable_thinking:
-								customModelRequest?.config?.support_thinking ?? false,
+							enable_thinking: enableThinkingRef.current ?? false,
 							stream_options: {
 								include_usage: true,
 							},
@@ -524,7 +525,14 @@ const Chat = () => {
 					);
 				},
 			};
-		}, [getAppSettings, getCustomModelRequest, selectedModelRef]);
+		}, [
+			getAppSettings,
+			getCustomModelRequest,
+			selectedModelRef,
+			intl,
+			message,
+			enableThinkingRef.current,
+		]);
 	const [agent] = useXAgent<BubbleDataType>(modelAgentConfig);
 	const loading = agent.isRequesting();
 
@@ -698,6 +706,44 @@ const Chat = () => {
 	}, [createNewSession, intl, message]);
 
 	const [openSession, setOpenSession] = useState(false);
+
+	const modelSelectOptions = useMemo<SelectProps["options"]>(() => {
+		const customOptions: SelectProps["options"] = [];
+		const officialOptions: SelectProps["options"] = [];
+		for (const item of supportedModels) {
+			if (item.customConfig) {
+				customOptions.push({
+					label: (
+						<ModelSelectLabel modelName={item.name} reasoner={item.thinking} />
+					),
+					value: item.model,
+				});
+			} else {
+				officialOptions.push({
+					label: (
+						<ModelSelectLabel modelName={item.name} reasoner={item.thinking} />
+					),
+					value: item.model,
+				});
+			}
+		}
+
+		return [
+			customOptions.length > 0
+				? {
+						label: <FormattedMessage id="tools.chat.custom" />,
+						options: customOptions,
+					}
+				: undefined,
+			officialOptions.length > 0
+				? {
+						label: <FormattedMessage id="tools.chat.official" />,
+						options: officialOptions,
+					}
+				: undefined,
+		].filter(Boolean) as SelectProps["options"];
+	}, [supportedModels]);
+
 	const chatHeader = (
 		<div className="chatHeader">
 			<Drawer
@@ -782,30 +828,48 @@ const Chat = () => {
 
 				<Select
 					value={selectedModel}
-					options={supportedModels.map((item) => ({
-						label: (
-							<ModelSelectLabel
-								modelName={item.name}
-								custom={!!item.customConfig}
-								reasoner={item.thinking}
-							/>
-						),
-						value: item.model,
-					}))}
+					options={modelSelectOptions}
 					variant="underlined"
 					disabled={loading}
 					onChange={(val) => {
-						setSelectedModel(val);
 						updateAppSettings(
 							AppSettingsGroup.Cache,
 							{ chatModel: val },
 							true,
 							true,
 							false,
+							true,
+							false,
 						);
 					}}
-					styles={{ popup: { root: { minWidth: 256 } } }}
+					styles={{ popup: { root: { minWidth: 200 } } }}
 					loading={supportedModelsLoading}
+				/>
+
+				<Button
+					type="text"
+					icon={
+						<ThinkingIcon
+							style={{
+								color: enableThinking
+									? token.colorPrimary
+									: token.colorTextDisabled,
+							}}
+						/>
+					}
+					className="chatHeaderThinkingButton"
+					onClick={() => {
+						updateAppSettings(
+							AppSettingsGroup.Cache,
+							{ chatModelEnableThinking: !enableThinkingRef.current },
+							true,
+							true,
+							false,
+							true,
+							false,
+						);
+					}}
+					title={intl.formatMessage({ id: "tools.chat.thinking" })}
 				/>
 			</Space>
 
@@ -1086,6 +1150,11 @@ const Chat = () => {
 	const userSendingRef = useRef<boolean>(false);
 	const onSenderSubmit = useCallback(
 		async (value: string, flowConfig?: ChatMessageFlowConfig) => {
+			if (!selectedModelRef.current) {
+				message.error(intl.formatMessage({ id: "tools.chat.noSelectedModel" }));
+				return;
+			}
+
 			if (!curSessionRef.current) {
 				await createNewSession();
 			}
@@ -1095,7 +1164,14 @@ const Chat = () => {
 			autoScrollRef.current = true;
 			newestMessage.current = undefined;
 		},
-		[curSessionRef, handleUserSubmit, createNewSession],
+		[
+			curSessionRef,
+			handleUserSubmit,
+			createNewSession,
+			selectedModelRef,
+			message,
+			intl,
+		],
 	);
 
 	useEffect(() => {
@@ -1383,7 +1459,10 @@ const Chat = () => {
                     font-size: 15px;
                 }
                 :global(.chatHeaderHeaderButton) {
-                    font-size: 18px !important;
+                    font-size: 1.4em !important;
+                }
+                :global(.chatHeaderThinkingButton) {
+                    font-size: 1.4em !important;
                 }
                 :global(.conversations) {
                     box-sizing: border-box;

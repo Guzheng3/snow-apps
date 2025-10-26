@@ -71,36 +71,3 @@ export const convertLanguageCodeToDeepLTargetLanguageCode = (
 			return "EN-US";
 	}
 };
-
-export const convertLanguageCodeToGoogleLanguageCode = (
-	languageCode: string,
-): string => {
-	switch (languageCode) {
-		case "en":
-			return "en";
-		case "zh-CHS":
-			return "zh-CN";
-		case "zh-CHT":
-			return "zh-TW";
-		case "es":
-			return "es";
-		case "fr":
-			return "fr";
-		case "ar":
-			return "ar";
-		case "de":
-			return "de";
-		case "it":
-			return "it";
-		case "ja":
-			return "ja";
-		case "pt":
-			return "pt";
-		case "ru":
-			return "ru";
-		case "tr":
-			return "tr";
-		default:
-			return "auto";
-	}
-};

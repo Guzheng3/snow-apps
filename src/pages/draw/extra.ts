@@ -4,7 +4,6 @@ import Flatbush from "flatbush";
 import type { MonitorInfo } from "@/commands/core";
 import type { ImageLayerActionType } from "@/components/imageLayer";
 import { createPublisher } from "@/hooks/useStatePublisher";
-import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect, ImageBuffer } from "@/types/commands/screenshot";
 import { MousePosition } from "@/utils/mousePosition";
 import { ScreenshotType } from "@/utils/types";
@@ -97,7 +96,6 @@ export const ScreenshotTypePublisher = createPublisher<{
 });
 
 export enum DrawEvent {
-	OcrDetect = 0,
 	ScrollScreenshot = 1,
 	MoveCursor = 2,
 	/** 选区所在的 monitor 发生变化，可能相同值重复触发 */
@@ -111,12 +109,6 @@ export enum DrawEvent {
 }
 
 export type DrawEventParams =
-	| {
-			event: DrawEvent.OcrDetect;
-			params: {
-				result: OcrDetectResult;
-			};
-	  }
 	| {
 			event: DrawEvent.ScrollScreenshot;
 			params: undefined;
