@@ -1,4 +1,4 @@
-import { ProForm, ProFormSelect } from "@ant-design/pro-components";
+import { ProForm } from "@ant-design/pro-components";
 import { Col, Row, Select, theme } from "antd";
 import { FormattedMessage } from "react-intl";
 import {
