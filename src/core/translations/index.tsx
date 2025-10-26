@@ -53,6 +53,8 @@ export type TranslationServiceConfig = (
 };
 
 export const useTranslationRequest = (options?: {
+	/// 配置从 Cache 中加载
+	enableCacheConfig?: boolean;
 	onComplete?: (result: { content: string }[], requestId?: number) => void;
 	onDeltaContent?: (deltaContent: string) => void;
 }) => {
@@ -90,21 +92,41 @@ export const useTranslationRequest = (options?: {
 		useState<AppSettingsData[AppSettingsGroup.SystemChat]>();
 	const [translationConfig, setTranslationConfig] =
 		useState<AppSettingsData[AppSettingsGroup.FunctionTranslation]>();
+
 	useAppSettingsLoad(
 		useCallback(
 			(settings: AppSettingsData) => {
-				setTranslationDomain(
-					settings[AppSettingsGroup.FunctionTranslation].translationDomain,
-				);
-				setTranslationType(
-					settings[AppSettingsGroup.FunctionTranslation].translationType,
-				);
-				setSourceLanguage(
-					settings[AppSettingsGroup.FunctionTranslation].sourceLanguage,
-				);
-				setTargetLanguage(
-					settings[AppSettingsGroup.FunctionTranslation].targetLanguage,
-				);
+				if (options?.enableCacheConfig) {
+					setTranslationDomain(
+						settings[AppSettingsGroup.FunctionTranslationCache]
+							.cacheTranslationDomain,
+					);
+					setTranslationType(
+						settings[AppSettingsGroup.FunctionTranslationCache]
+							.cacheTranslationType,
+					);
+					setSourceLanguage(
+						settings[AppSettingsGroup.FunctionTranslationCache]
+							.cacheSourceLanguage,
+					);
+					setTargetLanguage(
+						settings[AppSettingsGroup.FunctionTranslationCache]
+							.cacheTargetLanguage,
+					);
+				} else {
+					setTranslationDomain(
+						settings[AppSettingsGroup.FunctionTranslation].translationDomain,
+					);
+					setTranslationType(
+						settings[AppSettingsGroup.FunctionTranslation].translationType,
+					);
+					setSourceLanguage(
+						settings[AppSettingsGroup.FunctionTranslation].sourceLanguage,
+					);
+					setTargetLanguage(
+						settings[AppSettingsGroup.FunctionTranslation].targetLanguage,
+					);
+				}
 
 				setChatApiConfigList(
 					settings[AppSettingsGroup.FunctionChat].chatApiConfigList,
@@ -122,6 +144,7 @@ export const useTranslationRequest = (options?: {
 				setTargetLanguage,
 				setTranslationDomain,
 				setTranslationType,
+				options?.enableCacheConfig,
 			],
 		),
 		true,
@@ -462,62 +485,110 @@ export const useTranslationRequest = (options?: {
 
 	const updateTranslationDomain = useCallback(
 		(translationDomain: TranslationDomain) => {
-			updateAppSettings(
-				AppSettingsGroup.FunctionTranslation,
-				{ translationDomain },
-				true,
-				true,
-				true,
-				true,
-				false,
-			);
+			if (options?.enableCacheConfig) {
+				updateAppSettings(
+					AppSettingsGroup.FunctionTranslationCache,
+					{ cacheTranslationDomain: translationDomain },
+					true,
+					true,
+					false,
+					true,
+					false,
+				);
+			} else {
+				updateAppSettings(
+					AppSettingsGroup.FunctionTranslation,
+					{ translationDomain },
+					true,
+					true,
+					true,
+					true,
+					false,
+				);
+			}
 		},
-		[updateAppSettings],
+		[updateAppSettings, options?.enableCacheConfig],
 	);
 
 	const updateTranslationType = useCallback(
 		(translationType: TranslationType | string) => {
-			updateAppSettings(
-				AppSettingsGroup.FunctionTranslation,
-				{ translationType },
-				true,
-				true,
-				true,
-				true,
-				false,
-			);
+			if (options?.enableCacheConfig) {
+				updateAppSettings(
+					AppSettingsGroup.FunctionTranslationCache,
+					{ cacheTranslationType: translationType },
+					true,
+					true,
+					false,
+					true,
+					false,
+				);
+			} else {
+				updateAppSettings(
+					AppSettingsGroup.FunctionTranslation,
+					{ translationType },
+					true,
+					true,
+					true,
+					true,
+					false,
+				);
+			}
 		},
-		[updateAppSettings],
+		[updateAppSettings, options?.enableCacheConfig],
 	);
 
 	const updateSourceLanguage = useCallback(
 		(sourceLanguage: string) => {
-			updateAppSettings(
-				AppSettingsGroup.FunctionTranslation,
-				{ sourceLanguage },
-				true,
-				true,
-				true,
-				true,
-				false,
-			);
+			if (options?.enableCacheConfig) {
+				updateAppSettings(
+					AppSettingsGroup.FunctionTranslationCache,
+					{ cacheSourceLanguage: sourceLanguage },
+					true,
+					true,
+					false,
+					true,
+					false,
+				);
+			} else {
+				updateAppSettings(
+					AppSettingsGroup.FunctionTranslation,
+					{ sourceLanguage },
+					true,
+					true,
+					true,
+					true,
+					false,
+				);
+			}
 		},
-		[updateAppSettings],
+		[updateAppSettings, options?.enableCacheConfig],
 	);
 
 	const updateTargetLanguage = useCallback(
 		(targetLanguage: string) => {
-			updateAppSettings(
-				AppSettingsGroup.FunctionTranslation,
-				{ targetLanguage },
-				true,
-				true,
-				true,
-				true,
-				false,
-			);
+			if (options?.enableCacheConfig) {
+				updateAppSettings(
+					AppSettingsGroup.FunctionTranslationCache,
+					{ cacheTargetLanguage: targetLanguage },
+					true,
+					true,
+					false,
+					true,
+					false,
+				);
+			} else {
+				updateAppSettings(
+					AppSettingsGroup.FunctionTranslation,
+					{ targetLanguage },
+					true,
+					true,
+					true,
+					true,
+					false,
+				);
+			}
 		},
-		[updateAppSettings],
+		[updateAppSettings, options?.enableCacheConfig],
 	);
 
 	const getTranslatedContent = useCallback(() => {

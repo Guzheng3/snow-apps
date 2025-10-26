@@ -97,6 +97,7 @@ export enum AppSettingsGroup {
 	SystemScrollScreenshot = "systemScrollScreenshot_20250628",
 	FunctionChat = "functionChat",
 	FunctionTranslation = "functionTranslation",
+	FunctionTranslationCache = "functionTranslationCache",
 	FunctionScreenshot = "functionScreenshot",
 	FunctionFullScreenDraw = "functionFullScreenDraw",
 	FunctionOutput = "functionOutput_20250908",
@@ -321,6 +322,12 @@ export type AppSettingsData = {
 		targetLanguage: string;
 		translationDomain: TranslationDomain;
 		translationType: TranslationType | string;
+	};
+	[AppSettingsGroup.FunctionTranslationCache]: {
+		cacheSourceLanguage: string;
+		cacheTargetLanguage: string;
+		cacheTranslationDomain: TranslationDomain;
+		cacheTranslationType: TranslationType | string;
 	};
 	[AppSettingsGroup.FunctionScreenshot]: {
 		/** 选取窗口子元素 */

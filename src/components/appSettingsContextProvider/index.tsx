@@ -728,6 +728,35 @@ const AppSettingsContextProviderCore: React.FC<{
 								defaultAppSettingsData[group]
 									.autoCreateNewSessionOnCloseWindow),
 				};
+			} else if (group === AppSettingsGroup.FunctionTranslationCache) {
+				newSettings = newSettings as AppSettingsData[typeof group];
+				const prevSettings = appSettingsRef.current[group] as
+					| AppSettingsData[typeof group]
+					| undefined;
+
+				settings = {
+					cacheSourceLanguage:
+						typeof newSettings?.cacheSourceLanguage === "string"
+							? newSettings.cacheSourceLanguage
+							: (prevSettings?.cacheSourceLanguage ??
+								defaultAppSettingsData[group].cacheSourceLanguage),
+					cacheTargetLanguage:
+						typeof newSettings?.cacheTargetLanguage === "string"
+							? newSettings.cacheTargetLanguage
+							: (prevSettings?.cacheTargetLanguage ??
+								defaultAppSettingsData[group].cacheTargetLanguage),
+					cacheTranslationDomain:
+						typeof newSettings?.cacheTranslationDomain === "string"
+							? newSettings.cacheTranslationDomain
+							: (prevSettings?.cacheTranslationDomain ??
+								defaultAppSettingsData[group].cacheTranslationDomain),
+					cacheTranslationType:
+						typeof newSettings?.cacheTranslationType === "number" ||
+						typeof newSettings?.cacheTranslationType === "string"
+							? newSettings.cacheTranslationType
+							: (prevSettings?.cacheTranslationType ??
+								defaultAppSettingsData[group].cacheTranslationType),
+				};
 			} else if (group === AppSettingsGroup.FunctionTranslation) {
 				newSettings = newSettings as AppSettingsData[typeof group];
 				const prevSettings = appSettingsRef.current[group] as

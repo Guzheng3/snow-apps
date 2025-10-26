@@ -71,6 +71,7 @@ import {
 	getVideoRecordSaveDirectory,
 } from "@/utils/file";
 import { TestChat } from "./components/testChat";
+import { TranslationConfig } from "./components/translationConfig";
 
 export const FunctionSettingsPage = () => {
 	const intl = useIntl();
@@ -1132,9 +1133,7 @@ export const FunctionSettingsPage = () => {
 			</GroupTitle>
 
 			<Spin spinning={appSettingsLoading}>
-				<Row gutter={token.marginLG}>
-					<Col span={12}></Col>
-				</Row>
+				<TranslationConfig />
 
 				<Row gutter={token.marginLG}>
 					<Col span={24}>

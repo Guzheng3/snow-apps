@@ -20,7 +20,10 @@ import React, {
 	useRef,
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useTranslationRequest } from "@/core/translations";
+import {
+	type TranslationServiceConfig,
+	useTranslationRequest,
+} from "@/core/translations";
 import { useStateRef } from "@/hooks/useStateRef";
 import { ModelSelectLabel } from "@/pages/tools/chat/components/modelSelectLabel";
 import { TranslationApiType } from "@/types/appSettings";
@@ -105,15 +108,10 @@ export type TranslatorActionType = {
 	getTranslatedContent: () => { content: string }[];
 };
 
-const TranslatorCore: React.FC<{
-	actionRef: React.RefObject<TranslatorActionType | undefined>;
-}> = ({ actionRef }) => {
+export const useLanguageOptions = () => {
 	const intl = useIntl();
 
-	const { token } = theme.useToken();
-
-	const [languageOptions] = useMemo(() => {
-		const languageCodeLabelMap = new Map<string, string>();
+	const targetLanguageOptions = useMemo(() => {
 		const languageList = [
 			{
 				code: "en",
@@ -181,12 +179,114 @@ const TranslatorCore: React.FC<{
 			return a.code.localeCompare(b.code);
 		});
 
-		languageList.forEach((lang) => {
-			languageCodeLabelMap.set(lang.code, lang.label);
+		return convertLanguageListToOptions(languageList);
+	}, [intl]);
+
+	const sourceLanguageOptions = useMemo(() => {
+		return [
+			{
+				label: intl.formatMessage({ id: "tools.translation.language.auto" }),
+				value: "auto",
+			},
+			...(targetLanguageOptions ?? []),
+		];
+	}, [intl, targetLanguageOptions]);
+
+	return {
+		sourceLanguageOptions,
+		targetLanguageOptions,
+	};
+};
+
+export const useTranslationTypeOptions = (
+	supportedTranslationTypes: TranslationServiceConfig[],
+) => {
+	const translationTypeOptions = useMemo((): SelectProps["options"] => {
+		const customTranslationTypeOptions: SelectProps["options"] = [];
+		const officialTranslationTypeOptions: SelectProps["options"] = [];
+
+		supportedTranslationTypes.forEach((item) => {
+			if (item.isOfficial) {
+				officialTranslationTypeOptions.push({
+					label: <ModelSelectLabel modelName={item.name} />,
+					value: item.type,
+				});
+			} else {
+				customTranslationTypeOptions.push({
+					label: <ModelSelectLabel modelName={item.name} />,
+					value: item.type,
+				});
+			}
 		});
 
-		return [convertLanguageListToOptions(languageList), languageCodeLabelMap];
-	}, [intl]);
+		return [
+			customTranslationTypeOptions.length > 0
+				? {
+						label: <FormattedMessage id="tools.translation.type.custom" />,
+						options: customTranslationTypeOptions,
+					}
+				: undefined,
+			{
+				label: <FormattedMessage id="tools.translation.type.official" />,
+				options: officialTranslationTypeOptions,
+			},
+		].filter(Boolean) as SelectProps["options"];
+	}, [supportedTranslationTypes]);
+
+	return {
+		translationTypeOptions,
+	};
+};
+
+export const useTranslationDomainOptions = () => {
+	const intl = useIntl();
+
+	return useMemo(
+		() => [
+			{
+				label: intl.formatMessage({
+					id: "tools.translation.domain.general",
+				}),
+				value: TranslationDomain.General,
+			},
+			{
+				label: intl.formatMessage({
+					id: "tools.translation.domain.computers",
+				}),
+				value: TranslationDomain.Computers,
+			},
+			{
+				label: intl.formatMessage({
+					id: "tools.translation.domain.medicine",
+				}),
+				value: TranslationDomain.Medicine,
+			},
+			{
+				label: intl.formatMessage({
+					id: "tools.translation.domain.finance",
+				}),
+				value: TranslationDomain.Finance,
+			},
+			{
+				label: intl.formatMessage({
+					id: "tools.translation.domain.game",
+				}),
+				value: TranslationDomain.Game,
+			},
+		],
+		[intl],
+	);
+};
+
+const TranslatorCore: React.FC<{
+	actionRef: React.RefObject<TranslatorActionType | undefined>;
+}> = ({ actionRef }) => {
+	const intl = useIntl();
+
+	const { token } = theme.useToken();
+
+	const { sourceLanguageOptions, targetLanguageOptions } = useLanguageOptions();
+	const translationDomainOptions = useTranslationDomainOptions();
 
 	const translatedResultRef = useRef<{ content: string }[]>([]);
 	const {
@@ -211,6 +311,7 @@ const TranslatorCore: React.FC<{
 				onComplete: (result) => {
 					translatedResultRef.current = result;
 				},
+				enableCacheConfig: true,
 			};
 		}, []),
 	);
@@ -223,6 +324,7 @@ const TranslatorCore: React.FC<{
 		[requestTranslate],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: 翻译相关配置变更的时候也要重新翻译
 	useEffect(() => {
 		if (sourceContent.trim() === "") {
 			return;
@@ -234,7 +336,15 @@ const TranslatorCore: React.FC<{
 		} else {
 			requestTranslateDebounce([sourceContent]);
 		}
-	}, [sourceContent, requestTranslateDebounce, requestTranslate]);
+	}, [
+		sourceContent,
+		requestTranslateDebounce,
+		requestTranslate,
+		translationType,
+		sourceLanguage,
+		targetLanguage,
+		translationDomain,
+	]);
 
 	const supportDomain = useMemo(() => {
 		if (translationType === TranslationApiType.DeepL) {
@@ -254,35 +364,9 @@ const TranslatorCore: React.FC<{
 	const hasSourceContent = !!sourceContent;
 	const hasTranslatedContent = !!translatedContent;
 
-	const translationTypeOptions = useMemo((): SelectProps["options"] => {
-		const customTranslationTypeOptions: SelectProps["options"] = [];
-		const officialTranslationTypeOptions: SelectProps["options"] = [];
-
-		supportedTranslationTypes.forEach((item) => {
-			if (item.isOfficial) {
-				officialTranslationTypeOptions.push({
-					label: <ModelSelectLabel modelName={item.name} />,
-					value: item.type,
-				});
-			} else {
-				customTranslationTypeOptions.push({
-					label: <ModelSelectLabel modelName={item.name} />,
-					value: item.type,
-				});
-			}
-		});
-
-		return [
-			{
-				label: <FormattedMessage id="tools.translation.type.custom" />,
-				options: customTranslationTypeOptions,
-			},
-			{
-				label: <FormattedMessage id="tools.translation.type.official" />,
-				options: officialTranslationTypeOptions,
-			},
-		];
-	}, [supportedTranslationTypes]);
+	const { translationTypeOptions } = useTranslationTypeOptions(
+		supportedTranslationTypes,
+	);
 
 	const sourceContentRef = useRef<TextAreaRef>(null);
 	useImperativeHandle(
@@ -296,6 +380,7 @@ const TranslatorCore: React.FC<{
 			[setSourceContent],
 		),
 	);
+
 	return (
 		<>
 			{/* 用表单处理下样式，但不用表单处理数据验证 */}
@@ -310,18 +395,7 @@ const TranslatorCore: React.FC<{
 								value={sourceLanguage}
 								showSearch
 								onChange={(value) => updateSourceLanguage(value)}
-								options={[
-									{
-										label: intl.formatMessage({
-											id: "tools.translation.language.auto",
-										}),
-										title: intl.formatMessage({
-											id: "tools.translation.language.auto",
-										}),
-										value: "auto",
-									},
-									...(languageOptions ?? []),
-								]}
+								options={sourceLanguageOptions}
 								variant="underlined"
 								styles={{
 									popup: {
@@ -355,7 +429,7 @@ const TranslatorCore: React.FC<{
 								onChange={(value) => {
 									updateTargetLanguage(value);
 								}}
-								options={languageOptions}
+								options={targetLanguageOptions}
 								filterOption={selectFilterOption}
 								styles={{
 									popup: {
@@ -403,38 +477,7 @@ const TranslatorCore: React.FC<{
 								onChange={(value) => {
 									updateTranslationDomain(value);
 								}}
-								options={[
-									{
-										label: intl.formatMessage({
-											id: "tools.translation.domain.general",
-										}),
-										value: TranslationDomain.General,
-									},
-									{
-										label: intl.formatMessage({
-											id: "tools.translation.domain.computers",
-										}),
-										value: TranslationDomain.Computers,
-									},
-									{
-										label: intl.formatMessage({
-											id: "tools.translation.domain.medicine",
-										}),
-										value: TranslationDomain.Medicine,
-									},
-									{
-										label: intl.formatMessage({
-											id: "tools.translation.domain.finance",
-										}),
-										value: TranslationDomain.Finance,
-									},
-									{
-										label: intl.formatMessage({
-											id: "tools.translation.domain.game",
-										}),
-										value: TranslationDomain.Game,
-									},
-								]}
+								options={translationDomainOptions}
 								filterOption={selectFilterOption}
 								styles={{
 									popup: {

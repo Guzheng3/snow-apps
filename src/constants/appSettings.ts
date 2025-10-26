@@ -127,6 +127,12 @@ export const defaultAppSettingsData: AppSettingsData = {
 		translationDomain: TranslationDomain.General,
 		translationType: TranslationType.Youdao,
 	},
+	[AppSettingsGroup.FunctionTranslationCache]: {
+		cacheSourceLanguage: "auto",
+		cacheTargetLanguage: "zh-CHS",
+		cacheTranslationDomain: TranslationDomain.General,
+		cacheTranslationType: TranslationType.Youdao,
+	},
 	[AppSettingsGroup.FunctionScreenshot]: {
 		findChildrenElements: true,
 		shortcutCanleTip: true,
