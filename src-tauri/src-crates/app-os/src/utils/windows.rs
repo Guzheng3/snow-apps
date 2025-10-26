@@ -308,6 +308,17 @@ pub fn create_admin_auto_start_task() -> Result<(), String> {
             ));
         }
     }
+    
+    // 设置参数
+    unsafe {
+        let hr = p_exec_action.SetArguments(&windows::core::BSTR::from("--auto_start"));
+        if hr.is_err() {
+            return Err(format!(
+                "[create_admin_auto_start_task] SetArguments failed: {:?}",
+                hr
+            ));
+        }
+    }
 
     // 设置任务为以管理员权限运行
     // S-1-5-32-544 是管理员组的 SID
