@@ -63,7 +63,7 @@ export const draw = {
 	"draw.close": "关闭",
 	"draw.ocrDetectTool": "文字识别",
 	"draw.ocrTranslateTool": "文字识别翻译",
-	"draw.showOrHideOcrResult": "显示 OCR 结果",
+	"draw.showOrHideOcrResult": "显示文本识别结果",
 	"draw.fixedTool": "固定到屏幕",
 	"draw.extraToolsTool": "额外工具",
 	"draw.dragSelectRect": "整体移动选区",
@@ -92,7 +92,7 @@ export const draw = {
 	"draw.laserPointerTool": "激光笔",
 	"draw.watermarkTool": "水印",
 	"draw.mouseThroughTool": "鼠标穿透",
-	"draw.ocrLoading": "OCR 识别中",
+	"draw.ocrLoading": "文本识别中",
 	"draw.copySelectedText": "复制选中文本",
 	"draw.scrollScreenshot.limitTip":
 		"所选区域过小，无法进行滚动截图（最小边需 > 200px）",

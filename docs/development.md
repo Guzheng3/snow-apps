@@ -50,7 +50,7 @@ pnpm update:excalidraw
 
 #### 2. 准备 ONNX 模型的运行环境
 
-Snow Shot 使用 ONNX 调用 OCR 模型，为了更好的兼容性，使用了静态编译来包含模型所需的库。所以需要下载将 ONNX Runtime 的静态库放到 `src-tauri/lib` 目录下供静态编译使用。
+Snow Shot 使用 ONNX 调用文本识别模型，为了更好的兼容性，使用了静态编译来包含模型所需的库。所以需要下载将 ONNX Runtime 的静态库放到 `src-tauri/lib` 目录下供静态编译使用。
 
 ONNX Runtime 可以从 [ONNX Runtime Releases](https://github.com/supertone-inc/onnxruntime-build/releases) 下载，选择 `onnxruntime-win-x64-static_lib-1.22.1.zip`。
 

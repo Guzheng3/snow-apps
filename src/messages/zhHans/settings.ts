@@ -164,7 +164,7 @@ export const settings = {
 		"通过快捷键“取消截图”时，是否弹窗提示",
 	"settings.functionSettings.screenshotSettings.lockDrawTool": "锁定绘制工具",
 	"settings.functionSettings.screenshotSettings.ocrAfterAction":
-		"OCR 后自动执行",
+		"文本识别后自动执行",
 	"settings.functionSettings.screenshotSettings.ocrAfterAction.none": "无操作",
 	"settings.functionSettings.screenshotSettings.ocrAfterAction.copyText":
 		"复制文本",
@@ -175,7 +175,7 @@ export const settings = {
 	"settings.functionSettings.screenshotSettings.ocrAfterAction.ocrDetectCopyTextAndCloseWindow":
 		"文本识别-复制文本并关闭窗口",
 	"settings.functionSettings.screenshotSettings.ocrCopyText":
-		"OCR 复制时复制文本",
+		"文本识别复制时复制文本",
 	"settings.functionSettings.screenshotSettings.focusedWindowCopyToClipboard":
 		"截图当前具有焦点的窗口时复制到剪贴板",
 	"settings.functionSettings.screenshotSettings.fullScreenCopyToClipboard":
@@ -428,19 +428,20 @@ export const settings = {
 		"仅针对白名单中的程序",
 	"settings.systemSettings.screenshotSettings.tryGetElementByFocus.always":
 		"保持启用",
-	"settings.systemSettings.screenshotSettings.ocrModel": "OCR 模型",
+	"settings.systemSettings.screenshotSettings.ocrModel": "文本识别模型",
 	"settings.systemSettings.screenshotSettings.ocrModel.rapidOcrV4":
 		"Rapid OCR V4",
 	"settings.systemSettings.screenshotSettings.ocrModel.rapidOcrV5":
 		"Rapid OCR V5",
-	"settings.systemSettings.screenshotSettings.ocrHotStart": "OCR 热启动",
+	"settings.systemSettings.screenshotSettings.ocrHotStart": "文本识别热启动",
 	"settings.systemSettings.screenshotSettings.ocrHotStart.tip":
-		"预加载 OCR 模型，提高 OCR 的识别速度，但会提高内存占用",
+		"预加载文本识别模型，提高文本识别的识别速度，但会提高内存占用",
 	"settings.systemSettings.screenshotSettings.ocrModelWriteToMemory":
-		"OCR 模型写入内存",
+		"文本识别模型写入内存",
 	"settings.systemSettings.screenshotSettings.ocrModelWriteToMemory.tip":
-		"将 OCR 模型写入内存，避免重复读写硬盘数据，提高 OCR 的加载速度，但会提高内存占用",
-	"settings.systemSettings.screenshotSettings.ocrDetectAngle": "OCR 检测角度",
+		"将文本识别模型写入内存，避免重复读写硬盘数据，提高文本识别的加载速度，但会提高内存占用",
+	"settings.systemSettings.screenshotSettings.ocrDetectAngle":
+		"文本识别检测角度",
 	"settings.systemSettings.screenshotSettings.recordCaptureHistory":
 		"记录截图历史",
 	"settings.systemSettings.screenshotSettings.historyValidDuration":
