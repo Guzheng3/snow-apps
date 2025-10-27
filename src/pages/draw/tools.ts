@@ -29,8 +29,8 @@ export const getImageBufferFromSharedBuffer = async (
 
 	const result = {
 		sharedBuffer: manualRelease
-			? new Uint8ClampedArray(buffer.slice(0, imageBytesLength))
-			: new Uint8ClampedArray(buffer, 0, imageBytesLength),
+			? new Uint8ClampedArray(buffer, 0, imageBytesLength)
+			: new Uint8ClampedArray(buffer.slice(0, imageBytesLength)),
 		width,
 		height,
 	};

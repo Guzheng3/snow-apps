@@ -704,7 +704,10 @@ const ColorPickerCore: React.FC<{
 				buffer = {
 					...imageBuffer,
 					sharedBuffer: new Uint8ClampedArray(
-						imageBuffer.sharedBuffer.buffer.slice(0),
+						imageBuffer.sharedBuffer.buffer.slice(
+							0,
+							imageBuffer.sharedBuffer.byteLength,
+						),
 					),
 				};
 			}

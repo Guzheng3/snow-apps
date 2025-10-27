@@ -25,7 +25,6 @@ macos-accessibility-client = { workspace = true }
 
 [target.'cfg(any(target_os = "windows"))'.dependencies]
 windows = { workspace = true, features = ["Win32_UI_Magnification"] }
-clipboard-win = "5.4.1"
 rayon = { workspace = true }
 image = { workspace = true }
 widestring = "1.2.0"
@@ -34,3 +33,4 @@ half = "2.6.0"
 webview2-com = "0.38.0"
 windows-core = { version = "0.61" }
 snow-shot-webview = { workspace = true }
+clipboard-win = { workspace = true }

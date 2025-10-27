@@ -77,7 +77,7 @@ export const FixedContentPage: React.FC = () => {
 				"read_image_from_clipboard",
 			);
 
-			const readImagePromise = readImageFromClipboard()
+			await readImageFromClipboard()
 				.then(async (result) => {
 					if (hasInit) {
 						return;
@@ -104,7 +104,7 @@ export const FixedContentPage: React.FC = () => {
 				})
 				.catch(() => {});
 
-			const readHtmlPromise = extraClipboard
+			await extraClipboard
 				.readHtml()
 				.then((htmlContent) => {
 					if (hasInit) {
@@ -116,7 +116,7 @@ export const FixedContentPage: React.FC = () => {
 				})
 				.catch(() => {});
 
-			const readTextPromise = extraClipboard
+			await extraClipboard
 				.readText()
 				.then((textContent) => {
 					if (hasInit) {
@@ -128,7 +128,7 @@ export const FixedContentPage: React.FC = () => {
 				})
 				.catch(() => {});
 
-			const readFilesURIsPromise = extraClipboard
+			await extraClipboard
 				.readFilesURIs()
 				.then((fileUris) => {
 					if (hasInit) {
@@ -158,13 +158,6 @@ export const FixedContentPage: React.FC = () => {
 					});
 				})
 				.catch(() => {});
-
-			await Promise.all([
-				readImagePromise,
-				readHtmlPromise,
-				readTextPromise,
-				readFilesURIsPromise,
-			]);
 
 			if (hasInit) {
 				return;

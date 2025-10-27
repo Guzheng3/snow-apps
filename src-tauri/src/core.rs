@@ -86,7 +86,10 @@ pub async fn read_image_from_clipboard(
         if *webview_shared_buffer_state.enable.read().await {
             let image_data = match handle.clipboard().read_image() {
                 Ok(image) => image,
-                Err(_) => return Ok(Response::new(vec![])),
+                Err(_) => {
+                    println!("[read_image_from_clipboard] Failed to read image from clipboard");
+                    return Ok(Response::new(Vec::new()));
+                }
             };
 
             let mut extra_data = vec![0; 8];
@@ -94,12 +97,12 @@ pub async fn read_image_from_clipboard(
                 let image_width = image_data.width();
                 let image_height = image_data.height();
                 std::ptr::copy_nonoverlapping(
-                    &image_width as *const u32 as *const u8,
+                    image_width.to_le_bytes().as_ptr(),
                     extra_data.as_mut_ptr(),
                     4,
                 );
                 std::ptr::copy_nonoverlapping(
-                    &image_height as *const u32 as *const u8,
+                    image_height.to_le_bytes().as_ptr(),
                     extra_data.as_mut_ptr().add(4),
                     4,
                 );
@@ -120,7 +123,7 @@ pub async fn read_image_from_clipboard(
     let clipboard = handle.state::<tauri_plugin_clipboard::Clipboard>();
     let image_data = match tauri_plugin_clipboard::Clipboard::read_image_binary(&clipboard) {
         Ok(image_data) => image_data,
-        Err(_) => return Ok(Response::new(vec![])),
+        Err(_) => return Ok(Response::new(Vec::new())),
     };
 
     return Ok(Response::new(image_data));

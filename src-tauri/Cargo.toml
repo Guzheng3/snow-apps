@@ -65,6 +65,7 @@ futures-util = "0.3"
 windows = "0.61"
 base64 = "^0.22"
 tauri-plugin-clipboard-manager = "^2"
+clipboard-win = "5.4.1"
 
 # 项目内依赖
 snow-shot-app-services = { path = "src-crates/app-services" }
@@ -137,6 +138,8 @@ tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "^2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-window-state = "2"
+
+[target.'cfg(any(target_os = "windows"))'.dependencies]
 
 # dhat = "0.3.3"
 

@@ -145,7 +145,7 @@ pub async fn scroll_screenshot_handle_image(
             return if has_left_image {
                 Ok(Response::new(vec![1])) // 还有剩余图片，这里就返回未变化，不提示用户未识别到
             } else {
-                Ok(Response::new(vec![]))
+                Ok(Response::new(Vec::new()))
             };
         }
     };
