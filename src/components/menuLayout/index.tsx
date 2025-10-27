@@ -19,7 +19,11 @@ import {
 	TrayIconLoader,
 	TrayIconStatePublisher,
 } from "@/components/trayIconLoader";
-import { PLUGIN_ID_AI_CHAT, PLUGIN_ID_FFMPEG } from "@/constants/pluginService";
+import {
+	PLUGIN_ID_AI_CHAT,
+	PLUGIN_ID_FFMPEG,
+	PLUGIN_ID_TRANSLATE,
+} from "@/constants/pluginService";
 import { AppContext } from "@/contexts/appContext";
 import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
@@ -151,6 +155,10 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 						return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
 					}
 
+					if (item.key === "translationFunction") {
+						return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
+					}
+
 					return true;
 				}),
 			},
@@ -200,6 +208,10 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 				].filter((item) => {
 					if (item.key === "/tools/chat") {
 						return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
+					}
+
+					if (item.key === "/tools/translation") {
+						return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
 					}
 
 					return true;
@@ -275,7 +287,12 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 									id: "settings.functionSettings.screenshotSettings",
 								}),
 							},
-
+							{
+								key: "functionDrawSettings",
+								label: intl.formatMessage({
+									id: "settings.commonSettings.draw",
+								}),
+							},
 							{
 								key: "fixedContentSettings",
 								label: intl.formatMessage({
@@ -323,6 +340,14 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 								return isReadyStatus?.(PLUGIN_ID_FFMPEG);
 							}
 
+							if (item.key === "translationSettings") {
+								return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
+							}
+
+							if (item.key === "chatSettings") {
+								return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
+							}
+
 							return true;
 						}),
 					},
@@ -356,6 +381,10 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 						].filter((item) => {
 							if (item.key === "chat") {
 								return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
+							}
+
+							if (item.key === "translation") {
+								return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
 							}
 
 							return true;

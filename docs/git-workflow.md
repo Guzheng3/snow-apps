@@ -89,7 +89,7 @@ fix(draw): 修复绘图工具颜色选择器显示问题
 
 docs(readme): 更新安装说明
 
-refactor(ocr): 重构文字识别模块以提高性能
+refactor(ocr): 重构文本识别模块以提高性能
 
 perf(render): 使用虚拟滚动优化长列表渲染
 ```

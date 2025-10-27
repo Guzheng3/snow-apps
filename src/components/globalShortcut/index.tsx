@@ -42,6 +42,7 @@ import {
 	PLUGIN_ID_AI_CHAT,
 	PLUGIN_ID_FFMPEG,
 	PLUGIN_ID_RAPID_OCR,
+	PLUGIN_ID_TRANSLATE,
 } from "@/constants/pluginService";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
@@ -128,15 +129,23 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
 					return isReadyStatus?.(PLUGIN_ID_FFMPEG);
 				}
 
-				if (
-					key === AppFunction.ScreenshotOcr ||
-					key === AppFunction.ScreenshotOcrTranslate
-				) {
+				if (key === AppFunction.ScreenshotOcr) {
 					return isReadyStatus?.(PLUGIN_ID_RAPID_OCR);
 				}
 
 				if (key === AppFunction.Chat) {
 					return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
+				}
+
+				if (key === AppFunction.Translation) {
+					return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
+				}
+
+				if (key === AppFunction.ScreenshotOcrTranslate) {
+					return (
+						isReadyStatus?.(PLUGIN_ID_RAPID_OCR) &&
+						isReadyStatus?.(PLUGIN_ID_TRANSLATE)
+					);
 				}
 
 				return true;

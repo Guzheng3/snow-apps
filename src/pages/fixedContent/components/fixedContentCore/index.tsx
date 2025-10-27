@@ -34,7 +34,10 @@ import {
 import { setDrawWindowStyle } from "@/commands/screenshot";
 import { OcrTranslateIcon } from "@/components/icons";
 import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
-import { PLUGIN_ID_RAPID_OCR } from "@/constants/pluginService";
+import {
+	PLUGIN_ID_RAPID_OCR,
+	PLUGIN_ID_TRANSLATE,
+} from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
@@ -191,6 +194,7 @@ const FixedContentCoreInner: React.FC<{
 	onImageLoad,
 	disabled,
 }) => {
+	const { isReady, isReadyStatus } = usePluginServiceContext();
 	const intl = useIntl();
 	const { token } = theme.useToken();
 	const { message } = useContext(AntdContext);
@@ -268,9 +272,10 @@ const FixedContentCoreInner: React.FC<{
 		return (
 			getSelectTextMode(fixedContentType) === "ocr" &&
 			ocrResult &&
-			enableSelectText
+			enableSelectText &&
+			isReadyStatus?.(PLUGIN_ID_TRANSLATE)
 		);
-	}, [fixedContentType, enableSelectText, ocrResult]);
+	}, [fixedContentType, enableSelectText, ocrResult, isReadyStatus]);
 
 	const [textContent, setTextContent, textContentRef] = useStateRef<
 		| {
@@ -724,7 +729,6 @@ const FixedContentCoreInner: React.FC<{
 		[renderToCanvas],
 	);
 
-	const { isReady, isReadyStatus } = usePluginServiceContext();
 	const selectRectParamsRef = useRef<SelectRectParams | undefined>(undefined);
 	const initDrawElementsRef = useRef<
 		FixedContentInitDrawParams["drawElements"] | undefined

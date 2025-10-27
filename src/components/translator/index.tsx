@@ -373,7 +373,10 @@ const TranslatorCore: React.FC<{
 		actionRef,
 		useCallback(
 			() => ({
-				setSourceContent,
+				setSourceContent: (content: string, ignoreDebounce?: boolean) => {
+					setSourceContent(content);
+					ignoreDebounceRef.current = ignoreDebounce ?? false;
+				},
 				getSourceContentRef: () => sourceContentRef.current,
 				getTranslatedContent: () => translatedResultRef.current,
 			}),

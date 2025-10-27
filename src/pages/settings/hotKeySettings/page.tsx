@@ -17,6 +17,7 @@ import {
 import {
 	PLUGIN_ID_AI_CHAT,
 	PLUGIN_ID_RAPID_OCR,
+	PLUGIN_ID_TRANSLATE,
 } from "@/constants/pluginService";
 import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
@@ -90,11 +91,15 @@ export const HotKeySettingsPage = () => {
 					}
 				}
 
-				if (
-					key === DrawToolbarKeyEventKey.OcrDetectTool ||
-					key === DrawToolbarKeyEventKey.OcrTranslateTool
-				) {
+				if (key === DrawToolbarKeyEventKey.OcrDetectTool) {
 					return isReadyStatus?.(PLUGIN_ID_RAPID_OCR);
+				}
+
+				if (key === DrawToolbarKeyEventKey.OcrTranslateTool) {
+					return (
+						isReadyStatus?.(PLUGIN_ID_RAPID_OCR) &&
+						isReadyStatus?.(PLUGIN_ID_TRANSLATE)
+					);
 				}
 
 				return true;

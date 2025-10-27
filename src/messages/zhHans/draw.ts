@@ -61,8 +61,8 @@ export const draw = {
 	"draw.saveTool": "保存为文件",
 	"draw.fastSaveTool": "快速保存",
 	"draw.close": "关闭",
-	"draw.ocrDetectTool": "文字识别",
-	"draw.ocrTranslateTool": "文字识别翻译",
+	"draw.ocrDetectTool": "文本识别",
+	"draw.ocrTranslateTool": "文本识别翻译",
 	"draw.showOrHideOcrResult": "显示文本识别结果",
 	"draw.fixedTool": "固定到屏幕",
 	"draw.extraToolsTool": "额外工具",
@@ -200,5 +200,5 @@ export const draw = {
 	"draw.ocrResultEmpty": "文本识别结果为空",
 	"draw.ocrResult.translating": "翻译中",
 	"draw.ocrResult.translateError": "翻译失败",
-	"draw.ocrToolModalSettings.title": "文字识别设置",
+	"draw.ocrToolModalSettings.title": "文本识别设置",
 };

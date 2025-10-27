@@ -1,6 +1,11 @@
 import { useCallback, useImperativeHandle, useRef, useState } from "react";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
+import {
+	PLUGIN_ID_RAPID_OCR,
+	PLUGIN_ID_TRANSLATE,
+} from "@/constants/pluginService";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
+import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import {
 	type AppOcrResult,
@@ -133,16 +138,21 @@ export const OcrBlocks: React.FC<{
 	const onSwitchOcrResult = useCallback((ocrResultType: OcrResultType) => {
 		ocrResultActionRef.current?.switchOcrResult(ocrResultType);
 	}, []);
+
+	const { isReadyStatus } = usePluginServiceContext();
+
 	return (
 		<>
-			<OcrTool
-				onSwitchOcrResult={onSwitchOcrResult}
-				onTranslate={onTranslate}
-				currentOcrResult={currentOcrResult}
-				ocrResult={ocrResult}
-				translatedOcrResult={translatedOcrResult}
-				translateLoading={translateLoading}
-			/>
+			{isReadyStatus?.(PLUGIN_ID_TRANSLATE) && (
+				<OcrTool
+					onSwitchOcrResult={onSwitchOcrResult}
+					onTranslate={onTranslate}
+					currentOcrResult={currentOcrResult}
+					ocrResult={ocrResult}
+					translatedOcrResult={translatedOcrResult}
+					translateLoading={translateLoading}
+				/>
+			)}
 
 			<OcrResult
 				zIndex={zIndexs.Draw_OcrResult}

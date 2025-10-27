@@ -37,7 +37,10 @@ import {
 	SerialNumberIcon,
 	TextIcon,
 } from "@/components/icons";
-import { PLUGIN_ID_RAPID_OCR } from "@/constants/pluginService";
+import {
+	PLUGIN_ID_RAPID_OCR,
+	PLUGIN_ID_TRANSLATE,
+} from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
 import {
 	AppSettingsActionContext,
@@ -935,14 +938,20 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 							<ToolButton
 								hidden={
 									customToolbarToolHiddenMap?.[DrawState.OcrTranslate] ||
-									!isReadyStatus?.(PLUGIN_ID_RAPID_OCR)
+									!(
+										isReadyStatus?.(PLUGIN_ID_RAPID_OCR) &&
+										isReadyStatus?.(PLUGIN_ID_TRANSLATE)
+									)
 								}
 								componentKey={DrawToolbarKeyEventKey.OcrTranslateTool}
 								icon={<OcrTranslateIcon style={{ fontSize: "1em" }} />}
 								drawState={DrawState.OcrTranslate}
 								disable={
 									disableNormalScreenshotTool ||
-									!isReadyStatus?.(PLUGIN_ID_RAPID_OCR)
+									!(
+										isReadyStatus?.(PLUGIN_ID_RAPID_OCR) &&
+										isReadyStatus?.(PLUGIN_ID_TRANSLATE)
+									)
 								}
 								onClick={() => {
 									onToolClick(DrawState.OcrTranslate);

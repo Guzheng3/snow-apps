@@ -13,6 +13,7 @@ import {
 	PLUGIN_ID_AI_CHAT,
 	PLUGIN_ID_FFMPEG,
 	PLUGIN_ID_RAPID_OCR,
+	PLUGIN_ID_TRANSLATE,
 } from "@/constants/pluginService";
 import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
@@ -79,6 +80,10 @@ export const HomePage = () => {
 
 					if (group === AppFunctionGroup.Chat) {
 						return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
+					}
+
+					if (group === AppFunctionGroup.Translation) {
+						return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
 					}
 
 					return true;

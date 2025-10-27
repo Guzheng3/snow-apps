@@ -17,6 +17,7 @@ import {
 	PLUGIN_ID_AI_CHAT,
 	PLUGIN_ID_FFMPEG,
 	PLUGIN_ID_RAPID_OCR,
+	PLUGIN_ID_TRANSLATE,
 } from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
@@ -323,36 +324,42 @@ const TrayIconLoaderComponent = () => {
 								: []),
 						]
 					: []),
-				{
-					item: "Separator",
-				},
-				{
-					id: `${appWindow.label}-translation`,
-					text: intl.formatMessage({ id: "home.translation" }),
-					accelerator: disableShortcut
-						? undefined
-						: formatKey(shortcutKeys[AppFunction.Translation].shortcutKey),
-					action: async () => {
-						executeTranslate();
-					},
-				},
-				...(shortcutKeys[AppFunction.TranslationSelectText].shortcutKey
+				...(isReadyStatus(PLUGIN_ID_TRANSLATE)
 					? [
 							{
-								id: `${appWindow.label}-translation-selectText`,
-								text: intl.formatMessage({
-									id: "home.translationSelectText",
-								}),
+								item: "Separator",
+							} as unknown as MenuItem,
+							{
+								id: `${appWindow.label}-translation`,
+								text: intl.formatMessage({ id: "home.translation" }),
 								accelerator: disableShortcut
 									? undefined
 									: formatKey(
-											shortcutKeys[AppFunction.TranslationSelectText]
-												.shortcutKey,
+											shortcutKeys[AppFunction.Translation].shortcutKey,
 										),
 								action: async () => {
-									executeTranslateSelectedText();
+									executeTranslate();
 								},
 							},
+							...(shortcutKeys[AppFunction.TranslationSelectText].shortcutKey
+								? [
+										{
+											id: `${appWindow.label}-translation-selectText`,
+											text: intl.formatMessage({
+												id: "home.translationSelectText",
+											}),
+											accelerator: disableShortcut
+												? undefined
+												: formatKey(
+														shortcutKeys[AppFunction.TranslationSelectText]
+															.shortcutKey,
+													),
+											action: async () => {
+												executeTranslateSelectedText();
+											},
+										},
+									]
+								: []),
 						]
 					: []),
 				...(isReadyStatus(PLUGIN_ID_FFMPEG)

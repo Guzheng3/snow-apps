@@ -26,7 +26,7 @@ export const settings = {
 	"settings.fullScreenAuxiliaryLineColor": "全屏辅助线颜色",
 	"settings.monitorCenterAuxiliaryLineColor": "显示器中心辅助线颜色",
 	"settings.colorPickerCenterAuxiliaryLineColor": "颜色拾取器中心辅助线颜色",
-	"settings.showOcrTranslate": "启用文字识别翻译工具",
+	"settings.showOcrTranslate": "启用文本识别翻译工具",
 	"settings.customToolbarToolList": "隐藏工具栏工具",
 	"settings.customToolbarToolList.tip": "工具栏隐藏后，仍可通过热键使用",
 	"settings.enableQrcodeScan": "启用二维码识别",

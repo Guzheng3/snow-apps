@@ -40,7 +40,7 @@ Windows 用户可以在 [Snow Shot 官网](https://snowshot.top/) 加速下载�
 
 #### 一步识别文字
 
-通过快捷键在截图后自动进行文字识别
+通过快捷键在截图后自动进行文本识别
 
 ![OCR 演示](/docs/imgs/ocr.gif)
 
