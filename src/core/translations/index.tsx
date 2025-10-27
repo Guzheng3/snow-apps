@@ -57,6 +57,8 @@ export const useTranslationRequest = (options?: {
 	enableCacheConfig?: boolean;
 	onComplete?: (result: { content: string }[], requestId?: number) => void;
 	onDeltaContent?: (deltaContent: string) => void;
+	/// 懒加载
+	lazyLoad?: boolean;
 }) => {
 	const intl = useIntl();
 	const { message } = useContext(AntdContext);
@@ -84,10 +86,13 @@ export const useTranslationRequest = (options?: {
 		TranslationApiConfig[] | undefined
 	>(undefined);
 	// Snow Shot 自带的
-	const [officialTranslationTypes, setOfficialTranslationTypes] = useState<
-		TranslationTypeOption[]
-	>([]);
-	const [officialChatModels, setOfficialChatModels] = useState<ChatModel[]>([]);
+	const [
+		officialTranslationTypes,
+		setOfficialTranslationTypes,
+		officialTranslationTypesRef,
+	] = useStateRef<TranslationTypeOption[]>([]);
+	const [officialChatModels, setOfficialChatModels, officialChatModelsRef] =
+		useStateRef<ChatModel[]>([]);
 	const [chatConfig, setChatConfig] =
 		useState<AppSettingsData[AppSettingsGroup.SystemChat]>();
 	const [translationConfig, setTranslationConfig] =
@@ -151,30 +156,44 @@ export const useTranslationRequest = (options?: {
 	);
 	const { updateAppSettings } = useContext(AppSettingsActionContext);
 
-	useEffect(() => {
-		let isAborted = false;
+	const reloadOnlineConfigs = useCallback(async () => {
+		if (
+			officialTranslationTypesRef.current.length > 0 &&
+			officialChatModelsRef.current.length > 0
+		) {
+			return;
+		}
 
-		Promise.all([
+		await Promise.all([
 			getTranslationTypes().then((res) => {
-				if (!res.success() || isAborted) {
+				if (!res.success()) {
 					return;
 				}
 
 				setOfficialTranslationTypes(res.data ?? []);
 			}),
 			getChatModels().then((res) => {
-				if (!res.success() || isAborted) {
+				if (!res.success()) {
 					return;
 				}
 
 				setOfficialChatModels(res.data ?? []);
 			}),
 		]);
+	}, [
+		setOfficialChatModels,
+		setOfficialTranslationTypes,
+		officialChatModelsRef,
+		officialTranslationTypesRef,
+	]);
 
-		return () => {
-			isAborted = true;
-		};
-	}, []);
+	useEffect(() => {
+		if (options?.lazyLoad) {
+			return;
+		}
+
+		reloadOnlineConfigs();
+	}, [reloadOnlineConfigs, options?.lazyLoad]);
 
 	const [
 		supportedTranslationTypes,
@@ -424,6 +443,11 @@ export const useTranslationRequest = (options?: {
 			const sourceLanguage = sourceLanguageRef.current;
 			const targetLanguage = targetLanguageRef.current;
 
+			if (options?.lazyLoad) {
+				await reloadOnlineConfigs();
+				await new Promise((resolve) => setTimeout(resolve, 17));
+			}
+
 			if (typeof translationType === "string") {
 				const result = await customTranslation({
 					sourceContent: sourceContent,
@@ -480,6 +504,7 @@ export const useTranslationRequest = (options?: {
 			translationDomainRef,
 			translationTypeRef,
 			setTranslatedContent,
+			reloadOnlineConfigs,
 		],
 	);
 

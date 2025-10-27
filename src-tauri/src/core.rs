@@ -87,7 +87,6 @@ pub async fn read_image_from_clipboard(
             let image_data = match handle.clipboard().read_image() {
                 Ok(image) => image,
                 Err(_) => {
-                    println!("[read_image_from_clipboard] Failed to read image from clipboard");
                     return Ok(Response::new(Vec::new()));
                 }
             };

@@ -1135,23 +1135,42 @@ export const FunctionSettingsPage = () => {
 			<Spin spinning={appSettingsLoading}>
 				<TranslationConfig />
 
-				<Row gutter={token.marginLG}>
-					<Col span={24}>
-						<ProForm
-							form={translationForm}
-							onValuesChange={(_, values) => {
-								updateAppSettings(
-									AppSettingsGroup.FunctionTranslation,
-									values,
-									true,
-									true,
-									true,
-									true,
-									false,
-								);
-							}}
-							submitter={false}
-						>
+				<ProForm
+					form={translationForm}
+					onValuesChange={(_, values) => {
+						updateAppSettings(
+							AppSettingsGroup.FunctionTranslation,
+							values,
+							true,
+							true,
+							true,
+							true,
+							false,
+						);
+					}}
+					submitter={false}
+				>
+					<Row gutter={token.marginLG}>
+						<Col span={12}>
+							<ProFormSwitch
+								name="optimizeAiTranslationLayout"
+								label={
+									<IconLabel
+										label={
+											<FormattedMessage id="settings.functionSettings.translationSettings.optimizeAiTranslationLayout" />
+										}
+										tooltipTitle={
+											<FormattedMessage id="settings.functionSettings.translationSettings.optimizeAiTranslationLayout.tip" />
+										}
+									/>
+								}
+								layout="vertical"
+							/>
+						</Col>
+					</Row>
+
+					<Row gutter={token.marginLG}>
+						<Col span={24}>
 							<ProFormList
 								name="translationApiConfigList"
 								label={
@@ -1272,7 +1291,11 @@ export const FunctionSettingsPage = () => {
 									</ProFormDependency>
 								</Row>
 							</ProFormList>
+						</Col>
+					</Row>
 
+					<Row gutter={token.marginLG}>
+						<Col span={24}>
 							<Alert
 								message={
 									<Typography>
@@ -1326,9 +1349,9 @@ export const FunctionSettingsPage = () => {
 									},
 								}}
 							/>
-						</ProForm>
-					</Col>
-				</Row>
+						</Col>
+					</Row>
+				</ProForm>
 			</Spin>
 
 			<Divider />

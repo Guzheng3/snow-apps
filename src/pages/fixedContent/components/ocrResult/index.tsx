@@ -35,7 +35,10 @@ import { appError } from "@/utils/log";
 import { getPlatformValue } from "@/utils/platform";
 import { randomString } from "@/utils/random";
 import { getWebViewSharedBuffer } from "@/utils/webview";
-import { getOcrResultIframeSrcDoc } from "./extra";
+import {
+	alignTranslatedBySourceProportion,
+	getOcrResultIframeSrcDoc,
+} from "./extra";
 
 // 定义角度阈值常量（以度为单位）
 const ROTATION_THRESHOLD = 3; // 小于3度的旋转被视为误差，不进行旋转
@@ -817,6 +820,20 @@ export const OcrResult: React.FC<{
 						return;
 					}
 
+					const sourceTextList = ocrResultRef.current.result.text_blocks.map(
+						(block) => block.text,
+					);
+					const translatedTextList = result.map((item) => item.content);
+					let resultTextBlocks: string[] = [];
+					if (sourceTextList.length > translatedTextList.length) {
+						resultTextBlocks = alignTranslatedBySourceProportion(
+							sourceTextList,
+							translatedTextList,
+						);
+					} else {
+						resultTextBlocks = translatedTextList;
+					}
+
 					const translatorOcrResult = {
 						ignoreScale: ocrResultRef.current.ignoreScale,
 						result: {
@@ -824,7 +841,7 @@ export const OcrResult: React.FC<{
 							text_blocks: ocrResultRef.current.result.text_blocks.map(
 								(block, index) => ({
 									...block,
-									text: result[index]?.content ?? block.text,
+									text: resultTextBlocks[index] ?? block.text,
 								}),
 							),
 						},
@@ -837,6 +854,7 @@ export const OcrResult: React.FC<{
 						OcrResultType.Translated,
 					);
 				},
+				lazyLoad: true,
 			};
 		}, [setTranslatorOcrResult, ocrResultRef, updateOcrTextElements]),
 	);

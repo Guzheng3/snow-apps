@@ -316,6 +316,8 @@ export type AppSettingsData = {
 		chatApiConfigList: ChatApiConfig[];
 	};
 	[AppSettingsGroup.FunctionTranslation]: {
+		/** 优化 AI 翻译的排版 */
+		optimizeAiTranslationLayout: boolean;
 		translationSystemPrompt: string;
 		translationApiConfigList: TranslationApiConfig[];
 		sourceLanguage: string;

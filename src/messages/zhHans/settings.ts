@@ -368,6 +368,10 @@ export const settings = {
 		"鼠标位置",
 	"settings.printScreen.tip":
 		"Windows 下如无法唤起截图，请禁用系统的截图工具后再次尝试，如无响应可尝试重启",
+	"settings.functionSettings.translationSettings.optimizeAiTranslationLayout":
+		"优化 AI 翻译的排版",
+	"settings.functionSettings.translationSettings.optimizeAiTranslationLayout.tip":
+		"文本识别翻译依赖翻译原文和翻译结果具有相同的排版关系，而 AI 的输出可能存在排版错误。开启后将尝试优化排版，但显示出的内容顺序可能与原文不一致",
 	"settings.functionSettings.translationSettings.apiConfig": "API 配置",
 	"settings.functionSettings.translationSettings.apiConfig.apiType": "翻译服务",
 	"settings.functionSettings.translationSettings.apiConfig.apiType.deepL":

@@ -200,4 +200,5 @@ export const draw = {
 	"draw.ocrResultEmpty": "文本识别结果为空",
 	"draw.ocrResult.translating": "翻译中",
 	"draw.ocrResult.translateError": "翻译失败",
+	"draw.ocrToolModalSettings.title": "文字识别设置",
 };

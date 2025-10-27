@@ -10,6 +10,7 @@ import {
 } from "@/pages/fixedContent/components/ocrResult";
 import { DrawState } from "@/types/draw";
 import { SubTools } from "../../subTools";
+import { OcrToolModalSettings } from "./components/ocrToolModalSettings";
 
 export const isOcrTool = (drawState: DrawState) => {
 	return (
@@ -80,6 +81,13 @@ const OcrTool: React.FC<{
 					icon={<OcrTranslateIcon />}
 					title={intl.formatMessage({ id: "draw.ocrDetect.translate" })}
 					key="translate"
+				/>,
+				<OcrToolModalSettings
+					key="ocrToolModalSettings"
+					onFinish={async () => {
+						onTranslate();
+						return;
+					}}
 				/>,
 			]}
 		/>

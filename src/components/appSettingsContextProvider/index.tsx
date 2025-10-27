@@ -769,6 +769,11 @@ const AppSettingsContextProviderCore: React.FC<{
 							? newSettings.translationSystemPrompt
 							: (prevSettings?.translationSystemPrompt ??
 								defaultAppSettingsData[group].translationSystemPrompt),
+					optimizeAiTranslationLayout:
+						typeof newSettings?.optimizeAiTranslationLayout === "boolean"
+							? newSettings.optimizeAiTranslationLayout
+							: (prevSettings?.optimizeAiTranslationLayout ??
+								defaultAppSettingsData[group].optimizeAiTranslationLayout),
 					translationApiConfigList: Array.isArray(
 						newSettings?.translationApiConfigList,
 					)
