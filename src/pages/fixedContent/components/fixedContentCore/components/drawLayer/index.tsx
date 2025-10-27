@@ -392,21 +392,17 @@ const DrawLayerCore: React.FC<{
 		baseZoomRef.current =
 			scaleFactorRatio * (getInitDrawDrawElements()?.zoom ?? 1);
 
-		const baseOffsetX = selectRect.min_x / initDrawWindowDevicePixelRatio;
-		const baseOffsetY = selectRect.min_y / initDrawWindowDevicePixelRatio;
+		const baseOffsetX =
+			(selectRect.min_x - shadowWidth) / initDrawWindowDevicePixelRatio;
+		const baseOffsetY =
+			(selectRect.min_y - shadowWidth) / initDrawWindowDevicePixelRatio;
 
 		drawCoreActionRef.current?.updateScene({
 			elements: elements.map((element): ExcalidrawElement => {
 				return {
 					...element,
-					x:
-						element.x -
-						baseOffsetX / (getInitDrawDrawElements()?.zoom ?? 1) +
-						shadowWidth,
-					y:
-						element.y -
-						baseOffsetY / (getInitDrawDrawElements()?.zoom ?? 1) +
-						shadowWidth,
+					x: element.x - baseOffsetX / (getInitDrawDrawElements()?.zoom ?? 1),
+					y: element.y - baseOffsetY / (getInitDrawDrawElements()?.zoom ?? 1),
 					width: element.width,
 					height: element.height,
 				};
