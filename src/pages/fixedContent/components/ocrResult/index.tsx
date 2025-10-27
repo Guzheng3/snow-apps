@@ -825,7 +825,11 @@ export const OcrResult: React.FC<{
 					);
 					const translatedTextList = result.map((item) => item.content);
 					let resultTextBlocks: string[] = [];
-					if (sourceTextList.length > translatedTextList.length) {
+					if (
+						sourceTextList.length > translatedTextList.length &&
+						getAppSettings()[AppSettingsGroup.FunctionTranslation]
+							.optimizeAiTranslationLayout
+					) {
 						resultTextBlocks = alignTranslatedBySourceProportion(
 							sourceTextList,
 							translatedTextList,
@@ -856,7 +860,12 @@ export const OcrResult: React.FC<{
 				},
 				lazyLoad: true,
 			};
-		}, [setTranslatorOcrResult, ocrResultRef, updateOcrTextElements]),
+		}, [
+			setTranslatorOcrResult,
+			ocrResultRef,
+			updateOcrTextElements,
+			getAppSettings,
+		]),
 	);
 
 	const requestTranslateLoadingIdRef = useRef<number | undefined>(undefined);
