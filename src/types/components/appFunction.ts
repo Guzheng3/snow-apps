@@ -4,7 +4,7 @@ export enum AppFunction {
 	ScreenshotOcr = "screenshotOcr",
 	/** 延迟 x 秒后截图 */
 	ScreenshotDelay = "screenshotDelay",
-	/** 截图当前具有焦点的窗口 */
+	/** 截取当前具有焦点的窗口 */
 	ScreenshotFocusedWindow = "screenshotFocusedWindow",
 	/** 截图全屏 */
 	ScreenshotFullScreen = "screenshotFullScreen",

@@ -177,7 +177,7 @@ export const settings = {
 	"settings.functionSettings.screenshotSettings.ocrCopyText":
 		"文本识别复制时复制文本",
 	"settings.functionSettings.screenshotSettings.focusedWindowCopyToClipboard":
-		"截图当前具有焦点的窗口时复制到剪贴板",
+		"截取当前具有焦点的窗口时复制到剪贴板",
 	"settings.functionSettings.screenshotSettings.fullScreenCopyToClipboard":
 		"截取全屏时复制到剪贴板",
 	"settings.functionSettings.screenshotSettings.saveToCloud": "保存到云端",
@@ -217,7 +217,7 @@ export const settings = {
 	"settings.functionSettings.outputSettings": "输出",
 	"settings.functionSettings.outputSettings.variables": "支持的变量",
 	"settings.functionSettings.outputSettings.variables.focusedWindowAppName":
-		"截图当前具有焦点的窗口的程序名",
+		"截取当前具有焦点的窗口的程序名",
 	"settings.functionSettings.outputSettings.variables.date": "日期",
 	"settings.functionSettings.outputSettings.fileNameFormat": "文件名格式",
 	"settings.functionSettings.outputSettings.manualSaveFileNameFormat":
@@ -233,11 +233,11 @@ export const settings = {
 	"settings.functionSettings.outputSettings.fastSaveFileNameFormatPreview":
 		"快速保存文件名预览",
 	"settings.functionSettings.outputSettings.focusedWindowFileNameFormat":
-		"截图当前具有焦点的窗口文件名格式",
+		"截取当前具有焦点的窗口文件名格式",
 	"settings.functionSettings.outputSettings.fullScreenFileNameFormat":
 		"截取全屏文件名格式",
 	"settings.functionSettings.outputSettings.focusedWindowFileNameFormatPreview":
-		"截图当前具有焦点的窗口文件名预览",
+		"截取当前具有焦点的窗口文件名预览",
 	"settings.functionSettings.outputSettings.fullScreenFileNameFormatPreview":
 		"截取全屏文件名预览",
 	"settings.functionSettings.outputSettings.videoRecordFileNameFormat":
@@ -359,7 +359,7 @@ export const settings = {
 		"窗口初始位置",
 	"settings.functionSettings.fixedContentSettings.initialPosition.tip":
 		"截图的固定到屏幕不受影响",
-	"settings.functionSettings.fixedContentSettings.autoOcr": "自动 OCR",
+	"settings.functionSettings.fixedContentSettings.autoOcr": "自动文本识别",
 	"settings.functionSettings.fixedContentSettings.autoCopyToClipboard":
 		"固定截图后自动复制到剪贴板",
 	"settings.functionSettings.fixedContentSettings.initialPosition.monitorCenter":

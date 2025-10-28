@@ -340,7 +340,7 @@ export type AppSettingsData = {
 		autoSaveOnCopy: boolean;
 		/** 快速保存文件 */
 		fastSave: boolean;
-		/** 截图当前具有焦点的窗口时复制到剪贴板 */
+		/** 截取当前具有焦点的窗口时复制到剪贴板 */
 		focusedWindowCopyToClipboard: boolean;
 		/** 截取全屏时复制到剪贴板 */
 		fullScreenCopyToClipboard: boolean;
@@ -386,7 +386,7 @@ export type AppSettingsData = {
 		autoSaveFileNameFormat: string;
 		/** 快速保存文件名格式 */
 		fastSaveFileNameFormat: string;
-		/** 截图当前具有焦点的窗口文件名格式 */
+		/** 截取当前具有焦点的窗口文件名格式 */
 		focusedWindowFileNameFormat: string;
 		/** 截取全屏文件名格式 */
 		fullScreenFileNameFormat: string;
