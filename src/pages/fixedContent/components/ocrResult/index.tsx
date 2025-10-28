@@ -749,7 +749,7 @@ export const OcrResult: React.FC<{
 
 	const onContextMenu = useCallback(() => {
 		selectedTextRef.current = getSelectedText();
-		if (selectedTextRef.current?.text.trim() !== "") {
+		if (selectedTextRef.current?.text.trim()) {
 			menuRef.current?.popup();
 			return;
 		}
