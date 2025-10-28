@@ -77,6 +77,7 @@ import {
 } from "@/utils/appStore";
 import {
 	writeFilePathToClipboard,
+	writeHtmlToClipboard,
 	writeTextToClipboard,
 } from "@/utils/clipboard";
 import {
@@ -94,7 +95,11 @@ import {
 	type FixedContentActionType,
 	FixedContentCore,
 } from "../fixedContent/components/fixedContentCore";
-import { covertOcrResultToText } from "../fixedContent/components/ocrResult";
+import {
+	covertOcrResultToText,
+	OcrResultType,
+} from "../fixedContent/components/ocrResult";
+import { getOcrResultIframeSrcDoc } from "../fixedContent/components/ocrResult/extra";
 import {
 	DrawContext as CommonDrawContext,
 	type DrawContextType as CommonDrawContextType,
@@ -124,7 +129,11 @@ import {
 import { EnableKeyEventPublisher } from "./components/drawToolbar/components/keyEventWrap/extra";
 import { isOcrTool } from "./components/drawToolbar/components/tools/ocrTool";
 import { ScanQrcodeTool } from "./components/drawToolbar/components/tools/scanQrcodeTool";
-import { OcrBlocks, type OcrBlocksActionType } from "./components/ocrBlocks";
+import {
+	OcrBlocks,
+	type OcrBlocksActionType,
+	type OcrBlocksSelectedText,
+} from "./components/ocrBlocks";
 import SelectLayer, {
 	type SelectLayerActionType,
 } from "./components/selectLayer";
@@ -1117,17 +1126,25 @@ const DrawPageCore: React.FC<{
 			return;
 		}
 
-		let selectedText: string | undefined;
+		let selectedText: OcrBlocksSelectedText | undefined;
 		if (isOcrTool(getDrawState())) {
 			selectedText = ocrBlocksActionRef.current?.getSelectedText();
 		} else if (getDrawState() === DrawState.ScanQrcode) {
-			selectedText = window.getSelection()?.toString().trim();
+			selectedText = {
+				type: "text",
+				text: window.getSelection()?.toString().trim() ?? "",
+			};
 		}
 		if (
 			selectedText &&
+			selectedText.text.trim() !== "" &&
 			(isOcrTool(getDrawState()) || getDrawState() === DrawState.ScanQrcode)
 		) {
-			writeTextToClipboard(selectedText);
+			if (selectedText.type === "visionModelHtml") {
+				writeHtmlToClipboard(selectedText.text);
+			} else {
+				writeTextToClipboard(selectedText.text);
+			}
 			finishCapture();
 			return;
 		} else if (
@@ -1137,9 +1154,23 @@ const DrawPageCore: React.FC<{
 			const ocrResult = ocrBlocksActionRef.current
 				?.getOcrResultAction()
 				?.getOcrResult();
-			writeTextToClipboard(
-				ocrResult ? covertOcrResultToText(ocrResult.result) : "",
-			);
+
+			if (ocrResult && ocrResult.ocrResultType === OcrResultType.Ocr) {
+				writeTextToClipboard(covertOcrResultToText(ocrResult.result));
+			} else if (
+				ocrResult &&
+				ocrResult.ocrResultType === OcrResultType.VisionModelHtml
+			) {
+				const html = getOcrResultIframeSrcDoc(
+					ocrResult.result.text_blocks[0].text,
+					ocrResult.ocrResultType,
+					undefined,
+					undefined,
+					undefined,
+				);
+				writeHtmlToClipboard(html);
+			}
+
 			finishCapture();
 			return;
 		} else {

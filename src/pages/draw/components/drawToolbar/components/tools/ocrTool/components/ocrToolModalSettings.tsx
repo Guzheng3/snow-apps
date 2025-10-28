@@ -8,6 +8,7 @@ export const OcrToolModalSettings: React.FC<{
 	onFinish: () => Promise<void>;
 }> = ({ onFinish }) => {
 	const intl = useIntl();
+
 	return (
 		<ModalForm
 			title={<FormattedMessage id="draw.ocrToolModalSettings.title" />}
@@ -28,6 +29,9 @@ export const OcrToolModalSettings: React.FC<{
 				forceRender: false,
 			}}
 		>
+			{/* <GroupTitle id="translationSettings">
+				<FormattedMessage id="settings.functionSettings.translationSettings" />
+			</GroupTitle> */}
 			<TranslationConfig />
 		</ModalForm>
 	);

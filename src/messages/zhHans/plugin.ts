@@ -6,7 +6,7 @@ export const plugin = {
 	"plugin.ffmpeg.functionDescription": "视频录制",
 	"plugin.rapid_ocr.name": "文本识别",
 	"plugin.rapid_ocr.description":
-		"使用基于 ONNXRuntime 和 Paddle OCR 的 Rapid OCR 实现高性能跨平台文本识别",
+		"使用基于 ONNXRuntime 和 Paddle OCR 的 Rapid OCR 实现高性能跨平台文本识别。支持结合 AI 对话插件获得更高阶的文本识别能力",
 	"plugin.rapid_ocr.functionDescription": "文本识别",
 	"plugin.ai_chat.name": "AI 对话",
 	"plugin.ai_chat.description":

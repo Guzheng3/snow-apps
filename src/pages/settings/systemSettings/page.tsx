@@ -44,7 +44,6 @@ import {
 	AppSettingsGroup,
 	HdrColorAlgorithm,
 	HistoryValidDuration,
-	OcrModel,
 } from "@/types/appSettings";
 import { clearAllConfig } from "@/utils/appConfig";
 import { clearAllAppStore } from "@/utils/appStore";
@@ -209,23 +208,6 @@ export const SystemSettingsPage = () => {
 		}
 
 		return options;
-	}, [intl]);
-
-	const ocrModelOptions = useMemo(() => {
-		return [
-			{
-				label: intl.formatMessage({
-					id: "settings.systemSettings.screenshotSettings.ocrModel.rapidOcrV4",
-				}),
-				value: OcrModel.RapidOcrV4,
-			},
-			{
-				label: intl.formatMessage({
-					id: "settings.systemSettings.screenshotSettings.ocrModel.rapidOcrV5",
-				}),
-				value: OcrModel.RapidOcrV5,
-			},
-		];
 	}, [intl]);
 
 	const hdrColorAlgorithmOptions = useMemo((): SelectProps["options"] => {
@@ -563,20 +545,6 @@ export const SystemSettingsPage = () => {
 									}
 									name="ocrModelWriteToMemory"
 									valuePropName="checked"
-								/>
-							</Col>
-
-							<Col span={12}>
-								<ProFormSelect
-									label={
-										<IconLabel
-											label={
-												<FormattedMessage id="settings.systemSettings.screenshotSettings.ocrModel" />
-											}
-										/>
-									}
-									name="ocrModel"
-									options={ocrModelOptions}
 								/>
 							</Col>
 

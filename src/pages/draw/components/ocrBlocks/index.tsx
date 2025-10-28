@@ -1,5 +1,12 @@
-import { useCallback, useImperativeHandle, useRef, useState } from "react";
+import {
+	useCallback,
+	useContext,
+	useImperativeHandle,
+	useRef,
+	useState,
+} from "react";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
+import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
 import { PLUGIN_ID_TRANSLATE } from "@/constants/pluginService";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
@@ -11,18 +18,29 @@ import {
 	type OcrResultActionType,
 	type OcrResultType,
 } from "@/pages/fixedContent/components/ocrResult";
-import { AppSettingsGroup, OcrDetectAfterAction } from "@/types/appSettings";
+import {
+	AppSettingsGroup,
+	type ChatApiConfig,
+	OcrDetectAfterAction,
+} from "@/types/appSettings";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { DrawState } from "@/types/draw";
 import { writeTextToClipboard } from "@/utils/clipboard";
 import { ScreenshotType } from "@/utils/types";
 import { zIndexs } from "@/utils/zIndex";
+import { getCanvas } from "../../actions";
 import {
 	type CaptureBoundingBoxInfo,
 	ScreenshotTypePublisher,
 } from "../../extra";
+import { DrawContext } from "../../types";
 import OcrTool, { isOcrTool } from "../drawToolbar/components/tools/ocrTool";
+
+export type OcrBlocksSelectedText = {
+	type: "text" | "visionModelHtml";
+	text: string;
+};
 
 export type OcrBlocksActionType = {
 	init: (
@@ -33,13 +51,15 @@ export type OcrBlocksActionType = {
 	) => Promise<void>;
 	setEnable: (enable: boolean | ((enable: boolean) => boolean)) => void;
 	getOcrResultAction: () => OcrResultActionType | undefined;
-	getSelectedText: () => string | undefined;
+	getSelectedText: () => OcrBlocksSelectedText | undefined;
 };
 
 export const OcrBlocks: React.FC<{
 	actionRef: React.RefObject<OcrBlocksActionType | undefined>;
 	finishCapture: () => void;
 }> = ({ actionRef, finishCapture }) => {
+	const { selectLayerActionRef, imageLayerActionRef, drawLayerActionRef } =
+		useContext(DrawContext);
 	const ocrResultActionRef = useRef<OcrResultActionType>(undefined);
 
 	const [getScreenshotType] = useStateSubscriber(
@@ -122,6 +142,34 @@ export const OcrBlocks: React.FC<{
 		ocrResultActionRef.current?.startTranslate();
 	}, []);
 
+	const [visionModelHtmlLoading, setVisionModelHtmlLoading] = useState(false);
+	const onConvertImageToHtml = useCallback(async () => {
+		const selectRectParams =
+			selectLayerActionRef.current?.getSelectRectParams();
+		const imageLayerAction = imageLayerActionRef.current;
+		const drawLayerAction = drawLayerActionRef.current;
+		if (!selectRectParams || !imageLayerAction || !drawLayerAction) {
+			return;
+		}
+
+		setVisionModelHtmlLoading(true);
+		const screenshotCanvas = await getCanvas(
+			selectRectParams,
+			imageLayerAction,
+			drawLayerAction,
+			true,
+			true,
+			INIT_CONTAINER_KEY,
+		);
+
+		if (!screenshotCanvas) {
+			return;
+		}
+
+		await ocrResultActionRef.current?.convertImageToHtml(screenshotCanvas);
+		setVisionModelHtmlLoading(false);
+	}, [selectLayerActionRef, imageLayerActionRef, drawLayerActionRef]);
+
 	const [currentOcrResult, setCurrentOcrResult] = useState<
 		(AppOcrResult & { ocrResultType: OcrResultType }) | undefined
 	>(undefined);
@@ -135,6 +183,10 @@ export const OcrBlocks: React.FC<{
 	const onSwitchOcrResult = useCallback((ocrResultType: OcrResultType) => {
 		ocrResultActionRef.current?.switchOcrResult(ocrResultType);
 	}, []);
+	const [visionModelHtmlResult, setVisionModelHtmlResult] = useState<
+		AppOcrResult | undefined
+	>(undefined);
+	const [visionModelList, setVisionModelList] = useState<ChatApiConfig[]>([]);
 
 	const { isReadyStatus } = usePluginServiceContext();
 
@@ -144,10 +196,14 @@ export const OcrBlocks: React.FC<{
 				<OcrTool
 					onSwitchOcrResult={onSwitchOcrResult}
 					onTranslate={onTranslate}
+					onConvertImageToHtml={onConvertImageToHtml}
 					currentOcrResult={currentOcrResult}
 					ocrResult={ocrResult}
 					translatedOcrResult={translatedOcrResult}
 					translateLoading={translateLoading}
+					visionModelHtmlResult={visionModelHtmlResult}
+					visionModelHtmlLoading={visionModelHtmlLoading}
+					visionModelList={visionModelList}
 				/>
 			)}
 
@@ -159,6 +215,8 @@ export const OcrBlocks: React.FC<{
 				onOcrResultChange={setOcrResult}
 				onTranslatedResultChange={setTranslatedOcrResult}
 				onTranslateLoading={setTranslateLoading}
+				onVisionModelHtmlResultChange={setVisionModelHtmlResult}
+				onVisionModelListChange={setVisionModelList}
 			/>
 		</>
 	);

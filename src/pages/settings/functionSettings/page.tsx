@@ -36,6 +36,7 @@ import { DirectoryInput } from "@/components/directoryInput";
 import { GroupTitle } from "@/components/groupTitle";
 import { IconLabel } from "@/components/iconLable";
 import { ResetSettingsButton } from "@/components/resetSettingsButton";
+import { defaultAppSettingsData } from "@/constants/appSettings";
 import { FOCUS_WINDOW_APP_NAME_ENV_VARIABLE } from "@/constants/components/chat";
 import {
 	SOURCE_LANGUAGE_ENV_VARIABLE,
@@ -56,10 +57,12 @@ import {
 	type AppSettingsData,
 	AppSettingsFixedContentInitialPosition,
 	AppSettingsGroup,
+	type ChatApiConfig,
 	CloudSaveUrlFormat,
 	CloudSaveUrlType,
 	GifFormat,
 	OcrDetectAfterAction,
+	OcrModel,
 	TranslationApiType,
 	TrayIconClickAction,
 	VideoMaxSize,
@@ -97,8 +100,12 @@ export const FunctionSettingsPage = () => {
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionFixedContent]>();
 	const [videoRecordForm] =
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionVideoRecord]>();
+	const [functionOcrForm] =
+		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionOcr]>();
 
 	const [appSettingsLoading, setAppSettingsLoading] = useState(true);
+
+	const [chatConfigList, setChatConfigList] = useState<ChatApiConfig[]>([]);
 	useAppSettingsLoad(
 		useCallback(
 			(settings: AppSettingsData, preSettings?: AppSettingsData) => {
@@ -120,6 +127,9 @@ export const FunctionSettingsPage = () => {
 						settings[AppSettingsGroup.FunctionChat]
 				) {
 					functionForm.setFieldsValue(settings[AppSettingsGroup.FunctionChat]);
+					setChatConfigList(
+						settings[AppSettingsGroup.FunctionChat].chatApiConfigList,
+					);
 				}
 
 				if (
@@ -206,6 +216,16 @@ export const FunctionSettingsPage = () => {
 						settings[AppSettingsGroup.FunctionTrayIcon],
 					);
 				}
+
+				if (
+					preSettings === undefined ||
+					preSettings[AppSettingsGroup.FunctionOcr] !==
+						settings[AppSettingsGroup.FunctionOcr]
+				) {
+					functionOcrForm.setFieldsValue(
+						settings[AppSettingsGroup.FunctionOcr],
+					);
+				}
 			},
 			[
 				translationForm,
@@ -217,6 +237,7 @@ export const FunctionSettingsPage = () => {
 				fullScreenDrawForm,
 				videoRecordForm,
 				trayIconForm,
+				functionOcrForm,
 			],
 		),
 		true,
@@ -581,6 +602,46 @@ export const FunctionSettingsPage = () => {
 			},
 		];
 	}, [intl]);
+
+	const ocrModelOptions = useMemo(() => {
+		return [
+			{
+				label: intl.formatMessage({
+					id: "settings.systemSettings.screenshotSettings.ocrModel.rapidOcrV4",
+				}),
+				value: OcrModel.RapidOcrV4,
+			},
+			{
+				label: intl.formatMessage({
+					id: "settings.systemSettings.screenshotSettings.ocrModel.rapidOcrV5",
+				}),
+				value: OcrModel.RapidOcrV5,
+			},
+		];
+	}, [intl]);
+
+	const htmlVisionModelOptions = useMemo(() => {
+		return [
+			{
+				label: (
+					<IconLabel
+						label={intl.formatMessage({
+							id: "settings.functionSettings.ocrSettings.htmlVisionModel.default",
+						})}
+						tooltipTitle={intl.formatMessage({
+							id: "settings.functionSettings.ocrSettings.htmlVisionModel.default.tip",
+						})}
+					/>
+				),
+				value:
+					defaultAppSettingsData[AppSettingsGroup.FunctionOcr].htmlVisionModel,
+			},
+			...chatConfigList.map((config) => ({
+				label: config.model_name,
+				value: config.model_name,
+			})),
+		];
+	}, [chatConfigList, intl]);
 
 	return (
 		<ContentWrap>
@@ -1117,6 +1178,102 @@ export const FunctionSettingsPage = () => {
 				</ProForm>
 			</Spin>
 
+			{isReadyStatus?.(PLUGIN_ID_RAPID_OCR) && (
+				<>
+					<Divider />
+
+					<GroupTitle
+						id="ocrSettings"
+						extra={
+							<ResetSettingsButton
+								title={
+									<FormattedMessage id="settings.functionSettings.ocrSettings" />
+								}
+								appSettingsGroup={AppSettingsGroup.FunctionOcr}
+							/>
+						}
+					>
+						<FormattedMessage id="settings.functionSettings.ocrSettings" />
+					</GroupTitle>
+
+					<Spin spinning={appSettingsLoading}>
+						<ProForm
+							form={functionOcrForm}
+							onValuesChange={(_, values) => {
+								updateAppSettings(
+									AppSettingsGroup.FunctionOcr,
+									values,
+									true,
+									true,
+									true,
+									true,
+									false,
+								);
+							}}
+							submitter={false}
+							layout="vertical"
+						>
+							<Row gutter={token.marginLG}>
+								<Col span={12}>
+									<ProFormSelect
+										label={
+											<IconLabel
+												label={
+													<FormattedMessage id="settings.systemSettings.screenshotSettings.ocrModel" />
+												}
+											/>
+										}
+										name="ocrModel"
+										options={ocrModelOptions}
+									/>
+								</Col>
+
+								{isReadyStatus?.(PLUGIN_ID_AI_CHAT) && (
+									<>
+										<Col span={12}>
+											<ProFormSelect
+												name="htmlVisionModel"
+												label={
+													<IconLabel
+														label={
+															<FormattedMessage id="settings.functionSettings.ocrSettings.htmlVisionModel" />
+														}
+														tooltipTitle={
+															<FormattedMessage id="settings.functionSettings.ocrSettings.htmlVisionModel.tip" />
+														}
+													/>
+												}
+												layout="vertical"
+												options={htmlVisionModelOptions}
+												allowClear={false}
+											/>
+										</Col>
+										<Col span={24}>
+											<ProFormTextArea
+												name="htmlVisionModelSystemPrompt"
+												label={
+													<IconLabel
+														label={
+															<FormattedMessage id="settings.functionSettings.ocrSettings.htmlVisionModelSystemPrompt" />
+														}
+													/>
+												}
+												fieldProps={{
+													autoSize: {
+														minRows: 1,
+														maxRows: 5,
+													},
+												}}
+											/>
+										</Col>
+									</>
+								)}
+							</Row>
+						</ProForm>
+					</Spin>
+				</>
+			)}
+
 			{isReadyStatus?.(PLUGIN_ID_TRANSLATE) && (
 				<>
 					<Divider />
@@ -1504,21 +1661,6 @@ export const FunctionSettingsPage = () => {
 													]}
 												/>
 											</Col>
-											<Col span={12}>
-												<ProFormSwitch
-													name="support_thinking"
-													label={
-														<IconLabel
-															label={
-																<FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.supportThinking" />
-															}
-															tooltipTitle={
-																<FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.supportThinking.tip" />
-															}
-														/>
-													}
-												/>
-											</Col>
 										</Row>
 										<Row gutter={token.marginLG}>
 											<Col span={12}>
@@ -1590,6 +1732,37 @@ export const FunctionSettingsPage = () => {
 													]}
 												/>
 											</Col>
+										</Row>
+										<Row gutter={token.marginLG}>
+											<Col span={12}>
+												<ProFormSwitch
+													name="support_thinking"
+													label={
+														<IconLabel
+															label={
+																<FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.supportThinking" />
+															}
+														/>
+													}
+												/>
+											</Col>
+											{isReadyStatus?.(PLUGIN_ID_AI_CHAT) && (
+												<Col span={12}>
+													<ProFormSwitch
+														name="support_vision"
+														label={
+															<IconLabel
+																label={
+																	<FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.supportVision" />
+																}
+																tooltipTitle={
+																	<FormattedMessage id="settings.functionSettings.chatSettings.apiConfig.supportVision.tip" />
+																}
+															/>
+														}
+													/>
+												</Col>
+											)}
 										</Row>
 									</ProFormList>
 								</Col>

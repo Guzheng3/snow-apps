@@ -2,6 +2,7 @@ import { Menu } from "@tauri-apps/api/menu";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { theme } from "antd";
 import Color from "color";
+import OpenAI from "openai";
 import {
 	useCallback,
 	useContext,
@@ -23,14 +24,21 @@ import { releaseOcrSession } from "@/functions/ocr";
 import { useHotkeysApp } from "@/hooks/useHotkeysApp";
 import { useStateRef } from "@/hooks/useStateRef";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
+import type { OcrBlocksSelectedText } from "@/pages/draw/components/ocrBlocks";
 import {
 	type CaptureBoundingBoxInfo,
 	ElementDraggingPublisher,
 } from "@/pages/draw/extra";
-import { AppSettingsGroup } from "@/types/appSettings";
+import { CUSTOM_MODEL_PREFIX } from "@/pages/tools/chat/page";
+import { appFetch } from "@/services/tools";
+import {
+	type AppSettingsData,
+	AppSettingsGroup,
+	type ChatApiConfig,
+} from "@/types/appSettings";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect } from "@/types/commands/screenshot";
-import { writeTextToClipboard } from "@/utils/clipboard";
+import { writeHtmlToClipboard, writeTextToClipboard } from "@/utils/clipboard";
 import { appError } from "@/utils/log";
 import { getPlatformValue } from "@/utils/platform";
 import { randomString } from "@/utils/random";
@@ -68,10 +76,13 @@ export type OcrResultActionType = {
 	setEnable: (enable: boolean | ((enable: boolean) => boolean)) => void;
 	setScale: (scale: number) => void;
 	clear: () => void;
-	getOcrResult: () => AppOcrResult | undefined;
-	getSelectedText: () => string | undefined;
+	getOcrResult: () =>
+		| (AppOcrResult & { ocrResultType: OcrResultType })
+		| undefined;
+	getSelectedText: () => OcrBlocksSelectedText | undefined;
 	startTranslate: () => void;
 	switchOcrResult: (ocrResultType: OcrResultType) => void;
+	convertImageToHtml: (canvas: HTMLCanvasElement) => Promise<void>;
 };
 
 export const covertOcrResultToText = (ocrResult: OcrDetectResult) => {
@@ -81,6 +92,7 @@ export const covertOcrResultToText = (ocrResult: OcrDetectResult) => {
 export enum OcrResultType {
 	Ocr = "ocr",
 	Translated = "translated",
+	VisionModelHtml = "visionModelHtml",
 }
 
 export const OcrResult: React.FC<{
@@ -101,6 +113,9 @@ export const OcrResult: React.FC<{
 	onOcrResultChange?: (ocrResult: AppOcrResult | undefined) => void;
 	style?: React.CSSProperties;
 	onTranslateLoading?: (loading: boolean) => void;
+	onVisionModelListChange?: (visionModelList: ChatApiConfig[]) => void;
+	onVisionModelHtmlLoading?: (loading: boolean) => void;
+	onVisionModelHtmlResultChange?: (ocrResult: AppOcrResult | undefined) => void;
 }> = ({
 	zIndex,
 	actionRef,
@@ -117,6 +132,9 @@ export const OcrResult: React.FC<{
 	onOcrResultChange,
 	onCurrentOcrResultChange,
 	onTranslateLoading,
+	onVisionModelListChange,
+	onVisionModelHtmlLoading,
+	onVisionModelHtmlResultChange,
 }) => {
 	const intl = useIntl();
 	const { token } = theme.useToken();
@@ -128,7 +146,26 @@ export const OcrResult: React.FC<{
 	const textIframeContainerElementRef = useRef<HTMLIFrameElement>(null);
 	const [textContainerContent, setTextContainerContent] = useState("");
 
-	const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
+	// 视觉理解模型
+	const [visionModelList, setVisionModelList] = useState<ChatApiConfig[]>([]);
+	const [getAppSettings] = useStateSubscriber(
+		AppSettingsPublisher,
+		useCallback(
+			(settings: AppSettingsData) => {
+				const visionModelList = settings[
+					AppSettingsGroup.FunctionChat
+				].chatApiConfigList
+					.filter((config) => config.support_vision)
+					.map((config) => ({
+						...config,
+						model_name: `${CUSTOM_MODEL_PREFIX}${config.model_name}`,
+					}));
+				setVisionModelList(visionModelList);
+				onVisionModelListChange?.(visionModelList);
+			},
+			[onVisionModelListChange],
+		),
+	);
 
 	const [currentOcrResult, setCurrentOcrResult, currentOcrResultRef] =
 		useStateRef<(AppOcrResult & { ocrResultType: OcrResultType }) | undefined>(
@@ -209,6 +246,14 @@ export const OcrResult: React.FC<{
 				textIframeContainerWrapElement.style.width = `${(selectRect.max_x - selectRect.min_x) * transformScale}px`;
 			textContainerElement.style.height =
 				textIframeContainerWrapElement.style.height = `${(selectRect.max_y - selectRect.min_y) * transformScale}px`;
+
+			if (ocrResultType === OcrResultType.VisionModelHtml) {
+				setTextContainerContent(ocrResult.text_blocks[0].text);
+				if (containerElementRef.current && enableRef.current) {
+					containerElementRef.current.style.opacity = "1";
+				}
+				return;
+			}
 
 			await Promise.all(
 				ocrResult.text_blocks.map(async (block) => {
@@ -464,6 +509,11 @@ export const OcrResult: React.FC<{
 	>(undefined);
 	const [translatorOcrResult, setTranslatorOcrResult, translatorOcrResultRef] =
 		useStateRef<AppOcrResult | undefined>(undefined);
+	const [
+		visionModelHtmlResult,
+		setVisionModelHtmlResult,
+		visionModelHtmlResultRef,
+	] = useStateRef<AppOcrResult | undefined>(undefined);
 	const initDrawCanvas = useCallback(
 		async (params: OcrResultInitDrawCanvasParams) => {
 			if (!isReady?.(PLUGIN_ID_RAPID_OCR)) {
@@ -473,6 +523,7 @@ export const OcrResult: React.FC<{
 			setCurrentOcrResult(undefined);
 			setOcrResult(undefined);
 			setTranslatorOcrResult(undefined);
+			setVisionModelHtmlResult(undefined);
 
 			requestIdRef.current++;
 			const currentRequestId = requestIdRef.current;
@@ -538,6 +589,7 @@ export const OcrResult: React.FC<{
 			setOcrResult,
 			setTranslatorOcrResult,
 			setCurrentOcrResult,
+			setVisionModelHtmlResult,
 		],
 	);
 
@@ -550,6 +602,7 @@ export const OcrResult: React.FC<{
 			setCurrentOcrResult(undefined);
 			setOcrResult(undefined);
 			setTranslatorOcrResult(undefined);
+			setVisionModelHtmlResult(undefined);
 
 			const { canvas } = params;
 
@@ -593,15 +646,20 @@ export const OcrResult: React.FC<{
 			setOcrResult,
 			setTranslatorOcrResult,
 			setCurrentOcrResult,
+			setVisionModelHtmlResult,
 		],
 	);
 
-	const selectedTextRef = useRef<string>(undefined);
-	const getSelectedText = useCallback(() => {
-		return textIframeContainerElementRef.current?.contentWindow
-			?.getSelection()
-			?.toString()
-			.trim();
+	const selectedTextRef = useRef<OcrBlocksSelectedText | undefined>(undefined);
+	const getSelectedText = useCallback((): OcrBlocksSelectedText | undefined => {
+		return {
+			type: "text",
+			text:
+				textIframeContainerElementRef.current?.contentWindow
+					?.getSelection()
+					?.toString()
+					.trim() ?? "",
+		};
 	}, []);
 
 	const menuRef = useRef<Menu>(undefined);
@@ -624,7 +682,15 @@ export const OcrResult: React.FC<{
 					id: `${appWindow.label}-copySelectedText`,
 					text: intl.formatMessage({ id: "draw.copySelectedText" }),
 					action: async () => {
-						writeTextToClipboard(selectedTextRef.current || "");
+						if (!selectedTextRef.current) {
+							return;
+						}
+
+						if (selectedTextRef.current.type === "visionModelHtml") {
+							writeHtmlToClipboard(selectedTextRef.current.text);
+						} else {
+							writeTextToClipboard(selectedTextRef.current.text);
+						}
 					},
 				},
 			],
@@ -812,6 +878,130 @@ export const OcrResult: React.FC<{
 		[],
 	);
 
+	const convertImageToHtml = useCallback(
+		async (canvas: HTMLCanvasElement) => {
+			if (visionModelList.length === 0) {
+				message.error(
+					intl.formatMessage({ id: "draw.ocrResult.visionModelListEmpty" }),
+				);
+				return;
+			}
+
+			// 获取视觉理解模型
+			const selectedVisionModel =
+				getAppSettings()[AppSettingsGroup.FunctionOcr].htmlVisionModel;
+			let selectedVisionModelIndex = visionModelList.findIndex(
+				(model) => model.model_name === selectedVisionModel,
+			);
+			if (selectedVisionModelIndex === -1) {
+				selectedVisionModelIndex = 0;
+			}
+			const modelConfig = visionModelList[selectedVisionModelIndex];
+
+			const hideLoading = message.loading(
+				intl.formatMessage({ id: "draw.ocrResult.convertImageToHtmlLoading" }),
+				30,
+			);
+
+			// 将图片编码为 base64
+			const imageBase64 = canvas.toDataURL("image/png");
+
+			const client = new OpenAI({
+				apiKey: modelConfig.api_key,
+				baseURL: modelConfig.api_uri,
+				dangerouslyAllowBrowser: true,
+				fetch: appFetch,
+			});
+
+			onVisionModelHtmlLoading?.(true);
+			const streamResponse = await client.chat.completions.create({
+				model: modelConfig.api_model.replace(CUSTOM_MODEL_PREFIX, ""),
+				messages: [
+					{
+						role: "system",
+						content:
+							getAppSettings()[AppSettingsGroup.FunctionOcr]
+								.htmlVisionModelSystemPrompt,
+					},
+					{
+						role: "user",
+						content: [
+							{
+								type: "image_url",
+								image_url: {
+									url: imageBase64,
+								},
+							},
+							{
+								type: "text",
+								text: "Convert the image to HTML",
+							},
+						],
+					},
+				],
+				max_completion_tokens:
+					getAppSettings()[AppSettingsGroup.SystemChat].maxTokens,
+				temperature: getAppSettings()[AppSettingsGroup.SystemChat].temperature,
+				stream: true,
+			});
+
+			let htmlResult: OcrDetectResult = {
+				text_blocks: [
+					{
+						text: "",
+						box_points: [],
+						text_score: 0,
+					},
+				],
+				scale_factor: 1,
+			};
+			try {
+				for await (const event of streamResponse) {
+					if (event.choices.length > 0 && event.choices[0].delta.content) {
+						htmlResult = {
+							text_blocks: [
+								{
+									text:
+										htmlResult.text_blocks[0].text +
+										event.choices[0].delta.content,
+									box_points: [],
+									text_score: 0,
+								},
+							],
+							scale_factor: 1,
+						};
+						setVisionModelHtmlResult({
+							result: htmlResult,
+							ignoreScale: false,
+						});
+						updateOcrTextElements(
+							htmlResult,
+							false,
+							OcrResultType.VisionModelHtml,
+						);
+					}
+				}
+			} catch (error) {
+				appError("[convertImageToHtml] streamResponse error", error);
+				message.error(
+					intl.formatMessage({ id: "draw.ocrResult.convertImageToHtmlError" }),
+				);
+			}
+
+			hideLoading();
+			onVisionModelHtmlLoading?.(false);
+		},
+		[
+			getAppSettings,
+			intl,
+			message,
+			visionModelList,
+			updateOcrTextElements,
+			onVisionModelHtmlLoading,
+			setVisionModelHtmlResult,
+		],
+	);
+
 	const { requestTranslate } = useTranslationRequest(
 		useMemo(() => {
 			return {
@@ -838,7 +1028,7 @@ export const OcrResult: React.FC<{
 						resultTextBlocks = translatedTextList;
 					}
 
-					const translatorOcrResult = {
+					const translatorOcrResult: AppOcrResult = {
 						ignoreScale: ocrResultRef.current.ignoreScale,
 						result: {
 							...ocrResultRef.current.result,
@@ -963,8 +1153,21 @@ export const OcrResult: React.FC<{
 							ignoreResetValue: true,
 						},
 					);
+				} else if (
+					ocrResultType === OcrResultType.VisionModelHtml &&
+					visionModelHtmlResultRef.current
+				) {
+					updateOcrTextElements(
+						visionModelHtmlResultRef.current.result,
+						visionModelHtmlResultRef.current.ignoreScale,
+						OcrResultType.VisionModelHtml,
+						{
+							ignoreResetValue: true,
+						},
+					);
 				}
 			},
+			convertImageToHtml,
 		}),
 		[
 			getSelectedText,
@@ -981,6 +1184,8 @@ export const OcrResult: React.FC<{
 			translatorOcrResultRef,
 			updateOcrTextElements,
 			onTranslateLoading,
+			convertImageToHtml,
+			visionModelHtmlResultRef,
 		],
 	);
 
@@ -993,6 +1198,9 @@ export const OcrResult: React.FC<{
 	useEffect(() => {
 		onCurrentOcrResultChange?.(currentOcrResult);
 	}, [currentOcrResult, onCurrentOcrResultChange]);
+	useEffect(() => {
+		onVisionModelHtmlResultChange?.(visionModelHtmlResult);
+	}, [visionModelHtmlResult, onVisionModelHtmlResultChange]);
 
 	const enableDrag = !!(onMouseDown && onMouseMove && onMouseUp);
 
@@ -1038,8 +1246,10 @@ export const OcrResult: React.FC<{
 					className="ocr-result-text-iframe"
 					srcDoc={getOcrResultIframeSrcDoc(
 						textContainerContent,
+						currentOcrResult?.ocrResultType ?? OcrResultType.Ocr,
 						enableDrag,
 						enableCopy,
+						token,
 					)}
 				/>
 			</div>

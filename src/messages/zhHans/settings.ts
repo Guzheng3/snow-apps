@@ -177,8 +177,10 @@ export const settings = {
 		"请输入模型名称",
 	"settings.functionSettings.chatSettings.apiConfig.supportThinking":
 		"支持推理",
-	"settings.functionSettings.chatSettings.apiConfig.supportThinking.tip":
-		"如果你需要将该模型用于翻译，不建议开启此选项",
+	"settings.functionSettings.chatSettings.apiConfig.supportVision":
+		"支持视觉理解",
+	"settings.functionSettings.chatSettings.apiConfig.supportVision.tip":
+		"启用后，该模型将可用于视觉理解，将图片转化为 HTML 等格式的内容",
 	"settings.functionSettings.screenshotSettings": "截图",
 	"settings.functionSettings.screenshotSettings.findChildrenElements":
 		"查找窗口子元素",
@@ -553,4 +555,13 @@ export const settings = {
 	"settings.systemSettings.coreSettings.hotLoadPageCount": "热加载页面数量",
 	"settings.systemSettings.coreSettings.hotLoadPageCount.tip":
 		"通过热加载页面，实现固定剪贴板内容到屏幕、视频录制、全屏画布等功能的快速加载，但同时提高了内存的占用",
+	"settings.functionSettings.ocrSettings": "文本识别",
+	"settings.functionSettings.ocrSettings.htmlVisionModel": "视觉理解模型",
+	"settings.functionSettings.ocrSettings.htmlVisionModel.tip":
+		"将图片转为 HTML 的视觉理解模型",
+	"settings.functionSettings.ocrSettings.htmlVisionModel.default": "默认",
+	"settings.functionSettings.ocrSettings.htmlVisionModel.default.tip":
+		"默认使用首个支持视觉理解的模型",
+	"settings.functionSettings.ocrSettings.htmlVisionModelSystemPrompt":
+		"图片转为 HTML 的 System 提示词",
 };

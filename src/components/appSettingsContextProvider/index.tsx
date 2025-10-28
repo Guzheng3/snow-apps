@@ -47,7 +47,6 @@ import {
 	type HdrColorAlgorithm,
 	type HistoryValidDuration,
 	OcrDetectAfterAction,
-	type OcrModel,
 	type TrayIconClickAction,
 	type TrayIconDefaultIcon,
 	type VideoMaxSize,
@@ -760,6 +759,29 @@ const AppSettingsContextProviderCore: React.FC<{
 							: (prevSettings?.enableProxy ??
 								defaultAppSettingsData[group].enableProxy),
 				};
+			} else if (group === AppSettingsGroup.FunctionOcr) {
+				newSettings = newSettings as AppSettingsData[typeof group];
+				const prevSettings = appSettingsRef.current[group] as
+					| AppSettingsData[typeof group]
+					| undefined;
+
+				settings = {
+					ocrModel:
+						typeof newSettings?.ocrModel === "string"
+							? newSettings.ocrModel
+							: (prevSettings?.ocrModel ??
+								defaultAppSettingsData[group].ocrModel),
+					htmlVisionModel:
+						typeof newSettings?.htmlVisionModel === "string"
+							? newSettings.htmlVisionModel
+							: (prevSettings?.htmlVisionModel ??
+								defaultAppSettingsData[group].htmlVisionModel),
+					htmlVisionModelSystemPrompt:
+						typeof newSettings?.htmlVisionModelSystemPrompt === "string"
+							? newSettings.htmlVisionModelSystemPrompt
+							: (prevSettings?.htmlVisionModelSystemPrompt ??
+								defaultAppSettingsData[group].htmlVisionModelSystemPrompt),
+				};
 			} else if (group === AppSettingsGroup.FunctionChat) {
 				newSettings = newSettings as AppSettingsData[typeof group];
 				const prevSettings = appSettingsRef.current[group] as
@@ -779,6 +801,7 @@ const AppSettingsContextProviderCore: React.FC<{
 								api_model: `${item.api_model ?? ""}`,
 								model_name: `${item.model_name ?? ""}`,
 								support_thinking: !!item.support_thinking,
+								support_vision: !!item.support_vision,
 							}))
 						: (prevSettings?.chatApiConfigList ??
 							defaultAppSettingsData[group].chatApiConfigList),
@@ -1211,11 +1234,6 @@ const AppSettingsContextProviderCore: React.FC<{
 					| undefined;
 
 				settings = {
-					ocrModel:
-						typeof newSettings?.ocrModel === "string"
-							? (newSettings.ocrModel as OcrModel)
-							: (prevSettings?.ocrModel ??
-								defaultAppSettingsData[group].ocrModel),
 					ocrHotStart:
 						typeof newSettings?.ocrHotStart === "boolean"
 							? newSettings.ocrHotStart

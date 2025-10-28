@@ -256,6 +256,7 @@ export const useTranslationRequest = (options?: {
 						api_model: item.model,
 						model_name: item.name,
 						support_thinking: false,
+						support_vision: false,
 					},
 					isOfficial: true,
 				};

@@ -65,6 +65,7 @@ export type ChatApiConfig = {
 	api_model: string;
 	model_name: string;
 	support_thinking: boolean;
+	support_vision: boolean | undefined;
 };
 
 export enum TranslationApiType {
@@ -97,6 +98,7 @@ export enum AppSettingsGroup {
 	SystemCore = "systemCore",
 	SystemScrollScreenshot = "systemScrollScreenshot_20250628",
 	FunctionChat = "functionChat",
+	FunctionOcr = "functionOcr",
 	FunctionTranslation = "functionTranslation",
 	FunctionTranslationCache = "functionTranslationCache",
 	FunctionScreenshot = "functionScreenshot",
@@ -356,6 +358,14 @@ export type AppSettingsData = {
 		autoCreateNewSessionOnCloseWindow: boolean;
 		chatApiConfigList: ChatApiConfig[];
 	};
+	[AppSettingsGroup.FunctionOcr]: {
+		/** 文本识别模型 */
+		ocrModel: OcrModel;
+		/** 将图片转为 HTML 的视觉理解模型 */
+		htmlVisionModel: string;
+		/** 将图片转为 HTML 的系统提示词 */
+		htmlVisionModelSystemPrompt: string;
+	};
 	[AppSettingsGroup.FunctionTranslation]: {
 		/** 优化 AI 翻译的排版 */
 		optimizeAiTranslationLayout: boolean;
@@ -480,7 +490,6 @@ export type AppSettingsData = {
 		recordCaptureHistory: boolean;
 		/** 截图历史保存编辑结果 */
 		historySaveEditResult: boolean;
-		ocrModel: OcrModel;
 		/** OCR 热启动 */
 		ocrHotStart: boolean;
 		/** OCR 模型写入内存 */

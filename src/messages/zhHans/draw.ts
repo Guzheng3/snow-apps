@@ -201,4 +201,8 @@ export const draw = {
 	"draw.ocrResult.translating": "翻译中",
 	"draw.ocrResult.translateError": "翻译失败",
 	"draw.ocrToolModalSettings.title": "文本识别设置",
+	"draw.ocrResult.visionModelListEmpty": "视觉理解模型无效，请检查应用设置",
+	"draw.ocrResult.convertImageToHtmlLoading": "转换 HTML 中",
+	"draw.ocrResult.convertImageToHtmlError": "转换 HTML 失败",
+	"draw.ocrDetect.visionModelHtml": "转换为 HTML",
 };

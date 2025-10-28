@@ -1,16 +1,63 @@
+import type { GlobalToken } from "antd";
+import { OcrResultType } from ".";
+
+const domParser = new DOMParser();
 export const getOcrResultIframeSrcDoc = (
 	textContent: string,
+	ocrResultType: OcrResultType,
 	enableDrag: boolean | undefined,
 	enableCopy: boolean | undefined,
+	token: GlobalToken | undefined,
 ) => {
+	let extraStyle = "";
+	if (ocrResultType === OcrResultType.VisionModelHtml) {
+		// 如果 textContent 包含 markdown 代码块标记，提取首个 < 和最后一个 > 之间的内容
+		const firstLtIndex = textContent.indexOf("<");
+		const lastGtIndex = textContent.lastIndexOf(">");
+
+		textContent = textContent.substring(
+			firstLtIndex === -1 ? 0 : firstLtIndex,
+			lastGtIndex === -1 ? textContent.length : lastGtIndex + 1,
+		);
+
+		const contentHtmlDom = domParser.parseFromString(textContent, "text/html");
+		textContent = contentHtmlDom.body.innerHTML;
+		extraStyle = `
+            table {
+                border-collapse: collapse;
+                border-spacing: 0;
+                width: 100%;
+                border: 1px solid ${token?.colorBorder ?? "#d9d9d9"};
+            }
+
+            th, td {
+                text-align: left;
+                padding: 8px 12px;
+                border: 1px solid ${token?.colorBorder ?? "#d9d9d9"};
+            }
+
+            th {
+                background-color: ${token?.colorBgContainer ? `color-mix(in srgb, ${token.colorBgContainer} 50%, ${token.colorBorderSecondary ?? "#f0f0f0"})` : "#fafafa"};
+                font-weight: 600;
+            }
+
+            tr:hover {
+                background-color: ${token?.colorBgTextHover ?? "rgba(0, 0, 0, 0.02)"};
+            }
+        `;
+	}
+
 	return `<head><meta name="color-scheme" content="light dark"></meta></head>
                                 <body>${textContent}</body>
                         <style>
                             html {
                                 height: 100%;
                                 width: 100%;
-                                background-color: transparent;
+                                background-color: ${ocrResultType === OcrResultType.VisionModelHtml ? (token?.colorBgContainer ?? "transparent") : "transparent"};
+                                ${ocrResultType === OcrResultType.VisionModelHtml ? `color: ${token?.colorText ?? "inherit"}` : ""}
                             }
+
+                            ${extraStyle}
 
                             .ocr-result-text-background-element {
                                 opacity: 0;
