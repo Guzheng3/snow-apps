@@ -1,4 +1,5 @@
 import { about } from "./about";
+import { appearance } from "./appearance";
 import { common } from "./common";
 import { draw } from "./draw";
 import { fullScreenDraw } from "./fullScreenDraw";
@@ -22,4 +23,5 @@ export const zhHans = {
 	...videoRecord,
 	...plugin,
 	...personalization,
+	...appearance,
 };

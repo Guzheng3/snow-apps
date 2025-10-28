@@ -107,20 +107,20 @@ const MenuContentCore: React.FC<{
                     height: 100%;
                 }
 
-                .center {
+                .content-wrap .center {
                     grid-column: 2;
                     grid-row: 2;
                     overflow-y: hidden;
                     overflow-x: hidden;
                     border-radius: ${token.borderRadiusLG}px;
-                    background-color: ${token.colorBgContainer} !important;
+                    background: ${token.colorBgContainer};
                     padding: ${token.padding}px ${token.borderRadiusLG}px;
                     display: flex;
                     flex-direction: column;
                     transform: translateY(0px);
                 }
 
-                .center::-webkit-scrollbar {
+                .content-wrap .center::-webkit-scrollbar {
                     display: none;
                 }
 

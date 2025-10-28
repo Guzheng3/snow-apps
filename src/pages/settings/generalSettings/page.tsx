@@ -18,7 +18,6 @@ import {
 	Select,
 	Space,
 	Spin,
-	Switch,
 	theme,
 } from "antd";
 import type { AggregationColor } from "antd/es/color-picker/color";
@@ -381,6 +380,7 @@ export const GeneralSettingsPage = () => {
 				onValuesChange={(_, values) => {
 					updateAppSettings(AppSettingsGroup.Common, values, true, true, true);
 				}}
+				layout="vertical"
 			>
 				<Spin spinning={appSettingsLoading}>
 					<Row gutter={token.marginLG}>
@@ -395,14 +395,6 @@ export const GeneralSettingsPage = () => {
 								name="theme"
 							>
 								<Select options={themeOptions} />
-							</Form.Item>
-						</Col>
-						<Col span={12}>
-							<Form.Item
-								name="enableCompactLayout"
-								label={<FormattedMessage id="settings.compactLayout" />}
-							>
-								<Switch />
 							</Form.Item>
 						</Col>
 						<Col span={12}>

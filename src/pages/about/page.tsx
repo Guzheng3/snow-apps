@@ -55,13 +55,12 @@ export const AboutPage = () => {
 		>
 			{/* 头部信息 */}
 			<div style={{ textAlign: "center", marginBottom: token.marginLG }}>
-				<div>
-					{/* eslint-disable-next-line @next/next/no-img-element */}
+				<div style={{ marginBottom: -12 }}>
 					<img
 						src={"/images/app-icon.png"}
 						alt="Snow Shot"
-						width={83}
-						height={83}
+						width={100}
+						height={100}
 					/>
 				</div>
 

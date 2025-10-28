@@ -46,14 +46,8 @@ export const MASK_CIRCLE_CONTROL_STROKE_WIDTH = 1.5;
 export const MASK_CIRCLE_CONTROL_SHOW_END_CONTROL_WIDTH = 32;
 // 全屏遮罩圆形 controls 点显示中点控制点的宽度
 export const MASK_CIRCLE_CONTROL_SHOW_MID_CONTROL_WIDTH = 64;
-// 全屏遮罩圆形 controls 点的颜色
-export const MASK_CIRCLE_CONTROL_COLOR = "#4096ff";
-// 全屏遮罩圆形 controls 点的描边颜色
-export const MASK_CIRCLE_CONTROL_STROKE_COLOR = "#ffffff";
 // 全屏遮罩的 mask 的描边宽度
 export const MASK_CONTROL_BORDER_STROKE_WIDTH = 2;
-// 全屏遮罩的 mask 的描边颜色
-export const MASK_CONTROL_BORDER_STROKE_COLOR = "#4096ff";
 
 // 全屏辅助线相关常量
 export const AUXILIARY_LINE_WIDTH = 1;
@@ -79,6 +73,11 @@ const drawCircleControl = (
 };
 
 export const drawSelectRect = (
+	themeConfig: {
+		strokeColor: string;
+		controlStrokeColor: string;
+		controlFillColor: string;
+	},
 	monitorWidth: number,
 	monitorHeight: number,
 	selectRect: ElementRect,
@@ -231,7 +230,7 @@ export const drawSelectRect = (
 		canvasContext.setLineDash([]);
 	}
 
-	canvasContext.strokeStyle = MASK_CONTROL_BORDER_STROKE_COLOR;
+	canvasContext.strokeStyle = themeConfig.strokeColor;
 	canvasContext.lineWidth = maskControlBorderStrokeWidth;
 
 	canvasContext.beginPath();
@@ -243,8 +242,7 @@ export const drawSelectRect = (
 	canvasContext.stroke();
 
 	if (!hideControls) {
-		const controlFillColor = MASK_CIRCLE_CONTROL_COLOR;
-		const controlStrokeColor = MASK_CIRCLE_CONTROL_STROKE_COLOR;
+		const controlFillColor = themeConfig.controlFillColor;
 
 		canvasContext.beginPath();
 		if (minWidth > maskCircleControlShowEndWidth) {
@@ -314,7 +312,7 @@ export const drawSelectRect = (
 
 		canvasContext.fillStyle = controlFillColor;
 		canvasContext.fill();
-		canvasContext.strokeStyle = controlStrokeColor;
+		canvasContext.strokeStyle = themeConfig.controlStrokeColor;
 		canvasContext.lineWidth = maskCircleControlStrokeWidth;
 		canvasContext.stroke();
 	}

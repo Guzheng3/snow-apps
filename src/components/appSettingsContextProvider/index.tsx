@@ -3,7 +3,7 @@ import {
 	type Window as AppWindow,
 	getCurrentWindow,
 } from "@tauri-apps/api/window";
-import { ConfigProvider, theme } from "antd";
+import { ConfigProvider, type ThemeConfig, theme } from "antd";
 import enUS from "antd/es/locale/en_US";
 import zhCN from "antd/es/locale/zh_CN";
 import zhTW from "antd/es/locale/zh_TW";
@@ -216,6 +216,16 @@ const AppSettingsContextProviderCore: React.FC<{
 						typeof newSettings?.theme === "string"
 							? newSettings.theme
 							: (prevSettings?.theme ?? AppSettingsTheme.System),
+					mainColor:
+						typeof newSettings?.mainColor === "string"
+							? newSettings.mainColor
+							: (prevSettings?.mainColor ??
+								defaultAppSettingsData[group].mainColor),
+					borderRadius:
+						typeof newSettings?.borderRadius === "number"
+							? Math.min(Math.max(newSettings.borderRadius, 0), 16)
+							: (prevSettings?.borderRadius ??
+								defaultAppSettingsData[group].borderRadius),
 					enableCompactLayout:
 						typeof newSettings?.enableCompactLayout === "boolean"
 							? newSettings.enableCompactLayout
@@ -241,6 +251,57 @@ const AppSettingsContextProviderCore: React.FC<{
 				window.__APP_ACCEPT_LANGUAGE__ = settings.language.startsWith("en")
 					? "en-US"
 					: "zh-CN";
+			} else if (group === AppSettingsGroup.ThemeSkin) {
+				newSettings = newSettings as AppSettingsData[typeof group];
+				const prevSettings = appSettingsRef.current[group] as
+					| AppSettingsData[typeof group]
+					| undefined;
+				settings = {
+					skinPath:
+						typeof newSettings?.skinPath === "string"
+							? newSettings.skinPath
+							: (prevSettings?.skinPath ??
+								defaultAppSettingsData[group].skinPath),
+					skinOpacity:
+						typeof newSettings?.skinOpacity === "number"
+							? Math.min(Math.max(newSettings.skinOpacity, 0), 100)
+							: (prevSettings?.skinOpacity ??
+								defaultAppSettingsData[group].skinOpacity),
+					skinPosition:
+						typeof newSettings?.skinPosition === "string"
+							? newSettings.skinPosition
+							: (prevSettings?.skinPosition ??
+								defaultAppSettingsData[group].skinPosition),
+					skinBlur:
+						typeof newSettings?.skinBlur === "number"
+							? Math.min(Math.max(newSettings.skinBlur, 0), 32)
+							: (prevSettings?.skinBlur ??
+								defaultAppSettingsData[group].skinBlur),
+					skinImageSize:
+						typeof newSettings?.skinImageSize === "string"
+							? newSettings.skinImageSize
+							: (prevSettings?.skinImageSize ??
+								defaultAppSettingsData[group].skinImageSize),
+					skinMixBlendMode:
+						typeof newSettings?.skinMixBlendMode === "string"
+							? newSettings.skinMixBlendMode
+							: (prevSettings?.skinMixBlendMode ??
+								defaultAppSettingsData[group].skinMixBlendMode),
+					customCss:
+						typeof newSettings?.customCss === "string"
+							? newSettings.customCss
+							: (prevSettings?.customCss ?? ""),
+					skinMaskBlur:
+						typeof newSettings?.skinMaskBlur === "number"
+							? Math.min(Math.max(newSettings.skinMaskBlur, 0), 32)
+							: (prevSettings?.skinMaskBlur ??
+								defaultAppSettingsData[group].skinMaskBlur),
+					skinMaskOpacity:
+						typeof newSettings?.skinMaskOpacity === "number"
+							? Math.min(Math.max(newSettings.skinMaskOpacity, 0), 100)
+							: (prevSettings?.skinMaskOpacity ??
+								defaultAppSettingsData[group].skinMaskOpacity),
+				};
 			} else if (group === AppSettingsGroup.Cache) {
 				newSettings = newSettings as AppSettingsData[typeof group];
 				const prevSettings = appSettingsRef.current[group] as
@@ -1364,10 +1425,8 @@ const AppSettingsContextProviderCore: React.FC<{
 				appSettingsTheme === AppSettingsTheme.System
 					? currentSystemTheme
 					: appSettingsTheme,
-			enableCompactLayout:
-				appSettings[AppSettingsGroup.Common].enableCompactLayout,
 		};
-	}, [appSettings, appSettingsTheme, currentSystemTheme]);
+	}, [appSettingsTheme, currentSystemTheme]);
 
 	useEffect(() => {
 		const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
@@ -1427,19 +1486,30 @@ const AppSettingsContextProviderCore: React.FC<{
 		};
 	}, []);
 
-	const antdTheme = useMemo(() => {
+	const antdTheme = useMemo((): ThemeConfig => {
 		const algorithms = [
 			appContextValue.currentTheme === AppSettingsTheme.Dark
 				? theme.darkAlgorithm
 				: theme.defaultAlgorithm,
 		];
-		if (appContextValue.enableCompactLayout) {
+		if (appSettings[AppSettingsGroup.Common].enableCompactLayout) {
 			algorithms.push(theme.compactAlgorithm);
 		}
+
 		return {
 			algorithm: algorithms,
+			token: {
+				colorPrimary: appSettings[AppSettingsGroup.Common].mainColor,
+				borderRadius: appSettings[AppSettingsGroup.Common].borderRadius,
+			},
 		};
-	}, [appContextValue.currentTheme, appContextValue.enableCompactLayout]);
+	}, [
+		appContextValue.currentTheme,
+		appSettings[AppSettingsGroup.Common].enableCompactLayout,
+		appSettings[AppSettingsGroup.Common].borderRadius,
+		appSettings[AppSettingsGroup.Common].mainColor,
+	]);
+
 	useEffect(() => {
 		document.body.className =
 			appContextValue.currentTheme === AppSettingsTheme.Dark

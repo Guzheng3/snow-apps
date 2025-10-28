@@ -225,6 +225,22 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 				tabs: [],
 				children: [
 					{
+						key: "/personalization/appearance",
+						path: "/personalization/appearance",
+						label: intl.formatMessage({
+							id: "menu.personalization.appearance",
+						}),
+						hideTabs: true,
+						tabs: [
+							{
+								key: "appearance",
+								label: intl.formatMessage({
+									id: "menu.personalization.appearance",
+								}),
+							},
+						],
+					},
+					{
 						key: "/personalization/plugins",
 						path: "/personalization/plugins",
 						label: intl.formatMessage({ id: "menu.personalization.plugins" }),
@@ -531,6 +547,12 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
                         box-shadow: 0 0 12px 0 rgba(0, 0, 0, 0.21);
                         overflow: hidden;
                         height: 100%;
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        z-index: 1;
                     }
 
                     .menu-layout-wrap :global(.ant-layout) {
@@ -551,7 +573,7 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 
                     .menu-layout-wrap :global(.ant-layout-header) {
                         height: 32px !important;
-                        background: ${token.colorBgContainer} !important;
+                        background: ${token.colorBgContainer};
                         display: flex;
                         align-items: center;
                         justify-content: flex-end;

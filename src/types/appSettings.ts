@@ -80,6 +80,7 @@ export type TranslationApiConfig = {
 
 export enum AppSettingsGroup {
 	Common = "common",
+	ThemeSkin = "themeSkin",
 	CommonTrayIcon = "commonTrayIcon",
 	FunctionDraw = "functionDraw",
 	Cache = "cache_20250731",
@@ -194,11 +195,51 @@ export enum OcrModel {
 export type AppSettingsData = {
 	[AppSettingsGroup.Common]: {
 		theme: AppSettingsTheme;
+		/** 主色 */
+		mainColor: string;
+		/** 圆角 */
+		borderRadius: number;
 		/** 紧凑布局 */
 		enableCompactLayout: boolean;
 		language: AppSettingsLanguage;
 		/** 浏览器语言，用于自动切换语言 */
 		browserLanguage: string;
+	};
+	[AppSettingsGroup.ThemeSkin]: {
+		/** 皮肤路径 */
+		skinPath: string;
+		/** 皮肤透明度 */
+		skinOpacity: number;
+		/** 皮肤位置 */
+		skinPosition: "top" | "bottom" | "left" | "right" | "center";
+		/** 皮肤模糊度 */
+		skinBlur: number;
+		/** 皮肤遮罩模糊度 */
+		skinMaskBlur: number;
+		/** 皮肤遮罩透明度 */
+		skinMaskOpacity: number;
+		/** 皮肤图片大小 */
+		skinImageSize: "cover" | "contain" | "fill";
+		/** 皮肤混合模式 */
+		skinMixBlendMode:
+			| "unset"
+			| "multiply"
+			| "screen"
+			| "overlay"
+			| "darken"
+			| "lighten"
+			| "color-dodge"
+			| "color-burn"
+			| "hard-light"
+			| "soft-light"
+			| "difference"
+			| "exclusion"
+			| "hue"
+			| "saturation"
+			| "color"
+			| "luminosity";
+		/** 自定义 CSS */
+		customCss: string;
 	};
 	[AppSettingsGroup.Screenshot]: {
 		/** 界面缩放比例 */

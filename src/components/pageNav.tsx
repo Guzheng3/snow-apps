@@ -19,6 +19,7 @@ export const PageNav: React.FC<{
 	actionRef: React.RefObject<PageNavActionType | null>;
 }> = ({ tabItems, actionRef }) => {
 	const { token } = theme.useToken();
+
 	const [activeKey, setActiveKey] = useState<string | undefined>(
 		tabItems.items?.[0]?.key,
 	);

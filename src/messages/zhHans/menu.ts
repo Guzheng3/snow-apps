@@ -12,5 +12,6 @@ export const menu = {
 	"menu.tools.captureHistory": "截图历史",
 	"menu.personalization": "个性化",
 	"menu.personalization.plugins": "插件",
+	"menu.personalization.appearance": "外观配色",
 	"menu.about": "关于",
 };

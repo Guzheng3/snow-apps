@@ -13,6 +13,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as NoLayoutRouteRouteImport } from './routes/_noLayout/route'
 import { Route as LayoutRouteRouteImport } from './routes/_layout/route'
+import { Route as LayoutPersonalizationAppearanceRouteImport } from './routes/_layout/personalization/appearance'
 
 const LayoutIndexLazyRouteImport = createFileRoute('/_layout/')()
 const NoLayoutVideoRecordToolbarLazyRouteImport = createFileRoute(
@@ -202,6 +203,12 @@ const LayoutPersonalizationPluginsLazyRoute =
       (d) => d.Route,
     ),
   )
+const LayoutPersonalizationAppearanceRoute =
+  LayoutPersonalizationAppearanceRouteImport.update({
+    id: '/personalization/appearance',
+    path: '/personalization/appearance',
+    getParentRoute: () => LayoutRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/about': typeof LayoutAboutLazyRoute
@@ -213,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/videoRecord': typeof NoLayoutVideoRecordLazyRoute
   '/videoRecordToolbar': typeof NoLayoutVideoRecordToolbarLazyRoute
   '/': typeof LayoutIndexLazyRoute
+  '/personalization/appearance': typeof LayoutPersonalizationAppearanceRoute
   '/personalization/plugins': typeof LayoutPersonalizationPluginsLazyRoute
   '/settings/functionSettings': typeof LayoutSettingsFunctionSettingsLazyRoute
   '/settings/generalSettings': typeof LayoutSettingsGeneralSettingsLazyRoute
@@ -232,6 +240,7 @@ export interface FileRoutesByTo {
   '/videoRecord': typeof NoLayoutVideoRecordLazyRoute
   '/videoRecordToolbar': typeof NoLayoutVideoRecordToolbarLazyRoute
   '/': typeof LayoutIndexLazyRoute
+  '/personalization/appearance': typeof LayoutPersonalizationAppearanceRoute
   '/personalization/plugins': typeof LayoutPersonalizationPluginsLazyRoute
   '/settings/functionSettings': typeof LayoutSettingsFunctionSettingsLazyRoute
   '/settings/generalSettings': typeof LayoutSettingsGeneralSettingsLazyRoute
@@ -254,6 +263,7 @@ export interface FileRoutesById {
   '/_noLayout/videoRecord': typeof NoLayoutVideoRecordLazyRoute
   '/_noLayout/videoRecordToolbar': typeof NoLayoutVideoRecordToolbarLazyRoute
   '/_layout/': typeof LayoutIndexLazyRoute
+  '/_layout/personalization/appearance': typeof LayoutPersonalizationAppearanceRoute
   '/_layout/personalization/plugins': typeof LayoutPersonalizationPluginsLazyRoute
   '/_layout/settings/functionSettings': typeof LayoutSettingsFunctionSettingsLazyRoute
   '/_layout/settings/generalSettings': typeof LayoutSettingsGeneralSettingsLazyRoute
@@ -275,6 +285,7 @@ export interface FileRouteTypes {
     | '/videoRecord'
     | '/videoRecordToolbar'
     | '/'
+    | '/personalization/appearance'
     | '/personalization/plugins'
     | '/settings/functionSettings'
     | '/settings/generalSettings'
@@ -294,6 +305,7 @@ export interface FileRouteTypes {
     | '/videoRecord'
     | '/videoRecordToolbar'
     | '/'
+    | '/personalization/appearance'
     | '/personalization/plugins'
     | '/settings/functionSettings'
     | '/settings/generalSettings'
@@ -315,6 +327,7 @@ export interface FileRouteTypes {
     | '/_noLayout/videoRecord'
     | '/_noLayout/videoRecordToolbar'
     | '/_layout/'
+    | '/_layout/personalization/appearance'
     | '/_layout/personalization/plugins'
     | '/_layout/settings/functionSettings'
     | '/_layout/settings/generalSettings'
@@ -465,12 +478,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutPersonalizationPluginsLazyRouteImport
       parentRoute: typeof LayoutRouteRoute
     }
+    '/_layout/personalization/appearance': {
+      id: '/_layout/personalization/appearance'
+      path: '/personalization/appearance'
+      fullPath: '/personalization/appearance'
+      preLoaderRoute: typeof LayoutPersonalizationAppearanceRouteImport
+      parentRoute: typeof LayoutRouteRoute
+    }
   }
 }
 
 interface LayoutRouteRouteChildren {
   LayoutAboutLazyRoute: typeof LayoutAboutLazyRoute
   LayoutIndexLazyRoute: typeof LayoutIndexLazyRoute
+  LayoutPersonalizationAppearanceRoute: typeof LayoutPersonalizationAppearanceRoute
   LayoutPersonalizationPluginsLazyRoute: typeof LayoutPersonalizationPluginsLazyRoute
   LayoutSettingsFunctionSettingsLazyRoute: typeof LayoutSettingsFunctionSettingsLazyRoute
   LayoutSettingsGeneralSettingsLazyRoute: typeof LayoutSettingsGeneralSettingsLazyRoute
@@ -484,6 +505,7 @@ interface LayoutRouteRouteChildren {
 const LayoutRouteRouteChildren: LayoutRouteRouteChildren = {
   LayoutAboutLazyRoute: LayoutAboutLazyRoute,
   LayoutIndexLazyRoute: LayoutIndexLazyRoute,
+  LayoutPersonalizationAppearanceRoute: LayoutPersonalizationAppearanceRoute,
   LayoutPersonalizationPluginsLazyRoute: LayoutPersonalizationPluginsLazyRoute,
   LayoutSettingsFunctionSettingsLazyRoute:
     LayoutSettingsFunctionSettingsLazyRoute,

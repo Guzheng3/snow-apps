@@ -1,6 +1,7 @@
 "use client";
 
 import * as TWEEN from "@tweenjs/tween.js";
+import { theme } from "antd";
 import Color from "color";
 import { debounce } from "es-toolkit";
 import Flatbush from "flatbush";
@@ -490,6 +491,28 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
 	const { currentTheme } = useContext(AppContext);
 
+	const { token } = theme.useToken();
+	const drawSelectRectThemeConfigRef = useRef<{
+		strokeColor: string;
+		controlStrokeColor: string;
+		controlFillColor: string;
+	}>({
+		strokeColor: "#4096ff",
+		controlStrokeColor: "#4096ff",
+		controlFillColor: "#ffffff",
+	});
+	useEffect(() => {
+		const primaryColor = Color(token.colorPrimary)
+			.lighten(0.16)
+			.rgb()
+			.toString();
+		drawSelectRectThemeConfigRef.current = {
+			strokeColor: primaryColor,
+			controlFillColor: primaryColor,
+			controlStrokeColor: token.colorWhite,
+		};
+	}, [token.colorPrimary, token.colorWhite]);
+
 	const {
 		contentScale: [, , contentScaleRef],
 	} = useMonitorRect();
@@ -515,6 +538,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 				selectStateRef.current === SelectState.Manual;
 
 			drawSelectRect(
+				drawSelectRectThemeConfigRef.current,
 				captureBoundingBoxInfo.width,
 				captureBoundingBoxInfo.height,
 				rect,

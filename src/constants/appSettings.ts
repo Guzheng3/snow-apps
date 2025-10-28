@@ -34,9 +34,22 @@ import { defaultDrawToolbarKeyEventSettings } from "./drawToolbarKeyEvent";
 export const defaultAppSettingsData: AppSettingsData = {
 	[AppSettingsGroup.Common]: {
 		theme: AppSettingsTheme.System,
+		mainColor: "#1677FF",
+		borderRadius: 6,
 		enableCompactLayout: false,
 		language: AppSettingsLanguage.ZHHans,
 		browserLanguage: "",
+	},
+	[AppSettingsGroup.ThemeSkin]: {
+		skinPath: "",
+		skinOpacity: 72,
+		skinPosition: "center",
+		skinBlur: 0,
+		skinImageSize: "cover",
+		skinMixBlendMode: "unset",
+		customCss: "",
+		skinMaskBlur: 3,
+		skinMaskOpacity: 100,
 	},
 	[AppSettingsGroup.Screenshot]: {
 		uiScale: 100,
