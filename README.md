@@ -10,8 +10,7 @@
 
 简单、优雅、社区活跃
 
-<img width="83%" src="/docs/imgs/snow_shot_home.webp">
-
+<img width="64%" src="/docs/imgs/snow_shot_home.webp" style="margin-bottom: 24px;">
 
 ![GitHub Release](https://img.shields.io/github/v/release/mg-chao/snow-shot?label=version)
 ![GitHub License](https://img.shields.io/github/license/mg-chao/snow-shot)
