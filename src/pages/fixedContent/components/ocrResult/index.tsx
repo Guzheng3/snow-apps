@@ -781,19 +781,19 @@ export const OcrResult: React.FC<{
 	}, []);
 
 	const menuRef = useRef<Menu>(undefined);
+	const createContextMenu = useCallback(async () => {
+		if (menuRef.current) {
+			const closedMenu = menuRef.current;
+			menuRef.current = undefined;
+			closedMenu.close();
+		}
 
-	const initMenu = useCallback(async () => {
 		if (disabled) {
 			return;
 		}
 
-		if (menuRef.current) {
-			await menuRef.current.close();
-			menuRef.current = undefined;
-			return;
-		}
 		const appWindow = getCurrentWindow();
-		return await Menu.new({
+		const result = await Menu.new({
 			items: [
 				{
 					id: `${appWindow.label}-copySelectedText`,
@@ -812,26 +812,19 @@ export const OcrResult: React.FC<{
 				},
 			],
 		});
+		menuRef.current = result;
+
+		return result;
 	}, [disabled, intl]);
 
 	useEffect(() => {
-		const initMenuPromise = initMenu().then((menu) => {
-			menuRef.current = menu;
-
-			return menu;
-		});
-
 		return () => {
-			menuRef.current = undefined;
-			initMenuPromise
-				.then((menu) => {
-					menu?.close();
-				})
-				.catch((error) => {
-					appError("[ocrResult] close menu failed", error);
-				});
+			if (menuRef.current) {
+				menuRef.current.close();
+				menuRef.current = undefined;
+			}
 		};
-	}, [initMenu]);
+	}, []);
 
 	useHotkeysApp(
 		getPlatformValue("Ctrl+A", "Meta+A"),
@@ -867,7 +860,9 @@ export const OcrResult: React.FC<{
 	const onContextMenu = useCallback(() => {
 		selectedTextRef.current = getSelectedText();
 		if (selectedTextRef.current?.text.trim()) {
-			menuRef.current?.popup();
+			createContextMenu().then((menu) => {
+				menu?.popup();
+			});
 			return;
 		}
 
@@ -877,7 +872,7 @@ export const OcrResult: React.FC<{
 			clientX: 0,
 			clientY: 0,
 		} as React.MouseEvent<HTMLDivElement>);
-	}, [getSelectedText, onContextMenuProp]);
+	}, [getSelectedText, onContextMenuProp, createContextMenu]);
 
 	const onDoubleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
 		// 阻止截图双击复制和固定到屏幕双击缩放的操作

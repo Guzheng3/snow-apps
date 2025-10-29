@@ -18,7 +18,7 @@ async fn main() {
 }
 
 #[cfg(target_os = "windows")]
-const DELAY_SECONDS: u64 = 8;
+const DELAY_SECONDS: u64 = 10;
 
 #[cfg(target_os = "macos")]
 const DELAY_SECONDS: u64 = 3;

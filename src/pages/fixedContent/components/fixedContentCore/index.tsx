@@ -1587,15 +1587,43 @@ const FixedContentCoreInner: React.FC<{
 		],
 	);
 
-	const initMenu = useCallback(async (): Promise<
+	const rightClickMenuRef = useRef<
 		| {
-				menu: Menu | undefined;
+				mainMenu: Menu | undefined;
+				focusedWindowMenu: Submenu | undefined;
+				setOpacityMenu: Submenu | undefined;
+				setScaleMenu: Submenu | undefined;
+		  }
+		| undefined
+	>(undefined);
+	useEffect(() => {
+		return () => {
+			if (rightClickMenuRef.current) {
+				rightClickMenuRef.current.mainMenu?.close();
+				rightClickMenuRef.current.focusedWindowMenu?.close();
+				rightClickMenuRef.current.setOpacityMenu?.close();
+				rightClickMenuRef.current.setScaleMenu?.close();
+			}
+		};
+	}, []);
+	const createRightClickMenu = useCallback(async (): Promise<
+		| {
+				mainMenu: Menu | undefined;
 				focusedWindowMenu: Submenu | undefined;
 				setOpacityMenu: Submenu | undefined;
 				setScaleMenu: Submenu | undefined;
 		  }
 		| undefined
 	> => {
+		if (rightClickMenuRef.current) {
+			const closedMenu = rightClickMenuRef.current;
+			rightClickMenuRef.current = undefined;
+			closedMenu.mainMenu?.close();
+			closedMenu.focusedWindowMenu?.close();
+			closedMenu.setOpacityMenu?.close();
+			closedMenu.setScaleMenu?.close();
+		}
+
 		if (!isReadyStatus) {
 			return;
 		}
@@ -1609,124 +1637,128 @@ const FixedContentCoreInner: React.FC<{
 			return;
 		}
 
-		const focusedWindowMenu = await Submenu.new({
-			text: intl.formatMessage({ id: "draw.focusMode" }),
-			items: [
-				{
-					id: `${appWindow.label}-focusModeToolShowAllWindow`,
-					text: intl.formatMessage({ id: "draw.focusMode.showAllWindow" }),
-					action: fixedContentFocusModeShowAllWindow,
-				},
-				{
-					id: `${appWindow.label}-focusModeToolHideOtherWindow`,
+		const [focusedWindowMenu, setOpacityMenu, setScaleMenu] = await Promise.all(
+			[
+				Submenu.new({
+					text: intl.formatMessage({ id: "draw.focusMode" }),
+					items: [
+						{
+							id: `${appWindow.label}-focusModeToolShowAllWindow`,
+							text: intl.formatMessage({ id: "draw.focusMode.showAllWindow" }),
+							action: fixedContentFocusModeShowAllWindow,
+						},
+						{
+							id: `${appWindow.label}-focusModeToolHideOtherWindow`,
+							text: intl.formatMessage({
+								id: "draw.focusMode.hideOtherWindow",
+							}),
+							action: fixedContentFocusModeHideOtherWindow,
+						},
+						{
+							id: `${appWindow.label}-focusModeToolCloseOtherWindow`,
+							text: intl.formatMessage({
+								id: "draw.focusMode.closeOtherWindow",
+							}),
+							action: fixedContentFocusModeCloseOtherWindow,
+						},
+						{
+							id: `${appWindow.label}-focusModeToolCloseAllWindow`,
+							text: intl.formatMessage({ id: "draw.focusMode.closeAllWindow" }),
+							action: fixedContentFocusModeCloseAllWindow,
+						},
+					],
+				}),
+				Submenu.new({
 					text: intl.formatMessage({
-						id: "draw.focusMode.hideOtherWindow",
+						id: "settings.hotKeySettings.fixedContent.opacity",
 					}),
-					action: fixedContentFocusModeHideOtherWindow,
-				},
-				{
-					id: `${appWindow.label}-focusModeToolCloseOtherWindow`,
+					items: [
+						{
+							id: `${appWindow.label}-setOpacityTool25`,
+							text: intl.formatMessage({
+								id: "settings.hotKeySettings.fixedContent.setOpacity.twentyFive",
+							}),
+							action: () => {
+								changeContentOpacity(0.25);
+							},
+						},
+						{
+							id: `${appWindow.label}-setOpacityTool50`,
+							text: intl.formatMessage({
+								id: "settings.hotKeySettings.fixedContent.setOpacity.fifty",
+							}),
+							action: () => {
+								changeContentOpacity(0.5);
+							},
+						},
+						{
+							id: `${appWindow.label}-setOpacityTool75`,
+							text: intl.formatMessage({
+								id: "settings.hotKeySettings.fixedContent.setOpacity.seventyFive",
+							}),
+							action: () => {
+								changeContentOpacity(0.75);
+							},
+						},
+						{
+							id: `${appWindow.label}-setOpacityTool100`,
+							text: intl.formatMessage({
+								id: "settings.hotKeySettings.fixedContent.setOpacity.hundred",
+							}),
+							action: () => {
+								changeContentOpacity(1);
+							},
+						},
+					],
+				}),
+				Submenu.new({
 					text: intl.formatMessage({
-						id: "draw.focusMode.closeOtherWindow",
+						id: "settings.hotKeySettings.fixedContent.scale",
 					}),
-					action: fixedContentFocusModeCloseOtherWindow,
-				},
-				{
-					id: `${appWindow.label}-focusModeToolCloseAllWindow`,
-					text: intl.formatMessage({ id: "draw.focusMode.closeAllWindow" }),
-					action: fixedContentFocusModeCloseAllWindow,
-				},
+					enabled: !enableDraw,
+					items: [
+						{
+							id: `${appWindow.label}-setScaleTool25`,
+							text: intl.formatMessage({
+								id: "settings.hotKeySettings.fixedContent.setScale.twentyFive",
+							}),
+							action: () => {
+								scaleWindow(25 - scaleRef.current.x, true);
+							},
+						},
+						{
+							id: `${appWindow.label}-setScaleTool50`,
+							text: intl.formatMessage({
+								id: "settings.hotKeySettings.fixedContent.setScale.fifty",
+							}),
+							action: () => {
+								scaleWindow(50 - scaleRef.current.x, true);
+							},
+						},
+						{
+							id: `${appWindow.label}-setScaleTool75`,
+							text: intl.formatMessage({
+								id: "settings.hotKeySettings.fixedContent.setScale.seventyFive",
+							}),
+							action: () => {
+								scaleWindow(75 - scaleRef.current.x, true);
+							},
+						},
+						{
+							id: `${appWindow.label}-setScaleTool100`,
+							text: intl.formatMessage({
+								id: "settings.hotKeySettings.fixedContent.setScale.hundred",
+							}),
+							action: () => {
+								scaleWindow(100 - scaleRef.current.x, true);
+							},
+						},
+					],
+				}),
 			],
-		});
-		const setOpacityMenu = await Submenu.new({
-			text: intl.formatMessage({
-				id: "settings.hotKeySettings.fixedContent.opacity",
-			}),
-			items: [
-				{
-					id: `${appWindow.label}-setOpacityTool25`,
-					text: intl.formatMessage({
-						id: "settings.hotKeySettings.fixedContent.setOpacity.twentyFive",
-					}),
-					action: () => {
-						changeContentOpacity(0.25);
-					},
-				},
-				{
-					id: `${appWindow.label}-setOpacityTool50`,
-					text: intl.formatMessage({
-						id: "settings.hotKeySettings.fixedContent.setOpacity.fifty",
-					}),
-					action: () => {
-						changeContentOpacity(0.5);
-					},
-				},
-				{
-					id: `${appWindow.label}-setOpacityTool75`,
-					text: intl.formatMessage({
-						id: "settings.hotKeySettings.fixedContent.setOpacity.seventyFive",
-					}),
-					action: () => {
-						changeContentOpacity(0.75);
-					},
-				},
-				{
-					id: `${appWindow.label}-setOpacityTool100`,
-					text: intl.formatMessage({
-						id: "settings.hotKeySettings.fixedContent.setOpacity.hundred",
-					}),
-					action: () => {
-						changeContentOpacity(1);
-					},
-				},
-			],
-		});
-		const setScaleMenu = await Submenu.new({
-			text: intl.formatMessage({
-				id: "settings.hotKeySettings.fixedContent.scale",
-			}),
-			enabled: !enableDraw,
-			items: [
-				{
-					id: `${appWindow.label}-setScaleTool25`,
-					text: intl.formatMessage({
-						id: "settings.hotKeySettings.fixedContent.setScale.twentyFive",
-					}),
-					action: () => {
-						scaleWindow(25 - scaleRef.current.x, true);
-					},
-				},
-				{
-					id: `${appWindow.label}-setScaleTool50`,
-					text: intl.formatMessage({
-						id: "settings.hotKeySettings.fixedContent.setScale.fifty",
-					}),
-					action: () => {
-						scaleWindow(50 - scaleRef.current.x, true);
-					},
-				},
-				{
-					id: `${appWindow.label}-setScaleTool75`,
-					text: intl.formatMessage({
-						id: "settings.hotKeySettings.fixedContent.setScale.seventyFive",
-					}),
-					action: () => {
-						scaleWindow(75 - scaleRef.current.x, true);
-					},
-				},
-				{
-					id: `${appWindow.label}-setScaleTool100`,
-					text: intl.formatMessage({
-						id: "settings.hotKeySettings.fixedContent.setScale.hundred",
-					}),
-					action: () => {
-						scaleWindow(100 - scaleRef.current.x, true);
-					},
-				},
-			],
-		});
+		);
 
-		const menu = await Menu.new({
+		const mainMenu = await Menu.new({
 			items: [
 				...(enableOcrTranslate || enableVisionModelHtml
 					? [
@@ -1960,12 +1992,16 @@ const FixedContentCoreInner: React.FC<{
 			].filter((item) => item !== undefined) as MenuItemOptions[],
 		});
 
-		return {
-			menu,
+		const result = {
+			mainMenu,
 			focusedWindowMenu,
 			setOpacityMenu,
 			setScaleMenu,
 		};
+
+		rightClickMenuRef.current = result;
+
+		return result;
 	}, [
 		isReadyStatus,
 		disabled,
@@ -1999,36 +2035,6 @@ const FixedContentCoreInner: React.FC<{
 		switchVisionModelMarkdown,
 		enableVisionModelMarkdown,
 	]);
-
-	useEffect(() => {
-		const initResultPromise = initMenu().then((result) => {
-			if (!result) {
-				return;
-			}
-
-			const { menu } = result;
-			rightClickMenuRef.current = menu;
-
-			return result;
-		});
-
-		return () => {
-			rightClickMenuRef.current = undefined;
-
-			initResultPromise.then((result) => {
-				if (!result) {
-					return;
-				}
-				const { menu, focusedWindowMenu, setOpacityMenu, setScaleMenu } =
-					result;
-
-				menu?.close();
-				focusedWindowMenu?.close();
-				setOpacityMenu?.close();
-				setScaleMenu?.close();
-			});
-		};
-	}, [initMenu]);
 
 	const onWheel = useCallback(
 		(event: React.WheelEvent<HTMLDivElement>) => {
@@ -2095,16 +2101,20 @@ const FixedContentCoreInner: React.FC<{
 		[scaleRef, scaleWindow],
 	);
 
-	const rightClickMenuRef = useRef<Menu | undefined>(undefined);
-
 	const handleContextMenu = useCallback(
 		async (e: React.MouseEvent<HTMLDivElement>) => {
 			e.preventDefault();
 			e.stopPropagation();
 
-			await rightClickMenuRef.current?.popup();
+			const result = await createRightClickMenu();
+			if (!result) {
+				return;
+			}
+
+			const { mainMenu } = result;
+			mainMenu?.popup();
 		},
-		[],
+		[createRightClickMenu],
 	);
 
 	useEffect(() => {
