@@ -18,7 +18,13 @@ pub async fn exit_app(handle: tauri::AppHandle) {
 
 #[command]
 pub async fn get_selected_text() -> String {
-    snow_shot_tauri_commands_core::get_selected_text().await
+    let mut text = snow_shot_tauri_commands_core::get_selected_text().await;
+    if text.is_empty() {
+        tokio::time::sleep(tokio::time::Duration::from_millis(83)).await;
+        text = snow_shot_tauri_commands_core::get_selected_text().await;
+    }
+
+    text
 }
 
 #[command]

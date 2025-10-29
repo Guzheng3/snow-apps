@@ -26,13 +26,39 @@ pub async fn exit_app(handle: tauri::AppHandle) {
 }
 
 pub async fn get_selected_text() -> String {
-    let text = match get_selected_text::get_selected_text() {
-        Ok(text) => text,
-        Err(_) => {
-            return String::new();
+    // 使用 spawn_blocking 将同步的、可能阻塞的操作放到独立线程池中
+    // 避免与主线程互锁，特别是在 Windows 上涉及剪贴板和键盘模拟时
+    match tokio::task::spawn_blocking(|| {
+        // 使用 catch_unwind 捕获可能的 panic，确保不影响主程序
+        match std::panic::catch_unwind(|| get_selected_text::get_selected_text()) {
+            Ok(Ok(text)) => text,
+            Ok(Err(e)) => {
+                log::warn!("[get_selected_text] Failed to get selected text: {:?}", e);
+                String::new()
+            }
+            Err(panic_info) => {
+                // 捕获到 panic，记录详细信息但不崩溃主程序
+                if let Some(s) = panic_info.downcast_ref::<&str>() {
+                    log::error!("[get_selected_text] Panic occurred: {}", s);
+                } else if let Some(s) = panic_info.downcast_ref::<String>() {
+                    log::error!("[get_selected_text] Panic occurred: {}", s);
+                } else {
+                    log::error!("[get_selected_text] Panic occurred with unknown message");
+                }
+                String::new()
+            }
         }
-    };
-    text
+    })
+    .await
+    {
+        Ok(text) => text,
+        Err(e) => {
+            // 这个分支处理任务被取消或其他 JoinError 的情况
+            // 通常不会到这里，因为 catch_unwind 已经捕获了 panic
+            log::error!("[get_selected_text] Task join error: {:?}", e);
+            String::new()
+        }
+    }
 }
 
 pub async fn set_enable_proxy(enable: bool, host: String) -> Result<(), ()> {
