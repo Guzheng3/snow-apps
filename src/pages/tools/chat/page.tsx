@@ -67,7 +67,7 @@ import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
 import { useStateRef } from "@/hooks/useStateRef";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import { appFetch, getUrl, ServiceResponse } from "@/services/tools";
-import { type ChatModel, getChatModels } from "@/services/tools/chat";
+import { type ChatModel, getChatModelsWithCache } from "@/services/tools/chat";
 import {
 	type AppSettingsData,
 	AppSettingsGroup,
@@ -367,13 +367,10 @@ const Chat = () => {
 		}
 
 		setSupportedModelsLoading(true);
-		getChatModels().then((res) => {
+		getChatModelsWithCache().then((res) => {
 			setSupportedModelsLoading(false);
-			if (!res.success()) {
-				return;
-			}
 
-			setOnlineModelConfigList(res.data ?? []);
+			setOnlineModelConfigList(res ?? []);
 		});
 	}, [setSupportedModelsLoading, supportedModelsLoadingRef]);
 

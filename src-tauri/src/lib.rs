@@ -133,7 +133,7 @@ pub fn run() {
                 .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
                 .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
                 .targets(log_targets)
-                .level(log::LevelFilter::Info)
+                .level(log::LevelFilter::Debug)
                 .filter(move |_| {
                     #[cfg(debug_assertions)]
                     {

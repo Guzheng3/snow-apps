@@ -32,12 +32,8 @@ import {
 } from "@/pages/draw/extra";
 import { CUSTOM_MODEL_PREFIX, MarkdownContent } from "@/pages/tools/chat/page";
 import { appFetch, getUrl } from "@/services/tools";
-import { getChatModels } from "@/services/tools/chat";
-import {
-	type AppSettingsData,
-	AppSettingsGroup,
-	type ChatApiConfig,
-} from "@/types/appSettings";
+import { getChatModelsWithCache } from "@/services/tools/chat";
+import { AppSettingsGroup, type ChatApiConfig } from "@/types/appSettings";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { writeHtmlToClipboard, writeTextToClipboard } from "@/utils/clipboard";
@@ -113,80 +109,53 @@ export type VisionModel = {
 	isOfficial: boolean;
 };
 
-export const useVisionModelList = (options?: { lazyLoad?: boolean }) => {
-	const [onlineModelList, setOnlineModelList, onlineModelListRef] = useStateRef<
-		VisionModel[] | undefined
-	>(undefined);
-	const [customVisionModelList, setCustomVisionModelList] = useState<
-		VisionModel[]
-	>([]);
+export const useVisionModelList = () => {
+	const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
 
-	const initOnlineVisionModelList = useCallback(async () => {
-		if (onlineModelListRef.current) {
-			return onlineModelListRef.current;
-		}
-
-		const res = await getChatModels();
-		setOnlineModelList(
-			res.success()
-				? (res.data
-						?.filter((item) => item.support_vision)
-						.map((item) => {
-							return {
-								config: {
-									api_uri: getUrl("api/v1/"),
-									api_key: "",
-									api_model: item.model,
-									model_name: item.name,
-									support_thinking: item.thinking,
-									support_vision: item.support_vision,
-								},
-								isOfficial: true,
-							};
-						}) ?? [])
-				: [],
-		);
-	}, [onlineModelListRef, setOnlineModelList]);
-
-	useEffect(() => {
-		if (options?.lazyLoad) {
-			return;
-		}
-
-		initOnlineVisionModelList();
-	}, [initOnlineVisionModelList, options?.lazyLoad]);
-
-	useStateSubscriber(
-		AppSettingsPublisher,
-		useCallback((settings: AppSettingsData) => {
-			const visionModelList = settings[
-				AppSettingsGroup.FunctionChat
-			].chatApiConfigList
-				.filter((config) => config.support_vision)
-				.map((config) => ({
-					...config,
-					api_model: `${CUSTOM_MODEL_PREFIX}${config.api_model}`,
-				}));
-			setCustomVisionModelList(
-				visionModelList.map((config) => ({
-					config: config,
+	const customVisionModelListRef = useRef<VisionModel[]>(undefined);
+	const getVisionModelList = useCallback(async () => {
+		const settings = getAppSettings();
+		const visionModelList = settings[
+			AppSettingsGroup.FunctionChat
+		].chatApiConfigList
+			.filter((config) => config.support_vision)
+			.map((config) => {
+				return {
+					config: {
+						...config,
+						api_model: `${CUSTOM_MODEL_PREFIX}${config.api_model}`,
+					},
 					isOfficial: false,
-				})),
-			);
-		}, []),
-	);
+				};
+			});
 
-	const visionModelList = useMemo((): VisionModel[] => {
-		initOnlineVisionModelList();
+		if (!customVisionModelListRef.current) {
+			const res = await getChatModelsWithCache();
+			customVisionModelListRef.current = (res ?? [])
+				.filter((item) => item.support_vision)
+				.map((item) => {
+					return {
+						config: {
+							api_uri: getUrl("api/v1/"),
+							api_key: "",
+							api_model: item.model,
+							model_name: item.name,
+							support_thinking: item.thinking,
+							support_vision: item.support_vision,
+						},
+						isOfficial: true,
+					};
+				});
+		}
 
-		return [...customVisionModelList, ...(onlineModelList ?? [])];
-	}, [initOnlineVisionModelList, onlineModelList, customVisionModelList]);
+		return [...visionModelList, ...customVisionModelListRef.current];
+	}, [getAppSettings]);
 
 	return useMemo(() => {
 		return {
-			visionModelList,
+			getVisionModelList,
 		};
-	}, [visionModelList]);
+	}, [getVisionModelList]);
 };
 
 export const OcrResult: React.FC<{
@@ -207,7 +176,6 @@ export const OcrResult: React.FC<{
 	onOcrResultChange?: (ocrResult: AppOcrResult | undefined) => void;
 	style?: React.CSSProperties;
 	onTranslateLoading?: (loading: boolean) => void;
-	onVisionModelListChange?: (visionModelList: VisionModel[]) => void;
 	onVisionModelHtmlLoading?: (loading: boolean) => void;
 	onVisionModelHtmlResultChange?: (ocrResult: AppOcrResult | undefined) => void;
 	onVisionModelMarkdownLoading?: (loading: boolean) => void;
@@ -230,7 +198,6 @@ export const OcrResult: React.FC<{
 	onOcrResultChange,
 	onCurrentOcrResultChange,
 	onTranslateLoading,
-	onVisionModelListChange,
 	onVisionModelHtmlLoading,
 	onVisionModelHtmlResultChange,
 	onVisionModelMarkdownLoading,
@@ -250,10 +217,7 @@ export const OcrResult: React.FC<{
 	const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
 
 	// 视觉理解模型
-	const { visionModelList } = useVisionModelList();
-	useEffect(() => {
-		onVisionModelListChange?.(visionModelList);
-	}, [visionModelList, onVisionModelListChange]);
+	const { getVisionModelList } = useVisionModelList();
 
 	const [currentOcrResult, setCurrentOcrResult, currentOcrResultRef] =
 		useStateRef<(AppOcrResult & { ocrResultType: OcrResultType }) | undefined>(
@@ -830,7 +794,6 @@ export const OcrResult: React.FC<{
 		}
 		const appWindow = getCurrentWindow();
 		return await Menu.new({
-			id: `${appWindow.label}-ocrResultMenu`,
 			items: [
 				{
 					id: `${appWindow.label}-copySelectedText`,
@@ -1034,6 +997,7 @@ export const OcrResult: React.FC<{
 
 	const convertImageToVisionModelFormat = useCallback(
 		async (canvas: HTMLCanvasElement, format: "html" | "markdown") => {
+			const visionModelList = await getVisionModelList();
 			if (visionModelList.length === 0) {
 				message.error(
 					intl.formatMessage({ id: "draw.ocrResult.visionModelListEmpty" }),
@@ -1187,7 +1151,7 @@ export const OcrResult: React.FC<{
 			getAppSettings,
 			intl,
 			message,
-			visionModelList,
+			getVisionModelList,
 			updateOcrTextElements,
 			onVisionModelHtmlLoading,
 			setVisionModelHtmlResult,

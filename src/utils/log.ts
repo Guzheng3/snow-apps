@@ -130,3 +130,12 @@ export function appInfo(
 	const extraInfo = formatExtraInfo(extra);
 	tauriLog.info(`[${location.href}] ${message}${extraInfo}`, options);
 }
+
+export function appDebug(
+	message: string,
+	extra?: unknown,
+	options?: tauriLog.LogOptions,
+) {
+	const extraInfo = formatExtraInfo(extra);
+	tauriLog.debug(`[${location.href}] ${message}${extraInfo}`, options);
+}

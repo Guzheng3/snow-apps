@@ -16,7 +16,6 @@ import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import {
 	type AppOcrResult,
 	OcrResultType,
-	type VisionModel,
 } from "@/pages/fixedContent/components/ocrResult";
 import { DrawState } from "@/types/draw";
 import { SubTools } from "../../subTools";
@@ -43,7 +42,6 @@ const OcrTool: React.FC<{
 	visionModelHtmlLoading: boolean;
 	visionModelMarkdownResult: AppOcrResult | undefined;
 	visionModelMarkdownLoading: boolean;
-	visionModelList: VisionModel[];
 }> = ({
 	onSwitchOcrResult,
 	onTranslate,
@@ -57,7 +55,6 @@ const OcrTool: React.FC<{
 	visionModelHtmlLoading,
 	visionModelMarkdownResult,
 	visionModelMarkdownLoading,
-	visionModelList,
 }) => {
 	const intl = useIntl();
 
@@ -116,7 +113,6 @@ const OcrTool: React.FC<{
 				...(isReadyStatus?.(PLUGIN_ID_AI_CHAT)
 					? [
 							<Button
-								disabled={visionModelList.length === 0}
 								loading={visionModelHtmlLoading}
 								onClick={() => {
 									if (visionModelHtmlResult) {
@@ -143,7 +139,6 @@ const OcrTool: React.FC<{
 								key="visionModelHtml"
 							/>,
 							<Button
-								disabled={visionModelList.length === 0}
 								loading={visionModelMarkdownLoading}
 								onClick={() => {
 									if (visionModelMarkdownResult) {

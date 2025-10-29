@@ -83,7 +83,6 @@ import {
 	OcrResult,
 	type OcrResultActionType,
 	OcrResultType,
-	type VisionModel,
 } from "../ocrResult";
 import { getOcrResultIframeSrcDoc } from "../ocrResult/extra";
 import { renderToCanvasAction } from "./actions";
@@ -278,7 +277,6 @@ const FixedContentCoreInner: React.FC<{
 	const [visionModelMarkdownResult, setVisionModelMarkdownResult] = useState<
 		AppOcrResult | undefined
 	>(undefined);
-	const [visionModelList, setVisionModelList] = useState<VisionModel[]>([]);
 	const [translateLoading, setTranslateLoading] = useState(false);
 	const enableOcrTranslate = useMemo(() => {
 		return (
@@ -292,28 +290,16 @@ const FixedContentCoreInner: React.FC<{
 		return (
 			getSelectTextMode(fixedContentType) === "ocr" &&
 			enableSelectText &&
-			isReadyStatus?.(PLUGIN_ID_AI_CHAT) &&
-			visionModelList.length > 0
+			isReadyStatus?.(PLUGIN_ID_AI_CHAT)
 		);
-	}, [
-		fixedContentType,
-		enableSelectText,
-		isReadyStatus,
-		visionModelList.length,
-	]);
+	}, [fixedContentType, enableSelectText, isReadyStatus]);
 	const enableVisionModelMarkdown = useMemo(() => {
 		return (
 			getSelectTextMode(fixedContentType) === "ocr" &&
 			enableSelectText &&
-			isReadyStatus?.(PLUGIN_ID_AI_CHAT) &&
-			visionModelList.length > 0
+			isReadyStatus?.(PLUGIN_ID_AI_CHAT)
 		);
-	}, [
-		fixedContentType,
-		enableSelectText,
-		isReadyStatus,
-		visionModelList.length,
-	]);
+	}, [fixedContentType, enableSelectText, isReadyStatus]);
 
 	const [textContent, setTextContent, textContentRef] = useStateRef<
 		| {
@@ -905,12 +891,13 @@ const FixedContentCoreInner: React.FC<{
 		}
 	}, [isAlwaysOnTop]);
 
+	const hasInitRef = useRef(false);
 	useImperativeHandle(
 		actionRef,
 		() => ({
 			init: async (params) => {
 				if ("htmlContent" in params) {
-					initHtml(params.htmlContent);
+					await initHtml(params.htmlContent);
 				} else if ("textContent" in params) {
 					initText(params.textContent);
 				} else if ("canvas" in params) {
@@ -918,6 +905,8 @@ const FixedContentCoreInner: React.FC<{
 				} else if ("imageContent" in params) {
 					initImage(params.imageContent);
 				}
+
+				hasInitRef.current = true;
 			},
 			initDrawPreload,
 		}),
@@ -1620,10 +1609,7 @@ const FixedContentCoreInner: React.FC<{
 			return;
 		}
 
-		const menuId = `${appWindow.label}-rightClickMenu`;
-
 		const focusedWindowMenu = await Submenu.new({
-			id: `${appWindow.label}-focusModeTool`,
 			text: intl.formatMessage({ id: "draw.focusMode" }),
 			items: [
 				{
@@ -1653,7 +1639,6 @@ const FixedContentCoreInner: React.FC<{
 			],
 		});
 		const setOpacityMenu = await Submenu.new({
-			id: `${appWindow.label}-setOpacityTool`,
 			text: intl.formatMessage({
 				id: "settings.hotKeySettings.fixedContent.opacity",
 			}),
@@ -1697,7 +1682,6 @@ const FixedContentCoreInner: React.FC<{
 			],
 		});
 		const setScaleMenu = await Submenu.new({
-			id: `${appWindow.label}-setScaleTool`,
 			text: intl.formatMessage({
 				id: "settings.hotKeySettings.fixedContent.scale",
 			}),
@@ -1743,7 +1727,6 @@ const FixedContentCoreInner: React.FC<{
 		});
 
 		const menu = await Menu.new({
-			id: menuId,
 			items: [
 				...(enableOcrTranslate || enableVisionModelHtml
 					? [
@@ -1751,7 +1734,9 @@ const FixedContentCoreInner: React.FC<{
 								? [
 										{
 											id: `${appWindow.label}-ocrTranslateTool`,
-											text: intl.formatMessage({ id: "draw.ocrTranslateTool" }),
+											text: intl.formatMessage({
+												id: "draw.ocrTranslateTool",
+											}),
 											action: switchOcrTranslate,
 											checked:
 												currentOcrResult?.ocrResultType ===
@@ -1792,7 +1777,6 @@ const FixedContentCoreInner: React.FC<{
 							},
 						]
 					: []),
-
 				{
 					id: `${appWindow.label}-copyTool`,
 					text: intl.formatMessage({ id: "draw.copyTool" }),
@@ -2035,14 +2019,13 @@ const FixedContentCoreInner: React.FC<{
 				if (!result) {
 					return;
 				}
-
 				const { menu, focusedWindowMenu, setOpacityMenu, setScaleMenu } =
 					result;
-				menu?.close().finally(() => {
-					focusedWindowMenu?.close();
-					setOpacityMenu?.close();
-					setScaleMenu?.close();
-				});
+
+				menu?.close();
+				focusedWindowMenu?.close();
+				setOpacityMenu?.close();
+				setScaleMenu?.close();
 			});
 		};
 	}, [initMenu]);
@@ -2567,7 +2550,6 @@ const FixedContentCoreInner: React.FC<{
 					onVisionModelMarkdownResultChange={setVisionModelMarkdownResult}
 					onCurrentOcrResultChange={setCurrentOcrResult}
 					onTranslateLoading={setTranslateLoading}
-					onVisionModelListChange={setVisionModelList}
 				/>
 
 				{htmlContent && (

@@ -75,30 +75,36 @@ export class ServiceResponse<T> {
 		return new ServiceResponse(response, 0, message, data);
 	}
 
-	public success(): T | undefined {
+	public success(ignoreEvent?: boolean): T | undefined {
 		if (!this.response) {
-			try {
-				window.__APP_HANDLE_REQUEST_ERROR__?.(this);
-			} catch (error) {
-				appError("[ServiceResponse] success error", error);
+			if (!ignoreEvent) {
+				try {
+					window.__APP_HANDLE_REQUEST_ERROR__?.(this);
+				} catch (error) {
+					appError("[ServiceResponse] success error", error);
+				}
 			}
 			return undefined;
 		}
 
 		if (this.response.status !== 200) {
-			try {
-				window.__APP_HANDLE_HTTP_ERROR__?.(this);
-			} catch (error) {
-				appError("[ServiceResponse] httpError error", error);
+			if (!ignoreEvent) {
+				try {
+					window.__APP_HANDLE_HTTP_ERROR__?.(this);
+				} catch (error) {
+					appError("[ServiceResponse] httpError error", error);
+				}
 			}
 			return undefined;
 		}
 
 		if (this.code !== 0) {
-			try {
-				window.__APP_HANDLE_SERVICE_ERROR__?.(this);
-			} catch (error) {
-				appError("[ServiceResponse] serviceError error", error);
+			if (!ignoreEvent) {
+				try {
+					window.__APP_HANDLE_SERVICE_ERROR__?.(this);
+				} catch (error) {
+					appError("[ServiceResponse] serviceError error", error);
+				}
 			}
 			return undefined;
 		}

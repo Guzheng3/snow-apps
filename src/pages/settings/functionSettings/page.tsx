@@ -617,51 +617,58 @@ export const FunctionSettingsPage = () => {
 		];
 	}, [intl]);
 
-	const { visionModelList } = useVisionModelList();
+	const { getVisionModelList } = useVisionModelList();
+	const [htmlVisionModelOptions, setHtmlVisionModelOptions] = useState<
+		SelectProps["options"]
+	>([]);
+	useEffect(() => {
+		getVisionModelList().then((visionModelList) => {
+			const officialVisionModelList = visionModelList.filter(
+				(model) => model.isOfficial,
+			);
+			const customVisionModelList = visionModelList.filter(
+				(model) => !model.isOfficial,
+			);
 
-	const htmlVisionModelOptions = useMemo(() => {
-		const officialVisionModelList = visionModelList.filter(
-			(model) => model.isOfficial,
-		);
-		const customVisionModelList = visionModelList.filter(
-			(model) => !model.isOfficial,
-		);
+			const htmlVisionModelOptions = [
+				{
+					label: (
+						<IconLabel
+							label={intl.formatMessage({
+								id: "settings.functionSettings.ocrSettings.htmlVisionModel.default",
+							})}
+							tooltipTitle={intl.formatMessage({
+								id: "settings.functionSettings.ocrSettings.htmlVisionModel.default.tip",
+							})}
+						/>
+					),
+					value:
+						defaultAppSettingsData[AppSettingsGroup.FunctionOcr]
+							.htmlVisionModel,
+				},
+				customVisionModelList.length > 0
+					? {
+							label: <FormattedMessage id="tools.chat.custom" />,
+							options: customVisionModelList.map((model) => ({
+								label: model.config.model_name,
+								value: model.config.model_name,
+							})),
+						}
+					: undefined,
+				officialVisionModelList.length > 0
+					? {
+							label: <FormattedMessage id="tools.chat.official" />,
+							options: officialVisionModelList.map((model) => ({
+								label: model.config.model_name,
+								value: model.config.model_name,
+							})),
+						}
+					: undefined,
+			].filter(Boolean) as SelectProps["options"];
 
-		return [
-			{
-				label: (
-					<IconLabel
-						label={intl.formatMessage({
-							id: "settings.functionSettings.ocrSettings.htmlVisionModel.default",
-						})}
-						tooltipTitle={intl.formatMessage({
-							id: "settings.functionSettings.ocrSettings.htmlVisionModel.default.tip",
-						})}
-					/>
-				),
-				value:
-					defaultAppSettingsData[AppSettingsGroup.FunctionOcr].htmlVisionModel,
-			},
-			customVisionModelList.length > 0
-				? {
-						label: <FormattedMessage id="tools.chat.custom" />,
-						options: customVisionModelList.map((model) => ({
-							label: model.config.model_name,
-							value: model.config.model_name,
-						})),
-					}
-				: undefined,
-			officialVisionModelList.length > 0
-				? {
-						label: <FormattedMessage id="tools.chat.official" />,
-						options: officialVisionModelList.map((model) => ({
-							label: model.config.model_name,
-							value: model.config.model_name,
-						})),
-					}
-				: undefined,
-		].filter(Boolean) as SelectProps["options"];
-	}, [visionModelList, intl]);
+			setHtmlVisionModelOptions(htmlVisionModelOptions);
+		});
+	}, [getVisionModelList, intl]);
 
 	return (
 		<ContentWrap>

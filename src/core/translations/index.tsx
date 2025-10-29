@@ -14,9 +14,9 @@ import {
 import { CUSTOM_MODEL_PREFIX } from "@/pages/tools/chat/page";
 import { getTranslationPrompt } from "@/pages/tools/translation/extra";
 import { appFetch, getUrl, type ServiceResponse } from "@/services/tools";
-import { type ChatModel, getChatModels } from "@/services/tools/chat";
+import { type ChatModel, getChatModelsWithCache } from "@/services/tools/chat";
 import {
-	getTranslationTypes,
+	getTranslationTypesWithCache,
 	translate,
 	translateTextDeepL,
 } from "@/services/tools/translation";
@@ -165,12 +165,12 @@ export const useTranslationRequest = (options?: {
 		}
 
 		const promise = Promise.all([
-			getTranslationTypes().then((res) => {
-				setOfficialTranslationTypes(res.success() ? (res.data ?? []) : []);
+			getTranslationTypesWithCache().then((res) => {
+				setOfficialTranslationTypes(res ?? []);
 				return undefined;
 			}),
-			getChatModels().then((res) => {
-				setOfficialChatModels(res.success() ? (res.data ?? []) : []);
+			getChatModelsWithCache().then((res) => {
+				setOfficialChatModels(res ?? []);
 				return undefined;
 			}),
 		]);

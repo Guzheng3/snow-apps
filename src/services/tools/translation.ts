@@ -4,6 +4,7 @@ import type {
 	TranslateParams,
 	TranslationTypeOption,
 } from "@/types/servies/translation";
+import { withCache } from "@/utils/cache";
 import { ServiceResponse, serviceBaseFetch, serviceFetch } from ".";
 
 export const translate = async (params: TranslateParams) => {
@@ -18,6 +19,21 @@ export const getTranslationTypes = async () => {
 		method: "GET",
 	});
 };
+
+const fetchTranslationTypes = async (): Promise<
+	TranslationTypeOption[] | undefined
+> => {
+	const resp = await getTranslationTypes();
+	if (resp.success()) {
+		return resp.data ?? [];
+	}
+	return undefined;
+};
+
+export const getTranslationTypesWithCache = withCache(fetchTranslationTypes, {
+	key: "getTranslationTypes",
+	duration: 60 * 60 * 1000, // 缓存 1 小时
+});
 
 export const translateTextDeepL = async (
 	apiUri: string,

@@ -23,7 +23,6 @@ import {
 	OcrResult,
 	type OcrResultActionType,
 	type OcrResultType,
-	type VisionModel,
 } from "@/pages/fixedContent/components/ocrResult";
 import { AppSettingsGroup, OcrDetectAfterAction } from "@/types/appSettings";
 import type { OcrDetectResult } from "@/types/commands/ocr";
@@ -227,7 +226,6 @@ export const OcrBlocks: React.FC<{
 	const [visionModelHtmlResult, setVisionModelHtmlResult] = useState<
 		AppOcrResult | undefined
 	>(undefined);
-	const [visionModelList, setVisionModelList] = useState<VisionModel[]>([]);
 	const [visionModelMarkdownResult, setVisionModelMarkdownResult] = useState<
 		AppOcrResult | undefined
 	>(undefined);
@@ -258,7 +256,6 @@ export const OcrBlocks: React.FC<{
 					visionModelHtmlLoading={visionModelHtmlLoading}
 					visionModelMarkdownResult={visionModelMarkdownResult}
 					visionModelMarkdownLoading={visionModelMarkdownLoading}
-					visionModelList={visionModelList}
 				/>
 			)}
 
@@ -271,7 +268,6 @@ export const OcrBlocks: React.FC<{
 				onTranslatedResultChange={setTranslatedOcrResult}
 				onTranslateLoading={setTranslateLoading}
 				onVisionModelHtmlResultChange={setVisionModelHtmlResult}
-				onVisionModelListChange={setVisionModelList}
 				onVisionModelMarkdownResultChange={setVisionModelMarkdownResult}
 				onVisionModelMarkdownLoading={setVisionModelMarkdownLoading}
 			/>
