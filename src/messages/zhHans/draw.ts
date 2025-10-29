@@ -210,4 +210,5 @@ export const draw = {
 	"draw.ocrDetect.convertImageToHtml": "图片转为 HTML",
 	"draw.ocrDetect.convertImageToMarkdown": "图片转为 Markdown",
 	"draw.ocrDetect.failedToRenderContent": "获取图像数据失败",
+	"draw.scrollScreenshotSizeError": "滚动截图区域过小，无法进行保存",
 };

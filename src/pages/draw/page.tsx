@@ -34,6 +34,7 @@ import {
 } from "@/commands/screenshot";
 import {
 	scrollScreenshotClear,
+	scrollScreenshotGetSize,
 	scrollScreenshotSaveToClipboard,
 	scrollScreenshotSaveToFile,
 } from "@/commands/scrollScreenshot";
@@ -830,6 +831,17 @@ const DrawPageCore: React.FC<{
 	const onSave = useCallback(
 		async (fastSave: boolean = false) => {
 			if (getDrawState() === DrawState.ScrollScreenshot) {
+				const scrollScreenshotSize = await scrollScreenshotGetSize();
+				if (
+					scrollScreenshotSize.top_image_size === 0 &&
+					scrollScreenshotSize.bottom_image_size === 0
+				) {
+					message.error(
+						<FormattedMessage id="draw.scrollScreenshotSizeError" />,
+					);
+					return;
+				}
+
 				saveCaptureHistory(
 					undefined,
 					CaptureHistorySource.ScrollScreenshotSave,
@@ -859,9 +871,13 @@ const DrawPageCore: React.FC<{
 					);
 				}
 
-				scrollScreenshotSaveToFile(imagePath.filePath).then(() => {
-					scrollScreenshotClear();
-				});
+				scrollScreenshotSaveToFile(imagePath.filePath)
+					.catch((error) => {
+						appError("[DrawPageCore] scrollScreenshotSaveToFile error", error);
+					})
+					.then(() => {
+						scrollScreenshotClear();
+					});
 				finishCapture(false);
 				return;
 			}
@@ -920,6 +936,7 @@ const DrawPageCore: React.FC<{
 			getDrawState,
 			saveCaptureHistory,
 			updateAppSettings,
+			message,
 		],
 	);
 
@@ -996,16 +1013,26 @@ const DrawPageCore: React.FC<{
 	}, [finishCapture, getAppSettings, message]);
 
 	const onFixed = useCallback(async () => {
-		// 停止监听键盘
-		listenKeyStop();
-
 		if (getDrawState() === DrawState.ScrollScreenshot) {
+			const scrollScreenshotSize = await scrollScreenshotGetSize();
+			if (
+				scrollScreenshotSize.top_image_size === 0 &&
+				scrollScreenshotSize.bottom_image_size === 0
+			) {
+				message.error(<FormattedMessage id="draw.scrollScreenshotSizeError" />);
+				return;
+			}
+			// 停止监听键盘
+			listenKeyStop();
+
 			saveCaptureHistory(undefined, CaptureHistorySource.ScrollScreenshotFixed);
 
 			createFixedContentWindow(true);
 			finishCapture(false);
 			return;
 		}
+		// 停止监听键盘
+		listenKeyStop();
 
 		capturingRef.current = false;
 		setCaptureStateAction(false);
@@ -1067,6 +1094,7 @@ const DrawPageCore: React.FC<{
 		setCaptureStateAction,
 		onFixedContentLoad,
 		showFixedContent,
+		message,
 	]);
 
 	const onTopWindow = useCallback(async () => {
@@ -1108,15 +1136,34 @@ const DrawPageCore: React.FC<{
 				.copyImageFileToClipboard;
 
 		if (getDrawState() === DrawState.ScrollScreenshot) {
+			const scrollScreenshotSize = await scrollScreenshotGetSize();
+			if (
+				scrollScreenshotSize.top_image_size === 0 &&
+				scrollScreenshotSize.bottom_image_size === 0
+			) {
+				message.error(<FormattedMessage id="draw.scrollScreenshotSizeError" />);
+				return;
+			}
+
 			saveCaptureHistory(undefined, CaptureHistorySource.ScrollScreenshotCopy);
 
 			const filePath = (
 				await getImagePathFromSettings(getAppSettings(), "auto")
 			)?.filePath;
 			Promise.all([
-				scrollScreenshotSaveToClipboard(),
+				scrollScreenshotSaveToClipboard().catch((error) => {
+					appError(
+						"[DrawPageCore] scrollScreenshotSaveToClipboard error",
+						error,
+					);
+				}),
 				enableAutoSave && filePath
-					? scrollScreenshotSaveToFile(filePath)
+					? scrollScreenshotSaveToFile(filePath).catch((error) => {
+							appError(
+								"[DrawPageCore] scrollScreenshotSaveToFile error",
+								error,
+							);
+						})
 					: Promise.resolve(),
 			]).finally(() => {
 				scrollScreenshotClear();
@@ -1250,7 +1297,13 @@ const DrawPageCore: React.FC<{
 				}
 			}
 		}
-	}, [finishCapture, getAppSettings, getDrawState, saveCaptureHistory]);
+	}, [
+		finishCapture,
+		getAppSettings,
+		getDrawState,
+		saveCaptureHistory,
+		message,
+	]);
 
 	const releaseExecuteScreenshotTimerRef = useRef<
 		| {
