@@ -472,18 +472,8 @@ export const ScrollScreenshot: React.FC<{
 			}
 
 			enableScrollThroughRef.current = true;
-
-			// 初始化成功后，自动截取第一个片段
-			captureImage(ScrollImageList.Bottom);
 		},
-		[
-			setPositionRect,
-			getAppSettings,
-			captureImage,
-			scrollDirectionRef,
-			message,
-			intl,
-		],
+		[setPositionRect, getAppSettings, scrollDirectionRef, message, intl],
 	);
 
 	const pendingScrollThroughRef = useRef<boolean>(false);
@@ -508,6 +498,7 @@ export const ScrollScreenshot: React.FC<{
 				return;
 			}
 
+			setShowTip(false);
 			captureImage(
 				event.deltaY > 0 ? ScrollImageList.Bottom : ScrollImageList.Top,
 			);
@@ -519,8 +510,6 @@ export const ScrollScreenshot: React.FC<{
 				) {
 					return;
 				}
-
-				setShowTip(false);
 
 				// 加一个冗余操作，防止鼠标事件被忽略
 				enableCursorEventsDebounce();
@@ -600,6 +589,7 @@ export const ScrollScreenshot: React.FC<{
 
 	const enableIgnoreCursorEventsRef = useRef(false);
 	const onClick = useCallback(async () => {
+		setShowTip(false);
 		if (stopAutoScrollThrough()) {
 			return;
 		}
@@ -746,14 +736,19 @@ export const ScrollScreenshot: React.FC<{
 					{showTip && (
 						<div className="tip">
 							<div>
-								<FormattedMessage id="draw.scrollScreenshot.tip" />
-							</div>
-							<div>
 								<FormattedMessage id="draw.scrollScreenshot.tip2" />
 							</div>
 						</div>
 					)}
 				</div>
+
+				{showTip && (
+					<div className="touch-area-tip-container">
+						<div className="touch-area-tip">
+							<FormattedMessage id="draw.scrollScreenshot.tip" />
+						</div>
+					</div>
+				)}
 			</div>
 
 			<div
@@ -1049,6 +1044,32 @@ export const ScrollScreenshot: React.FC<{
                     display: block;
                     background: rgba(0, 0, 0, 0.32);
                     width: 100%;
+                }
+
+                .touch-area-tip-container {
+                    width: 100%;
+                    height: 100%;
+                    position: absolute;
+                    left: 0px;
+                    top: 0px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                }
+
+                .touch-area-tip-container .touch-area-tip {
+                    color: ${token.colorWhite};
+                    text-align: center;
+                    background-color: ${token.colorBgMask};
+                    padding: ${token.paddingXXS}px ${token.paddingSM}px;
+                    border-radius: ${token.borderRadiusSM}px;
+                    box-shadow: 0 0 1px 0px ${token.colorPrimaryHover};
+                    transition: box-shadow ${token.motionDurationFast} ${token.motionEaseInOut};
+                }
+
+                .touch-area-tip-container:hover .touch-area-tip {
+                    box-shadow: 0 0 6px 0px ${token.colorPrimaryHover};
                 }
             `}</style>
 		</>

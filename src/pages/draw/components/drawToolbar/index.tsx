@@ -6,6 +6,7 @@ import {
 	DragOutlined,
 	LockOutlined,
 } from "@ant-design/icons";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Flex, theme } from "antd";
 import { debounce } from "es-toolkit";
 import React, {
@@ -584,6 +585,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 			subToolContainer.style.transition = `opacity ${token.motionDurationMid} ${token.motionEaseInOut}`;
 			subToolContainer.style.opacity = "1";
 		}
+		getCurrentWindow().setIgnoreCursorEvents(false);
 	}, [token.motionDurationMid, token.motionEaseInOut]);
 	const showDrawToolbarContainerDebounce = useMemo(
 		() => debounce(showDrawToolbarContainer, 512),
