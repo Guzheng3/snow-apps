@@ -819,19 +819,19 @@ export const OcrResult: React.FC<{
 
 	useEffect(() => {
 		const appWindow = getCurrentWindow();
-		const unlisten = appWindow.onCloseRequested(() => {
+		const unlisten = appWindow.onCloseRequested(async () => {
 			if (menuRef.current) {
-				menuRef.current.close();
-				menuRef.current = undefined;
+				await Promise.all([menuRef.current.close()]);
 			}
+			menuRef.current = undefined;
 		});
 
 		return () => {
 			unlisten.then((fn) => fn());
 			if (menuRef.current) {
 				menuRef.current.close();
-				menuRef.current = undefined;
 			}
+			menuRef.current = undefined;
 		};
 	}, []);
 
