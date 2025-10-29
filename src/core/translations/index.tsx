@@ -1,6 +1,6 @@
 import { trim } from "es-toolkit";
 import OpenAI from "openai";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import { defaultTranslationPrompt } from "@/constants/components/translation";
 import { AntdContext } from "@/contexts/antdContext";
@@ -90,9 +90,9 @@ export const useTranslationRequest = (options?: {
 		officialTranslationTypes,
 		setOfficialTranslationTypes,
 		officialTranslationTypesRef,
-	] = useStateRef<TranslationTypeOption[]>([]);
+	] = useStateRef<TranslationTypeOption[] | undefined>(undefined);
 	const [officialChatModels, setOfficialChatModels, officialChatModelsRef] =
-		useStateRef<ChatModel[]>([]);
+		useStateRef<ChatModel[] | undefined>(undefined);
 	const [chatConfig, setChatConfig] =
 		useState<AppSettingsData[AppSettingsGroup.SystemChat]>();
 	const [translationConfig, setTranslationConfig] =
@@ -156,30 +156,26 @@ export const useTranslationRequest = (options?: {
 	);
 	const { updateAppSettings } = useContext(AppSettingsActionContext);
 
+	const reloadOnlineConfigsPromiseRef = useRef<
+		Promise<[undefined, undefined]> | undefined
+	>(undefined);
 	const reloadOnlineConfigs = useCallback(async () => {
-		if (
-			officialTranslationTypesRef.current.length > 0 &&
-			officialChatModelsRef.current.length > 0
-		) {
+		if (officialTranslationTypesRef.current && officialChatModelsRef.current) {
 			return;
 		}
 
-		await Promise.all([
+		const promise = Promise.all([
 			getTranslationTypes().then((res) => {
-				if (!res.success()) {
-					return;
-				}
-
-				setOfficialTranslationTypes(res.data ?? []);
+				setOfficialTranslationTypes(res.success() ? (res.data ?? []) : []);
+				return undefined;
 			}),
 			getChatModels().then((res) => {
-				if (!res.success()) {
-					return;
-				}
-
-				setOfficialChatModels(res.data ?? []);
+				setOfficialChatModels(res.success() ? (res.data ?? []) : []);
+				return undefined;
 			}),
 		]);
+		reloadOnlineConfigsPromiseRef.current = promise;
+		await promise;
 	}, [
 		setOfficialChatModels,
 		setOfficialTranslationTypes,
@@ -239,14 +235,16 @@ export const useTranslationRequest = (options?: {
 					isOfficial: false,
 				};
 			}) ?? []),
-			...officialTranslationTypes.map((item): TranslationServiceConfig => {
-				return {
-					type: item.type,
-					name: item.name,
-					isOfficial: true,
-				};
-			}),
-			...officialChatModels.map((item): TranslationServiceConfig => {
+			...(officialTranslationTypes ?? []).map(
+				(item): TranslationServiceConfig => {
+					return {
+						type: item.type,
+						name: item.name,
+						isOfficial: true,
+					};
+				},
+			),
+			...(officialChatModels ?? []).map((item): TranslationServiceConfig => {
 				return {
 					type: item.model,
 					name: item.name,
@@ -296,6 +294,7 @@ export const useTranslationRequest = (options?: {
 			const config = supportedTranslationTypesRef.current.find(
 				(item) => item.type === params.translationType,
 			);
+
 			if (!config || typeof config.type !== "string") {
 				return {
 					success: false,
@@ -446,6 +445,11 @@ export const useTranslationRequest = (options?: {
 
 			if (options?.lazyLoad) {
 				await reloadOnlineConfigs();
+				await new Promise((resolve) => setTimeout(resolve, 17));
+			}
+
+			if (reloadOnlineConfigsPromiseRef.current) {
+				await reloadOnlineConfigsPromiseRef.current;
 				await new Promise((resolve) => setTimeout(resolve, 17));
 			}
 

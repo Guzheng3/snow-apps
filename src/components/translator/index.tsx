@@ -332,7 +332,9 @@ const TranslatorCore: React.FC<{
 
 		if (ignoreDebounceRef.current) {
 			ignoreDebounceRef.current = false;
-			requestTranslate([sourceContent]);
+			setTimeout(() => {
+				requestTranslate([sourceContent]);
+			}, 17);
 		} else {
 			requestTranslateDebounce([sourceContent]);
 		}
