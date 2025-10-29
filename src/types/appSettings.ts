@@ -363,8 +363,10 @@ export type AppSettingsData = {
 		ocrModel: OcrModel;
 		/** 将图片转为 HTML 的视觉理解模型 */
 		htmlVisionModel: string;
-		/** 将图片转为 HTML 的系统提示词 */
+		/** 图片转为 HTML 的 System 提示词 */
 		htmlVisionModelSystemPrompt: string;
+		/** 图片转为 Markdown 的 System 提示词 */
+		markdownVisionModelSystemPrompt: string;
 	};
 	[AppSettingsGroup.FunctionTranslation]: {
 		/** 优化 AI 翻译的排版 */

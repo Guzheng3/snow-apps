@@ -73,7 +73,7 @@ export const getOcrResultIframeSrcDoc = (
                                 padding: 0;
                                 margin: 0;
                                 border: none;
-                                overflow: hidden;
+                                overflow: ${ocrResultType === OcrResultType.VisionModelHtml ? "auto" : "hidden"};
                                 ${enableDrag ? "cursor: grab;" : ""}
                                 background-color: transparent;
                             }

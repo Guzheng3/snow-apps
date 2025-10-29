@@ -143,3 +143,11 @@ body {
 .app-dark .ScrollbarsCustom .ScrollbarsCustom-Track::before {
     background-color: rgba(255, 255, 255, 0.1);
 }
+
+/* GitHub Markdown CSS 样式优化 */
+.markdown-body {
+    box-sizing: border-box;
+    min-width: 200px;
+    max-width: 100%;
+    padding: 0;
+}

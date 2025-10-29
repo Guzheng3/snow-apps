@@ -10,7 +10,7 @@ export const plugin = {
 	"plugin.rapid_ocr.functionDescription": "文本识别",
 	"plugin.ai_chat.name": "AI 对话",
 	"plugin.ai_chat.description":
-		"简单的 AI 对话功能，支持自定义配置兼容 Open AI SDK 的 API",
+		"使用最前沿的 AI 大模型简化工作流程，支持自定义配置兼容 Open AI SDK 的 API。",
 	"plugin.translate.name": "翻译",
 	"plugin.translate.description": "支持图片翻译、文本翻译等功能",
 	"plugin.ai_chat.functionDescription": "AI 对话页面",

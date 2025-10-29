@@ -49,7 +49,9 @@ import {
 	oneDark,
 	oneLight,
 } from "react-syntax-highlighter/dist/esm/styles/prism";
+import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import urlJoin from "url-join";
 import { EventListenerContext } from "@/components/eventListener";
 import { HotkeysMenu } from "@/components/hotkeysMenu";
@@ -170,44 +172,52 @@ const CodeCard: React.FC<{
 	);
 };
 
-const MarkdownContent: React.FC<{
+export const MarkdownContent: React.FC<{
 	content: string;
 	clipboardContent: string;
 	darkMode: boolean;
-}> = ({ content, darkMode }) => {
+	disableCodeCard?: boolean;
+}> = ({ content, darkMode, disableCodeCard }) => {
 	return (
 		<Typography>
-			<Markdown
-				components={{
-					code(props) {
-						const { children, className, ...rest } = props;
-						const match = /language-(\w+)/.exec(className || "");
-						return match ? (
-							<CodeCard language={match[1]} darkMode={darkMode} props={props} />
-						) : (
-							<code {...rest} className={className}>
-								{children}
-							</code>
-						);
-					},
-					a: (props) => {
-						return (
-							<a
-								{...props}
-								onClick={(e) => {
-									e.preventDefault();
-									if (props.href) {
-										openUrl(props.href);
-									}
-								}}
-							/>
-						);
-					},
-				}}
-				remarkPlugins={[remarkGfm]}
-			>
-				{content}
-			</Markdown>
+			<div className="markdown-body">
+				<Markdown
+					components={{
+						code(props) {
+							const { children, className, ...rest } = props;
+							const match = /language-(\w+)/.exec(className || "");
+							return match && !disableCodeCard ? (
+								<CodeCard
+									language={match[1]}
+									darkMode={darkMode}
+									props={props}
+								/>
+							) : (
+								<code {...rest} className={className}>
+									{children}
+								</code>
+							);
+						},
+						a: (props) => {
+							return (
+								<a
+									{...props}
+									onClick={(e) => {
+										e.preventDefault();
+										if (props.href) {
+											openUrl(props.href);
+										}
+									}}
+								/>
+							);
+						},
+					}}
+					remarkPlugins={[remarkMath, remarkGfm]}
+					rehypePlugins={[rehypeKatex]}
+				>
+					{content}
+				</Markdown>
+			</div>
 
 			<style jsx>{`
                 :global(.ant-typography pre) {
@@ -217,6 +227,10 @@ const MarkdownContent: React.FC<{
 
                 :global(.ant-typography pre > div) {
                     margin: 0 !important;
+                }
+
+                :global(.markdown-body) {
+                    background: transparent !important;
                 }
             `}</style>
 		</Typography>
@@ -371,9 +385,17 @@ const Chat = () => {
 					name: item.model_name,
 					thinking: item.support_thinking,
 					customConfig: item,
+					support_vision: item.support_vision ?? false,
 				};
 			}),
-			...onlineModelConfigList,
+			...onlineModelConfigList.map((item) => {
+				return {
+					model: item.model,
+					name: item.name,
+					thinking: item.thinking,
+					support_vision: item.support_vision,
+				};
+			}),
 		]);
 	}, [onlineModelConfigList, setSupportedModels, customModelConfigList]);
 

@@ -35,6 +35,7 @@ import { setDrawWindowStyle } from "@/commands/screenshot";
 import { OcrTranslateIcon } from "@/components/icons";
 import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
 import {
+	PLUGIN_ID_AI_CHAT,
 	PLUGIN_ID_RAPID_OCR,
 	PLUGIN_ID_TRANSLATE,
 } from "@/constants/pluginService";
@@ -76,11 +77,15 @@ import { TweenAnimation } from "@/utils/tweenAnimation";
 import { closeWindowComplete } from "@/utils/window";
 import { zIndexs } from "@/utils/zIndex";
 import {
+	type AllOcrResult,
 	type AppOcrResult,
+	covertOcrResultToText,
 	OcrResult,
 	type OcrResultActionType,
 	OcrResultType,
+	type VisionModel,
 } from "../ocrResult";
+import { getOcrResultIframeSrcDoc } from "../ocrResult/extra";
 import { renderToCanvasAction } from "./actions";
 import {
 	DrawLayer,
@@ -105,7 +110,7 @@ export type FixedContentInitDrawParams = {
 	};
 	windowDevicePixelRatio: number;
 	/** 已有的 OCR 结果 */
-	ocrResult: AppOcrResult | undefined;
+	allOcrResult: AllOcrResult | undefined;
 	/** 选择区域参数 */
 	selectRectParams: SelectRectParams;
 };
@@ -267,6 +272,13 @@ const FixedContentCoreInner: React.FC<{
 	const [translatorOcrResult, setTranslatorOcrResult] = useState<
 		AppOcrResult | undefined
 	>(undefined);
+	const [visionModelHtmlResult, setVisionModelHtmlResult] = useState<
+		AppOcrResult | undefined
+	>(undefined);
+	const [visionModelMarkdownResult, setVisionModelMarkdownResult] = useState<
+		AppOcrResult | undefined
+	>(undefined);
+	const [visionModelList, setVisionModelList] = useState<VisionModel[]>([]);
 	const [translateLoading, setTranslateLoading] = useState(false);
 	const enableOcrTranslate = useMemo(() => {
 		return (
@@ -276,6 +288,32 @@ const FixedContentCoreInner: React.FC<{
 			isReadyStatus?.(PLUGIN_ID_TRANSLATE)
 		);
 	}, [fixedContentType, enableSelectText, ocrResult, isReadyStatus]);
+	const enableVisionModelHtml = useMemo(() => {
+		return (
+			getSelectTextMode(fixedContentType) === "ocr" &&
+			enableSelectText &&
+			isReadyStatus?.(PLUGIN_ID_AI_CHAT) &&
+			visionModelList.length > 0
+		);
+	}, [
+		fixedContentType,
+		enableSelectText,
+		isReadyStatus,
+		visionModelList.length,
+	]);
+	const enableVisionModelMarkdown = useMemo(() => {
+		return (
+			getSelectTextMode(fixedContentType) === "ocr" &&
+			enableSelectText &&
+			isReadyStatus?.(PLUGIN_ID_AI_CHAT) &&
+			visionModelList.length > 0
+		);
+	}, [
+		fixedContentType,
+		enableSelectText,
+		isReadyStatus,
+		visionModelList.length,
+	]);
 
 	const [textContent, setTextContent, textContentRef] = useStateRef<
 		| {
@@ -319,18 +357,6 @@ const FixedContentCoreInner: React.FC<{
 			max_y: canvasPropsRef.current.height,
 		};
 	}, []);
-
-	const renderToCanvas = useCallback(
-		async (ignoreDrawCanvas: boolean = false) => {
-			return renderToCanvasAction(
-				imageLayerActionRef,
-				drawActionRef,
-				ignoreDrawCanvas,
-				getImageLayerRenderRect(),
-			);
-		},
-		[getImageLayerRenderRect],
-	);
 
 	const copyRawToClipboard = useCallback(async () => {
 		if (
@@ -715,6 +741,18 @@ const FixedContentCoreInner: React.FC<{
 		undefined,
 	);
 
+	const renderToCanvas = useCallback(
+		async (ignoreDrawCanvas: boolean = false) => {
+			return renderToCanvasAction(
+				imageLayerActionRef,
+				drawActionRef,
+				ignoreDrawCanvas,
+				getImageLayerRenderRect(),
+			);
+		},
+		[getImageLayerRenderRect],
+	);
+
 	const renderToBlob = useCallback(
 		async (ignoreDrawCanvas: boolean = false) => {
 			const canvas = await renderToCanvas(ignoreDrawCanvas);
@@ -763,7 +801,7 @@ const FixedContentCoreInner: React.FC<{
 					isReady?.(PLUGIN_ID_RAPID_OCR) &&
 					getAppSettings()[AppSettingsGroup.FunctionFixedContent].autoOcr
 				) &&
-				!params.ocrResult
+				!params.allOcrResult
 			) {
 				imageOcrSignRef.current = false;
 			} else {
@@ -788,15 +826,25 @@ const FixedContentCoreInner: React.FC<{
 			canvasElementRef.current = canvas;
 			tryInitImageLayer();
 			if (ocrResultActionRef.current) {
-				if (params.ocrResult) {
+				if (params.allOcrResult) {
 					// 原有的 OCR 结果不包含阴影，加个偏移
 					if (selectRectParams.shadowWidth > 0) {
-						params.ocrResult.result.text_blocks.forEach((textBlock) => {
-							textBlock.box_points.forEach((point) => {
-								point.x += selectRectParams.shadowWidth;
-								point.y += selectRectParams.shadowWidth;
-							});
-						});
+						params.allOcrResult.ocrResult?.result.text_blocks.forEach(
+							(textBlock) => {
+								textBlock.box_points.forEach((point) => {
+									point.x += selectRectParams.shadowWidth;
+									point.y += selectRectParams.shadowWidth;
+								});
+							},
+						);
+						params.allOcrResult.translatedResult?.result.text_blocks.forEach(
+							(textBlock) => {
+								textBlock.box_points.forEach((point) => {
+									point.x += selectRectParams.shadowWidth;
+									point.y += selectRectParams.shadowWidth;
+								});
+							},
+						);
 					}
 
 					ocrResultActionRef.current.init({
@@ -808,7 +856,7 @@ const FixedContentCoreInner: React.FC<{
 						},
 						captureBoundingBoxInfo,
 						canvas,
-						ocrResult: params.ocrResult,
+						allOcrResult: params.allOcrResult,
 					});
 					setEnableSelectText(true);
 					ocrResultActionRef.current.setEnable(true);
@@ -825,7 +873,7 @@ const FixedContentCoreInner: React.FC<{
 						},
 						captureBoundingBoxInfo,
 						canvas,
-						ocrResult: undefined,
+						allOcrResult: undefined,
 					});
 				}
 			}
@@ -1077,13 +1125,70 @@ const FixedContentCoreInner: React.FC<{
 			return;
 		}
 
+		if (enableSelectTextRef.current) {
+			if (getSelectTextMode(fixedContentTypeRef.current) === "ocr") {
+				const selectedText = ocrResultActionRef.current?.getSelectedText();
+				if (selectedText?.text.trim()) {
+					await writeTextToClipboard(selectedText.text);
+				} else {
+					const currentOcrResult = ocrResultActionRef.current?.getOcrResult();
+					if (!currentOcrResult) {
+						return;
+					}
+
+					if (
+						currentOcrResult.ocrResultType === OcrResultType.VisionModelHtml
+					) {
+						const html = getOcrResultIframeSrcDoc(
+							currentOcrResult.result.text_blocks[0].text,
+							currentOcrResult.ocrResultType,
+							undefined,
+							undefined,
+							undefined,
+						);
+						await writeHtmlToClipboard(html);
+					} else {
+						await writeTextToClipboard(
+							covertOcrResultToText(currentOcrResult.result),
+						);
+					}
+				}
+			} else {
+				if (fixedContentTypeRef.current === FixedContentType.Html) {
+					const selectedText = htmlContentContainerRef.current?.contentWindow
+						?.getSelection()
+						?.toString()
+						.trim();
+					if (selectedText) {
+						await writeTextToClipboard(selectedText);
+					} else {
+						await writeHtmlToClipboard(originHtmlContentRef.current ?? "");
+					}
+				} else if (fixedContentTypeRef.current === FixedContentType.Text) {
+					const selectedText = window.getSelection()?.toString().trim();
+					writeTextToClipboard(
+						selectedText
+							? selectedText
+							: (textContentRef.current?.content ?? ""),
+					);
+				}
+			}
+			return;
+		}
+
 		const canvasElement = await renderToCanvas();
 		if (!canvasElement) {
 			return;
 		}
 
 		await copyToClipboardDrawAction(canvasElement, undefined, undefined);
-	}, [renderToCanvas, isThumbnailRef]);
+	}, [
+		renderToCanvas,
+		isThumbnailRef,
+		enableSelectTextRef,
+		fixedContentTypeRef,
+		textContentRef,
+	]);
 
 	const saveToFile = useCallback(async () => {
 		if (isThumbnailRef.current) {
@@ -1212,6 +1317,66 @@ const FixedContentCoreInner: React.FC<{
 			}
 		}
 	}, [ocrResult, translatorOcrResult, currentOcrResult?.ocrResultType]);
+	const switchVisionModelHtml = useCallback(async () => {
+		if (ocrResult) {
+			if (visionModelHtmlResult) {
+				ocrResultActionRef.current?.switchOcrResult(
+					currentOcrResult?.ocrResultType === OcrResultType.VisionModelHtml
+						? OcrResultType.Ocr
+						: OcrResultType.VisionModelHtml,
+				);
+			} else {
+				const contentCanvas = await renderToCanvas(true);
+				if (!contentCanvas) {
+					message.error(
+						intl.formatMessage({
+							id: "draw.ocrDetect.failedToRenderContent",
+						}),
+					);
+					return;
+				}
+
+				ocrResultActionRef.current?.convertImageToHtml(contentCanvas);
+			}
+		}
+	}, [
+		ocrResult,
+		visionModelHtmlResult,
+		currentOcrResult?.ocrResultType,
+		renderToCanvas,
+		intl,
+		message,
+	]);
+	const switchVisionModelMarkdown = useCallback(async () => {
+		if (ocrResult) {
+			if (visionModelMarkdownResult) {
+				ocrResultActionRef.current?.switchOcrResult(
+					currentOcrResult?.ocrResultType === OcrResultType.VisionModelMarkdown
+						? OcrResultType.Ocr
+						: OcrResultType.VisionModelMarkdown,
+				);
+			} else {
+				const contentCanvas = await renderToCanvas(true);
+				if (!contentCanvas) {
+					message.error(
+						intl.formatMessage({
+							id: "draw.ocrDetect.failedToRenderContent",
+						}),
+					);
+					return;
+				}
+
+				ocrResultActionRef.current?.convertImageToMarkdown(contentCanvas);
+			}
+		}
+	}, [
+		ocrResult,
+		visionModelMarkdownResult,
+		currentOcrResult?.ocrResultType,
+		renderToCanvas,
+		intl,
+		message,
+	]);
 
 	const switchAlwaysOnTop = useCallback(async () => {
 		setIsAlwaysOnTop((isAlwaysOnTop) => !isAlwaysOnTop);
@@ -1580,20 +1745,54 @@ const FixedContentCoreInner: React.FC<{
 		const menu = await Menu.new({
 			id: menuId,
 			items: [
-				...(enableOcrTranslate
+				...(enableOcrTranslate || enableVisionModelHtml
 					? [
-							{
-								id: `${appWindow.label}-ocrTranslateTool`,
-								text: intl.formatMessage({ id: "draw.ocrTranslateTool" }),
-								action: switchOcrTranslate,
-								checked:
-									currentOcrResult?.ocrResultType === OcrResultType.Translated,
-							},
+							...(enableOcrTranslate
+								? [
+										{
+											id: `${appWindow.label}-ocrTranslateTool`,
+											text: intl.formatMessage({ id: "draw.ocrTranslateTool" }),
+											action: switchOcrTranslate,
+											checked:
+												currentOcrResult?.ocrResultType ===
+												OcrResultType.Translated,
+										},
+									]
+								: []),
+							...(enableVisionModelHtml
+								? [
+										{
+											id: `${appWindow.label}-convertImageToHtml`,
+											text: intl.formatMessage({
+												id: "draw.ocrDetect.convertImageToHtml",
+											}),
+											action: switchVisionModelHtml,
+											checked:
+												currentOcrResult?.ocrResultType ===
+												OcrResultType.VisionModelHtml,
+										},
+									]
+								: []),
+							...(enableVisionModelMarkdown
+								? [
+										{
+											id: `${appWindow.label}-convertImageToMarkdown`,
+											text: intl.formatMessage({
+												id: "draw.ocrDetect.convertImageToMarkdown",
+											}),
+											action: switchVisionModelMarkdown,
+											checked:
+												currentOcrResult?.ocrResultType ===
+												OcrResultType.VisionModelMarkdown,
+										},
+									]
+								: []),
 							{
 								item: "Separator",
 							},
 						]
 					: []),
+
 				{
 					id: `${appWindow.label}-copyTool`,
 					text: intl.formatMessage({ id: "draw.copyTool" }),
@@ -1811,6 +2010,10 @@ const FixedContentCoreInner: React.FC<{
 		currentOcrResult?.ocrResultType,
 		enableOcrTranslate,
 		switchOcrTranslate,
+		enableVisionModelHtml,
+		switchVisionModelHtml,
+		switchVisionModelMarkdown,
+		enableVisionModelMarkdown,
 	]);
 
 	useEffect(() => {
@@ -1938,9 +2141,9 @@ const FixedContentCoreInner: React.FC<{
 				htmlContentContainerRef.current &&
 				canvasPropsRef.current.width === 0
 			) {
-				if (width === 800 && type !== "resize") {
+				if (width === 600 && type !== "resize") {
 					if (htmlContentContainerRef.current) {
-						htmlContentContainerRef.current.style.width = `${1000}px`;
+						htmlContentContainerRef.current.style.width = `${800}px`;
 					}
 					return;
 				}
@@ -2050,10 +2253,10 @@ const FixedContentCoreInner: React.FC<{
 			() => ({
 				keyup: false,
 				keydown: true,
-				enabled: !disabled && !enableSelectText,
+				enabled: !disabled,
 				preventDefault: true,
 			}),
-			[disabled, enableSelectText],
+			[disabled],
 		),
 	);
 	useHotkeys(
@@ -2360,8 +2563,11 @@ const FixedContentCoreInner: React.FC<{
 					}}
 					onOcrResultChange={setOcrResult}
 					onTranslatedResultChange={setTranslatorOcrResult}
+					onVisionModelHtmlResultChange={setVisionModelHtmlResult}
+					onVisionModelMarkdownResultChange={setVisionModelMarkdownResult}
 					onCurrentOcrResultChange={setCurrentOcrResult}
 					onTranslateLoading={setTranslateLoading}
+					onVisionModelListChange={setVisionModelList}
 				/>
 
 				{htmlContent && (
@@ -2728,8 +2934,8 @@ const FixedContentCoreInner: React.FC<{
                 }
 
                 .fixed-html-content {
-                    width: 800px;
-                    height: 0px;
+                    width: 600px;
+                    height: 100px;
                     user-select: none;
                 }
 

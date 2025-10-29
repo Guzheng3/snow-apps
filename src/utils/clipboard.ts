@@ -87,7 +87,7 @@ export const writeImageToClipboard = async (
 export const writeHtmlToClipboard = async (html: string) => {
 	let isSuccess = false;
 	try {
-		await extraClipboard.writeHtml(html);
+		await clipboard.writeHtml(html);
 		isSuccess = true;
 	} catch (error) {
 		isSuccess = false;

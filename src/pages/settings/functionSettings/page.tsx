@@ -16,6 +16,7 @@ import {
 	Form,
 	Row,
 	Select,
+	type SelectProps,
 	Spin,
 	Switch,
 	Typography,
@@ -53,11 +54,11 @@ import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
 import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
 import { usePlatform } from "@/hooks/usePlatform";
+import { useVisionModelList } from "@/pages/fixedContent/components/ocrResult";
 import {
 	type AppSettingsData,
 	AppSettingsFixedContentInitialPosition,
 	AppSettingsGroup,
-	type ChatApiConfig,
 	CloudSaveUrlFormat,
 	CloudSaveUrlType,
 	GifFormat,
@@ -105,7 +106,6 @@ export const FunctionSettingsPage = () => {
 
 	const [appSettingsLoading, setAppSettingsLoading] = useState(true);
 
-	const [chatConfigList, setChatConfigList] = useState<ChatApiConfig[]>([]);
 	useAppSettingsLoad(
 		useCallback(
 			(settings: AppSettingsData, preSettings?: AppSettingsData) => {
@@ -127,9 +127,6 @@ export const FunctionSettingsPage = () => {
 						settings[AppSettingsGroup.FunctionChat]
 				) {
 					functionForm.setFieldsValue(settings[AppSettingsGroup.FunctionChat]);
-					setChatConfigList(
-						settings[AppSettingsGroup.FunctionChat].chatApiConfigList,
-					);
 				}
 
 				if (
@@ -620,7 +617,16 @@ export const FunctionSettingsPage = () => {
 		];
 	}, [intl]);
 
+	const { visionModelList } = useVisionModelList();
+
 	const htmlVisionModelOptions = useMemo(() => {
+		const officialVisionModelList = visionModelList.filter(
+			(model) => model.isOfficial,
+		);
+		const customVisionModelList = visionModelList.filter(
+			(model) => !model.isOfficial,
+		);
+
 		return [
 			{
 				label: (
@@ -636,12 +642,26 @@ export const FunctionSettingsPage = () => {
 				value:
 					defaultAppSettingsData[AppSettingsGroup.FunctionOcr].htmlVisionModel,
 			},
-			...chatConfigList.map((config) => ({
-				label: config.model_name,
-				value: config.model_name,
-			})),
-		];
-	}, [chatConfigList, intl]);
+			customVisionModelList.length > 0
+				? {
+						label: <FormattedMessage id="tools.chat.custom" />,
+						options: customVisionModelList.map((model) => ({
+							label: model.config.model_name,
+							value: model.config.model_name,
+						})),
+					}
+				: undefined,
+			officialVisionModelList.length > 0
+				? {
+						label: <FormattedMessage id="tools.chat.official" />,
+						options: officialVisionModelList.map((model) => ({
+							label: model.config.model_name,
+							value: model.config.model_name,
+						})),
+					}
+				: undefined,
+		].filter(Boolean) as SelectProps["options"];
+	}, [visionModelList, intl]);
 
 	return (
 		<ContentWrap>
@@ -1261,7 +1281,25 @@ export const FunctionSettingsPage = () => {
 												fieldProps={{
 													autoSize: {
 														minRows: 1,
-														maxRows: 5,
+														maxRows: 1,
+													},
+												}}
+											/>
+										</Col>
+										<Col span={24}>
+											<ProFormTextArea
+												name="markdownVisionModelSystemPrompt"
+												label={
+													<IconLabel
+														label={
+															<FormattedMessage id="settings.functionSettings.ocrSettings.markdownVisionModelSystemPrompt" />
+														}
+													/>
+												}
+												fieldProps={{
+													autoSize: {
+														minRows: 1,
+														maxRows: 1,
 													},
 												}}
 											/>
@@ -1505,7 +1543,7 @@ export const FunctionSettingsPage = () => {
 										fieldProps={{
 											autoSize: {
 												minRows: 1,
-												maxRows: 5,
+												maxRows: 1,
 											},
 										}}
 									/>

@@ -1035,7 +1035,7 @@ const DrawPageCore: React.FC<{
 			setCaptureStep,
 			// 如果当前是 OCR 识别状态，则使用已有的 OCR 结果
 			isOcrTool(getDrawState())
-				? ocrBlocksActionRef.current?.getOcrResultAction()?.getOcrResult()
+				? ocrBlocksActionRef.current?.getOcrResultAction()?.getAllOcrResult()
 				: undefined,
 			async (canvas: HTMLCanvasElement) => {
 				await saveCaptureHistory(
@@ -1135,6 +1135,10 @@ const DrawPageCore: React.FC<{
 				text: window.getSelection()?.toString().trim() ?? "",
 			};
 		}
+
+		const ocrResult = ocrBlocksActionRef.current
+			?.getOcrResultAction()
+			?.getOcrResult();
 		if (
 			selectedText &&
 			selectedText.text.trim() !== "" &&
@@ -1149,12 +1153,10 @@ const DrawPageCore: React.FC<{
 			return;
 		} else if (
 			isOcrTool(getDrawState()) &&
-			getAppSettings()[AppSettingsGroup.FunctionScreenshot].ocrCopyText
+			(getAppSettings()[AppSettingsGroup.FunctionScreenshot].ocrCopyText ||
+				ocrResult?.ocrResultType === OcrResultType.VisionModelHtml ||
+				ocrResult?.ocrResultType === OcrResultType.VisionModelMarkdown)
 		) {
-			const ocrResult = ocrBlocksActionRef.current
-				?.getOcrResultAction()
-				?.getOcrResult();
-
 			if (ocrResult && ocrResult.ocrResultType === OcrResultType.Ocr) {
 				writeTextToClipboard(covertOcrResultToText(ocrResult.result));
 			} else if (
@@ -1169,6 +1171,11 @@ const DrawPageCore: React.FC<{
 					undefined,
 				);
 				writeHtmlToClipboard(html);
+			} else if (
+				ocrResult &&
+				ocrResult.ocrResultType === OcrResultType.VisionModelMarkdown
+			) {
+				writeTextToClipboard(ocrResult.result.text_blocks[0].text);
 			}
 
 			finishCapture();

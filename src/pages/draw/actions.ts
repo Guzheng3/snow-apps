@@ -19,7 +19,7 @@ import { randomString } from "@/utils/random";
 import { getWebViewSharedBuffer } from "@/utils/webview";
 import { setWindowRect } from "@/utils/window";
 import type { FixedContentActionType } from "../fixedContent/components/fixedContentCore";
-import type { AppOcrResult } from "../fixedContent/components/ocrResult";
+import type { AllOcrResult } from "../fixedContent/components/ocrResult";
 import type { DrawLayerActionType } from "./components/drawLayer/extra";
 import type { OcrBlocksActionType } from "./components/ocrBlocks";
 import type {
@@ -248,7 +248,7 @@ export const fixedToScreen = async (
 	drawLayerAction: DrawLayerActionType,
 	setCaptureStep: (step: CaptureStep) => void,
 	/** 已有的 OCR 结果 */
-	ocrResult: AppOcrResult | undefined,
+	allOcrResult: AllOcrResult | undefined,
 	saveCaptureHistory: (canvas: HTMLCanvasElement) => Promise<void>,
 	onFixedContentLoad: () => void,
 	showFixedContent: () => void,
@@ -333,7 +333,7 @@ export const fixedToScreen = async (
 					zoom: appState?.zoom?.value ?? 1,
 					elements: elements as ExcalidrawElement[],
 				},
-				ocrResult,
+				allOcrResult,
 				selectRectParams,
 				windowDevicePixelRatio,
 			});

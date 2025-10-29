@@ -781,6 +781,11 @@ const AppSettingsContextProviderCore: React.FC<{
 							? newSettings.htmlVisionModelSystemPrompt
 							: (prevSettings?.htmlVisionModelSystemPrompt ??
 								defaultAppSettingsData[group].htmlVisionModelSystemPrompt),
+					markdownVisionModelSystemPrompt:
+						typeof newSettings?.markdownVisionModelSystemPrompt === "string"
+							? newSettings.markdownVisionModelSystemPrompt
+							: (prevSettings?.markdownVisionModelSystemPrompt ??
+								defaultAppSettingsData[group].markdownVisionModelSystemPrompt),
 				};
 			} else if (group === AppSettingsGroup.FunctionChat) {
 				newSettings = newSettings as AppSettingsData[typeof group];

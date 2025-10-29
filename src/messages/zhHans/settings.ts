@@ -564,4 +564,6 @@ export const settings = {
 		"默认使用首个支持视觉理解的模型",
 	"settings.functionSettings.ocrSettings.htmlVisionModelSystemPrompt":
 		"图片转为 HTML 的 System 提示词",
+	"settings.functionSettings.ocrSettings.markdownVisionModelSystemPrompt":
+		"图片转为 Markdown 的 System 提示词",
 };

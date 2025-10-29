@@ -5,24 +5,27 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { useIntl } from "react-intl";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
-import { PLUGIN_ID_TRANSLATE } from "@/constants/pluginService";
+import {
+	PLUGIN_ID_AI_CHAT,
+	PLUGIN_ID_TRANSLATE,
+} from "@/constants/pluginService";
+import { AntdContext } from "@/contexts/antdContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import {
+	type AllOcrResult,
 	type AppOcrResult,
 	covertOcrResultToText,
 	OcrResult,
 	type OcrResultActionType,
 	type OcrResultType,
+	type VisionModel,
 } from "@/pages/fixedContent/components/ocrResult";
-import {
-	AppSettingsGroup,
-	type ChatApiConfig,
-	OcrDetectAfterAction,
-} from "@/types/appSettings";
+import { AppSettingsGroup, OcrDetectAfterAction } from "@/types/appSettings";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { DrawState } from "@/types/draw";
@@ -47,7 +50,7 @@ export type OcrBlocksActionType = {
 		selectRect: ElementRect,
 		captureBoundingBoxInfo: CaptureBoundingBoxInfo,
 		canvas: HTMLCanvasElement,
-		ocrResult: AppOcrResult | undefined,
+		allOcrResult: AllOcrResult | undefined,
 	) => Promise<void>;
 	setEnable: (enable: boolean | ((enable: boolean) => boolean)) => void;
 	getOcrResultAction: () => OcrResultActionType | undefined;
@@ -82,13 +85,13 @@ export const OcrBlocks: React.FC<{
 				selectRect: ElementRect,
 				captureBoundingBoxInfo: CaptureBoundingBoxInfo,
 				canvas: HTMLCanvasElement,
-				ocrResult: AppOcrResult | undefined,
+				allOcrResult: AllOcrResult | undefined,
 			) => {
 				ocrResultActionRef.current?.init({
 					selectRect,
 					captureBoundingBoxInfo,
 					canvas,
-					ocrResult,
+					allOcrResult,
 				});
 			},
 			setEnable: (enable: boolean | ((enable: boolean) => boolean)) => {
@@ -142,33 +145,71 @@ export const OcrBlocks: React.FC<{
 		ocrResultActionRef.current?.startTranslate();
 	}, []);
 
+	const intl = useIntl();
+	const { message } = useContext(AntdContext);
+
 	const [visionModelHtmlLoading, setVisionModelHtmlLoading] = useState(false);
-	const onConvertImageToHtml = useCallback(async () => {
-		const selectRectParams =
-			selectLayerActionRef.current?.getSelectRectParams();
-		const imageLayerAction = imageLayerActionRef.current;
-		const drawLayerAction = drawLayerActionRef.current;
-		if (!selectRectParams || !imageLayerAction || !drawLayerAction) {
-			return;
-		}
+	const [visionModelMarkdownLoading, setVisionModelMarkdownLoading] =
+		useState(false);
+	const onConvertImageToVisionModelFormat = useCallback(
+		async (format: "html" | "markdown") => {
+			if (format === "html") {
+				setVisionModelHtmlLoading(true);
+			} else if (format === "markdown") {
+				setVisionModelMarkdownLoading(true);
+			} else {
+				return;
+			}
 
-		setVisionModelHtmlLoading(true);
-		const screenshotCanvas = await getCanvas(
-			selectRectParams,
-			imageLayerAction,
-			drawLayerAction,
-			true,
-			true,
-			INIT_CONTAINER_KEY,
-		);
+			const selectRectParams =
+				selectLayerActionRef.current?.getSelectRectParams();
+			const imageLayerAction = imageLayerActionRef.current;
+			const drawLayerAction = drawLayerActionRef.current;
+			if (!selectRectParams || !imageLayerAction || !drawLayerAction) {
+				return;
+			}
 
-		if (!screenshotCanvas) {
-			return;
-		}
+			if (
+				selectRectParams.rect.max_x - selectRectParams.rect.min_x < 10 ||
+				selectRectParams.rect.max_y - selectRectParams.rect.min_y < 10
+			) {
+				message.error(
+					intl.formatMessage({ id: "draw.ocrResult.imageTooSmall" }),
+				);
+				return;
+			}
 
-		await ocrResultActionRef.current?.convertImageToHtml(screenshotCanvas);
-		setVisionModelHtmlLoading(false);
-	}, [selectLayerActionRef, imageLayerActionRef, drawLayerActionRef]);
+			const screenshotCanvas = await getCanvas(
+				selectRectParams,
+				imageLayerAction,
+				drawLayerAction,
+				true,
+				true,
+				INIT_CONTAINER_KEY,
+			);
+
+			if (!screenshotCanvas) {
+				return;
+			}
+
+			if (format === "html") {
+				await ocrResultActionRef.current?.convertImageToHtml(screenshotCanvas);
+				setVisionModelHtmlLoading(false);
+			} else if (format === "markdown") {
+				await ocrResultActionRef.current?.convertImageToMarkdown(
+					screenshotCanvas,
+				);
+				setVisionModelMarkdownLoading(false);
+			}
+		},
+		[
+			selectLayerActionRef,
+			imageLayerActionRef,
+			drawLayerActionRef,
+			intl,
+			message,
+		],
+	);
 
 	const [currentOcrResult, setCurrentOcrResult] = useState<
 		(AppOcrResult & { ocrResultType: OcrResultType }) | undefined
@@ -186,23 +227,37 @@ export const OcrBlocks: React.FC<{
 	const [visionModelHtmlResult, setVisionModelHtmlResult] = useState<
 		AppOcrResult | undefined
 	>(undefined);
-	const [visionModelList, setVisionModelList] = useState<ChatApiConfig[]>([]);
+	const [visionModelList, setVisionModelList] = useState<VisionModel[]>([]);
+	const [visionModelMarkdownResult, setVisionModelMarkdownResult] = useState<
+		AppOcrResult | undefined
+	>(undefined);
+
+	const onConvertImageToHtml = useCallback(() => {
+		onConvertImageToVisionModelFormat("html");
+	}, [onConvertImageToVisionModelFormat]);
+	const onConvertImageToMarkdown = useCallback(() => {
+		onConvertImageToVisionModelFormat("markdown");
+	}, [onConvertImageToVisionModelFormat]);
 
 	const { isReadyStatus } = usePluginServiceContext();
 
 	return (
 		<>
-			{isReadyStatus?.(PLUGIN_ID_TRANSLATE) && (
+			{(isReadyStatus?.(PLUGIN_ID_TRANSLATE) ||
+				isReadyStatus?.(PLUGIN_ID_AI_CHAT)) && (
 				<OcrTool
 					onSwitchOcrResult={onSwitchOcrResult}
 					onTranslate={onTranslate}
 					onConvertImageToHtml={onConvertImageToHtml}
+					onConvertImageToMarkdown={onConvertImageToMarkdown}
 					currentOcrResult={currentOcrResult}
 					ocrResult={ocrResult}
 					translatedOcrResult={translatedOcrResult}
 					translateLoading={translateLoading}
 					visionModelHtmlResult={visionModelHtmlResult}
 					visionModelHtmlLoading={visionModelHtmlLoading}
+					visionModelMarkdownResult={visionModelMarkdownResult}
+					visionModelMarkdownLoading={visionModelMarkdownLoading}
 					visionModelList={visionModelList}
 				/>
 			)}
@@ -217,6 +272,8 @@ export const OcrBlocks: React.FC<{
 				onTranslateLoading={setTranslateLoading}
 				onVisionModelHtmlResultChange={setVisionModelHtmlResult}
 				onVisionModelListChange={setVisionModelList}
+				onVisionModelMarkdownResultChange={setVisionModelMarkdownResult}
+				onVisionModelMarkdownLoading={setVisionModelMarkdownLoading}
 			/>
 		</>
 	);
