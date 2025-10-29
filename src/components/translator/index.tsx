@@ -73,6 +73,10 @@ const convertLanguageListToOptions = (
 	// 按首字母分组
 	const groupedLanguages = list.reduce(
 		(acc, lang) => {
+			if (lang.code === "") {
+				return acc;
+			}
+
 			const firstChar = lang.code.charAt(0).toUpperCase();
 			if (!acc[firstChar]) {
 				acc[firstChar] = [];
@@ -84,15 +88,23 @@ const convertLanguageListToOptions = (
 	);
 
 	// 转换为 Select 选项格式
-	return Object.entries(groupedLanguages).map(([key, languages]) => ({
-		label: <span>{key}</span>,
-		title: key,
-		options: languages.map((lang) => ({
-			label: <SelectLabel label={lang.label} code={lang.code.toUpperCase()} />,
-			title: `${lang.label}(${lang.code.toLowerCase()})`,
-			value: lang.code,
-		})),
-	}));
+	return Object.entries(groupedLanguages).map(([key, languages]) => {
+		return {
+			label: <span>{key}</span>,
+			title: key,
+			options: languages.map((lang) => {
+				const langCode = typeof lang.code === "string" ? lang.code : "";
+
+				return {
+					label: (
+						<SelectLabel label={lang.label} code={langCode.toUpperCase()} />
+					),
+					title: `${lang.label}(${langCode.toLowerCase()})`,
+					value: langCode,
+				};
+			}),
+		};
+	});
 };
 
 const selectFilterOption: SelectProps["filterOption"] = (input, option) => {
