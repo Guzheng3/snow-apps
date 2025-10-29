@@ -1597,7 +1597,18 @@ const FixedContentCoreInner: React.FC<{
 		| undefined
 	>(undefined);
 	useEffect(() => {
+		const appWindow = getCurrentWindow();
+		const unlisten = appWindow.onCloseRequested(() => {
+			if (rightClickMenuRef.current) {
+				rightClickMenuRef.current.mainMenu?.close();
+				rightClickMenuRef.current.focusedWindowMenu?.close();
+				rightClickMenuRef.current.setOpacityMenu?.close();
+				rightClickMenuRef.current.setScaleMenu?.close();
+			}
+		});
+
 		return () => {
+			unlisten.then((fn) => fn());
 			if (rightClickMenuRef.current) {
 				rightClickMenuRef.current.mainMenu?.close();
 				rightClickMenuRef.current.focusedWindowMenu?.close();

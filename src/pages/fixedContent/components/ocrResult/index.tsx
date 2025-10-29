@@ -818,7 +818,16 @@ export const OcrResult: React.FC<{
 	}, [disabled, intl]);
 
 	useEffect(() => {
+		const appWindow = getCurrentWindow();
+		const unlisten = appWindow.onCloseRequested(() => {
+			if (menuRef.current) {
+				menuRef.current.close();
+				menuRef.current = undefined;
+			}
+		});
+
 		return () => {
+			unlisten.then((fn) => fn());
 			if (menuRef.current) {
 				menuRef.current.close();
 				menuRef.current = undefined;
