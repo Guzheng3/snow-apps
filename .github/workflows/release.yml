@@ -130,15 +130,11 @@ jobs:
         shell: bash
 
       # 配置 yarn 缓存
-      - name: Cache yarn dependencies
-        uses: actions/cache@v4
+      - name: Setup yarn cache
+        uses: actions/setup-node@v4
         with:
-          path: |
-            ~/.yarn/cache
-            ~/.cache/yarn
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+            node-version: 22.14.0
+            cache: yarn
 
       # 安装 Excalidraw 依赖
       - name: Install Excalidraw dependencies
