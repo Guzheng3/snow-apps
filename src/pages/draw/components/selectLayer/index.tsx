@@ -519,12 +519,10 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 	const drawCanvasSelectRect = useCallback(
 		(
 			rect: ElementRect,
-			captureBoundingBoxInfo: CaptureBoundingBoxInfo,
+			drawState?: DrawState,
 			drawElementMask?: {
 				imageData: ImageData;
 			},
-			enableScrollScreenshot?: boolean,
-			enableScanQrcode?: boolean,
 		) => {
 			if (!selectLayerCanvasContextRef.current) {
 				appWarn(
@@ -533,20 +531,23 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 				return;
 			}
 
+			const monitorWidth = captureBoundingBoxInfoRef.current?.width ?? 0;
+			const monitorHeight = captureBoundingBoxInfoRef.current?.height ?? 0;
+
 			const enableAuxiliaryLine =
 				selectStateRef.current === SelectState.Auto ||
 				selectStateRef.current === SelectState.Manual;
 
 			drawSelectRect(
 				drawSelectRectThemeConfigRef.current,
-				captureBoundingBoxInfo.width,
-				captureBoundingBoxInfo.height,
+				monitorWidth,
+				monitorHeight,
 				rect,
 				currentActiveMonitorRectRef.current ?? {
 					min_x: 0,
 					min_y: 0,
-					max_x: captureBoundingBoxInfo.width,
-					max_y: captureBoundingBoxInfo.height,
+					max_x: monitorWidth,
+					max_y: monitorHeight,
 				},
 				selectRectRadiusRef.current,
 				selectLayerCanvasContextRef.current,
@@ -554,9 +555,8 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 				window.devicePixelRatio * contentScaleRef.current,
 				getScreenshotType()?.type === ScreenshotType.TopWindow ||
 					selectStateRef.current === SelectState.Auto,
+				drawState,
 				drawElementMask,
-				enableScrollScreenshot,
-				enableScanQrcode,
 				enableAuxiliaryLine &&
 					lastMouseMovePositionRef.current &&
 					currentActiveMonitorRectRef.current &&
@@ -587,28 +587,28 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 		],
 	);
 
-	const initAnimation = useCallback(
-		(captureBoundingBoxInfo: CaptureBoundingBoxInfo) => {
-			if (drawSelectRectAnimationRef.current) {
-				drawSelectRectAnimationRef.current.dispose();
-			}
+	const initAnimation = useCallback(() => {
+		if (drawSelectRectAnimationRef.current) {
+			drawSelectRectAnimationRef.current.dispose();
+		}
 
-			drawSelectRectAnimationRef.current = new TweenAnimation<ElementRect>(
-				{
-					min_x: 0,
-					min_y: 0,
-					max_x: captureBoundingBoxInfo.width,
-					max_y: captureBoundingBoxInfo.height,
-				},
-				TWEEN.Easing.Quadratic.Out,
-				100,
-				(rect) => {
-					drawCanvasSelectRect(rect, captureBoundingBoxInfo);
-				},
-			);
-		},
-		[drawCanvasSelectRect],
-	);
+		drawSelectRectAnimationRef.current = new TweenAnimation<ElementRect>(
+			{
+				min_x: 0,
+				min_y: 0,
+				max_x: 0,
+				max_y: 0,
+			},
+			TWEEN.Easing.Quadratic.Out,
+			100,
+			(rect) => {
+				drawCanvasSelectRect(rect);
+			},
+		);
+	}, [drawCanvasSelectRect]);
+	useEffect(() => {
+		initAnimation();
+	}, [initAnimation]);
 
 	const onCaptureBoundingBoxInfoReady = useCallback<
 		SelectLayerActionType["onCaptureBoundingBoxInfoReady"]
@@ -641,10 +641,8 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 				selectLayerCanvasRef.current.height = captureBoundingBoxInfo.height;
 				selectLayerCanvasRef.current.width = captureBoundingBoxInfo.width;
 			}
-
-			initAnimation(captureBoundingBoxInfo);
 		},
-		[initAnimation, setSelectState],
+		[setSelectState],
 	);
 
 	const opacityImageDataRef = useRef<
@@ -665,7 +663,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
 				// 如果有缓存，则把遮罩去除
 				if (opacityImageDataRef.current && captureBoundingBoxInfoRef.current) {
-					drawCanvasSelectRect(selectRect, captureBoundingBoxInfoRef.current);
+					drawCanvasSelectRect(selectRect);
 				}
 
 				return;
@@ -730,7 +728,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
 			drawCanvasSelectRect(
 				selectRect,
-				captureBoundingBoxInfoRef.current,
+				undefined,
 				imageData
 					? {
 							imageData,
@@ -892,9 +890,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 			}
 
 			if (forceUpdate) {
-				if (captureBoundingBoxInfoRef.current) {
-					drawCanvasSelectRect(rect, captureBoundingBoxInfoRef.current);
-				}
+				drawCanvasSelectRect(rect);
 			} else {
 				drawSelectRectAnimationRef.current?.update(
 					rect,
@@ -1294,10 +1290,6 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 		DrawStatePublisher,
 		useCallback(
 			(drawState: DrawState, prevDrawState: DrawState) => {
-				if (!captureBoundingBoxInfoRef.current) {
-					return;
-				}
-
 				const selectRect = getSelectRect();
 				if (!selectRect) {
 					appWarn("[selectLayer] getSelectRect is undefined");
@@ -1308,20 +1300,9 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 					drawState === DrawState.ScrollScreenshot ||
 					drawState === DrawState.ScanQrcode
 				) {
-					drawCanvasSelectRect(
-						selectRect,
-						captureBoundingBoxInfoRef.current,
-						undefined,
-						drawState === DrawState.ScrollScreenshot,
-						drawState === DrawState.ScanQrcode,
-					);
+					drawCanvasSelectRect(selectRect, drawState, undefined);
 				} else if (prevDrawState === DrawState.ScrollScreenshot) {
-					drawCanvasSelectRect(
-						selectRect,
-						captureBoundingBoxInfoRef.current,
-						undefined,
-						false,
-					);
+					drawCanvasSelectRect(selectRect);
 				}
 			},
 			[getSelectRect, drawCanvasSelectRect],
@@ -1662,22 +1643,9 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 			selectRectRadiusRef.current = radius;
 			resizeToolbarActionRef.current?.setRadius(radius);
 
-			const captureBoundingBoxInfo = captureBoundingBoxInfoRef.current;
-			if (!captureBoundingBoxInfo) {
-				appWarn(
-					"[selectLayer::onRadiusChange] captureBoundingBoxInfo is undefined",
-				);
-				return;
-			}
-
 			const selectRect = getSelectRect();
 			if (selectRect) {
-				drawCanvasSelectRect(
-					selectRect,
-					captureBoundingBoxInfo,
-					undefined,
-					false,
-				);
+				drawCanvasSelectRect(selectRect);
 				updateAppSettings(
 					AppSettingsGroup.Cache,
 					{ selectRectRadius: radius },
@@ -1704,18 +1672,8 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
 			const selectRect = getSelectRect();
 
-			if (!captureBoundingBoxInfoRef.current) {
-				appWarn("[selectLayer] captureBoundingBoxInfoRef.current is undefined");
-				return;
-			}
-
 			if (selectRect) {
-				drawCanvasSelectRect(
-					selectRect,
-					captureBoundingBoxInfoRef.current,
-					undefined,
-					false,
-				);
+				drawCanvasSelectRect(selectRect);
 				updateAppSettings(
 					AppSettingsGroup.Cache,
 					{
@@ -1752,18 +1710,8 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
 			const selectRect = getSelectRect();
 
-			if (!captureBoundingBoxInfoRef.current) {
-				appWarn("[selectLayer] captureBoundingBoxInfoRef.current is undefined");
-				return;
-			}
-
 			if (selectRect) {
-				drawCanvasSelectRect(
-					selectRect,
-					captureBoundingBoxInfoRef.current,
-					undefined,
-					false,
-				);
+				drawCanvasSelectRect(selectRect);
 				updateAppSettings(
 					AppSettingsGroup.Cache,
 					{

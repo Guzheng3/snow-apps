@@ -9,7 +9,6 @@ import {
 } from "@tauri-apps/api/window";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import * as TWEEN from "@tweenjs/tween.js";
 import { Button, Descriptions, Space, Typography, theme } from "antd";
 import Color from "color";
 import { toCanvas as htmlToCanvas } from "html-to-image";
@@ -72,8 +71,8 @@ import { writeHtmlToClipboard, writeTextToClipboard } from "@/utils/clipboard";
 import { generateImageFileName } from "@/utils/file";
 import { formatKey } from "@/utils/format";
 import { appError, appInfo } from "@/utils/log";
+import { MotionAnimation } from "@/utils/motionAnimation";
 import { MousePosition } from "@/utils/mousePosition";
-import { TweenAnimation } from "@/utils/tweenAnimation";
 import { closeWindowComplete } from "@/utils/window";
 import { zIndexs } from "@/utils/zIndex";
 import {
@@ -935,7 +934,7 @@ const FixedContentCoreInner: React.FC<{
 	>(undefined);
 
 	const switchThumbnailAnimationRef = useRef<
-		| TweenAnimation<{
+		| MotionAnimation<{
 				width: number;
 				height: number;
 				x: number;
@@ -950,7 +949,7 @@ const FixedContentCoreInner: React.FC<{
 		}
 
 		if (!switchThumbnailAnimationRef.current) {
-			switchThumbnailAnimationRef.current = new TweenAnimation<{
+			switchThumbnailAnimationRef.current = new MotionAnimation<{
 				width: number;
 				height: number;
 				x: number;
@@ -962,7 +961,7 @@ const FixedContentCoreInner: React.FC<{
 					x: 0,
 					y: 0,
 				},
-				TWEEN.Easing.Quadratic.Out,
+				"easeOut",
 				128,
 				({ width, height, x, y }) => {
 					const appWindow = appWindowRef.current;

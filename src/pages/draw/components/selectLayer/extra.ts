@@ -1,5 +1,6 @@
 import Color from "color";
 import type { ElementRect } from "@/types/commands/screenshot";
+import { DrawState } from "@/types/draw";
 import { MousePosition } from "@/utils/mousePosition";
 
 export enum SelectState {
@@ -87,11 +88,10 @@ export const drawSelectRect = (
 	darkMode: boolean,
 	scaleFactor: number,
 	hideControls: boolean,
+	drawState?: DrawState,
 	drawElementMask?: {
 		imageData: ImageData;
 	},
-	enableScrollScreenshot?: boolean,
-	enableScanQrcode?: boolean,
 	fullScreenAuxiliaryLine?: {
 		mousePosition: MousePosition;
 		color: string;
@@ -127,7 +127,7 @@ export const drawSelectRect = (
 		MASK_CIRCLE_CONTROL_SHOW_MID_CONTROL_WIDTH * scaleFactor,
 	);
 
-	if (enableScanQrcode) {
+	if (drawState === DrawState.ScanQrcode) {
 		radius = 0;
 	}
 
@@ -146,7 +146,7 @@ export const drawSelectRect = (
 	// 防止滚动截图的时候截取到选区边缘
 	const halfWidth = Math.floor(maskControlBorderStrokeWidth * 0.5);
 	const doubleHalfWidth = halfWidth * 2;
-	if (radius > 0 && !enableScrollScreenshot) {
+	if (radius > 0 && drawState !== DrawState.ScrollScreenshot) {
 		// 清除圆角矩形区域
 		// 保存当前上下文状态
 		canvasContext.save();
@@ -180,7 +180,7 @@ export const drawSelectRect = (
 		);
 	}
 
-	if (enableScrollScreenshot) {
+	if (drawState === DrawState.ScrollScreenshot) {
 		return;
 	}
 
@@ -234,7 +234,7 @@ export const drawSelectRect = (
 	canvasContext.lineWidth = maskControlBorderStrokeWidth;
 
 	canvasContext.beginPath();
-	if (radius > 0 && !enableScrollScreenshot) {
+	if (radius > 0) {
 		canvasContext.roundRect(rectMinX, rectMinY, rectWidth, rectHeight, radius);
 	} else {
 		canvasContext.rect(rectMinX, rectMinY, rectWidth, rectHeight);

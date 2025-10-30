@@ -436,8 +436,8 @@ const DrawPageCore: React.FC<{
 	const hideWindow = useCallback(async () => {
 		await appWindowRef.current.hide();
 		// await Promise.all([
-		//     appWindowRef.current.show(),
-		//     appWindowRef.current.setSize(new PhysicalSize(100, 100)),
+		// 	appWindowRef.current.show(),
+		// 	appWindowRef.current.setSize(new PhysicalSize(100, 100)),
 		// ]);
 	}, []);
 
