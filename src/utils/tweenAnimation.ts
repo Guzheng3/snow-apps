@@ -1,11 +1,24 @@
 import * as TWEEN from "@tweenjs/tween.js";
-import { isEqual } from "es-toolkit";
 
 /**
  * 基于 TWEEN 的动画工具类
  */
 export class TweenAnimation<T extends object> {
 	private static tweenGroup: TWEEN.Group = new TWEEN.Group();
+	private static animationFrameId: number | undefined;
+	private static activeTweenCount: number = 0; // 使用计数器避免 getAll().length
+
+	// 复用同一个 tick，避免重复创建闭包
+	private static tick = (time: number) => {
+		TweenAnimation.tweenGroup.update(time as unknown as number);
+		if (TweenAnimation.activeTweenCount > 0) {
+			TweenAnimation.animationFrameId = requestAnimationFrame(
+				TweenAnimation.tick,
+			);
+		} else {
+			TweenAnimation.animationFrameId = undefined;
+		}
+	};
 
 	private tween: TWEEN.Tween | undefined;
 	private currentObject: T;
@@ -13,7 +26,7 @@ export class TweenAnimation<T extends object> {
 	private easingFunction: typeof TWEEN.Easing.Quadratic.Out;
 	private duration: number;
 	private onUpdate: (object: T) => void;
-	private animationFrameId: number | undefined;
+
 	/**
 	 * 初始化动画状态
 	 * @param defaultObject 初始状态
@@ -37,19 +50,17 @@ export class TweenAnimation<T extends object> {
 	 * @param object
 	 */
 	public update = (object: T, ignoreAnimation: boolean = false) => {
-		if (isEqual(object, this.targetObject)) {
-			return;
-		}
-
 		this.targetObject = object;
 
-		// 如果存在动画，则停止并移除
 		if (this.tween) {
 			this.tween.stop();
 			TweenAnimation.tweenGroup.remove(this.tween);
+			TweenAnimation.activeTweenCount--;
+			this.tween = undefined;
 		}
 
-		if (ignoreAnimation) {
+		// 无需动画：直接同步
+		if (ignoreAnimation || this.duration <= 0) {
 			this.currentObject = this.targetObject;
 			this.onUpdate(this.currentObject);
 			return;
@@ -58,39 +69,38 @@ export class TweenAnimation<T extends object> {
 		this.tween = new TWEEN.Tween(this.currentObject)
 			.to(this.targetObject, this.duration)
 			.easing(this.easingFunction)
-			.onUpdate(this.onUpdate)
+			.onUpdate(this.handleOnUpdate)
 			.onComplete(() => {
-				if (!this.tween) {
-					return;
+				if (this.tween) {
+					TweenAnimation.tweenGroup.remove(this.tween);
+					TweenAnimation.activeTweenCount--;
+					this.tween = undefined;
 				}
-
-				TweenAnimation.tweenGroup.remove(this.tween);
-				this.tween = undefined;
+				// 确保最终态回调发出（即使被节流跳过了最后一帧）
+				this.onUpdate(this.targetObject);
 			})
 			.start();
+
 		TweenAnimation.tweenGroup.add(this.tween);
-
-		this.animationLoop();
+		TweenAnimation.activeTweenCount++;
+		TweenAnimation.startAnimationLoop();
 	};
 
-	private animationLoop = () => {
-		this.animationFrameId = requestAnimationFrame(() => {
-			TweenAnimation.tweenGroup.update();
-			if (this.tween) {
-				this.animationFrameId = requestAnimationFrame(this.animationLoop);
-			} else {
-				this.animationFrameId = undefined;
-			}
-		});
-	};
-
-	// 销毁释放资源
-	public dispose = () => {
-		if (this.animationFrameId) {
-			cancelAnimationFrame(this.animationFrameId);
-			this.animationFrameId = undefined;
+	private static startAnimationLoop = () => {
+		if (TweenAnimation.animationFrameId !== undefined) {
+			return;
 		}
 
+		TweenAnimation.animationFrameId = requestAnimationFrame(
+			TweenAnimation.tick,
+		);
+	};
+
+	private handleOnUpdate = (obj: T) => {
+		this.onUpdate(obj);
+	};
+
+	public dispose = () => {
 		if (this.tween) {
 			this.tween.stop();
 			TweenAnimation.tweenGroup.remove(this.tween);
