@@ -528,7 +528,7 @@ const Chat = () => {
 								getAppSettings()[AppSettingsGroup.SystemChat].temperature,
 							max_tokens:
 								getAppSettings()[AppSettingsGroup.SystemChat].maxTokens,
-							enable_thinking: enableThinkingRef.current ?? false,
+							enable_thinking: enableThinkingRef.current ? true : undefined,
 							stream_options: {
 								include_usage: true,
 							},
