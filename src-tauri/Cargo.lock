@@ -6538,6 +6538,7 @@ version = "0.1.0"
 dependencies = [
  "atree",
  "log",
+ "rayon",
  "rtree_rs",
  "serde",
  "snow-shot-app-shared",
@@ -9626,7 +9627,6 @@ dependencies = [
 [[package]]
 name = "xcap"
 version = "0.7.1"
-source = "git+https://github.com/mg-chao/xcap?branch=custom%2Fmaster#b423e870624cc80a2fc2bfca7e267e9bd13b7c38"
 dependencies = [
  "dispatch2",
  "image",

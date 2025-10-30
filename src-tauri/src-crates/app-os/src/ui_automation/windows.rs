@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::ffi::c_void;
 use std::mem;
 
 use atree::Arena;
@@ -10,8 +11,12 @@ use uiautomation::UIElement;
 use uiautomation::UITreeWalker;
 use uiautomation::types::Point;
 
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use snow_shot_app_shared::ElementRect;
 use snow_shot_app_utils::monitor_info::MonitorList;
+use std::sync::Arc;
+use windows::Win32::Foundation::HWND;
+use xcap::ImplWindow;
 use xcap::Window;
 
 use super::ElementLevel;
@@ -30,7 +35,7 @@ enum ElementChildrenNextSiblingCacheItem {
 }
 
 pub struct UIElements {
-    automation: Option<UIAutomation>,
+    automation: Option<Arc<UIAutomationWrapper>>,
     automation_walker: Option<UITreeWalker>,
     root_element: Option<UIElement>,
     element_cache: RTree<2, i32, ElementLevel>,
@@ -43,6 +48,20 @@ pub struct UIElements {
 
 unsafe impl Send for UIElements {}
 unsafe impl Sync for UIElements {}
+
+struct UIElementWrapper {
+    element: UIElement,
+}
+
+unsafe impl Send for UIElementWrapper {}
+unsafe impl Sync for UIElementWrapper {}
+
+struct UIAutomationWrapper {
+    automation: UIAutomation,
+}
+
+unsafe impl Send for UIAutomationWrapper {}
+unsafe impl Sync for UIAutomationWrapper {}
 
 impl UIElements {
     pub fn new() -> Self {
@@ -67,7 +86,7 @@ impl UIElements {
         let automation = UIAutomation::new()?;
         let automation_walker = automation.get_content_view_walker()?;
 
-        self.automation = Some(automation);
+        self.automation = Some(Arc::new(UIAutomationWrapper { automation }));
         self.automation_walker = Some(automation_walker);
 
         Ok(())
@@ -137,8 +156,13 @@ impl UIElements {
      * 初始化窗口元素缓存
      */
     pub fn init_cache(&mut self) -> Result<(), UIAutomationError> {
-        self.root_element
-            .replace(self.automation.as_ref().unwrap().get_root_element()?);
+        self.root_element.replace(
+            self.automation
+                .as_ref()
+                .unwrap()
+                .automation
+                .get_root_element()?,
+        );
 
         let root_element = self.root_element.as_ref().unwrap();
 
@@ -168,38 +192,61 @@ impl UIElements {
         );
 
         // 遍历所有窗口
-        let windows = Window::all().unwrap_or_default();
+        let windows = Window::all()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|window| window.hwnd().unwrap() as usize)
+            .collect::<Vec<usize>>();
 
-        let automation = self.automation.as_ref().unwrap();
-        let mut children_list: Vec<UIElement> = Vec::with_capacity(windows.len());
+        let automation = self.automation.clone();
+        let children_list = windows
+            .par_iter()
+            .filter_map(|window_hwnd| {
+                let window = ImplWindow::new(HWND(*window_hwnd as *mut c_void));
 
-        for window in windows {
-            if window.is_minimized().unwrap_or(true) {
-                continue;
-            }
-
-            match window.title() {
-                Ok(title) => {
-                    if title.eq("Shell Handwriting Canvas") || title.eq("Snow Shot - Draw") {
-                        continue;
-                    }
-
-                    title
+                if window.is_minimized().unwrap_or(true) {
+                    return None;
                 }
-                Err(_) => continue,
-            };
 
-            let window_hwnd = match window.hwnd() {
-                Ok(hwnd) => hwnd,
-                Err(_) => continue,
-            };
+                match window.title() {
+                    Ok(title) => {
+                        if title.eq("Shell Handwriting Canvas") || title.eq("Snow Shot - Draw") {
+                            return None;
+                        }
 
-            if let Ok(element) = automation
-                .element_from_handle(uiautomation::types::Handle::from(window_hwnd as isize))
-            {
-                children_list.push(element);
-            }
-        }
+                        title
+                    }
+                    Err(_) => return None,
+                };
+
+                let window_hwnd = match window.hwnd() {
+                    Ok(hwnd) => hwnd,
+                    Err(_) => return None,
+                };
+
+                let window_info = match window.get_window_info() {
+                    Ok(window_info) => window_info,
+                    Err(_) => return None,
+                };
+
+                let element_rect = uiautomation::types::Rect::new(
+                    window_info.rcClient.left,
+                    window_info.rcClient.top,
+                    window_info.rcClient.right,
+                    window_info.rcClient.bottom,
+                );
+
+                if let Ok(element) =
+                    automation.as_ref().unwrap().automation.element_from_handle(
+                        uiautomation::types::Handle::from(window_hwnd as isize),
+                    )
+                {
+                    Some((UIElementWrapper { element }, element_rect))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<(UIElementWrapper, uiautomation::types::Rect)>>();
 
         // 窗口层级
         current_level.window_index = 0;
@@ -209,11 +256,11 @@ impl UIElements {
             current_level.window_index += 1;
             current_level.next_element();
 
-            let current_child_rect = current_child.get_bounding_rectangle()?;
+            let current_child_rect = current_child.1;
 
             let (current_child_rect, _) = self.insert_element_cache(
                 &mut parent_tree_token,
-                current_child.clone(),
+                current_child.0.element.clone(),
                 current_child_rect,
                 current_level,
             );
@@ -237,7 +284,9 @@ impl UIElements {
             None => return Ok(None),
         };
 
-        let element = automation.element_from_point(Point::new(mouse_x, mouse_y))?;
+        let element = automation
+            .automation
+            .element_from_point(Point::new(mouse_x, mouse_y))?;
         let rect = element.get_bounding_rectangle()?;
 
         Ok(Some(ElementRect {

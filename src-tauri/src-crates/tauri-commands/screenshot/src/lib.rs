@@ -1,5 +1,5 @@
 use image::DynamicImage;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use serde::Serialize;
 use snow_shot_app_os::ui_automation::UIElements;
 use snow_shot_app_shared::ElementRect;
@@ -389,7 +389,20 @@ pub async fn get_window_elements(
     #[allow(unused_variables)] window: tauri::Window,
 ) -> Result<Vec<WindowElement>, ()> {
     // 获取所有窗口，简单筛选下需要的窗口，然后获取窗口所有元素
-    let windows = Window::all().unwrap_or_default();
+    let windows = {
+        #[cfg(target_os = "windows")]
+        {
+            Window::all()
+                .unwrap_or_default()
+                .iter()
+                .map(|window| window.hwnd().unwrap() as usize)
+                .collect::<Vec<usize>>()
+        }
+        #[cfg(target_os = "macos")]
+        {
+            xcap::Window::all().unwrap_or_default()
+        }
+    };
 
     #[cfg(target_os = "macos")]
     let window_size_scale: f32;
@@ -402,111 +415,119 @@ pub async fn get_window_elements(
         window_size_scale = window.scale_factor().unwrap_or(1.0) as f32;
     }
 
-    let mut rect_list = Vec::new();
-    for window in windows {
-        #[cfg(target_os = "macos")]
-        let cf_dict = match window.window_cf_dictionary() {
-            Ok(cf_dict) => cf_dict,
-            Err(_) => continue,
-        };
+    let rect_list = windows
+        .par_iter()
+        .filter_map(|window_hwnd| {
+            let window = {
+                #[cfg(target_os = "windows")]
+                {
+                    use std::ffi::c_void;
+                    use windows::Win32::Foundation::HWND;
 
-        #[cfg(target_os = "windows")]
-        {
-            if window.is_minimized().unwrap_or(true) {
-                continue;
-            }
-        }
-
-        #[cfg(target_os = "macos")]
-        {
-            if xcap::ImplWindow::is_minimized_by_cf_dictionary(cf_dict.as_ref()).unwrap_or(true) {
-                continue;
-            }
-        }
-
-        let window_title;
-        #[cfg(target_os = "windows")]
-        {
-            window_title = window.title().unwrap_or_default();
-        }
-        #[cfg(target_os = "macos")]
-        {
-            window_title = match xcap::ImplWindow::title_by_cf_dictionary(cf_dict.as_ref()) {
-                Ok(title) => title,
-                Err(_) => continue,
+                    xcap::ImplWindow::new(HWND(*window_hwnd as *mut c_void))
+                }
+                #[cfg(target_os = "macos")]
+                {
+                    xcap::ImplWindow::new(window_hwnd)
+                }
             };
-        }
 
-        let window_rect: ElementRect;
-        let window_id: u32;
-        let x: i32;
-        let y: i32;
-        let width: i32;
-        let height: i32;
+            #[cfg(target_os = "macos")]
+            let cf_dict = match window.window_cf_dictionary() {
+                Ok(cf_dict) => cf_dict,
+                Err(_) => return None,
+            };
 
-        #[cfg(target_os = "windows")]
-        {
-            if window_title.eq("Shell Handwriting Canvas") {
-                continue;
+            #[cfg(target_os = "windows")]
+            {
+                if window.is_minimized().unwrap_or(true) {
+                    return None;
+                }
             }
 
-            x = match window.x() {
-                Ok(x) => x,
-                Err(_) => continue,
-            };
-
-            y = match window.y() {
-                Ok(y) => y,
-                Err(_) => continue,
-            };
-
-            width = match window.width() {
-                Ok(width) => width as i32,
-                Err(_) => continue,
-            };
-            height = match window.height() {
-                Ok(height) => height as i32,
-                Err(_) => continue,
-            };
-        }
-
-        #[cfg(target_os = "macos")]
-        {
-            let cg_rect = match xcap::ImplWindow::cg_rect_by_cf_dictionary(cf_dict.as_ref()) {
-                Ok(window_rect) => window_rect,
-                Err(_) => continue,
-            };
-
-            x = cg_rect.origin.x as i32;
-            y = cg_rect.origin.y as i32;
-            width = cg_rect.size.width as i32;
-            height = cg_rect.size.height as i32;
-        }
-
-        window_id = match window.id() {
-            Ok(id) => id,
-            Err(_) => continue,
-        };
-
-        window_rect = ElementRect {
-            min_x: x,
-            min_y: y,
-            max_x: x + width,
-            max_y: y + height,
-        };
-
-        #[cfg(target_os = "macos")]
-        {
-            if window_title.eq("Dock") {
-                continue;
+            #[cfg(target_os = "macos")]
+            {
+                if xcap::ImplWindow::is_minimized_by_cf_dictionary(cf_dict.as_ref()).unwrap_or(true)
+                {
+                    return None;
+                }
             }
-        }
 
-        rect_list.push(WindowElement {
-            element_rect: window_rect.scale(window_size_scale),
-            window_id,
-        });
-    }
+            let window_title;
+            #[cfg(target_os = "windows")]
+            {
+                window_title = window.title().unwrap_or_default();
+            }
+            #[cfg(target_os = "macos")]
+            {
+                window_title = match xcap::ImplWindow::title_by_cf_dictionary(cf_dict.as_ref()) {
+                    Ok(title) => title,
+                    Err(_) => return None,
+                };
+            }
+
+            let window_rect: ElementRect;
+            let window_id: u32;
+            let x: i32;
+            let y: i32;
+            let width: i32;
+            let height: i32;
+
+            #[cfg(target_os = "windows")]
+            {
+                if window_title.eq("Shell Handwriting Canvas") {
+                    return None;
+                }
+
+                let window_info = match window.get_window_info() {
+                    Ok(window_info) => window_info,
+                    Err(_) => return None,
+                };
+
+                x = window_info.rcClient.left;
+                y = window_info.rcClient.top;
+                width = window_info.rcClient.right - window_info.rcClient.left;
+                height = window_info.rcClient.bottom - window_info.rcClient.top;
+            }
+
+            #[cfg(target_os = "macos")]
+            {
+                let cg_rect = match xcap::ImplWindow::cg_rect_by_cf_dictionary(cf_dict.as_ref()) {
+                    Ok(window_rect) => window_rect,
+                    Err(_) => return None,
+                };
+
+                x = cg_rect.origin.x as i32;
+                y = cg_rect.origin.y as i32;
+                width = cg_rect.size.width as i32;
+                height = cg_rect.size.height as i32;
+            }
+
+            window_id = match window.id() {
+                Ok(id) => id,
+                Err(_) => return None,
+            };
+
+            window_rect = ElementRect {
+                min_x: x,
+                min_y: y,
+                max_x: x + width,
+                max_y: y + height,
+            };
+
+            #[cfg(target_os = "macos")]
+            {
+                if window_title.eq("Dock") {
+                    return None;
+                }
+            }
+
+            Some(WindowElement {
+                element_rect: window_rect.scale(window_size_scale),
+                window_id,
+            })
+        })
+        .collect::<Vec<WindowElement>>();
 
     Ok(rect_list)
 }

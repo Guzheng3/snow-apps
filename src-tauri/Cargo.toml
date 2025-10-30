@@ -36,9 +36,9 @@ tauri-build = { version = "^2", features = [] }
 
 [workspace.dependencies]
 serde = { version = "^1.0", features = ["derive"] }
-# xcap = { path = "D:/my-workspace/xcap" }
+xcap = { path = "D:/my-workspace/xcap" }
 # xcap = { git = "https://github.com/mg-chao/xcap", branch = "custom/master" }
-xcap = { git = "https://github.com/mg-chao/xcap", branch = "custom/master" }
+# xcap = { git = "https://github.com/mg-chao/xcap", branch = "custom/master" }
 # device_query = "4.0.1"
 device_query = { git = "https://github.com/mg-chao/device_query", branch = "custom/master" }
 log = "^0.4"

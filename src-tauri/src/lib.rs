@@ -93,6 +93,11 @@ pub fn run() {
     } else {
         vec![Target::new(TargetKind::LogDir { file_name: None })]
     };
+    let log_level = if cfg!(debug_assertions) {
+        log::LevelFilter::Debug
+    } else {
+        log::LevelFilter::Info
+    };
 
     #[allow(unused_mut)]
     let mut app_builder = tauri::Builder::default()
@@ -133,7 +138,7 @@ pub fn run() {
                 .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll)
                 .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
                 .targets(log_targets)
-                .level(log::LevelFilter::Debug)
+                .level(log_level)
                 .filter(move |_| {
                     #[cfg(debug_assertions)]
                     {
