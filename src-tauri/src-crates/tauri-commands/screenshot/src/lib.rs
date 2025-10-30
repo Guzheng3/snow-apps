@@ -623,6 +623,32 @@ pub async fn create_draw_window(app: tauri::AppHandle) {
     .build()
     .unwrap();
 
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::Graphics::Dwm::{
+            DWMWA_TRANSITIONS_FORCEDISABLED, DwmSetWindowAttribute,
+        };
+
+        let window_hwnd = window.hwnd().unwrap();
+
+        // 禁用窗口动画
+        unsafe {
+            let disable_transitions: i32 = 1;
+            match DwmSetWindowAttribute(
+                HWND(window_hwnd.0),
+                DWMWA_TRANSITIONS_FORCEDISABLED,
+                &disable_transitions as *const _ as *const _,
+                std::mem::size_of::<i32>() as u32,
+            ) {
+                Ok(_) => (),
+                Err(_) => {
+                    log::error!("[create_draw_window] Failed to disable window transitions");
+                }
+            }
+        }
+    }
+
     window.hide().unwrap();
 }
 

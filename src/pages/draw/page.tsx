@@ -427,7 +427,6 @@ const DrawPageCore: React.FC<{
 				appError("[DrawPageCore] listenKeyStart error", error);
 			});
 
-			setDrawWindowStyle();
 			appWindow.setFocus();
 		},
 		[getScreenshotType],

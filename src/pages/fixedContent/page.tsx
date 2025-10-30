@@ -259,7 +259,6 @@ export const FixedContentPage: React.FC = () => {
 					max_y: windowY + windowHeight,
 				});
 				showWindow();
-				setDrawWindowStyle();
 			} else {
 				await appWindow.close();
 			}

@@ -992,8 +992,6 @@ const FixedContentCoreInner: React.FC<{
 			return;
 		}
 
-		setDrawWindowStyle();
-
 		if (originWindowSizeAndPositionRef.current) {
 			switchThumbnailAnimationRef.current.update({
 				width: originWindowSizeAndPositionRef.current.size.width,
@@ -1407,8 +1405,6 @@ const FixedContentCoreInner: React.FC<{
 			if (targetScale === scaleRef.current.x) {
 				return;
 			}
-
-			setDrawWindowStyle();
 
 			// 计算新的窗口尺寸
 			const { width: newWidth, height: newHeight } =
