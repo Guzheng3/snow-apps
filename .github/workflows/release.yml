@@ -1,0 +1,143 @@
+# Snow Shot 项目 Release 自动构建工作流
+# 将显示在 GitHub 存储库的"操作"选项卡中的工作流名称
+name: Release CI
+
+# 指定此工作流的触发器
+on:
+  push:
+    # 匹配特定标签 (refs/tags)
+    tags:
+      - "v*" # 推送事件匹配 v*, 例如 v1.0，v20.15.10 等来触发工作流
+  workflow_dispatch:
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set output
+        id: vars
+        run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+
+      # 安装 Node.js
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 发布 Release，使用自定义名称
+      - name: Generate changelog
+        id: create_release
+        run: npx changelogithub --draft --name ${{ steps.vars.outputs.tag }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      
+      - name: Set app version output
+        id: app_version
+        run: echo "version=${{ steps.vars.outputs.tag }}" >> $GITHUB_OUTPUT
+    
+    outputs:
+      app_version: ${{ steps.app_version.outputs.version }}
+
+  # 编译 Tauri 应用
+  build-app:
+    needs: create-release
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS Apple Silicon (M1/M2/M3)
+          - platform: "macos-latest"
+            target: "aarch64-apple-darwin"
+          # macOS Intel
+          - platform: "macos-latest"
+            target: "x86_64-apple-darwin"
+          # Windows x64
+          - platform: "windows-latest"
+            target: "x86_64-pc-windows-msvc"
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      # 安装 Node.js 和 pnpm
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: latest
+
+      # 安装 Rust
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install rust target
+        run: rustup target add ${{ matrix.target }}
+
+      # 使用 Rust 缓存，加快安装速度
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      # 配置 pnpm 缓存
+      - name: Setup pnpm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      # 安装前端依赖并打包
+      - name: Install app dependencies and build web
+        run: pnpm install --frozen-lockfile
+
+      # 下载并配置 onnxruntime (Windows only)
+      - name: Download and setup onnxruntime
+        if: matrix.platform == 'windows-latest'
+        run: |
+          # 下载 onnxruntime
+          Invoke-WebRequest -Uri "https://github.com/supertone-inc/onnxruntime-build/releases/download/v1.22.2/onnxruntime-win-x64-static_lib-1.22.2.zip" -OutFile "onnxruntime.zip"
+          
+          # 解压文件
+          Expand-Archive -Path "onnxruntime.zip" -DestinationPath "onnxruntime-temp" -Force
+          
+          # 查找并移动 lib 文件夹到 src-tauri
+          $libPath = Get-ChildItem -Path "onnxruntime-temp" -Recurse -Directory -Filter "lib" | Select-Object -First 1
+          if ($libPath) {
+            Copy-Item -Path $libPath.FullName -Destination "src-tauri\lib" -Recurse -Force
+            Write-Host "Successfully copied lib folder to src-tauri"
+          } else {
+            Write-Error "lib folder not found in extracted files"
+            exit 1
+          }
+          
+          # 清理临时文件
+          Remove-Item -Path "onnxruntime.zip" -Force
+          Remove-Item -Path "onnxruntime-temp" -Recurse -Force
+        shell: pwsh
+
+      # 执行构建，以及推送 github release
+      - name: Build the app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          CI: false
+          PLATFORM: ${{ matrix.platform }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Snow Shot ${{ needs.create-release.outputs.app_version }}
+          releaseBody: ""
+          releaseDraft: true
+          prerelease: false
+          args: --target ${{ matrix.target }}
