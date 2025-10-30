@@ -12,7 +12,6 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::ipc::Response;
 use tokio::sync::Mutex;
-use xcap::Window;
 
 pub async fn capture_current_monitor(
     #[allow(unused_variables)] window: tauri::Window,
@@ -392,7 +391,7 @@ pub async fn get_window_elements(
     let windows = {
         #[cfg(target_os = "windows")]
         {
-            Window::all()
+            xcap::Window::all()
                 .unwrap_or_default()
                 .iter()
                 .map(|window| window.hwnd().unwrap() as usize)
@@ -400,7 +399,11 @@ pub async fn get_window_elements(
         }
         #[cfg(target_os = "macos")]
         {
-            xcap::Window::all().unwrap_or_default()
+            xcap::Window::all()
+                .unwrap_or_default()
+                .iter()
+                .map(|window| window.id().unwrap())
+                .collect::<Vec<u32>>()
         }
     };
 
@@ -428,7 +431,7 @@ pub async fn get_window_elements(
                 }
                 #[cfg(target_os = "macos")]
                 {
-                    xcap::ImplWindow::new(window_hwnd)
+                    xcap::ImplWindow::new(*window_hwnd)
                 }
             };
 

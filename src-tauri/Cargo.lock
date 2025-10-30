@@ -9627,6 +9627,7 @@ dependencies = [
 [[package]]
 name = "xcap"
 version = "0.7.1"
+source = "git+https://github.com/mg-chao/xcap?branch=20251031_perf_window_info#8ef8ad25acbcc619f1afbde14b79def54aa7490b"
 dependencies = [
  "dispatch2",
  "image",
