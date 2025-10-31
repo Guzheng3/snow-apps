@@ -229,4 +229,22 @@ export const en = {
 	"common.permission.error.description":
 		'Please enable necessary permissions for "Screen Recording & System Audio" and "Accessibility"',
 	"common.permission.error.goToSettings": "Go to Settings",
+	"settings.functionSettings.videoRecordSettings.keyDisplaySettings":
+		"Key Display",
+	"settings.functionSettings.videoRecordSettings.keyDisplayFontSize":
+		"Font Size",
+	"settings.functionSettings.videoRecordSettings.keyDisplayBackgroundColor":
+		"Background Color",
+	"settings.functionSettings.videoRecordSettings.keyDisplayTextColor":
+		"Text Color",
+	"settings.functionSettings.videoRecordSettings.keyDisplayDuration":
+		"Duration",
+	"settings.functionSettings.videoRecordSettings.keyDisplayMergeDuration":
+		"Merge Time",
+	"settings.functionSettings.videoRecordSettings.keyDisplayDirection":
+		"Direction",
+	"settings.functionSettings.videoRecordSettings.keyDisplayDirection.horizontal":
+		"Horizontal",
+	"settings.functionSettings.videoRecordSettings.keyDisplayDirection.vertical":
+		"Vertical",
 };

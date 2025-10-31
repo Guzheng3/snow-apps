@@ -19,11 +19,13 @@ pub struct ListenKeyService {
 #[derive(Serialize, Clone)]
 pub struct ListenKeyDownEvent {
     key: usize,
+    key_text: String,
 }
 
 #[derive(Serialize, Clone)]
 pub struct ListenKeyUpEvent {
     key: usize,
+    key_text: String,
 }
 
 impl ListenKeyService {
@@ -65,7 +67,10 @@ impl ListenKeyService {
                 move |key: &Keycode| {
                     match key_down_app_handle.emit(
                         "listen-key-service:key-down",
-                        ListenKeyDownEvent { key: *key as usize },
+                        ListenKeyDownEvent {
+                            key: *key as usize,
+                            key_text: key.to_string(),
+                        },
                     ) {
                         Ok(_) => {}
                         Err(_) => {
@@ -95,7 +100,10 @@ impl ListenKeyService {
                 move |key: &Keycode| {
                     match key_up_app_handle.emit(
                         "listen-key-service:key-up",
-                        ListenKeyUpEvent { key: *key as usize },
+                        ListenKeyUpEvent {
+                            key: *key as usize,
+                            key_text: key.to_string(),
+                        },
                     ) {
                         Ok(_) => {}
                         Err(_) => {

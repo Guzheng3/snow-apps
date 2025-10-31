@@ -1,9 +1,11 @@
 export type ListenKeyDownEvent = {
 	key: number;
+	key_text: string;
 };
 
 export type ListenKeyUpEvent = {
 	key: number;
+	key_text: string;
 };
 
 export enum ListenKeyCode {

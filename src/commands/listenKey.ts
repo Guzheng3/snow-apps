@@ -1,9 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getPlatform } from "@/utils/platform";
 
-export const listenKeyStart = async () => {
+export const listenKeyStart = async (ignoreCheckPlatform: boolean = false) => {
 	// macOS 下 Ctrl、Shift、Command 等键浏览器不会响应，特殊处理下
-	if (getPlatform() !== "macos") {
+	if (getPlatform() !== "macos" && !ignoreCheckPlatform) {
 		return;
 	}
 
@@ -11,8 +11,8 @@ export const listenKeyStart = async () => {
 	return result;
 };
 
-export const listenKeyStop = async () => {
-	if (getPlatform() !== "macos") {
+export const listenKeyStop = async (ignoreCheckPlatform: boolean = false) => {
+	if (getPlatform() !== "macos" && !ignoreCheckPlatform) {
 		return;
 	}
 
@@ -20,8 +20,11 @@ export const listenKeyStop = async () => {
 	return result;
 };
 
-export const listenKeyStopByWindowLabel = async (windowLabel: string) => {
-	if (getPlatform() !== "macos") {
+export const listenKeyStopByWindowLabel = async (
+	windowLabel: string,
+	ignoreCheckPlatform: boolean = false,
+) => {
+	if (getPlatform() !== "macos" && !ignoreCheckPlatform) {
 		return;
 	}
 
@@ -41,8 +44,11 @@ export const listenMouseStop = async () => {
 	return result;
 };
 
-export const listenMouseStopByWindowLabel = async (windowLabel: string) => {
-	if (getPlatform() !== "macos") {
+export const listenMouseStopByWindowLabel = async (
+	windowLabel: string,
+	ignoreCheckPlatform: boolean = false,
+) => {
+	if (getPlatform() !== "macos" && !ignoreCheckPlatform) {
 		return;
 	}
 

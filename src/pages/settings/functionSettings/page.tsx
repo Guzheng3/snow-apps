@@ -2,6 +2,7 @@
 
 import ProForm, {
 	ProFormDependency,
+	ProFormDigit,
 	ProFormList,
 	ProFormSelect,
 	ProFormSwitch,
@@ -11,6 +12,7 @@ import ProForm, {
 import {
 	Alert,
 	Col,
+	ColorPicker,
 	Divider,
 	Flex,
 	Form,
@@ -22,6 +24,7 @@ import {
 	Typography,
 	theme,
 } from "antd";
+import type { AggregationColor } from "antd/es/color-picker/color";
 import {
 	useCallback,
 	useContext,
@@ -34,7 +37,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { videoRecordGetMicrophoneDeviceNames } from "@/commands/videoRecord";
 import { ContentWrap } from "@/components/contentWrap";
 import { DirectoryInput } from "@/components/directoryInput";
-import { GroupTitle } from "@/components/groupTitle";
+import { GroupTitle, SubGroupTitle } from "@/components/groupTitle";
 import { IconLabel } from "@/components/iconLable";
 import { ResetSettingsButton } from "@/components/resetSettingsButton";
 import { defaultAppSettingsData } from "@/constants/appSettings";
@@ -62,6 +65,7 @@ import {
 	CloudSaveUrlFormat,
 	CloudSaveUrlType,
 	GifFormat,
+	KeyDisplayDirection,
 	OcrDetectAfterAction,
 	OcrModel,
 	TranslationApiType,
@@ -1886,6 +1890,18 @@ export const FunctionSettingsPage = () => {
 					<ProForm
 						form={videoRecordForm}
 						onValuesChange={(_, values) => {
+							// 处理颜色值转换
+							if (typeof values.keyDisplayBackgroundColor === "object") {
+								values.keyDisplayBackgroundColor = (
+									values.keyDisplayBackgroundColor as AggregationColor
+								).toRgbString();
+							}
+							if (typeof values.keyDisplayTextColor === "object") {
+								values.keyDisplayTextColor = (
+									values.keyDisplayTextColor as AggregationColor
+								).toHexString();
+							}
+
 							updateAppSettings(
 								AppSettingsGroup.FunctionVideoRecord,
 								values,
@@ -2110,6 +2126,109 @@ export const FunctionSettingsPage = () => {
 										<FormattedMessage id="settings.functionSettings.videoRecordSettings.enableExcludeFromCapture" />
 									}
 								/>
+							</Col>
+						</Row>
+
+						<SubGroupTitle>
+							<FormattedMessage id="settings.functionSettings.videoRecordSettings.keyDisplaySettings" />
+						</SubGroupTitle>
+
+						<Row gutter={token.marginLG} style={{ width: "100%" }}>
+							<Col span={12} style={{ width: "100%" }}>
+								<ProFormDigit
+									name="keyDisplayFontSize"
+									layout="horizontal"
+									label={
+										<FormattedMessage id="settings.functionSettings.videoRecordSettings.keyDisplayFontSize" />
+									}
+									style={{ width: "100%" }}
+									min={8}
+									max={64}
+									fieldProps={{
+										precision: 0,
+									}}
+								/>
+							</Col>
+
+							<Col span={12} style={{ width: "100%" }}>
+								<ProFormDigit
+									name="keyDisplayDuration"
+									layout="horizontal"
+									label={
+										<FormattedMessage id="settings.functionSettings.videoRecordSettings.keyDisplayDuration" />
+									}
+									min={100}
+									max={10000}
+									style={{ width: "100%" }}
+									fieldProps={{
+										precision: 0,
+										addonAfter: "ms",
+									}}
+								/>
+							</Col>
+						</Row>
+
+						<Row gutter={token.marginLG}>
+							<Col span={12}>
+								<ProFormDigit
+									name="keyDisplayMergeDuration"
+									layout="horizontal"
+									label={
+										<FormattedMessage id="settings.functionSettings.videoRecordSettings.keyDisplayMergeDuration" />
+									}
+									min={0}
+									max={2000}
+									fieldProps={{
+										precision: 0,
+										addonAfter: "ms",
+									}}
+								/>
+							</Col>
+							<Col span={12}>
+								<ProFormSelect
+									name="keyDisplayDirection"
+									layout="horizontal"
+									label={
+										<FormattedMessage id="settings.functionSettings.videoRecordSettings.keyDisplayDirection" />
+									}
+									options={[
+										{
+											label: (
+												<FormattedMessage id="settings.functionSettings.videoRecordSettings.keyDisplayDirection.horizontal" />
+											),
+											value: KeyDisplayDirection.Horizontal,
+										},
+										{
+											label: (
+												<FormattedMessage id="settings.functionSettings.videoRecordSettings.keyDisplayDirection.vertical" />
+											),
+											value: KeyDisplayDirection.Vertical,
+										},
+									]}
+								/>
+							</Col>
+							<Col span={12}>
+								<ProForm.Item
+									name="keyDisplayBackgroundColor"
+									label={
+										<FormattedMessage id="settings.functionSettings.videoRecordSettings.keyDisplayBackgroundColor" />
+									}
+									required={false}
+								>
+									<ColorPicker showText placement="bottom" />
+								</ProForm.Item>
+							</Col>
+
+							<Col span={12}>
+								<ProForm.Item
+									name="keyDisplayTextColor"
+									label={
+										<FormattedMessage id="settings.functionSettings.videoRecordSettings.keyDisplayTextColor" />
+									}
+									required={false}
+								>
+									<ColorPicker showText placement="bottom" />
+								</ProForm.Item>
 							</Col>
 						</Row>
 					</ProForm>

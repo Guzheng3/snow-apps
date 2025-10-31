@@ -194,6 +194,11 @@ export enum OcrModel {
 	RapidOcrV5 = "RapidOcrV5",
 }
 
+export enum KeyDisplayDirection {
+	Horizontal = "horizontal",
+	Vertical = "vertical",
+}
+
 export type AppSettingsData = {
 	[AppSettingsGroup.Common]: {
 		theme: AppSettingsTheme;
@@ -490,6 +495,18 @@ export type AppSettingsData = {
 		gifMaxSize: VideoMaxSize;
 		/** 动图格式 */
 		gifFormat: GifFormat;
+		/** 按键显示字体大小 */
+		keyDisplayFontSize: number;
+		/** 按键显示背景色 */
+		keyDisplayBackgroundColor: string;
+		/** 按键显示文字颜色 */
+		keyDisplayTextColor: string;
+		/** 按键显示持续时间（毫秒） */
+		keyDisplayDuration: number;
+		/** 按键显示合并时间（毫秒） */
+		keyDisplayMergeDuration: number;
+		/** 按键显示方向 */
+		keyDisplayDirection: KeyDisplayDirection;
 	};
 	[AppSettingsGroup.SystemScreenshot]: {
 		historyValidDuration: HistoryValidDuration;

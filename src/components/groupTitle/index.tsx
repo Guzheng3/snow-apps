@@ -23,3 +23,20 @@ export const GroupTitle: React.FC<{
 		</Typography.Title>
 	);
 };
+
+export const SubGroupTitle: React.FC<{
+	children: React.ReactNode;
+	id?: string;
+}> = ({ children, id }) => {
+	const { token } = theme.useToken();
+	return (
+		<Typography.Title
+			className="components_sub-group-title"
+			style={{ marginTop: 0, marginBottom: token.margin }}
+			level={5}
+			id={id}
+		>
+			{children}
+		</Typography.Title>
+	);
+};

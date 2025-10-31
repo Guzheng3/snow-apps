@@ -330,6 +330,24 @@ export const settings = {
 	"settings.functionSettings.videoRecordSettings.videoMaxSize.p1080": "1080P",
 	"settings.functionSettings.videoRecordSettings.videoMaxSize.p720": "720P",
 	"settings.functionSettings.videoRecordSettings.videoMaxSize.p480": "480P",
+	"settings.functionSettings.videoRecordSettings.keyDisplaySettings":
+		"按键显示",
+	"settings.functionSettings.videoRecordSettings.keyDisplayFontSize":
+		"字体大小",
+	"settings.functionSettings.videoRecordSettings.keyDisplayBackgroundColor":
+		"背景颜色",
+	"settings.functionSettings.videoRecordSettings.keyDisplayTextColor":
+		"文字颜色",
+	"settings.functionSettings.videoRecordSettings.keyDisplayDuration":
+		"显示时长",
+	"settings.functionSettings.videoRecordSettings.keyDisplayMergeDuration":
+		"合并时间",
+	"settings.functionSettings.videoRecordSettings.keyDisplayDirection":
+		"显示方向",
+	"settings.functionSettings.videoRecordSettings.keyDisplayDirection.horizontal":
+		"横向",
+	"settings.functionSettings.videoRecordSettings.keyDisplayDirection.vertical":
+		"竖向",
 	"settings.systemSettings.scrollScreenshotSettings": "滚动截图",
 	"settings.systemSettings.scrollScreenshotSettings.tryRollback":
 		"匹配两侧图片",

@@ -1208,6 +1208,36 @@ const AppSettingsContextProviderCore: React.FC<{
 							? newSettings.gifFormat
 							: (prevSettings?.gifFormat ??
 								defaultAppSettingsData[group].gifFormat),
+					keyDisplayFontSize:
+						typeof newSettings?.keyDisplayFontSize === "number"
+							? Math.min(Math.max(newSettings.keyDisplayFontSize, 8), 64)
+							: (prevSettings?.keyDisplayFontSize ??
+								defaultAppSettingsData[group].keyDisplayFontSize),
+					keyDisplayBackgroundColor:
+						typeof newSettings?.keyDisplayBackgroundColor === "string"
+							? trim(newSettings.keyDisplayBackgroundColor)
+							: (prevSettings?.keyDisplayBackgroundColor ??
+								defaultAppSettingsData[group].keyDisplayBackgroundColor),
+					keyDisplayTextColor:
+						typeof newSettings?.keyDisplayTextColor === "string"
+							? trim(newSettings.keyDisplayTextColor)
+							: (prevSettings?.keyDisplayTextColor ??
+								defaultAppSettingsData[group].keyDisplayTextColor),
+					keyDisplayDuration:
+						typeof newSettings?.keyDisplayDuration === "number"
+							? Math.min(Math.max(newSettings.keyDisplayDuration, 100), 10000)
+							: (prevSettings?.keyDisplayDuration ??
+								defaultAppSettingsData[group].keyDisplayDuration),
+					keyDisplayMergeDuration:
+						typeof newSettings?.keyDisplayMergeDuration === "number"
+							? Math.min(Math.max(newSettings.keyDisplayMergeDuration, 0), 2000)
+							: (prevSettings?.keyDisplayMergeDuration ??
+								defaultAppSettingsData[group].keyDisplayMergeDuration),
+					keyDisplayDirection:
+						typeof newSettings?.keyDisplayDirection === "string"
+							? newSettings.keyDisplayDirection
+							: (prevSettings?.keyDisplayDirection ??
+								defaultAppSettingsData[group].keyDisplayDirection),
 				};
 			} else if (group === AppSettingsGroup.FunctionFixedContent) {
 				newSettings = newSettings as AppSettingsData[typeof group];
