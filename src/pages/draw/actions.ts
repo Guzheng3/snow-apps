@@ -301,7 +301,9 @@ export const fixedToScreen = async (
 		appWindow.setTitle("Snow Shot - Fixed Content"),
 		new Promise((resolve) => {
 			setTimeout(() => {
-				resolve(true);
+				setTimeout(() => {
+					resolve(true);
+				}, 17);
 			}, 17);
 		}).then(() => {
 			return setWindowRect(
