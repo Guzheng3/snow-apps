@@ -160,7 +160,7 @@ impl MonitorInfo {
     pub fn capture(
         &self,
         crop_area: Option<ElementRect>,
-        #[allow(unused_variables)] exclude_window: Option<&tauri::Window>,
+        exclude_window: Option<&tauri::Window>,
         capture_option: CaptureOption,
     ) -> Option<image::DynamicImage> {
         #[cfg(target_os = "macos")]
@@ -785,10 +785,58 @@ impl MonitorList {
         exclude_window: Option<&tauri::Window>,
         capture_option: CaptureOption,
     ) -> Result<image::DynamicImage, String> {
+        let enable_exclude_window = {
+            #[cfg(target_os = "windows")]
+            {
+                capture_option.correct_hdr_color_algorithm != CorrectHdrColorAlgorithm::None
+                    && self
+                        .0
+                        .iter()
+                        .any(|monitor| monitor.monitor_hdr_info.hdr_enabled)
+            }
+
+            #[cfg(target_os = "macos")]
+            {
+                false
+            }
+        };
+
+        // 如果启用了 HDR，并且显示器开启了 HDR 信息
+        let mut need_reset_exclude_window = false;
+        if enable_exclude_window {
+            if let Some(exclude_window) = exclude_window {
+                match crate::set_exclude_from_capture(exclude_window, true).await {
+                    Ok(_) => {
+                        need_reset_exclude_window = true;
+                    }
+                    Err(e) => {
+                        return Err(format!(
+                            "[MonitorInfoList::capture_core] failed to set exclude from capture: {:?}",
+                            e
+                        ));
+                    }
+                }
+            }
+        }
+
         let result = tokio::try_join!(
             self.capture_future(crop_region, exclude_window, capture_option,),
             Self::get_mag_color_effect_inverse(capture_option.correct_color_filter)
         );
+
+        if need_reset_exclude_window {
+            if let Some(exclude_window) = exclude_window {
+                match crate::set_exclude_from_capture(exclude_window, false).await {
+                    Ok(_) => (),
+                    Err(e) => {
+                        return Err(format!(
+                            "[MonitorInfoList::capture_core] failed to reset exclude from capture: {:?}",
+                            e
+                        ));
+                    }
+                }
+            }
+        }
 
         match result {
             Ok((mut image, color_effect)) => {

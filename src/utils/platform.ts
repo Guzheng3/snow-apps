@@ -49,3 +49,14 @@ export const getPlatformValue = <T>(
 
 	return value ?? defaultValue;
 };
+
+let platformVersionCache: string | undefined;
+
+export const getPlatformVersion = () => {
+	if (platformVersionCache) {
+		return platformVersionCache;
+	}
+
+	platformVersionCache = tauriOs.version();
+	return platformVersionCache;
+};

@@ -34,7 +34,6 @@ import {
 	scrollScreenshotSaveToClipboard,
 	scrollScreenshotSaveToFile,
 } from "@/commands/scrollScreenshot";
-import { setExcludeFromCapture } from "@/commands/videoRecord";
 import {
 	HistoryContext,
 	withCanvasHistory,
@@ -601,7 +600,7 @@ const DrawPageCore: React.FC<{
 				await captureAllMonitors(
 					getAppSettings()[AppSettingsGroup.SystemScreenshot]
 						.enableMultipleMonitor,
-					getCorrectHdrColorAlgorithm(getAppSettings()),
+					getCorrectHdrColorAlgorithm(getAppSettings(), true),
 					getAppSettings()[AppSettingsGroup.SystemScreenshot]
 						.correctColorFilter,
 				).catch((error) => {
@@ -639,12 +638,10 @@ const DrawPageCore: React.FC<{
 			setCaptureStateAction(true);
 			drawToolbarActionRef.current?.setEnable(false);
 
-			setExcludeFromCapture(true);
-
-			const initCaptureBoundingBoxInfoPromise =
-				initCaptureBoundingBoxInfoAndShowWindow();
 			const captureAllMonitorsPromise =
 				captureAllMonitorsAction(excuteScreenshotType);
+			const initCaptureBoundingBoxInfoPromise =
+				initCaptureBoundingBoxInfoAndShowWindow();
 
 			setScreenshotType({
 				type: excuteScreenshotType,
@@ -666,8 +663,6 @@ const DrawPageCore: React.FC<{
 				imageBuffer = undefined;
 			}
 			await initCaptureBoundingBoxInfoPromise;
-
-			setExcludeFromCapture(false);
 
 			// 如果截图失败了，等窗口显示后，结束截图
 			// 切换截图历史时，不进行截图，只进行显示

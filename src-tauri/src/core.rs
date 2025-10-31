@@ -436,7 +436,7 @@ pub async fn set_run_log(
 
 #[command]
 pub async fn set_exclude_from_capture(window: tauri::Window, enable: bool) -> Result<(), String> {
-    snow_shot_tauri_commands_core::set_exclude_from_capture(window, enable).await
+    snow_shot_app_utils::set_exclude_from_capture(&window, enable).await
 }
 
 #[cfg(target_os = "windows")]

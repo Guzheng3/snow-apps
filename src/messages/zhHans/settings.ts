@@ -513,7 +513,7 @@ export const settings = {
 	"settings.systemSettings.screenshotSettings.enableCorrectHdrColor":
 		"更正 HDR 颜色",
 	"settings.systemSettings.screenshotSettings.enableCorrectHdrColor.tip":
-		"显示器开启 HDR 后，获取到的截图将通过指定算法转换为 SDR 颜色。不同的转换算法适合不同的色彩需求",
+		"显示器开启 HDR 后，获取到的截图将通过指定算法转换为 SDR 颜色。不同的转换算法适合不同的色彩需求。Windows 下需要 Windows 10 2004 或更高版本才能启用",
 	"settings.systemSettings.screenshotSettings.enableCorrectHdrColor.algorithm":
 		"HDR 颜色转换算法",
 	"settings.systemSettings.screenshotSettings.enableCorrectHdrColor.algorithm.linear":
