@@ -102,4 +102,10 @@ export const tools = {
 	"tools.chat.noSelectedModel": "请先选择模型",
 	"tools.translation.type.custom": "自定义",
 	"tools.translation.type.official": "Snow Shot",
+	"tools.captureHistory.clearSelection": "取消选择",
+	"tools.captureHistory.selectAll": "全选",
+	"tools.captureHistory.selectInvert": "反选",
+	"tools.captureHistory.deleteSelected.confirm": "确定要删除选中的所有记录吗？",
+	"tools.captureHistory.clearAll": "清空所有记录",
+	"tools.captureHistory.clearAll.confirm": "确定要清空所有记录吗？",
 };

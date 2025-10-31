@@ -1,12 +1,24 @@
 "use client";
 
-import { ReloadOutlined } from "@ant-design/icons";
-import { type ActionType, ProList } from "@ant-design/pro-components";
+import { DeleteOutlined, ReloadOutlined } from "@ant-design/icons";
+import {
+	type ActionType,
+	ProList,
+	type ProListProps,
+} from "@ant-design/pro-components";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { Button, Tag } from "antd";
+import { Button, Popconfirm, Space, Tag, theme } from "antd";
 import dayjs from "dayjs";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { FormattedMessage } from "react-intl";
+import type { Key } from "react";
+import {
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import { FormattedMessage, useIntl } from "react-intl";
 import { EventListenerContext } from "@/components/eventListener";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { executeScreenshot } from "@/functions/screenshot";
@@ -22,18 +34,20 @@ import {
 	CaptureHistory,
 	getCaptureHistoryImageAbsPath,
 } from "@/utils/captureHistory";
+import { appWarn } from "@/utils/log";
 import { ScreenshotType } from "@/utils/types";
 import { CaptureHistoryItemActions } from "./components/captureHistoryItemActions";
 import { CaptureHistoryItemPreview } from "./components/captureHistoryItemPreview";
 import type { CaptureHistoryRecordItem } from "./extra";
 
 export const CaptureHistoryPage = () => {
+	const intl = useIntl();
 	const [loading, setLoading] = useState(true);
 	const [dataSource, setDataSource, dataSourceRef] = useStateRef<
 		CaptureHistoryItem[] | undefined
 	>(undefined);
 	const captureHistoryRef = useRef<CaptureHistory | undefined>(undefined);
-
+	const { token } = theme.useToken();
 	const actionRef = useRef<ActionType>(null);
 
 	const initedRef = useRef(false);
@@ -107,9 +121,55 @@ export const CaptureHistoryPage = () => {
 		[],
 	);
 
+	const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
+
+	const tableAlertOptionRender = useCallback(() => {
+		return (
+			<Space>
+				<Popconfirm
+					title={
+						<FormattedMessage id="tools.captureHistory.deleteSelected.confirm" />
+					}
+					onConfirm={async () => {
+						await Promise.all(
+							selectedRowKeys.map((key) => {
+								if (typeof key !== "string") {
+									appWarn(
+										"[CaptureHistoryPage] selectedRowKeys is not a string",
+										key,
+									);
+									return Promise.resolve();
+								}
+
+								return captureHistoryRef.current?.delete(key);
+							}),
+						);
+
+						reloadList();
+						setSelectedRowKeys([]);
+					}}
+				>
+					<a key="delete" style={{ color: token.colorError }}>
+						<FormattedMessage id="tools.captureHistory.delete" />
+					</a>
+				</Popconfirm>
+				<a key="clearSelection" onClick={() => setSelectedRowKeys([])}>
+					<FormattedMessage id="tools.captureHistory.clearSelection" />
+				</a>
+			</Space>
+		);
+	}, [selectedRowKeys, token, reloadList]);
+
 	return (
 		<>
 			<ProList<CaptureHistoryRecordItem>
+				rowSelection={{
+					selectedRowKeys,
+					onChange: (keys: Key[]) => setSelectedRowKeys(keys),
+					preserveSelectedRowKeys: true,
+					hideSelectAll: false,
+				}}
+				tableAlertOptionRender={tableAlertOptionRender}
 				itemLayout="vertical"
 				rowKey="id"
 				headerTitle={
@@ -122,6 +182,27 @@ export const CaptureHistoryPage = () => {
 				className="capture-history-list"
 				actionRef={actionRef}
 				toolBarRender={() => [
+					<div key="clearAll">
+						<Popconfirm
+							key="clearAll"
+							title={
+								<FormattedMessage id="tools.captureHistory.clearAll.confirm" />
+							}
+							onConfirm={async () => {
+								await captureHistoryRef.current?.clearAll();
+								reloadList();
+							}}
+						>
+							<Button
+								type="text"
+								icon={<DeleteOutlined />}
+								style={{ color: token.colorError }}
+								title={intl.formatMessage({
+									id: "tools.captureHistory.clearAll",
+								})}
+							/>
+						</Popconfirm>
+					</div>,
 					<Button
 						key="reload"
 						type="text"
