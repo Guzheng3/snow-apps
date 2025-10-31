@@ -17,7 +17,7 @@ import { useStateRef } from "@/hooks/useStateRef";
 import { AppSettingsGroup } from "@/types/appSettings";
 import type { ListenKeyDownEvent } from "@/types/commands/listenKey";
 import type { ElementRect } from "@/types/commands/screenshot";
-import { appError, appInfo } from "@/utils/log";
+import { appError } from "@/utils/log";
 import { getPlatform } from "@/utils/platform";
 import type { VideoRecordWindowInfo } from "@/utils/types";
 import { setWindowRect } from "@/utils/window";

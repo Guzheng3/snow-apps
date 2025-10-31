@@ -13,7 +13,7 @@ import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 import { ImageFormat, type ImagePath } from "@/types/utils/file";
 import { writeImageToClipboard } from "@/utils/clipboard";
 import { showImageDialog } from "@/utils/file";
-import { appError, appInfo } from "@/utils/log";
+import { appError } from "@/utils/log";
 import { getPlatform } from "@/utils/platform";
 import { randomString } from "@/utils/random";
 import { getWebViewSharedBuffer } from "@/utils/webview";
@@ -273,7 +273,6 @@ export const fixedToScreen = async (
 		true,
 		INIT_CONTAINER_KEY,
 	);
-	const startTs = performance.now();
 
 	const initPreloadPromise = fixedContentAction.initDrawPreload(
 		selectRectParams.rect.max_x -
