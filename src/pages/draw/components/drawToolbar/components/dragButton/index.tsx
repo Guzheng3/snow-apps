@@ -275,7 +275,6 @@ export const useDragElement = (
 
 			applyDragResult(dragRes);
 			autoHideResultRef.current = dragRes.autoHideResult;
-			console.log(autoHideResultRef.current);
 
 			return dragRes;
 		},

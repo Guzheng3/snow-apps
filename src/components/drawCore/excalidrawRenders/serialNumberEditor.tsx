@@ -76,14 +76,13 @@ const SerialNumberEditor: NonNullable<
 	}, [getSelectedSerialNumberTextElement, setSelectedSerialNumber]);
 
 	useEffect(() => {
-		const currentSelectedSerialNumber = selectedSerialNumberRef.current;
-		if (!currentSelectedSerialNumber || !selectedSerialNumberTextElement) {
+		if (!selectedSerialNumber || !selectedSerialNumberTextElement) {
 			return;
 		}
 
 		if (
 			getSelectedElementSerialNumber(selectedSerialNumberTextElement) ===
-			currentSelectedSerialNumber
+			selectedSerialNumber
 		) {
 			return;
 		}
@@ -100,18 +99,24 @@ const SerialNumberEditor: NonNullable<
 
 		excalidrawAPI.updateScene({
 			elements: sceneElements.map((item) => {
+				console.log("item", item);
+				console.log(
+					"selectedSerialNumberTextElement",
+					selectedSerialNumberTextElement,
+				);
+				console.log("selectedSerialNumber", selectedSerialNumber);
 				if (item.id === selectedSerialNumberTextElement.id) {
 					return {
 						...item,
-						text: currentSelectedSerialNumber.toString(),
-						originalText: currentSelectedSerialNumber.toString(),
+						text: selectedSerialNumber.toString(),
+						originalText: selectedSerialNumber.toString(),
 					};
 				}
 				return item;
 			}),
 			captureUpdate: "IMMEDIATELY",
 		});
-	}, [selectedSerialNumberTextElement, selectedSerialNumberRef, getAction]);
+	}, [selectedSerialNumberTextElement, selectedSerialNumber, getAction]);
 
 	const onChange = useCallback(
 		(value: number | null) => {
