@@ -297,7 +297,7 @@ Priority order (highest to lowest):
 		keyDisplayTextColor: "#ffffff",
 		keyDisplayDuration: 3000,
 		keyDisplayMergeDuration: 256,
-		keyDisplayDirection: KeyDisplayDirection.Horizontal,
+		keyDisplayDirection: KeyDisplayDirection.Vertical,
 	},
 	[AppSettingsGroup.SystemScreenshot]: {
 		ocrHotStart: true,
