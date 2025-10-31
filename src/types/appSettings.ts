@@ -276,7 +276,12 @@ export type AppSettingsData = {
 	[AppSettingsGroup.CommonTrayIcon]: {
 		/** 自定义托盘图标 */
 		iconPath: string;
+		/** 自定义托盘图标（暗黑） */
+		iconPathDark: string;
+		/** 默认图标 */
 		defaultIcons: TrayIconDefaultIcon;
+		/** 默认图标（暗黑） */
+		defaultIconsDark: TrayIconDefaultIcon;
 		/** 启用托盘 */
 		enableTrayIcon: boolean;
 	};

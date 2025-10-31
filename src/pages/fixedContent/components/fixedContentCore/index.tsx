@@ -70,7 +70,7 @@ import { ImageFormat } from "@/types/utils/file";
 import { writeHtmlToClipboard, writeTextToClipboard } from "@/utils/clipboard";
 import { generateImageFileName } from "@/utils/file";
 import { formatKey } from "@/utils/format";
-import { appError, appInfo } from "@/utils/log";
+import { appError } from "@/utils/log";
 import { MousePosition } from "@/utils/mousePosition";
 import { TweenAnimation } from "@/utils/tweenAnimation";
 import { closeWindowComplete } from "@/utils/window";

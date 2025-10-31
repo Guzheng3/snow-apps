@@ -355,6 +355,8 @@ export const settings = {
 	"settings.commonSettings.trayIconSettings": "托盘",
 	"settings.commonSettings.trayIconSettings.enableTrayIcon": "启用托盘",
 	"settings.commonSettings.trayIconSettings.defaultIcons": "默认图标",
+	"settings.commonSettings.trayIconSettings.defaultIcons.darkDefault":
+		"默认图标（暗黑）",
 	"settings.commonSettings.trayIconSettings.defaultIcons.default": "默认",
 	"settings.commonSettings.trayIconSettings.defaultIcons.light": "浅色",
 	"settings.commonSettings.trayIconSettings.defaultIcons.dark": "暗色",
@@ -362,6 +364,8 @@ export const settings = {
 	"settings.commonSettings.trayIconSettings.defaultIcons.snowLight": "雪花浅色",
 	"settings.commonSettings.trayIconSettings.defaultIcons.snowDark": "雪花暗色",
 	"settings.commonSettings.trayIconSettings.iconPath": "自定义图标路径",
+	"settings.commonSettings.trayIconSettings.iconPath.darkDefault":
+		"自定义图标路径（暗黑）",
 	"settings.commonSettings.trayIconSettings.iconPath.tip":
 		"建议 32x32 或 64x64 的图标",
 	"settings.hotKeySettings.fixedContent": "固定到屏幕",

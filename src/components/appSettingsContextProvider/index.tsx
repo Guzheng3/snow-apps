@@ -1138,6 +1138,15 @@ const AppSettingsContextProviderCore: React.FC<{
 							? newSettings.enableTrayIcon
 							: (prevSettings?.enableTrayIcon ??
 								defaultAppSettingsData[group].enableTrayIcon),
+					iconPathDark:
+						typeof newSettings?.iconPathDark === "string"
+							? newSettings.iconPathDark
+							: (prevSettings?.iconPathDark ?? ""),
+					defaultIconsDark:
+						typeof newSettings?.defaultIconsDark === "string"
+							? (newSettings.defaultIconsDark as TrayIconDefaultIcon)
+							: (prevSettings?.defaultIconsDark ??
+								defaultAppSettingsData[group].defaultIcons),
 				};
 			} else if (group === AppSettingsGroup.FunctionVideoRecord) {
 				newSettings = newSettings as AppSettingsData[typeof group];

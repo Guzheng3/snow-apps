@@ -71,7 +71,9 @@ export const defaultAppSettingsData: AppSettingsData = {
 	},
 	[AppSettingsGroup.CommonTrayIcon]: {
 		iconPath: "",
+		iconPathDark: "",
 		defaultIcons: TrayIconDefaultIcon.Default,
+		defaultIconsDark: TrayIconDefaultIcon.Default,
 		enableTrayIcon: true,
 	},
 	[AppSettingsGroup.FunctionDraw]: {

@@ -1,23 +1,12 @@
 "use client";
 
 import { DeleteOutlined, ReloadOutlined } from "@ant-design/icons";
-import {
-	type ActionType,
-	ProList,
-	type ProListProps,
-} from "@ant-design/pro-components";
+import { type ActionType, ProList } from "@ant-design/pro-components";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { Button, Popconfirm, Space, Tag, theme } from "antd";
 import dayjs from "dayjs";
 import type { Key } from "react";
-import {
-	useCallback,
-	useContext,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { EventListenerContext } from "@/components/eventListener";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";

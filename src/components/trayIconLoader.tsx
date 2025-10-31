@@ -20,6 +20,7 @@ import {
 	PLUGIN_ID_TRANSLATE,
 } from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
+import { AppContext } from "@/contexts/appContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
 import {
@@ -40,6 +41,7 @@ import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import {
 	type AppSettingsData,
 	AppSettingsGroup,
+	AppSettingsTheme,
 	TrayIconClickAction,
 	TrayIconDefaultIcon,
 } from "@/types/appSettings";
@@ -92,12 +94,18 @@ const TrayIconLoaderComponent = () => {
 		}, []),
 	);
 
+	const { currentTheme } = useContext(AppContext);
+
 	const [delayScreenshotSeconds, setDelayScreenshotSeconds] = useState(0);
 	const [shortcutKeys, setShortcutKeys, shortcutKeysRef] = useStateRef<
 		Record<AppFunction, AppFunctionConfig> | undefined
 	>(undefined);
 	const [iconPath, setIconPath] = useState("");
+	const [iconPathDark, setIconPathDark] = useState("");
 	const [defaultIcon, setDefaultIcon] = useState<TrayIconDefaultIcon>(
+		TrayIconDefaultIcon.Default,
+	);
+	const [defaultIconDark, setDefaultIconDark] = useState<TrayIconDefaultIcon>(
 		TrayIconDefaultIcon.Default,
 	);
 	const [enableTrayIcon, setEnableTrayIcon] = useState(false);
@@ -116,7 +124,11 @@ const TrayIconLoaderComponent = () => {
 				}
 
 				setIconPath(settings[AppSettingsGroup.CommonTrayIcon].iconPath);
+				setIconPathDark(settings[AppSettingsGroup.CommonTrayIcon].iconPathDark);
 				setDefaultIcon(settings[AppSettingsGroup.CommonTrayIcon].defaultIcons);
+				setDefaultIconDark(
+					settings[AppSettingsGroup.CommonTrayIcon].defaultIconsDark,
+				);
 				setEnableTrayIcon(
 					settings[AppSettingsGroup.CommonTrayIcon].enableTrayIcon,
 				);
@@ -153,8 +165,13 @@ const TrayIconLoaderComponent = () => {
 
 		let iconImage: Image | undefined;
 		try {
-			if (iconPath) {
-				iconImage = await Image.fromPath(iconPath);
+			let targetIconPath = iconPath;
+			if (currentTheme === AppSettingsTheme.Dark && iconPathDark) {
+				targetIconPath = iconPathDark;
+			}
+
+			if (targetIconPath) {
+				iconImage = await Image.fromPath(targetIconPath);
 			}
 		} catch {
 			message.error(intl.formatMessage({ id: "home.trayIcon.error4" }));
@@ -471,7 +488,12 @@ const TrayIconLoaderComponent = () => {
 			icon: iconImage
 				? iconImage
 				: ((await (async () => {
-						const { native_path } = await getDefaultIconPath(defaultIcon);
+						let targetDefaultIcon = defaultIcon;
+						if (currentTheme === AppSettingsTheme.Dark && defaultIconDark) {
+							targetDefaultIcon = defaultIconDark;
+						}
+
+						const { native_path } = await getDefaultIconPath(targetDefaultIcon);
 
 						const iconImage = await Image.fromPath(native_path);
 
@@ -519,6 +541,9 @@ const TrayIconLoaderComponent = () => {
 		getAppSettings,
 		setTrayIconState,
 		isReadyStatus,
+		currentTheme,
+		defaultIconDark,
+		iconPathDark,
 	]);
 
 	useEffect(() => {

@@ -824,6 +824,40 @@ export const GeneralSettingsPage = () => {
 								/>
 							</ProForm.Item>
 						</Col>
+
+						<Col span={24}>
+							<ProFormRadio.Group
+								name="defaultIconsDark"
+								label={
+									<FormattedMessage id="settings.commonSettings.trayIconSettings.defaultIcons.darkDefault" />
+								}
+								options={defaultIconsOptions}
+							/>
+						</Col>
+
+						<Col span={24}>
+							<ProForm.Item
+								name="iconPathDark"
+								label={
+									<IconLabel
+										label={
+											<FormattedMessage id="settings.commonSettings.trayIconSettings.iconPath.darkDefault" />
+										}
+										tooltipTitle={
+											<FormattedMessage id="settings.commonSettings.trayIconSettings.iconPath.tip" />
+										}
+									/>
+								}
+								required={false}
+							>
+								<PathInput
+									filters={[
+										{ name: "PNG(*.png)", extensions: ["png"] },
+										{ name: "ICO(*.ico)", extensions: ["ico"] },
+									]}
+								/>
+							</ProForm.Item>
+						</Col>
 					</Row>
 				</Spin>
 			</ProForm>

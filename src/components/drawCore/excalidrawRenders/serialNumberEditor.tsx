@@ -31,7 +31,6 @@ const SerialNumberEditor: NonNullable<
 		setSerialNumber,
 		selectedSerialNumber,
 		setSelectedSerialNumber,
-		selectedSerialNumberRef,
 	} = useContext(SerialNumberContext);
 	const { getAction } = useContext(DrawCoreContext);
 
