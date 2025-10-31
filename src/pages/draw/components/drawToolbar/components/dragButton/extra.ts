@@ -93,6 +93,10 @@ export type UpdateElementPositionResult = {
 	isBeyondMaxX: boolean;
 	isBeyondMinY: boolean;
 	isBeyondMaxY: boolean;
+	autoHideResult?: {
+		top: number;
+		left: number;
+	};
 };
 
 export const updateElementPosition = (
@@ -111,6 +115,7 @@ export const updateElementPosition = (
 		viewportWidth: number,
 		viewportHeight: number,
 	) => ElementRect = (rect) => rect,
+	autoHidePadding?: number,
 ): UpdateElementPositionResult => {
 	let { clientWidth: toolbarWidth, clientHeight: toolbarHeight } = element;
 
@@ -119,6 +124,19 @@ export const updateElementPosition = (
 
 	const viewportWidth = Math.max(document.body.clientWidth, toolbarWidth);
 	const viewportHeight = Math.max(document.body.clientHeight, toolbarHeight);
+
+	const boundaryRect = calculatedBoundaryRect(
+		{
+			min_x: -baseOffsetX,
+			min_y: -baseOffsetY,
+			max_x: -baseOffsetX + viewportWidth,
+			max_y: -baseOffsetY + viewportHeight,
+		},
+		toolbarWidth,
+		toolbarHeight,
+		viewportWidth,
+		viewportHeight,
+	);
 
 	const dragRes = dragRect(
 		{
@@ -130,25 +148,75 @@ export const updateElementPosition = (
 		originMousePosition,
 		currentMousePosition,
 		previousRect,
-		calculatedBoundaryRect(
-			{
-				min_x: -baseOffsetX,
-				min_y: -baseOffsetY,
-				max_x: -baseOffsetX + viewportWidth,
-				max_y: -baseOffsetY + viewportHeight,
-			},
-			toolbarWidth,
-			toolbarHeight,
-			viewportWidth,
-			viewportHeight,
-		),
+		boundaryRect,
 	);
 
+	let autoHideResult:
+		| {
+				top: number;
+				left: number;
+		  }
+		| undefined;
 	if (!(cancelOnBeyond && dragRes.isBeyond)) {
 		const translateX = baseOffsetX + dragRes.rect.min_x;
 		const translateY = baseOffsetY + dragRes.rect.min_y;
 
+		// 先设置基础的 transform
 		element.style.transform = `translate(${translateX}px, ${translateY}px) scale(${contentScale})`;
+
+		// 自动隐藏逻辑
+		if (autoHidePadding !== undefined) {
+			// 检测元素是否接近边界，接近则自动隐藏
+			const threshold = 1; // 触发自动隐藏的距离阈值
+
+			// 计算元素当前位置（相对于视口）
+			const elementLeft = translateX;
+			const elementRight = translateX + toolbarWidth;
+			const elementTop = translateY;
+			const elementBottom = translateY + toolbarHeight;
+
+			// 计算边界位置
+			const boundaryLeft = boundaryRect.min_x + baseOffsetX;
+			const boundaryRight = boundaryRect.max_x + baseOffsetX;
+			const boundaryTop = boundaryRect.min_y + baseOffsetY;
+			const boundaryBottom = boundaryRect.max_y + baseOffsetY;
+
+			// 左边界自动隐藏
+			if (elementLeft - boundaryLeft <= threshold) {
+				autoHideResult = {
+					top: 0,
+					left: -toolbarWidth + autoHidePadding,
+				};
+			}
+			// 右边界自动隐藏
+			else if (boundaryRight - elementRight <= threshold) {
+				autoHideResult = {
+					top: 0,
+					left: toolbarWidth - autoHidePadding,
+				};
+			}
+			// 上边界自动隐藏
+			else if (elementTop - boundaryTop <= threshold) {
+				autoHideResult = {
+					top: -toolbarHeight + autoHidePadding,
+					left: 0,
+				};
+			}
+			// 下边界自动隐藏
+			else if (boundaryBottom - elementBottom <= threshold) {
+				autoHideResult = {
+					top: toolbarHeight - autoHidePadding,
+					left: 0,
+				};
+			}
+			// 没有接近边界，清空 top 和 left
+			else {
+				autoHideResult = undefined;
+			}
+		} else {
+			// 没有传递 autoHidePadding，恢复 top 和 left
+			autoHideResult = undefined;
+		}
 	}
 
 	return {
@@ -159,5 +227,6 @@ export const updateElementPosition = (
 		isBeyondMaxX: dragRes.isBeyondMaxX,
 		isBeyondMinY: dragRes.isBeyondMinY,
 		isBeyondMaxY: dragRes.isBeyondMaxY,
+		autoHideResult,
 	};
 };

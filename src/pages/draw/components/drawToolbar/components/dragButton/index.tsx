@@ -41,6 +41,7 @@ const useDragElementCore: () => {
 			viewportWidth: number,
 			viewportHeight: number,
 		) => ElementRect,
+		autoHidePadding?: number,
 	) => UpdateElementPositionResult;
 	reset: () => void;
 	mouseOriginPositionRef: React.RefObject<MousePosition>;
@@ -74,6 +75,7 @@ const useDragElementCore: () => {
 				viewportWidth: number,
 				viewportHeight: number,
 			) => ElementRect,
+			autoHidePadding?: number,
 		): UpdateElementPositionResult => {
 			const dragRes = updateElementPosition(
 				element,
@@ -85,6 +87,7 @@ const useDragElementCore: () => {
 				undefined,
 				contentScale,
 				calculatedBoundaryRect,
+				autoHidePadding,
 			);
 
 			return dragRes;
@@ -151,6 +154,10 @@ export type DragElementOptionalConfig = {
 export const useDragElement = (
 	mainConfig: DragElementConfig,
 	optionalConfigs?: DragElementOptionalConfig[],
+	autoHideConfig?: {
+		padding: number;
+		getElement: () => HTMLElement | undefined | null;
+	},
 ): {
 	update: (
 		element: HTMLElement,
@@ -177,6 +184,8 @@ export const useDragElement = (
 			viewportHeight: number,
 		) => ElementRect,
 	) => void;
+	onMouseEnter: () => void;
+	onMouseLeave: () => void;
 	onMouseUp: () => void;
 } => {
 	const {
@@ -195,6 +204,13 @@ export const useDragElement = (
 		undefined,
 	);
 
+	const autoHideResultRef = useRef<
+		| {
+				top: number;
+				left: number;
+		  }
+		| undefined
+	>(undefined);
 	const selectedConfigRef = useRef<DragElementConfig | undefined>(undefined);
 	const update = useCallback(
 		(
@@ -217,6 +233,7 @@ export const useDragElement = (
 				baseOffset.y,
 				contentScale,
 				calculatedBoundaryRect,
+				autoHideConfig?.padding,
 			);
 
 			if (!selectedConfigRef.current) {
@@ -232,6 +249,7 @@ export const useDragElement = (
 						baseOffset.y,
 						contentScale,
 						calculatedBoundaryRect,
+						autoHideConfig?.padding,
 					);
 					if (canApply(tempDragRes)) {
 						dragRes = tempDragRes;
@@ -249,16 +267,19 @@ export const useDragElement = (
 						baseOffset.y,
 						contentScale,
 						calculatedBoundaryRect,
+						autoHideConfig?.padding,
 					);
 					selectedConfigRef.current = mainConfig;
 				}
 			}
 
 			applyDragResult(dragRes);
+			autoHideResultRef.current = dragRes.autoHideResult;
+			console.log(autoHideResultRef.current);
 
 			return dragRes;
 		},
-		[mainConfig, optionalConfigs, updateCore, applyDragResult],
+		[mainConfig, optionalConfigs, updateCore, applyDragResult, autoHideConfig],
 	);
 	const updateRender = useCallbackRender(update);
 
@@ -313,6 +334,25 @@ export const useDragElement = (
 		},
 		[mouseCurrentPositionRef, updateRender],
 	);
+
+	const mouseHoverRef = useRef(false);
+	const tryApplyAutoHideResult = useCallback(() => {
+		if (mouseHoverRef.current || draggingRef.current) {
+			return;
+		}
+
+		const element = autoHideConfig?.getElement();
+		if (!element) {
+			return;
+		}
+
+		if (autoHideResultRef.current) {
+			element.style.top = `${autoHideResultRef.current.top}px`;
+			element.style.left = `${autoHideResultRef.current.left}px`;
+			element.style.opacity = "0.42";
+		}
+	}, [autoHideConfig]);
+
 	const onMouseUp = useCallback(() => {
 		if (!draggingRef.current) {
 			return;
@@ -320,7 +360,31 @@ export const useDragElement = (
 
 		draggingRef.current = false;
 		setDragging(false);
-	}, [setDragging]);
+
+		tryApplyAutoHideResult();
+	}, [setDragging, tryApplyAutoHideResult]);
+
+	const onMouseEnter = useCallback(() => {
+		mouseHoverRef.current = true;
+
+		const element = autoHideConfig?.getElement();
+		if (!element) {
+			return;
+		}
+
+		element.style.transition =
+			"left 0.2s ease-in-out, top 0.2s ease-in-out, opacity 0.2s ease-in-out";
+		if (autoHideResultRef.current) {
+			element.style.top = "";
+			element.style.left = "";
+			element.style.opacity = "1";
+		}
+	}, [autoHideConfig]);
+	const onMouseLeave = useCallback(() => {
+		mouseHoverRef.current = false;
+
+		tryApplyAutoHideResult();
+	}, [tryApplyAutoHideResult]);
 
 	return useMemo(() => {
 		return {
@@ -332,6 +396,8 @@ export const useDragElement = (
 			onMouseDown,
 			onMouseMove: onMouseMoveCore,
 			onMouseUp,
+			onMouseEnter,
+			onMouseLeave,
 		};
 	}, [
 		onMouseDown,
@@ -340,6 +406,8 @@ export const useDragElement = (
 		resetConfig,
 		resetDrag,
 		updateRender,
+		onMouseEnter,
+		onMouseLeave,
 	]);
 };
 

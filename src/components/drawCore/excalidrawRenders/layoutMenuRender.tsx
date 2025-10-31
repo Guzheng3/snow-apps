@@ -23,6 +23,7 @@ const LayoutMenuRender: React.FC<{
 		calculatedBoundaryRect,
 		getDragElementOptionalConfig,
 		getContentScale,
+		dragElementAutoHidePadding,
 	} = useContext(DrawCoreContext);
 
 	const getSelectedRect = useCallback(() => {
@@ -41,6 +42,8 @@ const LayoutMenuRender: React.FC<{
 		onMouseDown,
 		onMouseMove,
 		onMouseUp,
+		onMouseEnter,
+		onMouseLeave,
 	} = useDragElement(
 		useMemo(() => {
 			return {
@@ -55,6 +58,16 @@ const LayoutMenuRender: React.FC<{
 				getDevicePixelRatio(),
 			);
 		}, [getDevicePixelRatio, getDragElementOptionalConfig, getSelectedRect]),
+		useMemo(() => {
+			if (!dragElementAutoHidePadding) {
+				return undefined;
+			}
+
+			return {
+				padding: dragElementAutoHidePadding,
+				getElement: () => layoutMenuRenderRef.current,
+			};
+		}, [dragElementAutoHidePadding]),
 	);
 
 	const updateDrawToolbarStyle = useCallback(() => {
@@ -137,6 +150,13 @@ const LayoutMenuRender: React.FC<{
 		event.stopPropagation();
 	}, []);
 
+	const handleMouseEnter = useCallback(() => {
+		onMouseEnter();
+	}, [onMouseEnter]);
+	const handleMouseLeave = useCallback(() => {
+		onMouseLeave();
+	}, [onMouseLeave]);
+
 	return (
 		// biome-ignore lint/correctness/useUniqueElementIds: 提供 ID 用于元素查找
 		<div
@@ -144,6 +164,8 @@ const LayoutMenuRender: React.FC<{
 			className="layout-menu-render"
 			id="layout-menu-render"
 			onDoubleClick={handleDoubleClick}
+			onMouseEnter={handleMouseEnter}
+			onMouseLeave={handleMouseLeave}
 		>
 			<div
 				className="drag-button layout-menu-render-drag-button"

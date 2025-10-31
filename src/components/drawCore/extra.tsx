@@ -170,6 +170,7 @@ export type DrawCoreContextValue = {
 	) => DragElementOptionalConfig[];
 	getAction: () => DrawCoreActionType | undefined;
 	getMousePosition: () => MousePosition | undefined;
+	dragElementAutoHidePadding?: number;
 	calculatedBoundaryRect?: (
 		rect: ElementRect,
 		toolbarWidth: number,
@@ -191,4 +192,5 @@ export const DrawCoreContext = createContext<DrawCoreContextValue>({
 	getDragElementOptionalConfig: undefined,
 	getAction: () => undefined,
 	getMousePosition: () => undefined,
+	dragElementAutoHidePadding: undefined,
 });

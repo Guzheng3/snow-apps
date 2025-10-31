@@ -132,8 +132,9 @@ const FullScreenDrawPageCore: React.FC = () => {
 			getMousePosition: () => {
 				return mousePositionRef.current;
 			},
+			dragElementAutoHidePadding: token.marginLG,
 		};
-	}, [token.margin]);
+	}, [token.margin, token.marginLG]);
 
 	const drawContextValue = useMemo<DrawContextType>(() => {
 		return {
