@@ -334,7 +334,6 @@ export const renderClearContainerAction = (
 export type BlurSprite = {
 	spriteContainer: PIXI.Container;
 	sprite: PIXI.Sprite;
-	spriteBackground: PIXI.Sprite;
 	spriteBlurFliter: PIXI.Filter;
 	spriteMask: PIXI.Graphics;
 };
@@ -359,7 +358,6 @@ export const renderCreateBlurSpriteAction = (
 	const blurSprite: BlurSprite = {
 		spriteContainer: new PIXI.Container(),
 		sprite: new PIXI.Sprite(imageTexture),
-		spriteBackground: new PIXI.Sprite(PIXI.Texture.WHITE),
 		spriteBlurFliter: new PIXI.BlurFilter(),
 		spriteMask: new PIXI.Graphics(),
 	};
@@ -372,7 +370,6 @@ export const renderCreateBlurSpriteAction = (
 		color: "white",
 		alpha: 1,
 	});
-	blurSprite.spriteContainer.addChild(blurSprite.spriteBackground);
 	blurSprite.spriteContainer.addChild(blurSprite.sprite);
 	blurSprite.spriteContainer.addChild(blurSprite.spriteMask);
 	container.addChild(blurSprite.spriteContainer);
@@ -620,7 +617,6 @@ export const renderDeleteBlurSpriteAction = (
 	}
 
 	blurSprite.sprite.destroy();
-	blurSprite.spriteBackground.destroy();
 	blurSprite.spriteContainer.destroy();
 	blurSprite.spriteBlurFliter.destroy();
 	blurSprite.spriteMask.destroy();

@@ -9,10 +9,7 @@ import {
 } from "@/components/drawCore/extra";
 import { DRAW_LAYER_BLUR_CONTAINER_KEY } from "@/components/imageLayer";
 import type { BlurSpriteProps } from "@/components/imageLayer/baseLayerRenderActions";
-import {
-	useCallbackRender,
-	useCallbackRenderSlow,
-} from "@/hooks/useCallbackRender";
+import { useCallbackRender } from "@/hooks/useCallbackRender";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import {
 	DrawEvent,
@@ -204,7 +201,7 @@ const BlurToolCore: React.FC = () => {
 		},
 		[getImageLayerAction],
 	);
-	const handleEraserRender = useCallbackRenderSlow(handleEraser);
+	const handleEraserRender = useCallbackRender(handleEraser);
 
 	useStateSubscriber(
 		ExcalidrawEventPublisher,
