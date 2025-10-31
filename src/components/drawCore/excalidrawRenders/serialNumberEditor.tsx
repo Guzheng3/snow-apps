@@ -99,12 +99,6 @@ const SerialNumberEditor: NonNullable<
 
 		excalidrawAPI.updateScene({
 			elements: sceneElements.map((item) => {
-				console.log("item", item);
-				console.log(
-					"selectedSerialNumberTextElement",
-					selectedSerialNumberTextElement,
-				);
-				console.log("selectedSerialNumber", selectedSerialNumber);
 				if (item.id === selectedSerialNumberTextElement.id) {
 					return {
 						...item,

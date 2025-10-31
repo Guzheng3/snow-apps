@@ -1594,7 +1594,6 @@ const FixedContentCoreInner: React.FC<{
 	useEffect(() => {
 		const appWindow = getCurrentWindow();
 		const unlisten = appWindow.onCloseRequested(async () => {
-			appInfo("onCloseRequested right click menu", rightClickMenuRef.current);
 			if (rightClickMenuRef.current) {
 				await Promise.all([
 					rightClickMenuRef.current.mainMenu?.close(),
