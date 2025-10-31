@@ -94,8 +94,7 @@ impl GraphicsCaptureApiHandler for WindowsCaptureImage {
         let origin_image_buffer_ptr = orgin_image_buffer.as_ptr() as usize;
         let pixels_ptr = pixels.as_mut_ptr() as usize;
         (0..crop_height).into_par_iter().for_each(|y| {
-            let origin_image_index =
-                origin_image_buffer_base_index + y * origin_image_row_pitch;
+            let origin_image_index = origin_image_buffer_base_index + y * origin_image_row_pitch;
             let target_image_index = y * crop_width * pixel_byte_count;
 
             unsafe {

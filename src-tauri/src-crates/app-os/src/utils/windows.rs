@@ -308,7 +308,7 @@ pub fn create_admin_auto_start_task() -> Result<(), String> {
             ));
         }
     }
-    
+
     // 设置参数
     unsafe {
         let hr = p_exec_action.SetArguments(&windows::core::BSTR::from("--auto_start"));

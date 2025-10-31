@@ -60,11 +60,7 @@ impl FileCacheService {
 
             let portable_config_file_path = exe_dir_path.join(APP_PORTABLE_DIR_DATA_FILE_NAME);
             if portable_config_file_path.exists() {
-                return Some(
-                    exe_dir_path
-                        .to_path_buf()
-                        .join(APP_CONFIG_DIR_NAME),
-                );
+                return Some(exe_dir_path.to_path_buf().join(APP_CONFIG_DIR_NAME));
             } else {
                 return None;
             }

@@ -60,7 +60,9 @@ impl Default for MonitorHdrInfo {
 pub fn get_all_monitors_sdr_info() -> Result<HashMap<String, MonitorHdrInfo>, String> {
     // 检查是否已被禁用
     if HDR_INFO_DISABLED.load(Ordering::Relaxed) {
-        return Err("[get_all_monitors_sdr_info] Function is disabled due to previous failures".to_string());
+        return Err(
+            "[get_all_monitors_sdr_info] Function is disabled due to previous failures".to_string(),
+        );
     }
 
     // 获取显示配置缓冲区大小

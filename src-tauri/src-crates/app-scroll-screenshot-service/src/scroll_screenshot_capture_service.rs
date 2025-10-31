@@ -1,6 +1,6 @@
-use std::sync::Arc;
 use snow_shot_app_shared::ElementRect;
 use snow_shot_app_utils::monitor_info::MonitorList;
+use std::sync::Arc;
 
 /**
  * 将截图和处理截图分开处理
@@ -17,7 +17,10 @@ impl ScrollScreenshotCaptureService {
 
     pub fn init(&mut self, region: ElementRect, ignore_sdr_info: bool) {
         if self.monitor_list.is_none() {
-            self.monitor_list = Some(Arc::new(MonitorList::get_by_region(region, ignore_sdr_info)));
+            self.monitor_list = Some(Arc::new(MonitorList::get_by_region(
+                region,
+                ignore_sdr_info,
+            )));
         }
     }
 

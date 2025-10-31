@@ -11,6 +11,7 @@
 		"autostart:default",
 		"autostart:default",
 		"autostart:default",
-		"window-state:default"
+		"window-state:default",
+		"updater:default"
 	]
 }

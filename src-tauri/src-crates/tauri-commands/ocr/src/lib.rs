@@ -31,7 +31,6 @@ pub struct OcrDetectResult {
     pub scale_factor: f32,
 }
 
-
 fn convert_rgba_to_rgb(image: &[u8]) -> Vec<u8> {
     let pixel_count = image.len() / 4;
     let mut rgb_data = Vec::with_capacity(pixel_count * 3);

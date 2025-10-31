@@ -277,7 +277,10 @@ pub async fn scroll_screenshot_clear(
 
 pub async fn scroll_screenshot_get_image_data(
     scroll_screenshot_service: tauri::State<'_, Mutex<ScrollScreenshotService>>,
-    #[allow(unused_variables)] webview_shared_buffer_state: tauri::State<'_, WebViewSharedBufferState>,
+    #[allow(unused_variables)] webview_shared_buffer_state: tauri::State<
+        '_,
+        WebViewSharedBufferState,
+    >,
     #[allow(unused_variables)] webview: tauri::Webview,
 ) -> Result<Response, String> {
     let mut scroll_screenshot_service = scroll_screenshot_service.lock().await;
