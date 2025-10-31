@@ -273,6 +273,7 @@ export const fixedToScreen = async (
 		true,
 		INIT_CONTAINER_KEY,
 	);
+	const startTs = performance.now();
 
 	const initPreloadPromise = fixedContentAction.initDrawPreload(
 		selectRectParams.rect.max_x -
@@ -289,6 +290,10 @@ export const fixedToScreen = async (
 
 	const [canvas] = await Promise.all([
 		canvasPromise.then((canvas) => {
+			console.log(
+				"[fixedToScreen] canvasPromise time",
+				performance.now() - startTs,
+			);
 			if (!canvas) {
 				return;
 			}
@@ -301,10 +306,12 @@ export const fixedToScreen = async (
 		appWindow.setTitle("Snow Shot - Fixed Content"),
 		new Promise((resolve) => {
 			setTimeout(() => {
-				setTimeout(() => {
-					resolve(true);
-				}, 17);
-			}, 17);
+				console.log(
+					"[fixedToScreen] setTimeout time",
+					performance.now() - startTs,
+				);
+				resolve(true);
+			}, 17 * 2);
 		}).then(() => {
 			return setWindowRect(
 				appWindow,
