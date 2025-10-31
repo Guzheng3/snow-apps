@@ -401,7 +401,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 				});
 			}
 
-			if (isIdlePage) {
+			if (isIdlePage || isFixedContentPage) {
 				defaultListener.push({
 					event: "hot-load-page-route-push",
 					callback: async () => {},

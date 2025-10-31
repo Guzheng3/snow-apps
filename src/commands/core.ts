@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { MonitorRect } from "@/pages/draw/extra";
 import type { ElementRect } from "@/types/commands/screenshot";
+import { appInfo } from "@/utils/log";
 import type { ResizeWindowSide } from "@/utils/types";
 
 export const getSelectedText = async () => {

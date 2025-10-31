@@ -246,7 +246,6 @@ export const VideoRecordPage: React.FC = () => {
 			(params) => {
 				const { key_text } = (params as { payload: ListenKeyDownEvent })
 					.payload;
-				appInfo(`[VideoRecordPage] key down: ${key_text}`);
 
 				const now = Date.now();
 				const { display, isModifier } = normalizeKeyText(key_text);

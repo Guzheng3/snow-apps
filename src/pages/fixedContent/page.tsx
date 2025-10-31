@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "@tanstack/react-router";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -13,6 +14,7 @@ import {
 	scrollScreenshotClear,
 	scrollScreenshotGetImageData,
 } from "@/commands/scrollScreenshot";
+import { useIdlePage } from "@/components/idlePageCore";
 import { TextScaleFactorContextProvider } from "@/components/textScaleFactorContextProvider";
 import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
 import {
@@ -45,8 +47,27 @@ export const FixedContentPage: React.FC = () => {
 		}, []),
 	);
 
-	const init = useCallback(async () => {
-		const urlParams = new URLSearchParams(window.location.search);
+	const [enableIdlePage, setEnableIdlePage] = useState(false);
+	useEffect(() => {
+		if (enableIdlePage) {
+			return;
+		}
+
+		setEnableIdlePage(true);
+	}, [enableIdlePage]);
+
+	const init = useCallback(async (targetUrl?: string) => {
+		let urlParams: URLSearchParams;
+		if (targetUrl) {
+			urlParams = new URL(targetUrl, window.location.origin).searchParams;
+		} else {
+			urlParams = new URLSearchParams(window.location.search);
+		}
+
+		if (urlParams.get("idle_page") === "true") {
+			setEnableIdlePage(true);
+			return;
+		}
 
 		if (urlParams.get("scroll_screenshot") === "true") {
 			// 可能通过 SharedBuffer 传递
@@ -165,6 +186,22 @@ export const FixedContentPage: React.FC = () => {
 			getCurrentWindow().close();
 		}
 	}, []);
+
+	const router = useRouter();
+	useIdlePage(
+		enableIdlePage,
+		useCallback(
+			(url) => {
+				if (url.startsWith("/fixedContent")) {
+					init(url);
+					setEnableIdlePage(false);
+				} else {
+					router.navigate({ to: url });
+				}
+			},
+			[init, router],
+		),
+	);
 
 	useEffect(() => {
 		if (initedRef.current) {
