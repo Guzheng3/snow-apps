@@ -723,12 +723,12 @@ pub async fn close_video_record_window(
 
     let window = app.get_webview_window(video_record_window_label.as_str());
     if let Some(window) = window {
-        window.destroy().unwrap();
+        window.close().unwrap();
     }
 
     let window = app.get_webview_window(toolbar_window_label.as_str());
     if let Some(window) = window {
-        window.destroy().unwrap();
+        window.close().unwrap();
     }
 
     Ok(())

@@ -224,7 +224,9 @@ export const VideoRecordPage: React.FC = () => {
 				appError("[VideoRecordPage] listenKeyStop error", error);
 			});
 		}
+	}, [drawSelectRect, videoRecordState]);
 
+	useEffect(() => {
 		const appWindow = getCurrentWindow();
 		const unlisten = appWindow.onCloseRequested(async () => {
 			await listenKeyStop(true).catch((error) => {
@@ -238,7 +240,7 @@ export const VideoRecordPage: React.FC = () => {
 		return () => {
 			unlisten.then((fn) => fn());
 		};
-	}, [drawSelectRect, videoRecordState]);
+	}, []);
 
 	useEffect(() => {
 		const keyDownListenerId = addListener(
