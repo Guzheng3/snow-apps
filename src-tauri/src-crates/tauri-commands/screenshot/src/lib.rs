@@ -467,6 +467,10 @@ pub async fn get_window_elements(
                     Ok(title) => title,
                     Err(_) => return None,
                 };
+
+                if window_title.eq("Notification Center") || window_title.eq("Dock") {
+                    return None;
+                }
             }
 
             let window_rect: ElementRect;
@@ -517,13 +521,6 @@ pub async fn get_window_elements(
                 max_x: x + width,
                 max_y: y + height,
             };
-
-            #[cfg(target_os = "macos")]
-            {
-                if window_title.eq("Dock") {
-                    return None;
-                }
-            }
 
             Some(WindowElement {
                 element_rect: window_rect.scale(window_size_scale),

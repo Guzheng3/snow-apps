@@ -24,7 +24,7 @@ importers:
         specifier: ^1.6.1
         version: 1.6.1(antd@5.27.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@mg-chao/excalidraw':
-        specifier: file:..\excalidraw\packages\excalidraw
+        specifier: file:../excalidraw/packages/excalidraw
         version: '@excalidraw/excalidraw@file:../excalidraw/packages/excalidraw(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)'
       '@tanstack/react-router':
         specifier: ^1.133.36
