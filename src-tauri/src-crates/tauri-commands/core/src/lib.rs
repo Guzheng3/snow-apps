@@ -1104,6 +1104,7 @@ pub async fn has_focused_full_screen_window() -> Result<bool, String> {
         use objc2_app_kit::NSWorkspace;
         use objc2_foundation::NSObjectNSKeyValueCoding;
         use objc2_foundation::{NSNumber, NSString};
+        use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
         // 并行获取 monitor_list 和 windows
         let (monitor_list, windows) = tokio::join!(
