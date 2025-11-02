@@ -49,4 +49,5 @@ export enum DrawToolbarKeyEventKey {
 	PreviousCapture = "previousCapture",
 	NextCapture = "nextCapture",
 	LaserPointerTool = "laserPointerTool",
+	ResetCanvasTool = "resetCanvasTool",
 }

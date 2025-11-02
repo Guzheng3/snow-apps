@@ -162,6 +162,10 @@ export const defaultDrawToolbarKeyEventSettings: Record<
 		hotKey: getPlatformValue("Ctrl+L", "Meta+L"),
 		unique: true,
 	},
+	[DrawToolbarKeyEventKey.ResetCanvasTool]: {
+		hotKey: getPlatformValue("Ctrl+R", "Meta+R"),
+		unique: true,
+	},
 };
 
 const DrawToolbarKeyEventSettingsKeys = Object.keys(

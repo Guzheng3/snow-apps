@@ -92,6 +92,7 @@ export const draw = {
 	"draw.laserPointerTool": "激光笔",
 	"draw.watermarkTool": "水印",
 	"draw.mouseThroughTool": "鼠标穿透",
+	"draw.resetCanvasTool": "重置画布",
 	"draw.ocrLoading": "文本识别中",
 	"draw.copySelectedText": "复制选中文本",
 	"draw.scrollScreenshot.limitTip":

@@ -68,4 +68,6 @@ export enum DrawState {
 	DragWindow = 115,
 	// 保存到云端
 	SaveToCloud = 116,
+	// 重置画布
+	ResetCanvas = 117,
 }

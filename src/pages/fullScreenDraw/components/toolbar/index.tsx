@@ -24,6 +24,7 @@ import {
 	LaserPointerIcon,
 	MouseThroughIcon,
 	PenIcon,
+	ResetCanvasIcon,
 	SerialNumberIcon,
 	TextIcon,
 } from "@/components/icons";
@@ -473,21 +474,24 @@ export const FullScreenDrawToolbar: React.FC<{
 
 					<div className="draw-toolbar-splitter" />
 
-					{/* 取消截图 */}
 					<ToolButton
-						componentKey={DrawToolbarKeyEventKey.CancelTool}
 						icon={
-							<CloseOutlined
+							<ResetCanvasIcon
 								style={{
-									fontSize: "0.9em",
-									color: token.colorError,
+									fontSize: "1em",
 								}}
 							/>
 						}
-						buttonProps={toolButtonProps}
-						drawState={DrawState.Cancel}
+						drawState={DrawState.ResetCanvas}
+						buttonProps={{
+							...toolButtonProps,
+							title: intl.formatMessage({ id: "draw.resetCanvasTool" }),
+						}}
 						onClick={() => {
-							closeFullScreenDrawWindow();
+							getDrawCoreAction()?.updateScene({
+								elements: [],
+								captureUpdate: "IMMEDIATELY",
+							});
 						}}
 					/>
 
@@ -506,6 +510,24 @@ export const FullScreenDrawToolbar: React.FC<{
 						}}
 						onClick={() => {
 							fullScreenDrawChangeMouseThrough();
+						}}
+					/>
+
+					{/* 取消截图 */}
+					<ToolButton
+						componentKey={DrawToolbarKeyEventKey.CancelTool}
+						icon={
+							<CloseOutlined
+								style={{
+									fontSize: "0.9em",
+									color: token.colorError,
+								}}
+							/>
+						}
+						buttonProps={toolButtonProps}
+						drawState={DrawState.Cancel}
+						onClick={() => {
+							closeFullScreenDrawWindow();
 						}}
 					/>
 
