@@ -471,6 +471,12 @@ pub async fn get_window_elements(
                 if window_title.eq("Notification Center") || window_title.eq("Dock") {
                     return None;
                 }
+
+                if window_title.eq("Cursor") {
+                    if window.app_name().unwrap_or_default().eq("Window Server") {
+                        return None;
+                    }
+                }
             }
 
             let window_rect: ElementRect;
@@ -521,6 +527,14 @@ pub async fn get_window_elements(
                 max_x: x + width,
                 max_y: y + height,
             };
+
+            println!(
+                "window_title: {}, width: {}, height: {}, app_name: {}",
+                window_title,
+                width,
+                height,
+                window.app_name().unwrap_or_default()
+            );
 
             Some(WindowElement {
                 element_rect: window_rect.scale(window_size_scale),
