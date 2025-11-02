@@ -947,7 +947,11 @@ impl VideoRecordService {
         let mut command = self.get_ffmpeg_command();
 
         if format == "apng" {
-            // APNG格式转换
+            // APNG格式转换 - 平衡版本
+            // APNG 是无损格式，通过压缩级别和预测模式优化
+            // 优化策略（平衡模式）：
+            // 1. compression_level=6：中等偏高的压缩级别，速度和大小平衡
+            // 2. pred=mixed：混合预测模式，对大多数内容压缩效果最好
             command
                 .arg("-i")
                 .arg(mp4_filename)
@@ -957,10 +961,20 @@ impl VideoRecordService {
                 .arg("apng")
                 .arg("-plays")
                 .arg("0") // 无限循环
+                .arg("-compression_level")
+                .arg("6")
+                .arg("-pred")
+                .arg("mixed")
                 .arg("-y")
                 .arg(&output_filename);
         } else if format == "webp" {
-            // APNG格式转换
+            // WEBP格式转换 - 平衡版本，适合日常使用
+            // WEBP 支持有损和无损压缩，这里使用有损模式获得更好的压缩率
+            // 优化策略（平衡模式）：
+            // 1. lossless=0：使用有损压缩模式（文件更小）
+            // 2. quality=85：质量设为85（0-100），保证良好视觉效果
+            // 3. compression_level=4：中等压缩级别，速度和大小平衡
+            // 4. method=4：中等压缩方法，编码速度较快
             command
                 .arg("-i")
                 .arg(mp4_filename)
@@ -968,18 +982,31 @@ impl VideoRecordService {
                 .arg(format!("fps={},{}", gif_frame_rate, scale_filter))
                 .arg("-f")
                 .arg("webp")
-                .arg("-plays")
+                .arg("-lossless")
+                .arg("0")
+                .arg("-quality")
+                .arg("85")
+                .arg("-compression_level")
+                .arg("4")
+                .arg("-method")
+                .arg("4")
+                .arg("-loop")
                 .arg("0") // 无限循环
                 .arg("-y")
                 .arg(&output_filename);
         } else {
-            // GIF格式转换
+            // GIF格式转换 - 平衡版本，适合日常使用
+            // 优化策略（平衡模式）：
+            // 1. max_colors=192：保留较多颜色，保证视觉质量
+            // 2. 使用 diff 统计模式以更好地处理动画
+            // 3. 使用 floyd_steinberg 抖动算法提高视觉质量
+            // 4. diff_mode=rectangle 优化动画压缩
             command
                 .arg("-i")
                 .arg(mp4_filename)
                 .arg("-vf")
                 .arg(format!(
-                    "fps={},{},split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
+                    "fps={},{},split[s0][s1];[s0]palettegen=max_colors=192:stats_mode=diff[p];[s1][p]paletteuse=dither=floyd_steinberg:diff_mode=rectangle",
                     gif_frame_rate, scale_filter,
                 ))
                 .arg("-loop")
