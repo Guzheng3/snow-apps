@@ -1074,9 +1074,7 @@ fn is_window_fullscreen(hwnd: windows::Win32::Foundation::HWND) -> bool {
 }
 
 /// 是否有全屏窗口被聚焦
-pub async fn has_focused_full_screen_window(
-    #[allow(unused_variables)] window: tauri::Window,
-) -> Result<bool, ()> {
+pub async fn has_focused_full_screen_window() -> Result<bool, String> {
     // 获取所有窗口，简单筛选下需要的窗口，然后获取窗口所有元素
     #[cfg(target_os = "windows")]
     {
@@ -1100,5 +1098,96 @@ pub async fn has_focused_full_screen_window(
 
                 return false;
             }))
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::NSWorkspace;
+        use objc2_foundation::NSObjectNSKeyValueCoding;
+        use objc2_foundation::{NSNumber, NSString};
+
+        // 并行获取 monitor_list 和 windows
+        let (monitor_list, windows) = tokio::join!(
+            tokio::task::spawn_blocking(|| {
+                snow_shot_app_utils::monitor_info::MonitorList::all(true)
+            }),
+            tokio::task::spawn_blocking(|| {
+                xcap::Window::all()
+                    .unwrap_or_default()
+                    .iter()
+                    .map(|window| window.id().unwrap())
+                    .collect::<Vec<u32>>()
+            })
+        );
+
+        let monitor_list = match monitor_list {
+            Ok(list) => list,
+            Err(e) => {
+                log::error!(
+                    "[has_focused_full_screen_window] Failed to get monitor list: {:?}",
+                    e
+                );
+                return Ok(false);
+            }
+        };
+
+        let windows = match windows {
+            Ok(list) => list,
+            Err(e) => {
+                log::error!(
+                    "[has_focused_full_screen_window] Failed to get windows: {:?}",
+                    e
+                );
+                return Ok(false);
+            }
+        };
+
+        let focused_app_id = {
+            let pid_key = NSString::from_str("NSApplicationProcessIdentifier");
+
+            let workspace = NSWorkspace::sharedWorkspace();
+
+            let active_app_dictionary = workspace.frontmostApplication();
+
+            let active_app_pid = active_app_dictionary
+                .and_then(|dict| dict.valueForKey(&pid_key))
+                .and_then(|pid| pid.downcast::<NSNumber>().ok())
+                .map(|pid| pid.intValue() as u32);
+
+            match active_app_pid {
+                Some(pid) => pid,
+                None => return Ok(false),
+            }
+        };
+
+        Ok(windows.par_iter().any(|window_id| {
+            let window = { xcap::ImplWindow::new(*window_id) };
+
+            if window.pid().unwrap_or_default() != focused_app_id {
+                return false;
+            }
+
+            let cf_dict = match window.window_cf_dictionary() {
+                Ok(cf_dict) => cf_dict,
+                Err(_) => return false,
+            };
+
+            let cg_rect = match xcap::ImplWindow::cg_rect_by_cf_dictionary(cf_dict.as_ref()) {
+                Ok(window_rect) => window_rect,
+                Err(_) => return false,
+            };
+
+            let min_x = cg_rect.origin.x as i32;
+            let min_y = cg_rect.origin.y as i32;
+            let max_x = min_x + cg_rect.size.width as i32;
+            let max_y = min_y + cg_rect.size.height as i32;
+
+            monitor_list.iter().any(|monitor| {
+                (monitor.rect.min_x as f32 / monitor.scale_factor as f32) as i32 == min_x
+                    && (monitor.rect.min_y as f32 / monitor.scale_factor as f32) as i32 == min_y
+                    && (monitor.rect.max_x as f32 / monitor.scale_factor as f32) as i32 == max_x
+                    && (monitor.rect.max_y as f32 / monitor.scale_factor as f32) as i32 == max_y
+            })
+        }))
     }
 }
