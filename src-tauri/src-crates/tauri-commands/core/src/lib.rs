@@ -1,5 +1,6 @@
 use enigo::{Axis, Mouse};
 use futures::stream::StreamExt;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::Serialize;
 use std::{
     path::PathBuf,
@@ -1026,5 +1027,78 @@ pub async fn write_image_pixels_to_clipboard_with_shared_buffer(
             "[write_image_pixels_to_clipboard_with_shared_buffer] Failed to write image to clipboard: {}",
             e
         )),
+    }
+}
+
+/// 检查窗口是否全屏
+#[cfg(target_os = "windows")]
+fn is_window_fullscreen(hwnd: windows::Win32::Foundation::HWND) -> bool {
+    use windows::Win32::Foundation::RECT;
+    use windows::Win32::Graphics::Gdi::{
+        GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromWindow,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
+
+    unsafe {
+        // 获取窗口矩形
+        let mut window_rect = RECT::default();
+        if GetWindowRect(hwnd, &mut window_rect).is_err() {
+            return false;
+        }
+
+        // 获取窗口所在的显示器
+        let monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        if monitor.is_invalid() {
+            return false;
+        }
+
+        // 获取显示器信息
+        let mut monitor_info = MONITORINFO {
+            cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+            ..Default::default()
+        };
+
+        // GetMonitorInfoW 返回 BOOL，0 表示失败
+        if GetMonitorInfoW(monitor, &mut monitor_info).as_bool() == false {
+            return false;
+        }
+
+        // 比较窗口矩形和显示器矩形
+        let monitor_rect = monitor_info.rcMonitor;
+
+        window_rect.left == monitor_rect.left
+            && window_rect.top == monitor_rect.top
+            && window_rect.right == monitor_rect.right
+            && window_rect.bottom == monitor_rect.bottom
+    }
+}
+
+/// 是否有全屏窗口被聚焦
+pub async fn has_focused_full_screen_window(
+    #[allow(unused_variables)] window: tauri::Window,
+) -> Result<bool, ()> {
+    // 获取所有窗口，简单筛选下需要的窗口，然后获取窗口所有元素
+    #[cfg(target_os = "windows")]
+    {
+        let focused_window_hwnd =
+            unsafe { windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow() };
+
+        // 检查聚焦窗口是否全屏
+        if is_window_fullscreen(focused_window_hwnd) {
+            return Ok(true);
+        }
+
+        Ok(xcap::Window::all()
+            .unwrap_or_default()
+            .iter()
+            .any(|window| {
+                use windows::Win32::Foundation::HWND;
+
+                if HWND(window.hwnd().unwrap()) == focused_window_hwnd {
+                    return is_window_fullscreen(focused_window_hwnd);
+                }
+
+                return false;
+            }))
     }
 }
