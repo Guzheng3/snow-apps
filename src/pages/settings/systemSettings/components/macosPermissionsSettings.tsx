@@ -154,9 +154,7 @@ export const MacOSPermissionsSettings: React.FC = () => {
 										e.preventDefault();
 										e.stopPropagation();
 
-										openUrl(
-											"https://github.com/mg-chao/snow-shot/blob/main/docs/macos-permissions.md",
-										);
+										openUrl("https://snowshot.top/faq/macOs/2.html");
 									}}
 								>
 									<FormattedMessage id="settings.systemSettings.macosPermissionsSettings.request.tip.link" />
