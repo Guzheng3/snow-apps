@@ -578,15 +578,12 @@ impl VideoRecordService {
             .arg("-i")
             .arg("dummy");
 
-        println!(
-            "FFmpeg get_microphone_device_names command (macOS): {:?}",
-            command
-        );
+        log::info!("FFmpeg get_device_info_list command (macOS): {:?}", command);
 
         let mut child = match command.spawn() {
             Ok(child) => child,
             Err(e) => {
-                println!("[get_device_names] Failed to spawn ffmpeg: {}", e);
+                log::error!("[get_device_info_list] Failed to spawn ffmpeg: {}", e);
                 return device_info_list;
             }
         };
@@ -594,21 +591,21 @@ impl VideoRecordService {
         let output_iter = match child.iter() {
             Ok(output) => output,
             Err(e) => {
-                println!("[get_device_names] Failed to iter ffmpeg: {}", e);
+                log::error!("[get_device_info_list] Failed to iter ffmpeg: {}", e);
                 return device_info_list;
             }
         };
 
         // macOS avfoundation 格式的正则表达式
-        // 格式: [AVFoundation indev @ 0x...] [info] [0] 设备名称
-        let device_regex =
-            match Regex::new(r#"\[AVFoundation indev @ [^\]]+\]\s+\[info\]\s+\[(\d+)\]\s+(.+)"#) {
-                Ok(regex) => regex,
-                Err(e) => {
-                    println!("[get_device_names] Failed to create regex: {}", e);
-                    return device_info_list;
-                }
-            };
+        // 格式: [AVFoundation indev @ 0x...] [0] 设备名称
+        let device_regex = match Regex::new(r#"\[AVFoundation indev @ [^\]]+\]\s+\[(\d+)\]\s+(.+)"#)
+        {
+            Ok(regex) => regex,
+            Err(e) => {
+                log::error!("[get_device_info_list] Failed to create regex: {}", e);
+                return device_info_list;
+            }
+        };
 
         // 检测是否已经开始音频设备列表的标志
         let mut found_audio_devices_marker = false;
@@ -617,10 +614,10 @@ impl VideoRecordService {
             match line {
                 FfmpegEvent::Log(_, line) => {
                     // 首先检查是否遇到了音频设备列表的标记
-                    if line.contains("AVFoundation audio devices:") {
+                    if line.contains("AVFoundation audio devices") {
                         found_audio_devices_marker = true;
-                        println!(
-                            "[get_microphone_device_names] Found audio devices marker, starting to parse devices"
+                        log::info!(
+                            "[get_device_info_list] Found audio devices marker, starting to parse devices"
                         );
                         continue;
                     }
@@ -645,7 +642,7 @@ impl VideoRecordService {
 
         let _ = child.wait();
 
-        println!(
+        log::info!(
             "[get_device_names] Total found devices: {}",
             device_info_list.len()
         );
