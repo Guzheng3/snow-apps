@@ -261,6 +261,7 @@ pub fn run() {
             core::create_video_record_window,
             core::close_video_record_window,
             core::has_video_record_window,
+            core::has_focused_full_screen_window,
             core::set_current_window_always_on_top,
             core::auto_start_enable,
             core::auto_start_disable,

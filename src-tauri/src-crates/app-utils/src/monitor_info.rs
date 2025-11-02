@@ -16,6 +16,8 @@ pub struct MonitorInfo {
     pub monitor: Monitor,
     pub rect: ElementRect,
     pub scale_factor: f32,
+    #[cfg(target_os = "macos")]
+    pub monitor_scale_factor: f64,
     #[cfg(target_os = "windows")]
     pub monitor_hdr_info: MonitorHdrInfo,
 }
@@ -84,6 +86,7 @@ impl MonitorInfo {
                 monitor: monitor.clone(),
                 rect: monitor_rect,
                 scale_factor,
+                monitor_scale_factor,
             }
         }
     }

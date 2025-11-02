@@ -453,3 +453,8 @@ pub async fn write_image_pixels_to_clipboard_with_shared_buffer(
     )
     .await
 }
+
+#[command]
+pub async fn has_focused_full_screen_window() -> Result<bool, String> {
+    snow_shot_tauri_commands_core::has_focused_full_screen_window().await
+}

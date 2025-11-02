@@ -107,6 +107,7 @@ export enum AppSettingsGroup {
 	FunctionFixedContent = "functionFixedContent",
 	FunctionVideoRecord = "functionVideoRecord",
 	FunctionTrayIcon = "functionTrayIcon",
+	FunctionGlobalShortcut = "functionGlobalShortcut",
 }
 
 export enum ShortcutKeyStatus {
@@ -545,6 +546,10 @@ export type AppSettingsData = {
 	[AppSettingsGroup.SystemCore]: {
 		/** 热加载页面数量 */
 		hotLoadPageCount: number;
+	};
+	[AppSettingsGroup.FunctionGlobalShortcut]: {
+		/** 全屏窗口被聚焦时禁用全局快捷键 */
+		disableOnFocusedFullScreenWindow: boolean;
 	};
 };
 

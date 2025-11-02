@@ -1028,3 +1028,172 @@ pub async fn write_image_pixels_to_clipboard_with_shared_buffer(
         )),
     }
 }
+
+/// 检查窗口是否全屏
+#[cfg(target_os = "windows")]
+fn is_window_fullscreen(hwnd: windows::Win32::Foundation::HWND) -> bool {
+    use windows::Win32::Foundation::RECT;
+    use windows::Win32::Graphics::Gdi::{
+        GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromWindow,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
+
+    unsafe {
+        // 获取窗口矩形
+        let mut window_rect = RECT::default();
+        if GetWindowRect(hwnd, &mut window_rect).is_err() {
+            return false;
+        }
+
+        // 获取窗口所在的显示器
+        let monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        if monitor.is_invalid() {
+            return false;
+        }
+
+        // 获取显示器信息
+        let mut monitor_info = MONITORINFO {
+            cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+            ..Default::default()
+        };
+
+        // GetMonitorInfoW 返回 BOOL，0 表示失败
+        if GetMonitorInfoW(monitor, &mut monitor_info).as_bool() == false {
+            return false;
+        }
+
+        // 比较窗口矩形和显示器矩形
+        let monitor_rect = monitor_info.rcMonitor;
+
+        window_rect.left == monitor_rect.left
+            && window_rect.top == monitor_rect.top
+            && window_rect.right == monitor_rect.right
+            && window_rect.bottom == monitor_rect.bottom
+    }
+}
+
+/// 是否有全屏窗口被聚焦
+pub async fn has_focused_full_screen_window() -> Result<bool, String> {
+    // 获取所有窗口，简单筛选下需要的窗口，然后获取窗口所有元素
+    #[cfg(target_os = "windows")]
+    {
+        let focused_window_hwnd =
+            unsafe { windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow() };
+
+        // 检查聚焦窗口是否全屏
+        if is_window_fullscreen(focused_window_hwnd) {
+            return Ok(true);
+        }
+
+        Ok(xcap::Window::all()
+            .unwrap_or_default()
+            .iter()
+            .any(|window| {
+                use windows::Win32::Foundation::HWND;
+
+                if HWND(window.hwnd().unwrap()) == focused_window_hwnd {
+                    return is_window_fullscreen(focused_window_hwnd);
+                }
+
+                return false;
+            }))
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::NSWorkspace;
+        use objc2_foundation::{NSNumber, NSString};
+        use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+
+        // 并行获取 monitor_list 和 windows
+        let (monitor_list, windows) = tokio::join!(
+            tokio::task::spawn_blocking(|| {
+                snow_shot_app_utils::monitor_info::MonitorList::all(true)
+            }),
+            tokio::task::spawn_blocking(|| {
+                xcap::Window::all()
+                    .unwrap_or_default()
+                    .iter()
+                    .map(|window| window.id().unwrap())
+                    .collect::<Vec<u32>>()
+            })
+        );
+
+        let monitor_list = match monitor_list {
+            Ok(list) => list,
+            Err(e) => {
+                log::error!(
+                    "[has_focused_full_screen_window] Failed to get monitor list: {:?}",
+                    e
+                );
+                return Ok(false);
+            }
+        };
+
+        let windows = match windows {
+            Ok(list) => list,
+            Err(e) => {
+                log::error!(
+                    "[has_focused_full_screen_window] Failed to get windows: {:?}",
+                    e
+                );
+                return Ok(false);
+            }
+        };
+
+        let focused_app_id = {
+            let pid_key = NSString::from_str("NSApplicationProcessIdentifier");
+
+            let workspace = NSWorkspace::sharedWorkspace();
+
+            // activeApplication is deprecated, but the alternative, frontmostApplication,
+            // returns the application in focus when the process started while activeApplication
+            // returns a `NSDictionary` of application currently in focus, in real-time
+            #[allow(deprecated)]
+            let active_app_dictionary = workspace.activeApplication();
+
+            let active_app_pid = active_app_dictionary
+                .and_then(|dict| dict.valueForKey(&pid_key))
+                .and_then(|pid| pid.downcast::<NSNumber>().ok())
+                .map(|pid| pid.intValue() as u32);
+
+            match active_app_pid {
+                Some(pid) => pid,
+                None => return Ok(false),
+            }
+        };
+
+        Ok(windows.par_iter().any(|window_id| {
+            let window = { xcap::ImplWindow::new(*window_id) };
+
+            if window.pid().unwrap_or_default() != focused_app_id {
+                return false;
+            }
+
+            let cf_dict = match window.window_cf_dictionary() {
+                Ok(cf_dict) => cf_dict,
+                Err(_) => return false,
+            };
+
+            let cg_rect = match xcap::ImplWindow::cg_rect_by_cf_dictionary(cf_dict.as_ref()) {
+                Ok(window_rect) => window_rect,
+                Err(_) => return false,
+            };
+
+            let min_x = cg_rect.origin.x as i32;
+            let min_y = cg_rect.origin.y as i32;
+            let max_x = min_x + cg_rect.size.width as i32;
+            let max_y = min_y + cg_rect.size.height as i32;
+
+            monitor_list.iter().any(|monitor| {
+                (monitor.rect.min_x as f32 / monitor.monitor_scale_factor as f32) as i32 == min_x
+                    && (monitor.rect.min_y as f32 / monitor.monitor_scale_factor as f32) as i32
+                        == min_y
+                    && (monitor.rect.max_x as f32 / monitor.monitor_scale_factor as f32) as i32
+                        == max_x
+                    && (monitor.rect.max_y as f32 / monitor.monitor_scale_factor as f32) as i32
+                        == max_y
+            })
+        }))
+    }
+}

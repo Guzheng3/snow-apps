@@ -6704,6 +6704,8 @@ dependencies = [
  "log",
  "objc2 0.6.3",
  "objc2-app-kit",
+ "objc2-foundation 0.3.2",
+ "rayon",
  "serde",
  "snow-shot-app-os",
  "snow-shot-app-services",
@@ -6714,6 +6716,7 @@ dependencies = [
  "tauri-plugin-clipboard-manager",
  "tokio",
  "windows 0.61.3",
+ "xcap",
 ]
 
 [[package]]

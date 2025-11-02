@@ -18,6 +18,7 @@ import { FormattedMessage } from "react-intl";
 import {
 	createFixedContentWindow,
 	createFullScreenDrawWindow,
+	hasFocusedFullScreenWindow,
 } from "@/commands/core";
 import { getCaptureState } from "@/commands/global_state";
 import { IconLabel } from "@/components/iconLable";
@@ -326,8 +327,16 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
 								return false;
 							}
 
-							await register(value, (event) => {
+							await register(value, async (event) => {
 								if (event.state !== "Released") {
+									return;
+								}
+
+								if (
+									getAppSettings()[AppSettingsGroup.FunctionGlobalShortcut]
+										.disableOnFocusedFullScreenWindow &&
+									(await hasFocusedFullScreenWindow())
+								) {
 									return;
 								}
 

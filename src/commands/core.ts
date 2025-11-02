@@ -239,3 +239,11 @@ export const writeImagePixelsToClipboardWithSharedBuffer = async (
 	);
 	return result;
 };
+
+/**
+ * 是否有全屏窗口被聚焦
+ */
+export const hasFocusedFullScreenWindow = async () => {
+	const result = await invoke<boolean>("has_focused_full_screen_window");
+	return result;
+};
