@@ -1102,7 +1102,6 @@ pub async fn has_focused_full_screen_window() -> Result<bool, String> {
     #[cfg(target_os = "macos")]
     {
         use objc2_app_kit::NSWorkspace;
-        use objc2_foundation::NSObjectNSKeyValueCoding;
         use objc2_foundation::{NSNumber, NSString};
         use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
@@ -1147,7 +1146,11 @@ pub async fn has_focused_full_screen_window() -> Result<bool, String> {
 
             let workspace = NSWorkspace::sharedWorkspace();
 
-            let active_app_dictionary = workspace.frontmostApplication();
+            // activeApplication is deprecated, but the alternative, frontmostApplication,
+            // returns the application in focus when the process started while activeApplication
+            // returns a `NSDictionary` of application currently in focus, in real-time
+            #[allow(deprecated)]
+            let active_app_dictionary = workspace.activeApplication();
 
             let active_app_pid = active_app_dictionary
                 .and_then(|dict| dict.valueForKey(&pid_key))
@@ -1183,10 +1186,13 @@ pub async fn has_focused_full_screen_window() -> Result<bool, String> {
             let max_y = min_y + cg_rect.size.height as i32;
 
             monitor_list.iter().any(|monitor| {
-                (monitor.rect.min_x as f32 / monitor.scale_factor as f32) as i32 == min_x
-                    && (monitor.rect.min_y as f32 / monitor.scale_factor as f32) as i32 == min_y
-                    && (monitor.rect.max_x as f32 / monitor.scale_factor as f32) as i32 == max_x
-                    && (monitor.rect.max_y as f32 / monitor.scale_factor as f32) as i32 == max_y
+                (monitor.rect.min_x as f32 / monitor.monitor_scale_factor as f32) as i32 == min_x
+                    && (monitor.rect.min_y as f32 / monitor.monitor_scale_factor as f32) as i32
+                        == min_y
+                    && (monitor.rect.max_x as f32 / monitor.monitor_scale_factor as f32) as i32
+                        == max_x
+                    && (monitor.rect.max_y as f32 / monitor.monitor_scale_factor as f32) as i32
+                        == max_y
             })
         }))
     }
