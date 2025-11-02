@@ -1,6 +1,5 @@
 use enigo::{Axis, Mouse};
 use futures::stream::StreamExt;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::Serialize;
 use std::{
     path::PathBuf,

@@ -1347,6 +1347,19 @@ const AppSettingsContextProviderCore: React.FC<{
 							: (prevSettings?.hotLoadPageCount ??
 								defaultAppSettingsData[group].hotLoadPageCount),
 				};
+			} else if (group === AppSettingsGroup.FunctionGlobalShortcut) {
+				newSettings = newSettings as AppSettingsData[typeof group];
+				const prevSettings = appSettingsRef.current[group] as
+					| AppSettingsData[typeof group]
+					| undefined;
+
+				settings = {
+					disableOnFocusedFullScreenWindow:
+						typeof newSettings?.disableOnFocusedFullScreenWindow === "boolean"
+							? newSettings.disableOnFocusedFullScreenWindow
+							: (prevSettings?.disableOnFocusedFullScreenWindow ??
+								defaultAppSettingsData[group].disableOnFocusedFullScreenWindow),
+				};
 			} else {
 				return defaultAppSettingsData[group];
 			}

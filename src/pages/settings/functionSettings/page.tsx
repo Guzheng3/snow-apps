@@ -107,6 +107,8 @@ export const FunctionSettingsPage = () => {
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionVideoRecord]>();
 	const [functionOcrForm] =
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionOcr]>();
+	const [functionGlobalShortcutForm] =
+		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionGlobalShortcut]>();
 
 	const [appSettingsLoading, setAppSettingsLoading] = useState(true);
 
@@ -227,6 +229,16 @@ export const FunctionSettingsPage = () => {
 						settings[AppSettingsGroup.FunctionOcr],
 					);
 				}
+
+				if (
+					preSettings === undefined ||
+					preSettings[AppSettingsGroup.FunctionGlobalShortcut] !==
+						settings[AppSettingsGroup.FunctionGlobalShortcut]
+				) {
+					functionGlobalShortcutForm.setFieldsValue(
+						settings[AppSettingsGroup.FunctionGlobalShortcut],
+					);
+				}
 			},
 			[
 				translationForm,
@@ -239,6 +251,7 @@ export const FunctionSettingsPage = () => {
 				videoRecordForm,
 				trayIconForm,
 				functionOcrForm,
+				functionGlobalShortcutForm,
 			],
 		),
 		true,
@@ -2276,6 +2289,53 @@ export const FunctionSettingsPage = () => {
 									<FormattedMessage id="settings.functionSettings.trayIconSettings.iconClickAction" />
 								}
 								options={trayIconClickActionOptions}
+							/>
+						</Col>
+					</Row>
+				</ProForm>
+			</Spin>
+
+			<Divider />
+
+			<GroupTitle
+				id="globalShortcutSettings"
+				extra={
+					<ResetSettingsButton
+						title={
+							<FormattedMessage id="settings.functionSettings.globalShortcutSettings" />
+						}
+						appSettingsGroup={AppSettingsGroup.FunctionGlobalShortcut}
+					/>
+				}
+			>
+				<FormattedMessage id="settings.functionSettings.globalShortcutSettings" />
+			</GroupTitle>
+
+			<Spin spinning={appSettingsLoading}>
+				<ProForm
+					form={functionGlobalShortcutForm}
+					onValuesChange={(_, values) => {
+						updateAppSettings(
+							AppSettingsGroup.FunctionGlobalShortcut,
+							values,
+							true,
+							true,
+							false,
+							true,
+							false,
+						);
+					}}
+					submitter={false}
+					layout="horizontal"
+				>
+					<Row gutter={token.marginLG}>
+						<Col span={12}>
+							<ProFormSwitch
+								name="disableOnFocusedFullScreenWindow"
+								layout="horizontal"
+								label={
+									<FormattedMessage id="settings.functionSettings.globalShortcutSettings.disableOnFocusedFullScreenWindow" />
+								}
 							/>
 						</Col>
 					</Row>

@@ -324,4 +324,7 @@ Priority order (highest to lowest):
 		/// 热加载页面数量
 		hotLoadPageCount: 2,
 	},
+	[AppSettingsGroup.FunctionGlobalShortcut]: {
+		disableOnFocusedFullScreenWindow: false,
+	},
 };
