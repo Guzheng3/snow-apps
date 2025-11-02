@@ -478,7 +478,7 @@ export const FullScreenDrawToolbar: React.FC<{
 						icon={
 							<ResetCanvasIcon
 								style={{
-									fontSize: "1em",
+									fontSize: "1.08em",
 								}}
 							/>
 						}
