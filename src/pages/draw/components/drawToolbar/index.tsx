@@ -997,7 +997,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 									componentKey={DrawToolbarKeyEventKey.SaveToCloudTool}
 									icon={<SaveToCloudIcon style={{ fontSize: "1.08em" }} />}
 									drawState={DrawState.SaveToCloud}
-									disable={disableNormalScreenshotTool}
 									onClick={() => {
 										onSaveToCloud();
 									}}

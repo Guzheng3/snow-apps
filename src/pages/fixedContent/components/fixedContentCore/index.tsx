@@ -53,7 +53,10 @@ import { useStateRef } from "@/hooks/useStateRef";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import { useTempInfo } from "@/hooks/useTempInfo";
 import { useTextScaleFactor } from "@/hooks/useTextScaleFactor";
-import { copyToClipboard as copyToClipboardDrawAction } from "@/pages/draw/actions";
+import {
+	copyToClipboard as copyToClipboardDrawAction,
+	saveCanvasToCloud,
+} from "@/pages/draw/actions";
 import type { SelectRectParams } from "@/pages/draw/components/selectLayer";
 import {
 	type CaptureBoundingBoxInfo,
@@ -211,6 +214,9 @@ const FixedContentCoreInner: React.FC<{
 		AppSettingsPublisher,
 		useCallback((settings: AppSettingsData) => {
 			setFixedBorderColor(settings[AppSettingsGroup.FixedContent].borderColor);
+			setEnableSaveToCloud(
+				settings[AppSettingsGroup.FunctionScreenshot].saveToCloud,
+			);
 			setHotkeys(settings[AppSettingsGroup.CommonKeyEvent]);
 		}, []),
 	);
@@ -250,6 +256,7 @@ const FixedContentCoreInner: React.FC<{
 		y: 100,
 	});
 
+	const [enableSaveToCloud, setEnableSaveToCloud] = useState(false);
 	const [fixedContentType, setFixedContentType, fixedContentTypeRef] =
 		useStateRef<FixedContentType | undefined>(undefined);
 	const [showBorder, setShowBorder] = useState(true);
@@ -1616,6 +1623,28 @@ const FixedContentCoreInner: React.FC<{
 			rightClickMenuRef.current = undefined;
 		};
 	}, []);
+
+	const onSaveToCloud = useCallback(async () => {
+		const imageCanvas = await renderToCanvas();
+
+		if (!imageCanvas) {
+			return;
+		}
+
+		const hideLoading = message.loading(
+			<FormattedMessage id="draw.saveToCloud.loading" />,
+		);
+
+		const result = await saveCanvasToCloud(imageCanvas, getAppSettings());
+		if (typeof result === "object" && "error" in result) {
+			message.error(<FormattedMessage id="draw.saveToCloud.error" />);
+		} else {
+			writeTextToClipboard(result);
+		}
+
+		hideLoading();
+	}, [getAppSettings, message, renderToCanvas]);
+
 	const createRightClickMenu = useCallback(async (): Promise<
 		| {
 				mainMenu: Menu | undefined;
@@ -1842,6 +1871,15 @@ const FixedContentCoreInner: React.FC<{
 					enabled: !isThumbnail,
 					action: saveToFile,
 				},
+				...(enableSaveToCloud
+					? [
+							{
+								id: `${appWindow.label}-saveToCloudTool`,
+								text: intl.formatMessage({ id: "draw.saveToCloudTool" }),
+								action: onSaveToCloud,
+							},
+						]
+					: []),
 				isReadyStatus(PLUGIN_ID_RAPID_OCR) ||
 				getSelectTextMode(fixedContentType) !== "ocr"
 					? {
@@ -2044,6 +2082,8 @@ const FixedContentCoreInner: React.FC<{
 		switchVisionModelHtml,
 		switchVisionModelMarkdown,
 		enableVisionModelMarkdown,
+		enableSaveToCloud,
+		onSaveToCloud,
 	]);
 
 	const onWheel = useCallback(

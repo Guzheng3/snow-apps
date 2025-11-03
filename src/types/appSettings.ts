@@ -416,6 +416,8 @@ export type AppSettingsData = {
 		saveToCloud: boolean;
 		/** 云端链接格式 */
 		cloudSaveUrlFormat: CloudSaveUrlFormat;
+		/** 云端资源代理网址 */
+		cloudProxyUrl: string;
 		/** 云端保存协议 */
 		cloudSaveUrlType: CloudSaveUrlType;
 		/** S3 访问密钥 ID */
@@ -456,6 +458,8 @@ export type AppSettingsData = {
 		fullScreenFileNameFormat: string;
 		/** 视频录制文件名格式 */
 		videoRecordFileNameFormat: string;
+		/** 上传到云端文件名格式 */
+		uploadToCloudSaveUrlFormat: string;
 	};
 	[AppSettingsGroup.FunctionFixedContent]: {
 		/** 以鼠标为中心缩放 */

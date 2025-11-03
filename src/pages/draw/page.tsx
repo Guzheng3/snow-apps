@@ -30,6 +30,7 @@ import { listenKeyStart, listenKeyStop } from "@/commands/listenKey";
 import { captureAllMonitors, switchAlwaysOnTop } from "@/commands/screenshot";
 import {
 	scrollScreenshotClear,
+	scrollScreenshotGetImageData,
 	scrollScreenshotGetSize,
 	scrollScreenshotSaveToClipboard,
 	scrollScreenshotSaveToFile,
@@ -105,6 +106,7 @@ import {
 	fixedToScreen,
 	getCanvas,
 	handleOcrDetect,
+	saveCanvasToCloud,
 	saveToFile,
 } from "./actions";
 import {
@@ -943,64 +945,41 @@ const DrawPageCore: React.FC<{
 			return;
 		}
 
-		const imageCanvas = await getCanvas(
-			selectLayerActionRef.current.getSelectRectParams(),
-			imageLayerActionRef.current,
-			drawLayerActionRef.current,
-		);
+		let imageData: ArrayBuffer | HTMLCanvasElement | undefined;
+		if (getDrawState() === DrawState.ScrollScreenshot) {
+			imageData = await scrollScreenshotGetImageData(true);
+		} else {
+			imageData = await getCanvas(
+				selectLayerActionRef.current.getSelectRectParams(),
+				imageLayerActionRef.current,
+				drawLayerActionRef.current,
+			);
+		}
 
-		const imageBuffer = await new Promise<ArrayBuffer | undefined>(
-			(resolve) => {
-				imageCanvas?.toBlob(
-					async (blob) => {
-						resolve(await blob?.arrayBuffer());
-					},
-					"image/png",
-					1,
-				);
-			},
-		);
+		console.log("imageData", imageData);
 
-		if (!imageBuffer) {
+		if (!imageData) {
 			return;
 		}
 
 		const hideLoading = message.loading(
 			<FormattedMessage id="draw.saveToCloud.loading" />,
 		);
+
 		try {
-			let result = await uploadToS3(
-				getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3Endpoint,
-				getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3Region,
-				getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3AccessKeyId,
-				getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3SecretAccessKey,
-				getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3BucketName,
-				getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3PathPrefix,
-				getAppSettings()[AppSettingsGroup.FunctionScreenshot].s3ForcePathStyle,
-				imageBuffer,
-				generateImageFileName(
-					getAppSettings()[AppSettingsGroup.FunctionOutput]
-						.manualSaveFileNameFormat,
-				),
-				"image/png",
-			);
-
-			if (
-				getAppSettings()[AppSettingsGroup.FunctionScreenshot]
-					.cloudSaveUrlFormat === CloudSaveUrlFormat.Markdown
-			) {
-				result = `![${basename(result, ".png")}](${result})`;
+			const result = await saveCanvasToCloud(imageData, getAppSettings());
+			if (typeof result === "object" && "error" in result) {
+				message.error(<FormattedMessage id="draw.saveToCloud.error" />);
+			} else {
+				writeTextToClipboard(result);
+				finishCapture();
 			}
-
-			await writeTextToClipboard(result);
-			finishCapture();
 		} catch (error) {
 			appError("[DrawPageCore] S3 upload error", error);
-			message.error(<FormattedMessage id="draw.saveToCloud.error" />);
 		}
 
 		hideLoading();
-	}, [finishCapture, getAppSettings, message]);
+	}, [finishCapture, getAppSettings, message, getDrawState]);
 
 	const onFixed = useCallback(async () => {
 		if (getDrawState() === DrawState.ScrollScreenshot) {

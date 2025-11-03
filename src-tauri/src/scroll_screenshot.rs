@@ -145,11 +145,13 @@ pub async fn scroll_screenshot_get_image_data(
     scroll_screenshot_service: tauri::State<'_, Mutex<ScrollScreenshotService>>,
     webview_shared_buffer_state: tauri::State<'_, WebViewSharedBufferState>,
     webview: tauri::Webview,
+    force_to_png: Option<bool>,
 ) -> Result<Response, String> {
     snow_shot_tauri_commands_scroll_screenshot::scroll_screenshot_get_image_data(
         scroll_screenshot_service,
         webview_shared_buffer_state,
         webview,
+        force_to_png.unwrap_or(false),
     )
     .await
 }

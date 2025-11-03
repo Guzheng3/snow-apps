@@ -282,6 +282,7 @@ pub async fn scroll_screenshot_get_image_data(
         WebViewSharedBufferState,
     >,
     #[allow(unused_variables)] webview: tauri::Webview,
+    force_to_png: bool,
 ) -> Result<Response, String> {
     let mut scroll_screenshot_service = scroll_screenshot_service.lock().await;
 
@@ -298,7 +299,7 @@ pub async fn scroll_screenshot_get_image_data(
     #[cfg(target_os = "windows")]
     {
         // 判断是否支持通过 SharedBuffer 传递
-        if *webview_shared_buffer_state.enable.read().await {
+        if !force_to_png && *webview_shared_buffer_state.enable.read().await {
             let mut extra_data = vec![0; 8];
             unsafe {
                 let image_width = image_data.width();
@@ -331,7 +332,11 @@ pub async fn scroll_screenshot_get_image_data(
 
     match image_data.write_with_encoder(PngEncoder::new_with_quality(
         &mut buf,
-        CompressionType::Fast,
+        if force_to_png {
+            CompressionType::Default
+        } else {
+            CompressionType::Fast
+        },
         png::FilterType::Paeth,
     )) {
         Ok(_) => (),

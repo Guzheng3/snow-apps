@@ -188,12 +188,14 @@ export const scrollScreenshotClear = async () => {
 	return result;
 };
 
-export const scrollScreenshotGetImageData = async (): Promise<
-	ArrayBuffer | undefined
-> => {
+export const scrollScreenshotGetImageData = async (
+	forceToPng: boolean = false,
+): Promise<ArrayBuffer | undefined> => {
 	let result: ArrayBuffer | undefined;
 	try {
-		result = await invoke<ArrayBuffer>("scroll_screenshot_get_image_data");
+		result = await invoke<ArrayBuffer>("scroll_screenshot_get_image_data", {
+			forceToPng,
+		});
 	} catch (error) {
 		appError("[scrollScreenshotGetImageData] error", formatErrorDetails(error));
 		return undefined;

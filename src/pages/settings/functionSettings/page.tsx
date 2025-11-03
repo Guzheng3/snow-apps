@@ -945,6 +945,22 @@ export const FunctionSettingsPage = () => {
 										/>
 									</Col>
 									<Col span={12}>
+										<ProFormText
+											name="cloudProxyUrl"
+											layout="horizontal"
+											label={
+												<IconLabel
+													label={
+														<FormattedMessage id="settings.functionSettings.screenshotSettings.cloudProxyUrl" />
+													}
+													tooltipTitle={
+														<FormattedMessage id="settings.functionSettings.screenshotSettings.cloudProxyUrl.tip" />
+													}
+												/>
+											}
+										/>
+									</Col>
+									<Col span={12}>
 										<ProFormSelect
 											name="cloudSaveUrlType"
 											layout="horizontal"
@@ -2548,6 +2564,38 @@ export const FunctionSettingsPage = () => {
 											readonly
 											label={
 												<FormattedMessage id="settings.functionSettings.outputSettings.fullScreenFileNameFormatPreview" />
+											}
+											fieldProps={{
+												value: text,
+											}}
+										/>
+									</Col>
+								);
+							}}
+						</ProFormDependency>
+
+						<Col span={24}>
+							<ProFormText
+								name="uploadToCloudSaveUrlFormat"
+								layout="horizontal"
+								label={
+									<FormattedMessage id="settings.functionSettings.outputSettings.uploadToCloudSaveUrlFormat" />
+								}
+							/>
+						</Col>
+
+						<ProFormDependency<{ uploadToCloudSaveUrlFormat: string }>
+							name={["uploadToCloudSaveUrlFormat"]}
+						>
+							{({ uploadToCloudSaveUrlFormat }) => {
+								const text = generateImageFileName(uploadToCloudSaveUrlFormat);
+								return (
+									<Col span={24}>
+										<ProFormText
+											layout="horizontal"
+											readonly
+											label={
+												<FormattedMessage id="settings.functionSettings.outputSettings.uploadToCloudSaveUrlFormatPreview" />
 											}
 											fieldProps={{
 												value: text,

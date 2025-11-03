@@ -241,6 +241,7 @@ Priority order (highest to lowest):
 		/** 云端保存协议 */
 		cloudSaveUrlType: CloudSaveUrlType.S3,
 		cloudSaveUrlFormat: CloudSaveUrlFormat.Origin,
+		cloudProxyUrl: "",
 		s3AccessKeyId: "",
 		s3SecretAccessKey: "",
 		s3Region: "",
@@ -276,6 +277,7 @@ Priority order (highest to lowest):
 		focusedWindowFileNameFormat: `${FOCUS_WINDOW_APP_NAME_ENV_VARIABLE}/SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
 		fullScreenFileNameFormat: `SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
 		videoRecordFileNameFormat: `SnowShot_Video_{{YYYY-MM-DD_HH-mm-ss}}`,
+		uploadToCloudSaveUrlFormat: `SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
 	},
 	[AppSettingsGroup.FunctionFullScreenDraw]: {
 		defaultTool: DrawState.Select,

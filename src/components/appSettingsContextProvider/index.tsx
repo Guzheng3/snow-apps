@@ -923,6 +923,11 @@ const AppSettingsContextProviderCore: React.FC<{
 							? (newSettings.cloudSaveUrlFormat as CloudSaveUrlFormat)
 							: (prevSettings?.cloudSaveUrlFormat ??
 								defaultAppSettingsData[group].cloudSaveUrlFormat),
+					cloudProxyUrl:
+						typeof newSettings?.cloudProxyUrl === "string"
+							? newSettings.cloudProxyUrl
+							: (prevSettings?.cloudProxyUrl ??
+								defaultAppSettingsData[group].cloudProxyUrl),
 					autoSaveOnCopy:
 						typeof newSettings?.autoSaveOnCopy === "boolean"
 							? newSettings.autoSaveOnCopy
@@ -1050,6 +1055,11 @@ const AppSettingsContextProviderCore: React.FC<{
 							? newSettings.videoRecordFileNameFormat
 							: (prevSettings?.videoRecordFileNameFormat ??
 								defaultAppSettingsData[group].videoRecordFileNameFormat),
+					uploadToCloudSaveUrlFormat:
+						typeof newSettings?.uploadToCloudSaveUrlFormat === "string"
+							? newSettings.uploadToCloudSaveUrlFormat
+							: (prevSettings?.uploadToCloudSaveUrlFormat ??
+								defaultAppSettingsData[group].uploadToCloudSaveUrlFormat),
 				};
 			} else if (group === AppSettingsGroup.FunctionFullScreenDraw) {
 				newSettings = newSettings as AppSettingsData[typeof group];

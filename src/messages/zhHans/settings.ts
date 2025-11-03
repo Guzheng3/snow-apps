@@ -227,6 +227,10 @@ export const settings = {
 		"工具栏新增保存到云端按钮，快速保存到云端并复制结果到剪贴板",
 	"settings.functionSettings.screenshotSettings.cloudSaveUrl.type":
 		"云端保存协议",
+	"settings.functionSettings.screenshotSettings.cloudProxyUrl":
+		"云端资源代理地址",
+	"settings.functionSettings.screenshotSettings.cloudProxyUrl.tip":
+		"填写后，将使用该地址替换实际云端资源链接中的地址",
 	"settings.functionSettings.screenshotSettings.cloudSaveUrl.type.s3": "S3",
 	"settings.functionSettings.screenshotSettings.cloudSaveUrl.s3AccessKeyId":
 		"Access key ID",
@@ -280,6 +284,10 @@ export const settings = {
 		"截取全屏文件名格式",
 	"settings.functionSettings.outputSettings.focusedWindowFileNameFormatPreview":
 		"截取当前具有焦点的窗口文件名预览",
+	"settings.functionSettings.outputSettings.uploadToCloudSaveUrlFormat":
+		"上传到云端文件名格式",
+	"settings.functionSettings.outputSettings.uploadToCloudSaveUrlFormatPreview":
+		"上传到云端文件名预览",
 	"settings.functionSettings.outputSettings.fullScreenFileNameFormatPreview":
 		"截取全屏文件名预览",
 	"settings.functionSettings.outputSettings.videoRecordFileNameFormat":
