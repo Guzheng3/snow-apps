@@ -64,6 +64,7 @@ import {
 	AppSettingsGroup,
 	CloudSaveUrlFormat,
 	CloudSaveUrlType,
+	DoubleClickAction,
 	GifFormat,
 	KeyDisplayDirection,
 	OcrDetectAfterAction,
@@ -687,6 +688,29 @@ export const FunctionSettingsPage = () => {
 		});
 	}, [getVisionModelList, intl]);
 
+	const doubleClickActionOptions = useMemo(() => {
+		return [
+			{
+				label: intl.formatMessage({ id: "draw.doubleClickAction.copy" }),
+				value: DoubleClickAction.Copy,
+			},
+			{
+				label: intl.formatMessage({ id: "draw.doubleClickAction.save" }),
+				value: DoubleClickAction.Save,
+			},
+			{
+				label: intl.formatMessage({
+					id: "draw.doubleClickAction.fixedToScreen",
+				}),
+				value: DoubleClickAction.FixedToScreen,
+			},
+			{
+				label: intl.formatMessage({ id: "draw.doubleClickAction.none" }),
+				value: DoubleClickAction.None,
+			},
+		];
+	}, [intl]);
+
 	return (
 		<ContentWrap>
 			<GroupTitle
@@ -778,12 +802,15 @@ export const FunctionSettingsPage = () => {
 
 					<Row gutter={token.marginLG}>
 						<Col span={12}>
-							<ProFormSwitch
-								name="doubleClickCopyToClipboard"
+							<ProFormSelect
+								name="doubleClickAction"
 								layout="horizontal"
 								label={
-									<FormattedMessage id="draw.doubleClickCopyToClipboard" />
+									<IconLabel
+										label={<FormattedMessage id="draw.doubleClickAction" />}
+									/>
 								}
+								options={doubleClickActionOptions}
 							/>
 						</Col>
 					</Row>

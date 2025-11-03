@@ -57,7 +57,7 @@ import {
 import { sendErrorMessage } from "@/functions/sendMessage";
 import { withStatePublisher } from "@/hooks/useStatePublisher";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
-import { AppSettingsGroup } from "@/types/appSettings";
+import { AppSettingsGroup, DoubleClickAction } from "@/types/appSettings";
 import {
 	type ElementRect,
 	type ImageBuffer,
@@ -1512,10 +1512,9 @@ const DrawPageCore: React.FC<{
 	}, [unsetLatestExcalidrawNewElement]);
 	const onDoubleClick = useCallback<React.MouseEventHandler<HTMLDivElement>>(
 		(e) => {
-			if (
-				!getAppSettings()[AppSettingsGroup.FunctionScreenshot]
-					.doubleClickCopyToClipboard
-			) {
+			const doubleClickAction =
+				getAppSettings()[AppSettingsGroup.FunctionScreenshot].doubleClickAction;
+			if (doubleClickAction === DoubleClickAction.None) {
 				return;
 			}
 
@@ -1530,10 +1529,22 @@ const DrawPageCore: React.FC<{
 						"editingTextElement" in latestExcalidrawNewElementRef.current)
 				)
 			) {
-				onCopyToClipboard();
+				switch (doubleClickAction) {
+					case DoubleClickAction.Copy:
+						onCopyToClipboard();
+						break;
+					case DoubleClickAction.Save:
+						onSave();
+						break;
+					case DoubleClickAction.FixedToScreen:
+						onFixed();
+						break;
+					default:
+						break;
+				}
 			}
 		},
-		[getAppSettings, onCopyToClipboard],
+		[getAppSettings, onCopyToClipboard, onSave, onFixed],
 	);
 
 	const onInitCanvasReady = useCallback(async () => {

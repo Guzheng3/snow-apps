@@ -179,6 +179,11 @@ export const draw = {
 	"draw.saveToCloud.loading": "保存到云端中",
 	"draw.saveToCloud.error": "保存到云端失败",
 	"draw.doubleClickCopyToClipboard": "双击复制到剪贴板",
+	"draw.doubleClickAction": "双击后执行",
+	"draw.doubleClickAction.copy": "复制到剪贴板",
+	"draw.doubleClickAction.save": "保存为文件",
+	"draw.doubleClickAction.fixedToScreen": "固定到屏幕",
+	"draw.doubleClickAction.none": "无",
 	"draw.copyImageFileToClipboard": "复制图片文件到剪贴板",
 	"draw.copyImageFileToClipboard.tip":
 		"复制截图时先将图片写入到文件然后复制文件路径到剪贴板，开启该选项后默认启用“复制后自动保存”。目前仅支持保存普通截图",

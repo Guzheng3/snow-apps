@@ -43,6 +43,7 @@ import {
 	AppSettingsTheme,
 	type CloudSaveUrlFormat,
 	CloudSaveUrlType,
+	type DoubleClickAction,
 	ExtraToolList,
 	type HdrColorAlgorithm,
 	type HistoryValidDuration,
@@ -936,11 +937,11 @@ const AppSettingsContextProviderCore: React.FC<{
 						typeof newSettings?.fastSave === "boolean"
 							? newSettings.fastSave
 							: (prevSettings?.fastSave ?? false),
-					doubleClickCopyToClipboard:
-						typeof newSettings?.doubleClickCopyToClipboard === "boolean"
-							? newSettings.doubleClickCopyToClipboard
-							: (prevSettings?.doubleClickCopyToClipboard ??
-								defaultAppSettingsData[group].doubleClickCopyToClipboard),
+					doubleClickAction:
+						typeof newSettings?.doubleClickAction === "string"
+							? (newSettings.doubleClickAction as DoubleClickAction)
+							: (prevSettings?.doubleClickAction ??
+								defaultAppSettingsData[group].doubleClickAction),
 					copyImageFileToClipboard:
 						typeof newSettings?.copyImageFileToClipboard === "boolean"
 							? newSettings.copyImageFileToClipboard

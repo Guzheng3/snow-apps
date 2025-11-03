@@ -157,6 +157,13 @@ export enum CloudSaveUrlFormat {
 	Markdown = "markdown",
 }
 
+export enum DoubleClickAction {
+	Copy = "copy",
+	Save = "save",
+	FixedToScreen = "fixedToScreen",
+	None = "none",
+}
+
 export enum ExtraToolList {
 	None = 0,
 	ScanQrcode = 1,
@@ -408,8 +415,8 @@ export type AppSettingsData = {
 		focusedWindowCopyToClipboard: boolean;
 		/** 截取全屏时复制到剪贴板 */
 		fullScreenCopyToClipboard: boolean;
-		/** 双击复制到剪贴板 */
-		doubleClickCopyToClipboard: boolean;
+		/** 双击后执行 */
+		doubleClickAction: DoubleClickAction;
 		/** 复制图片文件到剪贴板 */
 		copyImageFileToClipboard: boolean;
 		/** 保存到云端 */
