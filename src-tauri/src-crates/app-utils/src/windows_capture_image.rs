@@ -3,7 +3,6 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use snow_shot_app_shared::ElementRect;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Sender, channel};
-use std::time::Duration;
 use windows::Win32::Foundation::HWND;
 use windows_capture::capture::{Context, GraphicsCaptureApiError, GraphicsCaptureApiHandler};
 use windows_capture::frame::Frame;

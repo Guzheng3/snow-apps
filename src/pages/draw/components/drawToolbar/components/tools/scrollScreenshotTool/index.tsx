@@ -431,7 +431,14 @@ export const ScrollScreenshot: React.FC<{
 		);
 	}, [captureImageCore, captureImageDebounce]);
 
-	const [showTip, setShowTip] = useState(false);
+	const [showTip, _setShowTip] = useState(false);
+	const touchAreaTipRef = useRef<HTMLDivElement>(null);
+	const setShowTip = useCallback((show: boolean) => {
+		_setShowTip(show);
+		if (touchAreaTipRef.current) {
+			touchAreaTipRef.current.style.opacity = show ? "1" : "0";
+		}
+	}, []);
 	const init = useCallback(
 		async (rect: ElementRect, direction: ScrollDirection) => {
 			const scale = 1 / window.devicePixelRatio;
@@ -473,7 +480,14 @@ export const ScrollScreenshot: React.FC<{
 
 			enableScrollThroughRef.current = true;
 		},
-		[setPositionRect, getAppSettings, scrollDirectionRef, message, intl],
+		[
+			setPositionRect,
+			getAppSettings,
+			scrollDirectionRef,
+			message,
+			intl,
+			setShowTip,
+		],
 	);
 
 	const pendingScrollThroughRef = useRef<boolean>(false);
@@ -498,10 +512,19 @@ export const ScrollScreenshot: React.FC<{
 				return;
 			}
 
+			const tipVisible = touchAreaTipRef.current?.style.opacity === "1";
+
 			setShowTip(false);
-			captureImage(
-				event.deltaY > 0 ? ScrollImageList.Bottom : ScrollImageList.Top,
-			);
+			// 等待 1 帧，确保触摸区域提示隐藏
+			if (tipVisible) {
+				setTimeout(() => {
+					setShowTip(true);
+				}, 17);
+			} else {
+				captureImage(
+					event.deltaY > 0 ? ScrollImageList.Bottom : ScrollImageList.Top,
+				);
+			}
 
 			if (!pendingScrollThroughRef.current) {
 				if (
@@ -525,7 +548,13 @@ export const ScrollScreenshot: React.FC<{
 					});
 			}
 		},
-		[captureImage, enableCursorEventsDebounce, message, scrollDirectionRef],
+		[
+			captureImage,
+			enableCursorEventsDebounce,
+			message,
+			scrollDirectionRef,
+			setShowTip,
+		],
 	);
 
 	const tryEnableAutoScrollThroughCore = useCallback(() => {
@@ -603,7 +632,7 @@ export const ScrollScreenshot: React.FC<{
 		enableIgnoreCursorEventsRef.current = true;
 		await clickThrough();
 		enableIgnoreCursorEventsRef.current = false;
-	}, [stopAutoScrollThrough, tryEnableAutoScrollThroughCore]);
+	}, [stopAutoScrollThrough, tryEnableAutoScrollThroughCore, setShowTip]);
 
 	const startCapture = useCallback(async () => {
 		enableScrollThroughRef.current = false;
@@ -742,13 +771,11 @@ export const ScrollScreenshot: React.FC<{
 					)}
 				</div>
 
-				{showTip && (
-					<div className="touch-area-tip-container">
-						<div className="touch-area-tip">
-							<FormattedMessage id="draw.scrollScreenshot.tip" />
-						</div>
+				<div className="touch-area-tip-container" ref={touchAreaTipRef}>
+					<div className="touch-area-tip">
+						<FormattedMessage id="draw.scrollScreenshot.tip" />
 					</div>
-				)}
+				</div>
 			</div>
 
 			<div

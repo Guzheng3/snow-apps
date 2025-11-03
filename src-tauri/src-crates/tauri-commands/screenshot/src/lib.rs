@@ -528,14 +528,6 @@ pub async fn get_window_elements(
                 max_y: y + height,
             };
 
-            println!(
-                "window_title: {}, width: {}, height: {}, app_name: {}",
-                window_title,
-                width,
-                height,
-                window.app_name().unwrap_or_default()
-            );
-
             Some(WindowElement {
                 element_rect: window_rect.scale(window_size_scale),
                 window_id,
