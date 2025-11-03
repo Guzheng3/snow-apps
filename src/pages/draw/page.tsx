@@ -1,6 +1,5 @@
 "use client";
 
-import { basename } from "node:path";
 import type { NonDeletedExcalidrawElement } from "@mg-chao/excalidraw/element/types";
 import {
 	type Window as AppWindow,
@@ -25,7 +24,6 @@ import {
 	setCurrentWindowAlwaysOnTop,
 } from "@/commands/core";
 import { setCaptureState } from "@/commands/global_state";
-import { uploadToS3 } from "@/commands/httpServices";
 import { listenKeyStart, listenKeyStop } from "@/commands/listenKey";
 import { captureAllMonitors, switchAlwaysOnTop } from "@/commands/screenshot";
 import {
@@ -59,7 +57,7 @@ import {
 import { sendErrorMessage } from "@/functions/sendMessage";
 import { withStatePublisher } from "@/hooks/useStatePublisher";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
-import { AppSettingsGroup, CloudSaveUrlFormat } from "@/types/appSettings";
+import { AppSettingsGroup } from "@/types/appSettings";
 import {
 	type ElementRect,
 	type ImageBuffer,
@@ -78,7 +76,6 @@ import {
 	writeTextToClipboard,
 } from "@/utils/clipboard";
 import {
-	generateImageFileName,
 	getImageFormat,
 	getImagePathFromSettings,
 	showImageDialog,

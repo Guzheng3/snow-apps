@@ -10,10 +10,7 @@ import {
 import { DRAW_LAYER_BLUR_CONTAINER_KEY } from "@/components/imageLayer";
 import type { BlurSpriteProps } from "@/components/imageLayer/baseLayerRenderActions";
 import { useCallbackAsyncRender } from "@/hooks/useCallbackAsyncRender";
-import {
-	useCallbackRender,
-	useCallbackRenderSlow,
-} from "@/hooks/useCallbackRender";
+import { useCallbackRenderSlow } from "@/hooks/useCallbackRender";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import {
 	DrawEvent,
