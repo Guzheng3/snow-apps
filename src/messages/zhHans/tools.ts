@@ -97,6 +97,7 @@ export const tools = {
 	"tools.captureHistory.source.copy": "复制",
 	"tools.captureHistory.source.save": "保存",
 	"tools.captureHistory.source.fixed": "固定到屏幕",
+	"tools.captureHistory.source.detectText": "文本识别",
 	"tools.captureHistory.source.fullScreen": "截取全屏",
 	"tools.captureHistory.source.unknown": "未知",
 	"tools.chat.noSelectedModel": "请先选择模型",

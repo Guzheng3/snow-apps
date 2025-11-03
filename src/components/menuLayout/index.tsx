@@ -316,6 +316,12 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 								}),
 							},
 							{
+								key: "ocrSettings",
+								label: intl.formatMessage({
+									id: "settings.functionSettings.ocrSettings",
+								}),
+							},
+							{
 								key: "translationSettings",
 								label: intl.formatMessage({
 									id: "settings.functionSettings.translationSettings",
@@ -343,6 +349,12 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 								key: "trayIconSettings",
 								label: intl.formatMessage({
 									id: "settings.functionSettings.trayIconSettings",
+								}),
+							},
+							{
+								key: "globalShortcutSettings",
+								label: intl.formatMessage({
+									id: "settings.functionSettings.globalShortcutSettings",
 								}),
 							},
 							{
