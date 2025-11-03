@@ -348,7 +348,7 @@ pub fn capture_monitor_image(
                 CursorCaptureSettings::WithoutCursor,
                 draw_border_setting,
                 SecondaryWindowSettings::Default,
-                MinimumUpdateIntervalSettings::Custom(Duration::from_millis(0)),
+                MinimumUpdateIntervalSettings::Default,
                 DirtyRegionSettings::Default,
                 windows_capture::settings::ColorFormat::Rgba16F,
                 CaptureFlags {
