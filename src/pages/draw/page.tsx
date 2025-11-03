@@ -23,7 +23,7 @@ import {
 	getMonitorsBoundingBox,
 	setCurrentWindowAlwaysOnTop,
 } from "@/commands/core";
-import { setCaptureState } from "@/commands/global_state";
+import { setCaptureState } from "@/commands/globalSate";
 import { listenKeyStart, listenKeyStop } from "@/commands/listenKey";
 import { captureAllMonitors, switchAlwaysOnTop } from "@/commands/screenshot";
 import {

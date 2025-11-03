@@ -31,7 +31,7 @@ use snow_shot_app_services::ocr_service::OcrService;
 use snow_shot_app_services::resize_window_service;
 use snow_shot_app_services::video_record_service;
 use snow_shot_app_shared::EnigoManager;
-use snow_shot_global_state::{CaptureState, WebViewSharedBufferState};
+use snow_shot_global_state::{CaptureState, ReadClipboardState, WebViewSharedBufferState};
 use snow_shot_plugin_service::plugin_service;
 
 #[cfg(feature = "dhat-heap")]
@@ -76,6 +76,8 @@ pub fn run() {
     let video_record_window_label = Mutex::new(Option::<VideoRecordWindowLabels>::None);
 
     let webview_shared_buffer_state = WebViewSharedBufferState::new(false);
+
+    let read_clipboard_state = Mutex::new(ReadClipboardState { reading: false });
 
     use tauri_plugin_log::{Target, TargetKind};
 
@@ -215,6 +217,7 @@ pub fn run() {
         .manage(hot_load_page_service)
         .manage(video_record_window_label)
         .manage(capture_state)
+        .manage(read_clipboard_state)
         .invoke_handler(tauri::generate_handler![
             screenshot::capture_current_monitor,
             screenshot::capture_all_monitors,
@@ -313,6 +316,8 @@ pub fn run() {
             hot_load_page::hot_load_page_add_page,
             global_state::set_capture_state,
             global_state::get_capture_state,
+            global_state::set_read_clipboard_state,
+            global_state::get_read_clipboard_state,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {

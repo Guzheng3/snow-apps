@@ -20,7 +20,7 @@ import {
 	createFullScreenDrawWindow,
 	hasFocusedFullScreenWindow,
 } from "@/commands/core";
-import { getCaptureState } from "@/commands/global_state";
+import { getCaptureState } from "@/commands/globalSate";
 import { IconLabel } from "@/components/iconLable";
 import {
 	ChatIcon,

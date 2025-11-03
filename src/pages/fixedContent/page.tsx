@@ -10,6 +10,7 @@ import {
 	type MonitorInfo,
 	readImageFromClipboard,
 } from "@/commands/core";
+import { setReadClipboardState } from "@/commands/globalSate";
 import {
 	scrollScreenshotClear,
 	scrollScreenshotGetImageData,
@@ -97,87 +98,93 @@ export const FixedContentPage: React.FC = () => {
 				"read_image_from_clipboard",
 			);
 
-			await readImageFromClipboard()
-				.then(async (result) => {
-					if (hasInit) {
-						return;
-					}
+			await setReadClipboardState(true);
 
-					let imageData: ArrayBuffer | ImageSharedBufferData | undefined =
-						result;
-					if (
-						imageData &&
-						imageData.byteLength === 1 &&
-						new Uint8Array(imageData)[0] === 1
-					) {
-						imageData = await imageSharedBufferPromise;
-					}
-
-					if (!imageData) {
-						return;
-					}
-
-					hasInit = true;
-					fixedContentActionRef.current?.init({
-						imageContent: imageData,
-					});
-				})
-				.catch(() => {});
-
-			await extraClipboard
-				.readHtml()
-				.then((htmlContent) => {
-					if (hasInit) {
-						return;
-					}
-
-					hasInit = true;
-					fixedContentActionRef.current?.init({ htmlContent });
-				})
-				.catch(() => {});
-
-			await extraClipboard
-				.readText()
-				.then((textContent) => {
-					if (hasInit) {
-						return;
-					}
-
-					hasInit = true;
-					fixedContentActionRef.current?.init({ textContent });
-				})
-				.catch(() => {});
-
-			await extraClipboard
-				.readFilesURIs()
-				.then((fileUris) => {
-					if (hasInit) {
-						return;
-					}
-
-					let imageFileUri: string | undefined;
-					for (const fileUri of fileUris) {
-						if (
-							fileUri.endsWith(".png") ||
-							fileUri.endsWith(".jpg") ||
-							fileUri.endsWith(".jpeg") ||
-							fileUri.endsWith(".webp")
-						) {
-							imageFileUri = fileUri;
-							break;
+			try {
+				await readImageFromClipboard()
+					.then(async (result) => {
+						if (hasInit) {
+							return;
 						}
-					}
 
-					if (!imageFileUri) {
-						return;
-					}
+						let imageData: ArrayBuffer | ImageSharedBufferData | undefined =
+							result;
+						if (
+							imageData &&
+							imageData.byteLength === 1 &&
+							new Uint8Array(imageData)[0] === 1
+						) {
+							imageData = await imageSharedBufferPromise;
+						}
 
-					hasInit = true;
-					fixedContentActionRef.current?.init({
-						imageContent: convertFileSrc(imageFileUri),
-					});
-				})
-				.catch(() => {});
+						if (!imageData) {
+							return;
+						}
+
+						hasInit = true;
+						fixedContentActionRef.current?.init({
+							imageContent: imageData,
+						});
+					})
+					.catch(() => {});
+
+				await extraClipboard
+					.readHtml()
+					.then((htmlContent) => {
+						if (hasInit) {
+							return;
+						}
+
+						hasInit = true;
+						fixedContentActionRef.current?.init({ htmlContent });
+					})
+					.catch(() => {});
+
+				await extraClipboard
+					.readText()
+					.then((textContent) => {
+						if (hasInit) {
+							return;
+						}
+
+						hasInit = true;
+						fixedContentActionRef.current?.init({ textContent });
+					})
+					.catch(() => {});
+
+				await extraClipboard
+					.readFilesURIs()
+					.then((fileUris) => {
+						if (hasInit) {
+							return;
+						}
+
+						let imageFileUri: string | undefined;
+						for (const fileUri of fileUris) {
+							if (
+								fileUri.endsWith(".png") ||
+								fileUri.endsWith(".jpg") ||
+								fileUri.endsWith(".jpeg") ||
+								fileUri.endsWith(".webp")
+							) {
+								imageFileUri = fileUri;
+								break;
+							}
+						}
+
+						if (!imageFileUri) {
+							return;
+						}
+
+						hasInit = true;
+						fixedContentActionRef.current?.init({
+							imageContent: convertFileSrc(imageFileUri),
+						});
+					})
+					.catch(() => {});
+			} catch {
+				await setReadClipboardState(false);
+			}
 
 			if (hasInit) {
 				return;

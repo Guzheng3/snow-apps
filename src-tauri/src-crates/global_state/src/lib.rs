@@ -18,3 +18,14 @@ impl WebViewSharedBufferState {
         }
     }
 }
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ReadClipboardState {
+    pub reading: bool,
+}
+
+impl ReadClipboardState {
+    pub fn new(value: bool) -> Self {
+        Self { reading: value }
+    }
+}
