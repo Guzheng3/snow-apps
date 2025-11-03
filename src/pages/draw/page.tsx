@@ -956,8 +956,6 @@ const DrawPageCore: React.FC<{
 			);
 		}
 
-		console.log("imageData", imageData);
-
 		if (!imageData) {
 			return;
 		}

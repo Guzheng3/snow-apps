@@ -111,7 +111,7 @@ impl VideoRecordService {
                         permissions.set_mode(0o755); // 设置可执行权限 (rwxr-xr-x)
 
                         if let Err(e) = fs::set_permissions(&ffmpeg_path, permissions) {
-                            eprintln!(
+                            println!(
                                 "[VideoRecordService] Failed to set executable permissions for ffmpeg: {}",
                                 e
                             );
