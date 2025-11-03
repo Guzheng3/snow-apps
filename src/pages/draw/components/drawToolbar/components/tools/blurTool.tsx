@@ -9,6 +9,7 @@ import {
 } from "@/components/drawCore/extra";
 import { DRAW_LAYER_BLUR_CONTAINER_KEY } from "@/components/imageLayer";
 import type { BlurSpriteProps } from "@/components/imageLayer/baseLayerRenderActions";
+import { useCallbackAsyncRender } from "@/hooks/useCallbackAsyncRender";
 import {
 	useCallbackRender,
 	useCallbackRenderSlow,
@@ -174,7 +175,7 @@ const BlurToolCore: React.FC = () => {
 		},
 		[getImageLayerAction, getDrawCoreAction, getZoom],
 	);
-	const updateBlurRender = useCallbackRender(updateBlur);
+	const updateBlurRender = useCallbackAsyncRender(updateBlur);
 
 	const handleEraser = useCallback(
 		(params: ExcalidrawOnHandleEraserParams | undefined) => {
