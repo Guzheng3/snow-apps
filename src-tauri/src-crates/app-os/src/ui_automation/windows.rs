@@ -9,7 +9,10 @@ use rtree_rs::{RTree, Rect};
 use uiautomation::UIAutomation;
 use uiautomation::UIElement;
 use uiautomation::UITreeWalker;
+use uiautomation::core::UICacheRequest;
 use uiautomation::types::Point;
+use uiautomation::types::TreeScope;
+use uiautomation::types::UIProperty;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use snow_shot_app_shared::ElementRect;
@@ -38,6 +41,7 @@ pub struct UIElements {
     automation: Option<Arc<UIAutomationWrapper>>,
     automation_walker: Option<UITreeWalker>,
     root_element: Option<UIElement>,
+    cache_request: Option<UICacheRequest>,
     element_cache: RTree<2, i32, ElementLevel>,
     element_level_map: HashMap<ElementLevel, (UIElement, Token)>,
     element_rect_tree: Arena<uiautomation::types::Rect>,
@@ -69,6 +73,7 @@ impl UIElements {
             automation: None,
             automation_walker: None,
             root_element: None,
+            cache_request: None,
             element_rect_tree: Arena::new(),
             element_cache: RTree::new(),
             element_level_map: HashMap::new(),
@@ -86,8 +91,22 @@ impl UIElements {
         let automation = UIAutomation::new()?;
         let automation_walker = automation.get_content_view_walker()?;
 
+        // 创建缓存请求，预先缓存常用属性
+        let cache_request = automation.create_cache_request()?;
+
+        // 缓存边界矩形属性（最重要的性能优化点）
+        cache_request.add_property(UIProperty::BoundingRectangle)?;
+
+        // 缓存其他常用属性
+        cache_request.add_property(UIProperty::ControlType)?;
+        cache_request.add_property(UIProperty::IsOffscreen)?;
+
+        // 设置缓存范围：缓存元素本身
+        cache_request.set_tree_scope(TreeScope::Element)?;
+
         self.automation = Some(Arc::new(UIAutomationWrapper { automation }));
         self.automation_walker = Some(automation_walker);
+        self.cache_request = Some(cache_request);
 
         Ok(())
     }
@@ -284,10 +303,24 @@ impl UIElements {
             None => return Ok(None),
         };
 
-        let element = automation
-            .automation
-            .element_from_point(Point::new(mouse_x, mouse_y))?;
-        let rect = element.get_bounding_rectangle()?;
+        // 使用带缓存的版本获取元素
+        let element = if let Some(cache_request) = &self.cache_request {
+            automation
+                .automation
+                .element_from_point_build_cache(Point::new(mouse_x, mouse_y), cache_request)?
+        } else {
+            automation
+                .automation
+                .element_from_point(Point::new(mouse_x, mouse_y))?
+        };
+
+        // 优先使用缓存的边界矩形
+        let rect = if self.cache_request.is_some() {
+            // 缓存模式下只能调用缓存方法，不能fallback到实时查询
+            element.get_cached_bounding_rectangle().unwrap_or_default() // 如果缓存失败，返回默认值
+        } else {
+            element.get_bounding_rectangle()?
+        };
 
         Ok(Some(ElementRect {
             min_x: rect.get_left(),
@@ -454,7 +487,12 @@ impl UIElements {
 
         if try_get_first_child {
             // 没有命中缓存，说明是第一次获取
-            let first_child = automation_walker.get_first_child(&parent_element);
+            // 使用带缓存的版本获取第一个子元素
+            let first_child = if let Some(cache_request) = &self.cache_request {
+                automation_walker.get_first_child_build_cache(&parent_element, cache_request)
+            } else {
+                automation_walker.get_first_child(&parent_element)
+            };
 
             match first_child {
                 Ok(element) => {
@@ -482,58 +520,87 @@ impl UIElements {
         while let Some(current_element) = queue.take() {
             queue = None;
 
-            current_element_rect = match current_element.get_bounding_rectangle() {
-                Ok(rect) => rect,
-                Err(_) => continue,
+            // 优先使用缓存的属性
+            let is_offscreen = if self.cache_request.is_some() {
+                current_element.is_cached_offscreen().unwrap_or(true)
+            } else {
+                current_element.is_offscreen().unwrap_or(true)
             };
 
-            let current_element_left = current_element_rect.get_left();
-            let current_element_right = current_element_rect.get_right();
-            let current_element_top = current_element_rect.get_top();
-            let current_element_bottom = current_element_rect.get_bottom();
+            if !is_offscreen {
+                current_element_rect = if self.cache_request.is_some() {
+                    match current_element.get_cached_bounding_rectangle() {
+                        Ok(rect) => rect,
+                        Err(_) => continue,
+                    }
+                } else {
+                    match current_element.get_bounding_rectangle() {
+                        Ok(rect) => rect,
+                        Err(_) => continue,
+                    }
+                };
 
-            if !(current_element_left == 0
-                && current_element_right == 0
-                && current_element_top == 0
-                && current_element_bottom == 0)
-            {
-                (current_element_rect, current_element_token) = self.insert_element_cache(
-                    &mut parent_tree_token,
-                    current_element.clone(),
-                    current_element_rect,
-                    current_level,
-                );
+                let current_element_left = current_element_rect.get_left();
+                let current_element_right = current_element_rect.get_right();
+                let current_element_top = current_element_rect.get_top();
+                let current_element_bottom = current_element_rect.get_bottom();
 
-                if current_element_left <= mouse_x
-                    && current_element_right >= mouse_x
-                    && current_element_top <= mouse_y
-                    && current_element_bottom >= mouse_y
+                if !(current_element_left == 0
+                    && current_element_right == 0
+                    && current_element_top == 0
+                    && current_element_bottom == 0)
                 {
-                    result_token = current_element_token;
-                    result_rect = current_element_rect;
+                    (current_element_rect, current_element_token) = self.insert_element_cache(
+                        &mut parent_tree_token,
+                        current_element.clone(),
+                        current_element_rect,
+                        current_level,
+                    );
 
-                    let first_child = automation_walker.get_first_child(&current_element);
-                    if let Ok(child) = first_child {
-                        queue = Some(child.clone());
-                        parent_tree_token = current_element_token;
-                        parent_level = current_level;
+                    if current_element_left <= mouse_x
+                        && current_element_right >= mouse_x
+                        && current_element_top <= mouse_y
+                        && current_element_bottom >= mouse_y
+                    {
+                        result_token = current_element_token;
+                        result_rect = current_element_rect;
 
-                        current_level.next_level();
+                        // 使用带缓存的版本获取第一个子元素
+                        let first_child = if let Some(cache_request) = &self.cache_request {
+                            automation_walker
+                                .get_first_child_build_cache(&current_element, cache_request)
+                        } else {
+                            automation_walker.get_first_child(&current_element)
+                        };
 
-                        self.element_children_next_sibling_cache.insert(
-                            parent_level,
-                            ElementChildrenNextSiblingCacheItem::Element(child, current_level),
-                        );
+                        if let Ok(child) = first_child {
+                            queue = Some(child.clone());
+                            parent_tree_token = current_element_token;
+                            parent_level = current_level;
 
-                        continue;
-                    } else {
-                        self.element_children_next_sibling_cache
-                            .insert(current_level, ElementChildrenNextSiblingCacheItem::Leaf);
+                            current_level.next_level();
+
+                            self.element_children_next_sibling_cache.insert(
+                                parent_level,
+                                ElementChildrenNextSiblingCacheItem::Element(child, current_level),
+                            );
+
+                            continue;
+                        } else {
+                            self.element_children_next_sibling_cache
+                                .insert(current_level, ElementChildrenNextSiblingCacheItem::Leaf);
+                        }
                     }
                 }
             }
 
-            let next_sibling = automation_walker.get_next_sibling(&current_element);
+            // 使用带缓存的版本获取下一个兄弟元素
+            let next_sibling = if let Some(cache_request) = &self.cache_request {
+                automation_walker.get_next_sibling_build_cache(&current_element, cache_request)
+            } else {
+                automation_walker.get_next_sibling(&current_element)
+            };
+
             match next_sibling {
                 Ok(sibling) => {
                     queue = Some(sibling.clone());
