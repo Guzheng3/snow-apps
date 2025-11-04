@@ -8,7 +8,6 @@ import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import { encodeParamsValue } from "@/utils/base64";
 import { getImageSaveDirectory } from "@/utils/file";
-import { appInfo } from "@/utils/log";
 import { showWindow } from "@/utils/window";
 
 const GlobalEventHandlerCore: React.FC = () => {

@@ -34,7 +34,6 @@ import {
 	executeTranslateSelectedText,
 	openCaptureHistory,
 	openImageSaveFolder,
-	showOrHideMainWindow,
 } from "@/functions/tools";
 import { startOrCopyVideo } from "@/functions/videoRecord";
 import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";

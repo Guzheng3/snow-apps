@@ -4,7 +4,6 @@ import {
 	getCurrentWindow,
 } from "@tauri-apps/api/window";
 import { attachConsole } from "@tauri-apps/plugin-log";
-import { openPath } from "@tauri-apps/plugin-opener";
 import { debounce } from "es-toolkit";
 import React, {
 	createContext,
@@ -20,7 +19,6 @@ import {
 	listenMouseStopByWindowLabel,
 } from "@/commands/listenKey";
 import { ocrRelease } from "@/commands/ocr";
-import { showMainWindow } from "@/commands/videoRecord";
 import {
 	LISTEN_KEY_SERVICE_KEY_DOWN_EMIT_KEY,
 	LISTEN_KEY_SERVICE_KEY_UP_EMIT_KEY,
@@ -31,10 +29,7 @@ import {
 } from "@/constants/eventListener";
 import { PLUGIN_EVENT_PLUGIN_STATUS_CHANGE } from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
-import {
-	AppSettingsActionContext,
-	AppSettingsPublisher,
-} from "@/contexts/appSettingsActionContext";
+import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
 import {
 	FIXED_CONTENT_FOCUS_MODE_CLOSE_ALL_WINDOW,
@@ -43,14 +38,12 @@ import {
 	FIXED_CONTENT_FOCUS_MODE_SHOW_ALL_WINDOW,
 } from "@/functions/fixedContent";
 import { usePathname } from "@/hooks/usePathname";
-import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import {
 	ListenKeyCode,
 	type ListenKeyDownEvent,
 	type ListenKeyUpEvent,
 } from "@/types/commands/listenKey";
 import { appLog, type LogMessageEvent } from "@/utils/appLog";
-import { getImageSaveDirectory } from "@/utils/file";
 import { appError, appWarn } from "@/utils/log";
 import { showWindow } from "@/utils/window";
 
@@ -137,14 +130,12 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 		isIdlePage,
 		isFixedContentPage,
 		isVideoRecordToolbarPage,
-		isCaptureHistoryPage,
 	} = useMemo(() => {
 		let isDrawPage = false;
 		let isFullScreenDraw = false;
 		let isFullScreenDrawSwitchMouseThrough = false;
 		let isVideoRecordPage = false;
 		let isVideoRecordToolbarPage = false;
-		let isCaptureHistoryPage = false;
 		let isIdlePage = false;
 		let isFixedContentPage = false;
 		if (pathname === "/draw") {
@@ -157,8 +148,6 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 			isVideoRecordPage = true;
 		} else if (pathname === "/videoRecordToolbar") {
 			isVideoRecordToolbarPage = true;
-		} else if (pathname === "/tools/captureHistory") {
-			isCaptureHistoryPage = true;
 		} else if (pathname === "/idle") {
 			isIdlePage = true;
 		} else if (pathname === "/fixedContent") {
@@ -171,7 +160,6 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 			isFullScreenDrawSwitchMouseThrough,
 			isVideoRecordPage,
 			isVideoRecordToolbarPage,
-			isCaptureHistoryPage,
 			isIdlePage,
 			isFixedContentPage,
 		};
@@ -334,13 +322,10 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 				event: "open-capture-history",
 				callback: async () => {},
 			});
-
-			if (isCaptureHistoryPage) {
-				defaultListener.push({
-					event: "on-capture-history-change",
-					callback: async () => {},
-				});
-			}
+			defaultListener.push({
+				event: "on-capture-history-change",
+				callback: async () => {},
+			});
 		} else {
 			defaultListener.push({
 				event: FIXED_CONTENT_FOCUS_MODE_SHOW_ALL_WINDOW,
@@ -492,7 +477,6 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 		isFullScreenDrawSwitchMouseThrough,
 		isVideoRecordPage,
 		isVideoRecordToolbarPage,
-		isCaptureHistoryPage,
 		releaseOcrSessionAction,
 		refreshPluginStatusThrottle,
 		isIdlePage,
