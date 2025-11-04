@@ -380,6 +380,8 @@ export const settings = {
 		"如果是 8 则以特征点为中心选取 8x8 的区域进行比较",
 	"settings.commonSettings.trayIconSettings": "托盘",
 	"settings.commonSettings.trayIconSettings.enableTrayIcon": "启用托盘",
+	"settings.commonSettings.trayIconSettings.enableTrayIconTip":
+		"关闭后，请通过固定到屏幕窗口的右键菜单打开主界面",
 	"settings.commonSettings.trayIconSettings.defaultIcons": "默认图标",
 	"settings.commonSettings.trayIconSettings.defaultIcons.darkDefault":
 		"默认图标（暗黑）",

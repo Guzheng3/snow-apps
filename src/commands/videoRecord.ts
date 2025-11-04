@@ -91,3 +91,8 @@ export const setExcludeFromCapture = async (enable: boolean) => {
 	const result = await invoke("set_exclude_from_capture", { enable });
 	return result;
 };
+
+export const showMainWindow = async () => {
+	const result = await invoke("show_main_window");
+	return result;
+};

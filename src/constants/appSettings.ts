@@ -230,7 +230,7 @@ Priority order (highest to lowest):
 	},
 	[AppSettingsGroup.FunctionScreenshot]: {
 		findChildrenElements: true,
-		shortcutCanleTip: true,
+		shortcutCanleTip: false,
 		autoSaveOnCopy: false,
 		doubleClickAction: DoubleClickAction.Copy,
 		copyImageFileToClipboard: false,

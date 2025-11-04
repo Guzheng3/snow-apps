@@ -458,3 +458,19 @@ pub async fn write_image_pixels_to_clipboard_with_shared_buffer(
 pub async fn has_focused_full_screen_window() -> Result<bool, String> {
     snow_shot_tauri_commands_core::has_focused_full_screen_window().await
 }
+
+#[command]
+pub async fn show_main_window(app: tauri::AppHandle) -> Result<(), String> {
+    let main_window = app.get_webview_window("main");
+
+    match main_window {
+        Some(main_window) => {
+            main_window.show().unwrap();
+            main_window.unminimize().unwrap();
+            main_window.set_focus().unwrap();
+
+            Ok(())
+        }
+        None => Err(String::from("[show_main_window] Main window not found")),
+    }
+}

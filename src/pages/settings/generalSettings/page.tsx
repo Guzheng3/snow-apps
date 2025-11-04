@@ -773,7 +773,7 @@ export const GeneralSettingsPage = () => {
 						values,
 						true,
 						true,
-						false,
+						true,
 						true,
 						false,
 					);
@@ -786,7 +786,14 @@ export const GeneralSettingsPage = () => {
 							<ProFormSwitch
 								name="enableTrayIcon"
 								label={
-									<FormattedMessage id="settings.commonSettings.trayIconSettings.enableTrayIcon" />
+									<IconLabel
+										label={
+											<FormattedMessage id="settings.commonSettings.trayIconSettings.enableTrayIcon" />
+										}
+										tooltipTitle={
+											<FormattedMessage id="settings.commonSettings.trayIconSettings.enableTrayIconTip" />
+										}
+									/>
 								}
 							/>
 						</Col>

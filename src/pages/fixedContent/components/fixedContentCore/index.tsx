@@ -31,6 +31,7 @@ import {
 	setCurrentWindowAlwaysOnTop,
 	startFreeDrag,
 } from "@/commands/core";
+import { showMainWindow } from "@/commands/videoRecord";
 import { OcrTranslateIcon } from "@/components/icons";
 import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
 import {
@@ -210,6 +211,7 @@ const FixedContentCoreInner: React.FC<{
 	const [fixedBorderColor, setFixedBorderColor] = useState<string | undefined>(
 		undefined,
 	);
+	const [enableTrayIcon, setEnableTrayIcon] = useState(false);
 	useStateSubscriber(
 		AppSettingsPublisher,
 		useCallback((settings: AppSettingsData) => {
@@ -218,6 +220,9 @@ const FixedContentCoreInner: React.FC<{
 				settings[AppSettingsGroup.FunctionScreenshot].saveToCloud,
 			);
 			setHotkeys(settings[AppSettingsGroup.CommonKeyEvent]);
+			setEnableTrayIcon(
+				settings[AppSettingsGroup.CommonTrayIcon].enableTrayIcon,
+			);
 		}, []),
 	);
 
@@ -2027,6 +2032,17 @@ const FixedContentCoreInner: React.FC<{
 				{
 					item: "Separator",
 				},
+				...(!enableTrayIcon
+					? [
+							{
+								id: `${appWindow.label}-showMainWindowTool`,
+								text: intl.formatMessage({ id: "home.showMainWindow" }),
+								action: () => {
+									showMainWindow();
+								},
+							},
+						]
+					: []),
 				{
 					id: `${appWindow.label}-closeTool`,
 					text: intl.formatMessage({ id: "draw.close" }),
@@ -2084,6 +2100,7 @@ const FixedContentCoreInner: React.FC<{
 		enableVisionModelMarkdown,
 		enableSaveToCloud,
 		onSaveToCloud,
+		enableTrayIcon,
 	]);
 
 	const onWheel = useCallback(
