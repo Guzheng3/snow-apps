@@ -112,6 +112,7 @@ export const CaptureHistoryPage = () => {
 
 	const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
 
+	const currentFilterDataRef = useRef<CaptureHistoryRecordItem[]>([]);
 	const tableAlertOptionRender = useCallback(() => {
 		return (
 			<Space>
@@ -142,6 +143,20 @@ export const CaptureHistoryPage = () => {
 						<FormattedMessage id="tools.captureHistory.delete" />
 					</a>
 				</Popconfirm>
+				<a
+					key="selectAll"
+					onClick={() =>
+						setSelectedRowKeys((prev) => {
+							const set = new Set(prev);
+							currentFilterDataRef.current.forEach((item) => {
+								set.add(item.id);
+							});
+							return Array.from(set);
+						})
+					}
+				>
+					<FormattedMessage id="tools.captureHistory.selectAll" />
+				</a>
 				<a key="clearSelection" onClick={() => setSelectedRowKeys([])}>
 					<FormattedMessage id="tools.captureHistory.clearSelection" />
 				</a>
@@ -206,6 +221,7 @@ export const CaptureHistoryPage = () => {
 					setLoading(true);
 
 					if (!dataSourceRef.current) {
+						currentFilterDataRef.current = [];
 						return {
 							data: [],
 							success: false,
@@ -269,6 +285,7 @@ export const CaptureHistoryPage = () => {
 
 					setLoading(false);
 
+					currentFilterDataRef.current = data;
 					return {
 						data,
 						success: true,
