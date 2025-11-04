@@ -582,7 +582,7 @@ export const ScrollScreenshot: React.FC<{
 								scrollDirectionRef.current === ScrollDirection.Horizontal
 									? "horizontal"
 									: "vertical",
-								getPlatform() === "windows" ? 1 : 5,
+								getPlatform() === "windows" ? 1 : 1,
 							);
 							enableCursorEventsDebounce();
 							captureImageCore(ScrollImageList.Bottom);

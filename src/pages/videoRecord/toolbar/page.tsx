@@ -394,6 +394,37 @@ export const VideoRecordToolbarPage: React.FC = () => {
 	);
 
 	useEffect(() => {
+		const startOrCopyVideoListenerId = addListener(
+			"start-or-copy-video",
+			() => {
+				if (videoRecordStateRef.current === VideoRecordState.Idle) {
+					startRecord();
+				} else {
+					copyVideo(false);
+				}
+			},
+		);
+
+		videoRecordKill();
+
+		const closeUnlisten = getCurrentWindow().onCloseRequested(async () => {
+			videoRecordKill();
+		});
+
+		return () => {
+			videoRecordKill();
+			removeListener(startOrCopyVideoListenerId);
+			closeUnlisten.then((fn) => fn());
+		};
+	}, [
+		addListener,
+		removeListener,
+		copyVideo,
+		startRecord,
+		videoRecordStateRef,
+	]);
+
+	useEffect(() => {
 		const { selectRect } = getVideoRecordParams();
 
 		init(selectRect);
@@ -409,39 +440,10 @@ export const VideoRecordToolbarPage: React.FC = () => {
 			});
 		});
 
-		const startOrCopyVideoListenerId = addListener(
-			"start-or-copy-video",
-			() => {
-				if (videoRecordStateRef.current === VideoRecordState.Idle) {
-					startRecord();
-				} else {
-					copyVideo(false);
-				}
-			},
-		);
-
-		videoRecordKill();
-
-		const killVideoRecord = () => {
-			videoRecordKill();
-		};
-
-		window.addEventListener("beforeunload", killVideoRecord);
-
 		return () => {
-			videoRecordKill();
-			window.removeEventListener("beforeunload", killVideoRecord);
 			removeListener(listenerId);
-			removeListener(startOrCopyVideoListenerId);
 		};
-	}, [
-		addListener,
-		init,
-		removeListener,
-		copyVideo,
-		startRecord,
-		videoRecordStateRef,
-	]);
+	}, [addListener, init, removeListener]);
 
 	const { isReadyStatus } = usePluginServiceContext();
 	useEffect(() => {

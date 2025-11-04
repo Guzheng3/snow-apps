@@ -597,8 +597,8 @@ impl VideoRecordService {
         };
 
         // macOS avfoundation 格式的正则表达式
-        // 格式: [AVFoundation indev @ 0x...] [0] 设备名称
-        let device_regex = match Regex::new(r#"\[AVFoundation indev @ [^\]]+\]\s+\[(\d+)\]\s+(.+)"#)
+        // 格式: [AVFoundation indev @ 0x...] [info] [0] 设备名称
+        let device_regex = match Regex::new(r#"\[AVFoundation indev @ [^\]]+\]\s+\[info\]\s+\[(\d+)\]\s+(.+)"#)
         {
             Ok(regex) => regex,
             Err(e) => {
@@ -607,15 +607,24 @@ impl VideoRecordService {
             }
         };
 
-        // 检测是否已经开始音频设备列表的标志
-        let mut found_audio_devices_marker = false;
+        // 检测当前正在解析的设备类型
+        let mut current_device_type = DeviceType::Video;
 
         for line in output_iter {
             match line {
                 FfmpegEvent::Log(_, line) => {
-                    // 首先检查是否遇到了音频设备列表的标记
+                    // 检查是否遇到了视频设备列表的标记
+                    if line.contains("AVFoundation video devices") {
+                        current_device_type = DeviceType::Video;
+                        log::info!(
+                            "[get_device_info_list] Found video devices marker, starting to parse devices"
+                        );
+                        continue;
+                    }
+
+                    // 检查是否遇到了音频设备列表的标记
                     if line.contains("AVFoundation audio devices") {
-                        found_audio_devices_marker = true;
+                        current_device_type = DeviceType::Audio;
                         log::info!(
                             "[get_device_info_list] Found audio devices marker, starting to parse devices"
                         );
@@ -628,11 +637,7 @@ impl VideoRecordService {
                         device_info_list.push(DeviceInfo {
                             name: device_name,
                             index: device_index.parse::<usize>().unwrap(),
-                            device_type: if found_audio_devices_marker {
-                                DeviceType::Audio
-                            } else {
-                                DeviceType::Video
-                            },
+                            device_type: current_device_type,
                         });
                     }
                 }
