@@ -1205,35 +1205,12 @@ pub async fn show_main_window(app: tauri::AppHandle, auto_hide: bool) -> Result<
     };
 
     if auto_hide {
-        #[cfg(target_os = "windows")]
-        {
-            use windows::Win32::Foundation::HWND;
-            use windows::Win32::UI::WindowsAndMessaging::{IsIconic, IsWindowVisible};
+        let is_visible = main_window.is_visible().unwrap_or_default();
+        let is_minimized = main_window.is_minimized().unwrap_or_default();
 
-            let window_hwnd = main_window.hwnd().unwrap();
-            let hwnd = HWND(window_hwnd.0);
-
-            // 判断窗口是否可见且未最小化
-            unsafe {
-                let is_visible = IsWindowVisible(hwnd).as_bool();
-                let is_minimized = IsIconic(hwnd).as_bool();
-
-                if is_visible && !is_minimized {
-                    main_window.hide().unwrap();
-                    return Ok(());
-                }
-            }
-        }
-
-        #[cfg(target_os = "macos")]
-        {
-            let is_visible = main_window.is_visible().unwrap_or_default();
-            let is_minimized = main_window.is_minimized().unwrap_or_default();
-
-            if is_visible && !is_minimized {
-                main_window.hide().unwrap();
-                return Ok(());
-            }
+        if is_visible && !is_minimized {
+            main_window.hide().unwrap();
+            return Ok(());
         }
     }
 
