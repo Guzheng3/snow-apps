@@ -1224,6 +1224,17 @@ pub async fn show_main_window(app: tauri::AppHandle, auto_hide: bool) -> Result<
                 }
             }
         }
+
+        #[cfg(target_os = "macos")]
+        {
+            let is_visible = main_window.is_visible().unwrap_or_default();
+            let is_minimized = main_window.is_minimized().unwrap_or_default();
+
+            if is_visible && !is_minimized {
+                main_window.hide().unwrap();
+                return Ok(());
+            }
+        }
     }
 
     main_window.show().unwrap();
