@@ -314,7 +314,6 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
 						icon: buttonIcon,
 						onClick,
 						onKeyChange: async (value: string, prevValue: string) => {
-							console.log(`${value} -> ${prevValue}`);
 							if (prevValue) {
 								try {
 									if (await isRegistered(prevValue)) {
