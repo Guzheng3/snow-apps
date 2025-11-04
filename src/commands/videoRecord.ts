@@ -92,7 +92,7 @@ export const setExcludeFromCapture = async (enable: boolean) => {
 	return result;
 };
 
-export const showMainWindow = async () => {
-	const result = await invoke("show_main_window");
+export const showMainWindow = async (autoHide: boolean = false) => {
+	const result = await invoke("show_main_window", { autoHide });
 	return result;
 };

@@ -1,4 +1,10 @@
-import { FieldTimeOutlined } from "@ant-design/icons";
+import {
+	AppstoreOutlined,
+	FieldTimeOutlined,
+	FolderFilled,
+	FolderOutlined,
+	HistoryOutlined,
+} from "@ant-design/icons";
 import { useDeepCompareEffect } from "@ant-design/pro-components";
 import {
 	isRegistered,
@@ -56,6 +62,9 @@ import {
 	executeChatSelectedText,
 	executeTranslate,
 	executeTranslateSelectedText,
+	openCaptureHistory,
+	openImageSaveFolder,
+	showOrHideMainWindow,
 } from "@/functions/tools";
 import { startOrCopyVideo } from "@/functions/videoRecord";
 import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
@@ -275,6 +284,21 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
 							buttonTitle = <FormattedMessage id="home.fullScreenDraw" />;
 							buttonIcon = <FullScreenDrawIcon style={{ fontSize: "1.2em" }} />;
 							buttonOnClick = () => createFullScreenDrawWindow();
+							break;
+						case AppFunction.ShowOrHideMainWindow:
+							buttonTitle = <FormattedMessage id="home.showOrHideMainWindow" />;
+							buttonIcon = <AppstoreOutlined />;
+							buttonOnClick = () => showOrHideMainWindow();
+							break;
+						case AppFunction.OpenImageSaveFolder:
+							buttonTitle = <FormattedMessage id="home.openImageSaveFolder" />;
+							buttonIcon = <FolderOutlined />;
+							buttonOnClick = () => openImageSaveFolder();
+							break;
+						case AppFunction.OpenCaptureHistory:
+							buttonTitle = <FormattedMessage id="home.openCaptureHistory" />;
+							buttonIcon = <HistoryOutlined />;
+							buttonOnClick = () => openCaptureHistory();
 							break;
 						case AppFunction.VideoRecord:
 							buttonTitle = (

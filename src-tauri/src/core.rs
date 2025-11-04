@@ -460,17 +460,6 @@ pub async fn has_focused_full_screen_window() -> Result<bool, String> {
 }
 
 #[command]
-pub async fn show_main_window(app: tauri::AppHandle) -> Result<(), String> {
-    let main_window = app.get_webview_window("main");
-
-    match main_window {
-        Some(main_window) => {
-            main_window.show().unwrap();
-            main_window.unminimize().unwrap();
-            main_window.set_focus().unwrap();
-
-            Ok(())
-        }
-        None => Err(String::from("[show_main_window] Main window not found")),
-    }
+pub async fn show_main_window(app: tauri::AppHandle, auto_hide: bool) -> Result<(), String> {
+    snow_shot_tauri_commands_core::show_main_window(app, auto_hide).await
 }

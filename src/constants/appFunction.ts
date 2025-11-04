@@ -70,8 +70,19 @@ export const defaultAppFunctionConfigs: Record<AppFunction, AppFunctionConfig> =
 			shortcutKey: "",
 			group: AppFunctionGroup.Other,
 		},
-
 		[AppFunction.FullScreenDraw]: {
+			shortcutKey: "",
+			group: AppFunctionGroup.Other,
+		},
+		[AppFunction.ShowOrHideMainWindow]: {
+			shortcutKey: "",
+			group: AppFunctionGroup.Other,
+		},
+		[AppFunction.OpenImageSaveFolder]: {
+			shortcutKey: "",
+			group: AppFunctionGroup.Other,
+		},
+		[AppFunction.OpenCaptureHistory]: {
 			shortcutKey: "",
 			group: AppFunctionGroup.Other,
 		},

@@ -21,6 +21,9 @@ export enum AppFunction {
 	VideoRecordCopy = "videoRecordCopy",
 	TopWindow = "topWindow",
 	FullScreenDraw = "fullScreenDraw",
+	ShowOrHideMainWindow = "showOrHideMainWindow",
+	OpenImageSaveFolder = "openImageSaveFolder",
+	OpenCaptureHistory = "openCaptureHistory",
 }
 
 export enum AppFunctionGroup {

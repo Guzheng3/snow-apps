@@ -19,3 +19,15 @@ export const executeTranslate = async () => {
 export const executeTranslateSelectedText = async () => {
 	await emit("execute-translate-selected-text");
 };
+
+export const showOrHideMainWindow = async () => {
+	await emit("show-or-hide-main-window");
+};
+
+export const openImageSaveFolder = async () => {
+	await emit("open-image-save-folder");
+};
+
+export const openCaptureHistory = async () => {
+	await emit("open-capture-history");
+};

@@ -1197,3 +1197,38 @@ pub async fn has_focused_full_screen_window() -> Result<bool, String> {
         }))
     }
 }
+
+pub async fn show_main_window(app: tauri::AppHandle, auto_hide: bool) -> Result<(), String> {
+    let main_window = match app.get_webview_window("main") {
+        Some(main_window) => main_window,
+        None => return Err(String::from("[show_main_window] Main window not found")),
+    };
+
+    if auto_hide {
+        #[cfg(target_os = "windows")]
+        {
+            use windows::Win32::Foundation::HWND;
+            use windows::Win32::UI::WindowsAndMessaging::{IsIconic, IsWindowVisible};
+
+            let window_hwnd = main_window.hwnd().unwrap();
+            let hwnd = HWND(window_hwnd.0);
+
+            // 判断窗口是否可见且未最小化
+            unsafe {
+                let is_visible = IsWindowVisible(hwnd).as_bool();
+                let is_minimized = IsIconic(hwnd).as_bool();
+
+                if is_visible && !is_minimized {
+                    main_window.hide().unwrap();
+                    return Ok(());
+                }
+            }
+        }
+    }
+
+    main_window.show().unwrap();
+    main_window.unminimize().unwrap();
+    main_window.set_focus().unwrap();
+
+    Ok(())
+}

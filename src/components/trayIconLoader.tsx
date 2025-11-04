@@ -32,6 +32,9 @@ import {
 	executeChatSelectedText,
 	executeTranslate,
 	executeTranslateSelectedText,
+	openCaptureHistory,
+	openImageSaveFolder,
+	showOrHideMainWindow,
 } from "@/functions/tools";
 import { startOrCopyVideo } from "@/functions/videoRecord";
 import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
@@ -449,6 +452,20 @@ const TrayIconLoaderComponent = () => {
 						: formatKey(shortcutKeys[AppFunction.FullScreenDraw].shortcutKey),
 					action: async () => {
 						createFullScreenDrawWindow();
+					},
+				},
+				{
+					id: `${appWindow.label}-open-image-save-folder`,
+					text: intl.formatMessage({ id: "home.openImageSaveFolder" }),
+					action: async () => {
+						openImageSaveFolder();
+					},
+				},
+				{
+					id: `${appWindow.label}-open-capture-history`,
+					text: intl.formatMessage({ id: "home.openCaptureHistory" }),
+					action: async () => {
+						openCaptureHistory();
 					},
 				},
 				{
