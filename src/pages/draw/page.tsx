@@ -1168,7 +1168,11 @@ const DrawPageCore: React.FC<{
 				ocrResult?.ocrResultType === OcrResultType.VisionModelHtml ||
 				ocrResult?.ocrResultType === OcrResultType.VisionModelMarkdown)
 		) {
-			if (ocrResult && ocrResult.ocrResultType === OcrResultType.Ocr) {
+			if (
+				ocrResult &&
+				(ocrResult.ocrResultType === OcrResultType.Ocr ||
+					ocrResult.ocrResultType === OcrResultType.Translated)
+			) {
 				writeTextToClipboard(covertOcrResultToText(ocrResult.result));
 			} else if (
 				ocrResult &&
