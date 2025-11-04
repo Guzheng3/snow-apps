@@ -300,6 +300,7 @@ pub fn run() {
             file::text_file_read,
             file::text_file_write,
             file::text_file_clear,
+            file::is_portable_app,
             plugin::plugin_init,
             plugin::plugin_get_plugins_status,
             plugin::plugin_register_plugin,

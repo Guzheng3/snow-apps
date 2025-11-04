@@ -12,6 +12,7 @@ import { compare } from "compare-versions";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import { sendNewVersionNotification } from "@/commands/core";
+import { isPortableApp } from "@/commands/file";
 import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 import { appError, appInfo } from "@/utils/log";
@@ -171,7 +172,11 @@ export const CheckVersion: React.FC = () => {
 	const checkVersionCore = useCallback(async () => {
 		try {
 			// 首先尝试使用 Tauri updater
-			const tauriUpdaterSuccess = await checkVersionWithTauriUpdater();
+			let tauriUpdaterSuccess = false;
+			// 绿色版不进行安装包升级
+			if (!(await isPortableApp())) {
+				tauriUpdaterSuccess = await checkVersionWithTauriUpdater();
+			}
 
 			// 如果 Tauri updater 检查失败，使用传统方式
 			if (!tauriUpdaterSuccess) {

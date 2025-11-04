@@ -1,5 +1,5 @@
 use dashmap::{DashMap, DashSet};
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, sync::RwLock};
 use tauri::Manager;
 
 /**
@@ -10,6 +10,7 @@ pub struct FileCacheService {
     file_cache: DashMap<PathBuf, String>,
     exists_path_cache: DashSet<PathBuf>,
     env_path_cache: DashMap<String, PathBuf>,
+    is_portable: RwLock<Option<bool>>,
 }
 
 const APP_CONFIG_DIR: &str = "app_config_dir";
@@ -25,7 +26,20 @@ impl FileCacheService {
             file_cache: DashMap::new(),
             exists_path_cache: DashSet::new(),
             env_path_cache: DashMap::new(),
+            is_portable: RwLock::new(None),
         }
+    }
+
+    pub fn is_portable_app(&self) -> bool {
+        if let Ok(is_portable) = self.is_portable.read() {
+            if let Some(is_portable) = is_portable.as_ref() {
+                return *is_portable;
+            }
+        }
+
+        let is_portable = self.get_app_portable_config_dir().is_some();
+        *self.is_portable.write().unwrap() = Some(is_portable);
+        is_portable
     }
 
     fn get_app_global_config_dir(&self, app: &tauri::AppHandle) -> Result<PathBuf, String> {

@@ -90,3 +90,10 @@ pub async fn get_app_config_base_dir(
     let path = text_file_cache_service.get_app_config_base_dir(&app)?;
     Ok(path)
 }
+
+#[command]
+pub async fn is_portable_app(
+    text_file_cache_service: tauri::State<'_, Arc<FileCacheService>>,
+) -> Result<bool, String> {
+    Ok(text_file_cache_service.is_portable_app())
+}
