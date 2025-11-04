@@ -45,6 +45,7 @@ import type { ElementRect } from "@/types/commands/screenshot";
 import { DrawState } from "@/types/draw";
 import { getCorrectHdrColorAlgorithm } from "@/utils/appSettings";
 import { appError, appWarn } from "@/utils/log";
+import { getPlatform } from "@/utils/platform";
 import { zIndexs } from "@/utils/zIndex";
 import { SubTools, type SubToolsActionType } from "../../subTools";
 
@@ -581,7 +582,7 @@ export const ScrollScreenshot: React.FC<{
 								scrollDirectionRef.current === ScrollDirection.Horizontal
 									? "horizontal"
 									: "vertical",
-								1,
+								getPlatform() === "windows" ? 1 : 5,
 							);
 							enableCursorEventsDebounce();
 							captureImageCore(ScrollImageList.Bottom);
