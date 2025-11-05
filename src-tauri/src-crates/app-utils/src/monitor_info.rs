@@ -180,31 +180,35 @@ impl MonitorInfo {
         {
             use crate::windows_capture_image;
 
-            if !(self.monitor_hdr_info.hdr_enabled
-                && capture_option.correct_hdr_color_algorithm != CorrectHdrColorAlgorithm::None)
+            let mut capture_hdr_image: Option<image::DynamicImage> = None;
+            if self.monitor_hdr_info.hdr_enabled
+                && capture_option.correct_hdr_color_algorithm != CorrectHdrColorAlgorithm::None
             {
-                return super::capture_target_monitor(
+                capture_hdr_image = match windows_capture_image::capture_monitor_image(
+                    &self,
+                    None,
+                    crop_area,
+                    capture_option.color_format,
+                ) {
+                    Ok(image) => Some(image),
+                    Err(e) => {
+                        log::error!(
+                            "[MonitorInfo::capture] Failed to capture HDR monitor image: {:?}",
+                            e
+                        );
+                        None
+                    }
+                }
+            }
+
+            return match capture_hdr_image {
+                Some(image) => Some(image),
+                None => super::capture_target_monitor(
                     &self.monitor,
                     crop_area,
                     exclude_window,
                     capture_option.color_format,
-                );
-            }
-
-            return match windows_capture_image::capture_monitor_image(
-                &self,
-                None,
-                crop_area,
-                capture_option.color_format,
-            ) {
-                Ok(image) => Some(image),
-                Err(e) => {
-                    log::error!(
-                        "[MonitorInfo::capture] Failed to capture monitor image: {:?}",
-                        e
-                    );
-                    None
-                }
+                ),
             };
         }
     }

@@ -222,7 +222,13 @@ pub fn capture_window_hdr_image(window: &xcap::Window) -> Option<image::DynamicI
         ColorFormat::Rgba8,
     ) {
         Ok(image) => Some(image),
-        Err(_) => None,
+        Err(error) => {
+            log::error!(
+                "[capture_window_hdr_image] Failed to capture HDR window image: {}",
+                error
+            );
+            None
+        }
     };
 }
 
