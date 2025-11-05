@@ -11,9 +11,13 @@ export const GlobalContext: React.FC<{
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (
 				event.key === "F5" ||
+				event.key === "F3" ||
 				(event.ctrlKey && event.key === "r") ||
 				(event.metaKey && event.key === "r") ||
-				event.key === "Alt" // 屏蔽 Alt + A, Alt + A 可能阻塞浏览器??? 逆天 Bug
+				event.key === "Alt" || // 屏蔽 Alt + A, Alt + A 可能阻塞浏览器??? 逆天 Bug
+				// 禁用浏览器前进后退快捷键
+				(event.altKey && event.key === "ArrowLeft") || // Alt + 左箭头（后退）
+				(event.altKey && event.key === "ArrowRight") // Alt + 右箭头（前进）
 			) {
 				event.preventDefault();
 			}
