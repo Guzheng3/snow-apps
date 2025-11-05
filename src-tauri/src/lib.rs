@@ -277,6 +277,7 @@ pub fn run() {
             core::set_run_log,
             core::set_exclude_from_capture,
             core::show_main_window,
+            core::set_window_rect,
             scroll_screenshot::scroll_screenshot_get_image_data,
             scroll_screenshot::scroll_screenshot_init,
             scroll_screenshot::scroll_screenshot_capture,

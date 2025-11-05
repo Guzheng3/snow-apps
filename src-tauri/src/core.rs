@@ -4,7 +4,7 @@ use snow_shot_tauri_commands_core::{
     FullScreenDrawWindowLabels, MonitorsBoundingBox, VideoRecordWindowLabels,
 };
 use std::{path::PathBuf, sync::Arc};
-use tauri::{Manager, command, ipc::Response};
+use tauri::{Manager, PhysicalPosition, PhysicalSize, command, ipc::Response};
 use tauri_plugin_autostart::ManagerExt;
 use tokio::sync::Mutex;
 
@@ -462,4 +462,34 @@ pub async fn has_focused_full_screen_window() -> Result<bool, String> {
 #[command]
 pub async fn show_main_window(app: tauri::AppHandle, auto_hide: bool) -> Result<(), String> {
     snow_shot_tauri_commands_core::show_main_window(app, auto_hide).await
+}
+
+#[command]
+pub async fn set_window_rect(
+    window: tauri::Window,
+    min_x: i32,
+    min_y: i32,
+    max_x: i32,
+    max_y: i32,
+) -> Result<(), String> {
+    match window.set_size(PhysicalSize::new(max_x - min_x, max_y - min_y)) {
+        Ok(_) => (),
+        Err(e) => {
+            return Err(format!(
+                "[set_window_rect] Failed to set window size: {}",
+                e
+            ));
+        }
+    }
+    match window.set_position(PhysicalPosition::new(min_x, min_y)) {
+        Ok(_) => (),
+        Err(e) => {
+            return Err(format!(
+                "[set_window_rect] Failed to set window position: {}",
+                e
+            ));
+        }
+    }
+
+    Ok(())
 }

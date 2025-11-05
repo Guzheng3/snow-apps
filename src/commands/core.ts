@@ -247,3 +247,13 @@ export const hasFocusedFullScreenWindow = async () => {
 	const result = await invoke<boolean>("has_focused_full_screen_window");
 	return result;
 };
+
+export const setWindowRect = async (
+	minX: number,
+	minY: number,
+	maxX: number,
+	maxY: number,
+) => {
+	const result = await invoke("set_window_rect", { minX, minY, maxX, maxY });
+	return result;
+};

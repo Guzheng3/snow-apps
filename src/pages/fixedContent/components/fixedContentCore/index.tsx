@@ -29,6 +29,7 @@ import {
 	getCurrentMonitorInfo,
 	type MonitorInfo,
 	setCurrentWindowAlwaysOnTop,
+	setWindowRect,
 	startFreeDrag,
 } from "@/commands/core";
 import { showMainWindow } from "@/commands/videoRecord";
@@ -179,7 +180,7 @@ export type FixedContentProcessImageConfig = {
 	verticalFlip: boolean;
 };
 
-export const SCALE_WINDOW_MAX_SCALE = 200;
+export const SCALE_WINDOW_MAX_SCALE = 300;
 export const SCALE_WINDOW_MIN_SCALE = 20;
 
 const FixedContentCoreInner: React.FC<{
@@ -1442,10 +1443,7 @@ const FixedContentCoreInner: React.FC<{
 					const newY = Math.round(mouseY - newHeight * mouseRelativeY);
 
 					// 同时设置窗口大小和位置
-					await Promise.all([
-						appWindow.setSize(new PhysicalSize(newWidth, newHeight)),
-						appWindow.setPosition(new PhysicalPosition(newX, newY)),
-					]);
+					await setWindowRect(newX, newY, newX + newWidth, newY + newHeight);
 				} catch (error) {
 					appError("[scaleWindow] Error during mouse-centered scaling", error);
 					// 如果出错，回退到普通缩放
