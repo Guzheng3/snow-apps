@@ -23,10 +23,23 @@ export const GlobalContext: React.FC<{
 			}
 		};
 
+		// 禁用鼠标前进后退按钮
+		const handleMouseDown = (event: MouseEvent) => {
+			// button 3: 鼠标侧键后退, button 4: 鼠标侧键前进
+			if (event.button === 3 || event.button === 4) {
+				event.preventDefault();
+				event.stopPropagation();
+			}
+		};
+
 		document.addEventListener("keydown", handleKeyDown);
+		document.addEventListener("mousedown", handleMouseDown);
+		document.addEventListener("mouseup", handleMouseDown); // 同时监听 mouseup 确保完全阻止
 
 		return () => {
 			document.removeEventListener("keydown", handleKeyDown);
+			document.removeEventListener("mousedown", handleMouseDown);
+			document.removeEventListener("mouseup", handleMouseDown);
 		};
 	}, []);
 
