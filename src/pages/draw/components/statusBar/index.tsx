@@ -527,7 +527,7 @@ const StatusBar: React.FC = () => {
 												currentTheme === AppSettingsTheme.Dark,
 											),
 										)
-											.alpha(0.42)
+											.alpha(0.64)
 											.toString()};
                     display: inline-block;
                     box-sizing: border-box;
