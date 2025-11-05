@@ -226,6 +226,7 @@ export const generateSerialNumber = (
 			seed: 0,
 			index: null,
 			updated: 0,
+			textSerialNumberType: appState.currentItemTextSerialNumberType,
 		},
 	);
 

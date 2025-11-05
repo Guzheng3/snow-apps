@@ -522,11 +522,7 @@ const StatusBar: React.FC = () => {
 
 
                 .status-bar-content {
-                    background-color: ${Color(
-											getMaskBackgroundColor(
-												currentTheme === AppSettingsTheme.Dark,
-											),
-										)
+                    background-color: ${Color(getMaskBackgroundColor(false))
 											.alpha(0.64)
 											.toString()};
                     display: inline-block;
