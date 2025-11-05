@@ -33,7 +33,6 @@ use snow_shot_app_services::video_record_service;
 use snow_shot_app_shared::EnigoManager;
 use snow_shot_global_state::{CaptureState, ReadClipboardState, WebViewSharedBufferState};
 use snow_shot_plugin_service::plugin_service;
-use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 
 #[cfg(feature = "dhat-heap")]
 pub static PROFILER: std::sync::LazyLock<Mutex<Option<dhat::Profiler>>> =
