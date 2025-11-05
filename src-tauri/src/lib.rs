@@ -116,9 +116,9 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             let app_window = app.get_webview_window("main").expect("no main window");
+            app_window.show().unwrap();
             app_window.unminimize().unwrap();
             app_window.set_focus().unwrap();
-            app_window.show().unwrap();
         }))
         .plugin(tauri_plugin_macos_permissions::init())
         .plugin(tauri_plugin_opener::init())
@@ -170,12 +170,6 @@ pub fn run() {
                 }
             }
 
-            #[cfg(target_os = "macos")]
-            {
-                // macOS 下不在 dock 显示
-                app.set_activation_policy(tauri::ActivationPolicy::Accessory);
-            }
-
             // 监听窗口关闭事件，拦截关闭按钮
             let window_clone = main_window.clone();
             main_window.on_window_event(move |event| {
@@ -183,9 +177,8 @@ pub fn run() {
                     api.prevent_close();
 
                     // 隐藏窗口而不是关闭
-                    if let Err(e) = window_clone.hide() {
-                        log::error!("[macos] hide window error: {:?}", e);
-                    }
+                    tauri::AppHandle::hide(window_clone.app_handle()).unwrap();
+
                     window_clone.emit("on-hide-main-window", ()).unwrap();
                 }
             });
