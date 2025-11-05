@@ -284,6 +284,7 @@ export const renderAddImageToContainerAction = async (
 					width: imageSrc.width,
 					height: imageSrc.height,
 					alphaMode: "no-premultiply-alpha",
+					format: "rgba8unorm",
 				}),
 			});
 			imageSharedBufferRef.current = imageSrc;

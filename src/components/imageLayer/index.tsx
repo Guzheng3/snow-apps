@@ -317,7 +317,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 				autoStart: false,
 				antialias,
 				canvas: offscreenCanvasRef.current ?? canvas,
-				preference: "webgl",
+				preference: "webgpu",
 			};
 
 			await initCanvasAction(
