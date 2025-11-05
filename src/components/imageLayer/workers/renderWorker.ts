@@ -2,6 +2,7 @@ import {
 	type Application,
 	type Container,
 	DOMAdapter,
+	type Filter,
 	type Texture,
 	WebWorkerAdapter,
 } from "pixi.js";
@@ -99,6 +100,9 @@ const currentImageTextureRef: RefWrap<Texture | undefined> = {
 const blurSpriteMapRef: RefWrap<Map<string, BlurSprite>> = {
 	current: new Map(),
 };
+const blurSpriteFilterMapRef: RefWrap<Map<string, Filter>> = {
+	current: new Map(),
+};
 const highlightElementMapRef: RefWrap<Map<string, HighlightElement>> = {
 	current: new Map(),
 };
@@ -185,6 +189,7 @@ const handleCreateBlurSprite = (data: BaseLayerRenderCreateBlurSpriteData) => {
 const handleUpdateBlurSprite = (data: BaseLayerRenderUpdateBlurSpriteData) => {
 	renderUpdateBlurSpriteAction(
 		blurSpriteMapRef,
+		blurSpriteFilterMapRef,
 		data.payload.blurElementId,
 		data.payload.blurProps,
 		data.payload.updateFilter,
@@ -235,6 +240,7 @@ const handleUpdateWatermarkSprite = (
 const handleClearContext = () => {
 	renderClearContextAction(
 		blurSpriteMapRef,
+		blurSpriteFilterMapRef,
 		highlightElementMapRef,
 		lastWatermarkPropsRef,
 	);

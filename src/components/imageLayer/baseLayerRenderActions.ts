@@ -44,6 +44,7 @@ export const renderInitCanvasAction = async (
 		...appOptions,
 	});
 	canvasAppRef.current = canvasApp;
+	canvasApp.stage.interactiveChildren = false;
 	return canvasApp.canvas;
 };
 
@@ -335,7 +336,7 @@ export const renderClearContainerAction = (
 export type BlurSprite = {
 	spriteContainer: PIXI.Container;
 	sprite: PIXI.Sprite;
-	spriteBlurFliter: PIXI.Filter;
+	spriteBlurFliter: PIXI.Filter | undefined;
 	spriteMask: PIXI.Graphics;
 };
 
@@ -359,11 +360,11 @@ export const renderCreateBlurSpriteAction = (
 	const blurSprite: BlurSprite = {
 		spriteContainer: new PIXI.Container(),
 		sprite: new PIXI.Sprite(imageTexture),
-		spriteBlurFliter: new PIXI.BlurFilter(),
+		spriteBlurFliter: undefined,
 		spriteMask: new PIXI.Graphics(),
 	};
 
-	blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
+	blurSprite.sprite.filters = undefined;
 	blurSprite.spriteContainer.setMask({
 		mask: blurSprite.spriteMask,
 	});
@@ -393,8 +394,182 @@ export type BlurSpriteProps = {
 	points?: readonly [x: number, y: number][];
 };
 
+/**
+ * 计算旋转和缩放后矩形的边界框，用于设置 filterArea
+ * 注意：此函数计算的是与 spriteMask 变换相匹配的区域
+ * spriteMask 的变换顺序：rotate -> translate(center) -> scale(zoom) -> rect
+ * @param x 矩形左上角 x 坐标（未缩放）
+ * @param y 矩形左上角 y 坐标（未缩放）
+ * @param width 矩形宽度（未缩放）
+ * @param height 矩形高度（未缩放）
+ * @param angle 旋转角度（弧度）
+ * @param zoom 缩放比例
+ */
+/**
+ * 获取或创建 filter 实例
+ * 如果相同参数的 filter 已存在，则返回已存在的 filter；否则创建新的 filter
+ * @param blurSpriteFilterMapRef filter 实例缓存
+ * @param filterType filter 类型
+ * @param blur 模糊强度
+ * @returns filter 实例
+ */
+const getOrCreateBlurFilter = (
+	blurSpriteFilterMapRef: RefType<Map<string, PIXI.Filter>>,
+	filterType: string,
+	blur: number,
+): PIXI.Filter => {
+	const filterKey = `${filterType}-${blur}`;
+	const existingFilter = blurSpriteFilterMapRef.current.get(filterKey);
+
+	if (existingFilter) {
+		return existingFilter;
+	}
+
+	let newFilter: PIXI.Filter;
+
+	if (filterType === "pixelate") {
+		const size = Math.max(1, (blur / 100) * 12);
+		newFilter = new PIXIFilters.PixelateFilter(size);
+		newFilter.resolution = 0.3;
+	} else if (filterType === "ascii") {
+		const size = Math.max(2, (blur / 100) * 20);
+		newFilter = new PIXIFilters.AsciiFilter({ size });
+		newFilter.resolution = 0.3;
+	} else if (filterType === "crossHatch") {
+		newFilter = new PIXIFilters.CrossHatchFilter();
+		newFilter.resolution = 0.5;
+	} else if (filterType === "crt") {
+		const lineWidth = Math.max(1, (blur / 100) * 5);
+		newFilter = new PIXIFilters.CRTFilter({ lineWidth });
+		newFilter.resolution = 1;
+	} else if (filterType === "dot") {
+		const scale = Math.max(0.1, blur / 100);
+		newFilter = new PIXIFilters.DotFilter({ scale });
+		newFilter.resolution = 0.3;
+	} else if (filterType === "emboss") {
+		const strength = Math.max(1, (blur / 100) * 20);
+		newFilter = new PIXIFilters.EmbossFilter(strength);
+		newFilter.resolution = 0.8;
+	} else if (filterType === "grayscale") {
+		newFilter = new PIXIFilters.GrayscaleFilter();
+		newFilter.resolution = 1;
+	} else if (filterType === "kawaseBlur") {
+		const strength = Math.max(1, (blur / 100) * 32);
+		newFilter = new PIXIFilters.KawaseBlurFilter({ strength });
+		newFilter.resolution = 0.3;
+	} else if (filterType === "motionBlur") {
+		const kernelSize = Math.max(1, (blur / 100) * 25);
+		newFilter = new PIXIFilters.MotionBlurFilter({
+			kernelSize,
+			velocity: { x: 42, y: 42 },
+		});
+		newFilter.resolution = 0.3;
+	} else if (filterType === "rgbSplit") {
+		const offset = (blur / 100) * 12;
+		newFilter = new PIXIFilters.RGBSplitFilter({
+			red: { x: offset, y: offset },
+			green: { x: 0, y: 0 },
+			blue: { x: -offset, y: -offset },
+		});
+		newFilter.resolution = 1;
+	} else if (filterType === "noise") {
+		const noise = blur / 100;
+		newFilter = new PIXI.NoiseFilter({ noise });
+		newFilter.resolution = 1;
+	} else if (filterType === "negative") {
+		const negativeFilter = new PIXI.ColorMatrixFilter();
+		negativeFilter.negative(false);
+		negativeFilter.resolution = 1;
+		newFilter = negativeFilter;
+	} else {
+		// 默认使用 blur filter
+		const strength = Math.max(1, (blur / 100) * 42);
+		newFilter = new PIXI.BlurFilter({
+			strength,
+			quality: 2,
+			kernelSize: 5,
+		});
+		newFilter.resolution = 0.3;
+	}
+
+	blurSpriteFilterMapRef.current.set(filterKey, newFilter);
+	return newFilter;
+};
+
+/**
+ * 计算旋转和缩放后矩形的边界框，用于设置 filterArea
+ * 注意：此函数计算的是与 spriteMask 变换相匹配的区域
+ * spriteMask 的变换顺序：rotate -> translate(center) -> scale(zoom) -> rect
+ * @param x 矩形左上角 x 坐标（未缩放）
+ * @param y 矩形左上角 y 坐标（未缩放）
+ * @param width 矩形宽度（未缩放）
+ * @param height 矩形高度（未缩放）
+ * @param angle 旋转角度（弧度）
+ * @param zoom 缩放比例
+ */
+const calculateRotatedFilterArea = (
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+	angle: number,
+	zoom: number,
+): PIXI.Rectangle => {
+	// 中心点坐标（变换的中心）
+	const centerX = (x + width * 0.5) * zoom;
+	const centerY = (y + height * 0.5) * zoom;
+
+	// 缩放后的尺寸
+	const scaledWidth = width * zoom;
+	const scaledHeight = height * zoom;
+
+	if (angle === 0) {
+		// 无旋转时，直接计算缩放后的矩形位置
+		// 由于缩放是围绕中心点的，所以左上角位置需要调整
+		return new PIXI.Rectangle(
+			centerX - scaledWidth * 0.5,
+			centerY - scaledHeight * 0.5,
+			scaledWidth,
+			scaledHeight,
+		);
+	}
+
+	// 旋转后的矩形半宽和半高
+	const halfWidth = scaledWidth * 0.5;
+	const halfHeight = scaledHeight * 0.5;
+
+	const cos = Math.cos(angle);
+	const sin = Math.sin(angle);
+
+	// 计算旋转后的四个顶点（展开循环以提高性能）
+	// 左上角
+	const x1 = -halfWidth * cos - -halfHeight * sin + centerX;
+	const y1 = -halfWidth * sin + -halfHeight * cos + centerY;
+
+	// 右上角
+	const x2 = halfWidth * cos - -halfHeight * sin + centerX;
+	const y2 = halfWidth * sin + -halfHeight * cos + centerY;
+
+	// 左下角
+	const x3 = -halfWidth * cos - halfHeight * sin + centerX;
+	const y3 = -halfWidth * sin + halfHeight * cos + centerY;
+
+	// 右下角
+	const x4 = halfWidth * cos - halfHeight * sin + centerX;
+	const y4 = halfWidth * sin + halfHeight * cos + centerY;
+
+	const minX = Math.min(x1, x2, x3, x4);
+	const minY = Math.min(y1, y2, y3, y4);
+	const maxX = Math.max(x1, x2, x3, x4);
+	const maxY = Math.max(y1, y2, y3, y4);
+
+	return new PIXI.Rectangle(minX, minY, maxX - minX, maxY - minY);
+};
+
 export const renderUpdateBlurSpriteAction = (
 	blurSpriteMapRef: RefType<Map<string, BlurSprite>>,
+	/// 用于共享相同值的 filter 实例， key 为 ${filterType}-${blur}
+	blurSpriteFilterMapRef: RefType<Map<string, PIXI.Filter>>,
 	blurElementId: string,
 	blurProps: BlurSpriteProps,
 	updateFilter: boolean,
@@ -441,15 +616,32 @@ export const renderUpdateBlurSpriteAction = (
 				point[1] * windowDevicePixelRatio + baseY,
 			);
 		}
+		const strokeWidth =
+			(blurProps.strokeWidth ?? 0) *
+			9 *
+			windowDevicePixelRatio *
+			blurProps.zoom;
 		blurSprite.spriteMask.stroke({
-			width:
-				(blurProps.strokeWidth ?? 0) *
-				9 *
-				windowDevicePixelRatio *
-				blurProps.zoom,
+			width: strokeWidth,
 			join: "round",
 			color: "red",
 		});
+
+		// 计算 points 情况下的 filterArea
+		// 扩展区域以包含笔画宽度
+		const expandedWidth = blurProps.width + strokeWidth;
+		const expandedHeight = blurProps.height + strokeWidth;
+		const expandedX = rectMinX - strokeWidth * 0.5;
+		const expandedY = rectMinY - strokeWidth * 0.5;
+
+		blurSprite.sprite.filterArea = calculateRotatedFilterArea(
+			expandedX,
+			expandedY,
+			expandedWidth,
+			expandedHeight,
+			blurProps.angle,
+			blurProps.zoom,
+		);
 	} else {
 		blurSprite.spriteMask
 			.clear()
@@ -466,144 +658,33 @@ export const renderUpdateBlurSpriteAction = (
 				blurProps.height,
 			)
 			.fill();
+
+		// 计算矩形情况下的 filterArea
+		blurSprite.sprite.filterArea = calculateRotatedFilterArea(
+			blurProps.x,
+			blurProps.y,
+			blurProps.width,
+			blurProps.height,
+			blurProps.angle,
+			blurProps.zoom,
+		);
 	}
 
 	blurSprite.spriteContainer.alpha =
 		blurProps.eraserAlpha ?? blurProps.opacity / 100;
 
-	if (updateFilter) {
-		if (blurProps.filterType === "pixelate") {
-			const size = Math.max(1, (blurProps.blur / 100) * 12);
-			if (
-				!(blurSprite.spriteBlurFliter instanceof PIXIFilters.PixelateFilter)
-			) {
-				blurSprite.spriteBlurFliter = new PIXIFilters.PixelateFilter(size);
-				blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
-			} else {
-				blurSprite.spriteBlurFliter.size = size;
-			}
-		} else if (blurProps.filterType === "ascii") {
-			const size = Math.max(2, (blurProps.blur / 100) * 20);
-			if (!(blurSprite.spriteBlurFliter instanceof PIXIFilters.AsciiFilter)) {
-				blurSprite.spriteBlurFliter = new PIXIFilters.AsciiFilter({
-					size,
-				});
+	// 当需要更新 filter 或者 filter 不存在时，使用共享的 filter 实例
+	if (updateFilter || !blurSprite.spriteBlurFliter) {
+		const newFilter = getOrCreateBlurFilter(
+			blurSpriteFilterMapRef,
+			blurProps.filterType,
+			blurProps.blur,
+		);
 
-				blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
-			} else {
-				blurSprite.spriteBlurFliter.size = size;
-			}
-		} else if (blurProps.filterType === "crossHatch") {
-			if (
-				!(blurSprite.spriteBlurFliter instanceof PIXIFilters.CrossHatchFilter)
-			) {
-				blurSprite.spriteBlurFliter = new PIXIFilters.CrossHatchFilter();
-				blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
-			}
-		} else if (blurProps.filterType === "crt") {
-			const lineWidth = Math.max(1, (blurProps.blur / 100) * 5);
-			if (!(blurSprite.spriteBlurFliter instanceof PIXIFilters.CRTFilter)) {
-				blurSprite.spriteBlurFliter = new PIXIFilters.CRTFilter({
-					lineWidth,
-				});
-				blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
-			} else {
-				blurSprite.spriteBlurFliter.lineWidth = lineWidth;
-			}
-		} else if (blurProps.filterType === "dot") {
-			const scale = Math.max(0.1, blurProps.blur / 100);
-			if (!(blurSprite.spriteBlurFliter instanceof PIXIFilters.DotFilter)) {
-				blurSprite.spriteBlurFliter = new PIXIFilters.DotFilter({
-					scale,
-				});
-				blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
-			} else {
-				blurSprite.spriteBlurFliter.scale = scale;
-			}
-		} else if (blurProps.filterType === "emboss") {
-			const strength = Math.max(1, (blurProps.blur / 100) * 20);
-			if (!(blurSprite.spriteBlurFliter instanceof PIXIFilters.EmbossFilter)) {
-				blurSprite.spriteBlurFliter = new PIXIFilters.EmbossFilter(strength);
-				blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
-			} else {
-				blurSprite.spriteBlurFliter.strength = strength;
-			}
-		} else if (blurProps.filterType === "grayscale") {
-			if (
-				!(blurSprite.spriteBlurFliter instanceof PIXIFilters.GrayscaleFilter)
-			) {
-				blurSprite.spriteBlurFliter = new PIXIFilters.GrayscaleFilter();
-				blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
-			}
-		} else if (blurProps.filterType === "kawaseBlur") {
-			const strength = Math.max(1, (blurProps.blur / 100) * 32);
-			if (
-				!(blurSprite.spriteBlurFliter instanceof PIXIFilters.KawaseBlurFilter)
-			) {
-				blurSprite.spriteBlurFliter = new PIXIFilters.KawaseBlurFilter({
-					strength,
-				});
-				blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
-			} else {
-				blurSprite.spriteBlurFliter.strength = strength;
-			}
-		} else if (blurProps.filterType === "motionBlur") {
-			const kernelSize = Math.max(1, (blurProps.blur / 100) * 25);
-			if (
-				!(blurSprite.spriteBlurFliter instanceof PIXIFilters.MotionBlurFilter)
-			) {
-				blurSprite.spriteBlurFliter = new PIXIFilters.MotionBlurFilter({
-					kernelSize,
-					velocity: {
-						x: 42,
-						y: 42,
-					},
-				});
-				blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
-			} else {
-				blurSprite.spriteBlurFliter.kernelSize = kernelSize;
-			}
-		} else if (blurProps.filterType === "rgbSplit") {
-			const offset = (blurProps.blur / 100) * 12;
-			if (
-				!(blurSprite.spriteBlurFliter instanceof PIXIFilters.RGBSplitFilter)
-			) {
-				blurSprite.spriteBlurFliter = new PIXIFilters.RGBSplitFilter({
-					red: { x: offset, y: offset },
-					green: { x: 0, y: 0 },
-					blue: { x: -offset, y: -offset },
-				});
-				blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
-			} else {
-				blurSprite.spriteBlurFliter.red = { x: offset, y: offset };
-				blurSprite.spriteBlurFliter.green = { x: 0, y: 0 };
-				blurSprite.spriteBlurFliter.blue = { x: -offset, y: -offset };
-			}
-		} else if (blurProps.filterType === "noise") {
-			const noise = blurProps.blur / 100;
-			if (!(blurSprite.spriteBlurFliter instanceof PIXI.NoiseFilter)) {
-				blurSprite.spriteBlurFliter = new PIXI.NoiseFilter({ noise });
-				blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
-			} else {
-				blurSprite.spriteBlurFliter.noise = noise;
-			}
-		} else if (blurProps.filterType === "negative") {
-			if (!(blurSprite.spriteBlurFliter instanceof PIXI.ColorMatrixFilter)) {
-				const negativeFilter = new PIXI.ColorMatrixFilter();
-				negativeFilter.negative(false);
-				blurSprite.spriteBlurFliter = negativeFilter;
-				blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
-			}
-		} else {
-			const strength = Math.max(1, (blurProps.blur / 100) * 42);
-			if (!(blurSprite.spriteBlurFliter instanceof PIXI.BlurFilter)) {
-				blurSprite.spriteBlurFliter = new PIXI.BlurFilter({
-					strength,
-				});
-				blurSprite.sprite.filters = [blurSprite.spriteBlurFliter];
-			} else {
-				blurSprite.spriteBlurFliter.strength = strength;
-			}
+		// 如果 filter 实例发生了变化，更新 sprite 的 filters
+		if (blurSprite.spriteBlurFliter !== newFilter) {
+			blurSprite.spriteBlurFliter = newFilter;
+			blurSprite.sprite.filters = [newFilter];
 		}
 	}
 };
@@ -619,7 +700,6 @@ export const renderDeleteBlurSpriteAction = (
 
 	blurSprite.sprite.destroy();
 	blurSprite.spriteContainer.destroy();
-	blurSprite.spriteBlurFliter.destroy();
 	blurSprite.spriteMask.destroy();
 	blurSpriteMapRef.current.delete(blurElementId);
 };
@@ -1002,10 +1082,12 @@ export const renderUpdateWatermarkSpriteAction = (
 
 export const renderClearContextAction = (
 	blurSpriteMapRef: RefType<Map<string, BlurSprite>>,
+	blurSpriteFilterMapRef: RefType<Map<string, PIXI.Filter>>,
 	highlightElementMapRef: RefType<Map<string, HighlightElement>>,
 	lastWatermarkPropsRef: RefType<WatermarkProps>,
 ) => {
 	blurSpriteMapRef.current.clear();
+	blurSpriteFilterMapRef.current.clear();
 	highlightElementMapRef.current.clear();
 	lastWatermarkPropsRef.current = {
 		fontSize: 0,

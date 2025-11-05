@@ -233,6 +233,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 	const canvasContainerChildCountRef = useRef<number>(0);
 	const currentImageTextureRef = useRef<PIXI.Texture | undefined>(undefined);
 	const blurSpriteMapRef = useRef<Map<string, BlurSprite>>(new Map());
+	const blurSpriteFilterMapRef = useRef<Map<string, PIXI.Filter>>(new Map());
 	const highlightElementMapRef = useRef<Map<string, HighlightElement>>(
 		new Map(),
 	);
@@ -316,10 +317,11 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 					wheel: false,
 				},
 				autoStart: false,
-				antialias,
 				canvas: offscreenCanvasRef.current ?? canvas,
 				preference:
 					getPlatform() === "windows" && navigator.gpu ? "webgpu" : "webgl",
+				multiView: false,
+				antialias,
 			};
 
 			await initCanvasAction(
@@ -523,6 +525,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 			await updateBlurSpriteAction(
 				rendererWorker,
 				blurSpriteMapRef,
+				blurSpriteFilterMapRef,
 				blurElementId,
 				blurProps,
 				updateFilter,
@@ -603,6 +606,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 		await clearContextAction(
 			rendererWorker,
 			blurSpriteMapRef,
+			blurSpriteFilterMapRef,
 			highlightElementMapRef,
 			lastWatermarkPropsRef,
 		);

@@ -2,6 +2,7 @@ import type {
 	Application,
 	ApplicationOptions,
 	Container,
+	Filter,
 	ICanvas,
 	Texture,
 } from "pixi.js";
@@ -570,6 +571,7 @@ export const createBlurSpriteAction = async (
 export const updateBlurSpriteAction = async (
 	renderWorker: Worker | undefined,
 	blurSpriteMapRef: RefObject<Map<string, BlurSprite>>,
+	blurSpriteFilterMapRef: RefObject<Map<string, Filter>>,
 	blurElementId: string,
 	blurProps: BlurSpriteProps,
 	updateFilter: boolean,
@@ -600,6 +602,7 @@ export const updateBlurSpriteAction = async (
 		} else {
 			renderUpdateBlurSpriteAction(
 				blurSpriteMapRef,
+				blurSpriteFilterMapRef,
 				blurElementId,
 				blurProps,
 				updateFilter,
@@ -776,6 +779,7 @@ export const updateHighlightAction = async (
 export const clearContextAction = async (
 	renderWorker: Worker | undefined,
 	blurSpriteMapRef: RefObject<Map<string, BlurSprite>>,
+	blurSpriteFilterMapRef: RefObject<Map<string, Filter>>,
 	highlightElementMapRef: RefObject<Map<string, HighlightElement>>,
 	lastWatermarkPropsRef: RefObject<WatermarkProps>,
 ): Promise<undefined> => {
@@ -799,6 +803,7 @@ export const clearContextAction = async (
 		} else {
 			renderClearContextAction(
 				blurSpriteMapRef,
+				blurSpriteFilterMapRef,
 				highlightElementMapRef,
 				lastWatermarkPropsRef,
 			);
