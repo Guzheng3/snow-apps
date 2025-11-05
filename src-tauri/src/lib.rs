@@ -176,8 +176,18 @@ pub fn run() {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
 
-                    // 隐藏窗口而不是关闭
-                    tauri::AppHandle::hide(window_clone.app_handle()).unwrap();
+                    #[cfg(target_os = "windows")]
+                    {
+                        if let Err(e) = window_clone.hide() {
+                            log::error!("[macos] hide window error: {:?}", e);
+                        }
+                    }
+
+                    #[cfg(target_os = "macos")]
+                    {
+                        // 隐藏窗口而不是关闭
+                        tauri::AppHandle::hide(window_clone.app_handle()).unwrap();
+                    }
 
                     window_clone.emit("on-hide-main-window", ()).unwrap();
                 }
