@@ -169,7 +169,7 @@ const HighlightToolCore: React.FC = () => {
 						selectRectParams,
 					},
 				);
-				imageLayerAction.canvasRender();
+				await imageLayerAction.canvasRender();
 			}
 		},
 		[getDrawCoreAction, getImageLayerAction, getSelectRectParams, getZoom],
@@ -205,7 +205,7 @@ const HighlightToolCore: React.FC = () => {
 					id,
 					highlightSprite.props,
 				);
-				imageLayerAction.canvasRender();
+				await imageLayerAction.canvasRender();
 			});
 		},
 		[getImageLayerAction],

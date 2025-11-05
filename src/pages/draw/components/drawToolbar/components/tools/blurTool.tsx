@@ -170,7 +170,7 @@ const BlurToolCore: React.FC = () => {
 			}
 
 			if (needRender) {
-				imageLayerAction.canvasRender();
+				await imageLayerAction.canvasRender();
 			}
 		},
 		[getImageLayerAction, getDrawCoreAction, getZoom],
@@ -202,7 +202,7 @@ const BlurToolCore: React.FC = () => {
 				}
 				blurSprite.props.eraserAlpha = targetOpacity;
 				await imageLayerAction.updateBlurSprite(id, blurSprite.props, true);
-				imageLayerAction.canvasRender();
+				await imageLayerAction.canvasRender();
 			});
 		},
 		[getImageLayerAction],
