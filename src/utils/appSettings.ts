@@ -22,10 +22,10 @@ export const getCorrectHdrColorAlgorithm = (
 		return HdrColorAlgorithm.None;
 	}
 
-	// 检查 Windows 版本是否满足最低要求（Windows 10 2004 或更高）
+	// 检查 Windows 版本是否满足最低要求（高于 Windows 10 2004）
 	if (compareMinimumVersion) {
 		const currentVersion = getPlatformVersion();
-		if (compare(currentVersion, MIN_WINDOWS_VERSION_FOR_HDR, "<")) {
+		if (compare(currentVersion, MIN_WINDOWS_VERSION_FOR_HDR, "<=")) {
 			appInfo(
 				`[getCorrectHdrColorAlgorithm] currentVersion: ${currentVersion} is less than ${MIN_WINDOWS_VERSION_FOR_HDR}`,
 			);
