@@ -318,8 +318,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({
 				},
 				autoStart: false,
 				canvas: offscreenCanvasRef.current ?? canvas,
-				preference:
-					getPlatform() === "windows" && navigator.gpu ? "webgpu" : "webgl",
+				preference: "webgl",
 				multiView: false,
 				antialias,
 			};
