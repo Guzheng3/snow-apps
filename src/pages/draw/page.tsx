@@ -422,14 +422,6 @@ const DrawPageCore: React.FC<{
 			});
 
 			appWindow.setFocus();
-
-			// 修复 macOS 下截图窗口可能没有焦点的问题
-			setTimeout(() => {
-				appWindow.setFocus();
-			}, 512);
-			setTimeout(() => {
-				appWindow.setFocus();
-			}, 1024);
 		},
 		[getScreenshotType],
 	);
