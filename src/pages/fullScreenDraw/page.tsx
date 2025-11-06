@@ -165,6 +165,9 @@ const FullScreenDrawPageCore: React.FC = () => {
 				} else {
 					mosueThroughStateRef.current.enable = true;
 					getCurrentWindow().setIgnoreCursorEvents(true);
+					setTimeout(() => {
+						getCurrentWindow().setFocus();
+					}, 100);
 
 					mosueThroughStateRef.current.tool = getDrawState();
 					toolbarActionRef.current?.setTool(DrawState.MouseThrough);
