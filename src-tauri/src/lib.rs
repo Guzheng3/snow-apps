@@ -170,6 +170,12 @@ pub fn run() {
                 }
             }
 
+            #[cfg(target_os = "macos")]
+            {
+                // macOS 下不在 dock 显示
+                app.set_activation_policy(tauri::ActivationPolicy::Prohibited);
+            }
+
             // 监听窗口关闭事件，拦截关闭按钮
             let window_clone = main_window.clone();
             main_window.on_window_event(move |event| {
@@ -179,14 +185,15 @@ pub fn run() {
                     #[cfg(target_os = "windows")]
                     {
                         if let Err(e) = window_clone.hide() {
-                            log::error!("[macos] hide window error: {:?}", e);
+                            log::error!("[setup] hide window error: {:?}", e);
                         }
                     }
 
                     #[cfg(target_os = "macos")]
                     {
-                        // 隐藏窗口而不是关闭
-                        tauri::AppHandle::hide(window_clone.app_handle()).unwrap();
+                        if let Err(e) = window_clone.hide() {
+                            log::error!("[setup] hide window error: {:?}", e);
+                        }
                     }
 
                     window_clone.emit("on-hide-main-window", ()).unwrap();
