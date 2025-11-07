@@ -176,6 +176,11 @@ jobs:
       - name: Install app dependencies and build web
         run: pnpm install --frozen-lockfile
       
+      # 安装 offline 版本额外依赖
+      - name: Install offline version dependencies
+        if: matrix.offline == true
+        run: pnpm install qr-scanner-wechat@0.1.3
+      
       # 构建 Excalidraw
       - name: Build Excalidraw
         run: pnpm update:excalidraw
@@ -188,21 +193,16 @@ jobs:
           Write-Host "Downloading npm.zip..."
           Invoke-WebRequest -Uri "https://github.com/mg-chao/snow-shot-webview-runtime/releases/download/Resources_20251107/npm.zip" -OutFile "npm.zip"
           
-          # 下载 plugins.zip
-          Write-Host "Downloading plugins.zip..."
-          Invoke-WebRequest -Uri "https://github.com/mg-chao/snow-shot-webview-runtime/releases/download/Resources_20251107/plugins.zip" -OutFile "plugins.zip"
-          
           # 解压 npm.zip 到 public 目录
           Write-Host "Extracting npm.zip to public directory..."
           Expand-Archive -Path "npm.zip" -DestinationPath "public" -Force
           
-          # 解压 plugins.zip 到 public 目录
-          Write-Host "Extracting plugins.zip to public directory..."
-          Expand-Archive -Path "plugins.zip" -DestinationPath "public" -Force
+          # 删除不需要的 npm/qr-scanner-wechat 文件夹
+          Write-Host "Removing npm/qr-scanner-wechat folder..."
+          Remove-Item -Path "public\npm\qr-scanner-wechat" -Recurse -Force -ErrorAction SilentlyContinue
           
           # 清理临时文件
           Remove-Item -Path "npm.zip" -Force
-          Remove-Item -Path "plugins.zip" -Force
           
           Write-Host "Offline resources setup completed successfully"
         shell: pwsh
