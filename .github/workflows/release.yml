@@ -307,6 +307,19 @@ jobs:
           echo "PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig:/usr/local/lib/pkgconfig" >> $GITHUB_ENV
         shell: bash
 
+      # 设置文件名模式
+      - name: Set asset name pattern
+        id: asset_pattern
+        run: |
+          if [ "${{ matrix.fixedRuntime }}" = "true" ]; then
+            echo "pattern=Snow Shot_[version]_[platform]-[arch]_webview[_setup][ext]" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.offline }}" = "true" ]; then
+            echo "pattern=Snow Shot_[version]_[platform]-[arch]_offline[_setup][ext]" >> $GITHUB_OUTPUT
+          else
+            echo "pattern=Snow Shot_[version]_[platform]-[arch][_setup][ext]" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
       # 执行构建，以及推送 github release
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
@@ -319,49 +332,8 @@ jobs:
         with:
           tagName: ${{ needs.create-release.outputs.app_version }}
           releaseName: Snow Shot ${{ needs.create-release.outputs.app_version }}
+          assetNamePattern: ${{ steps.asset_pattern.outputs.pattern }}
           releaseBody: "# 最新版 Windows 存在渲染性能问题，请尝试使用 webview 版本修复"
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }}
-
-      # 重命名不同版本的输出文件
-      - name: Rename output files for variants
-        if: matrix.platform == 'windows-latest' && (matrix.fixedRuntime == true || matrix.offline == true)
-        run: |
-          $bundlePath = ".\src-tauri\target\${{ matrix.target }}\release\bundle\nsis"
-          
-          if ("${{ matrix.fixedRuntime }}" -eq "true") {
-            $suffix = "_webview"
-            Write-Host "Renaming files with webview suffix..."
-          }
-          elseif ("${{ matrix.offline }}" -eq "true") {
-            $suffix = "_offline"
-            Write-Host "Renaming files with offline suffix..."
-          }
-          
-          # 重命名 .exe 安装文件
-          $files = Get-ChildItem "$bundlePath\*-setup.exe"
-          foreach ($file in $files) {
-            $newName = $file.Name -replace "-setup\.exe$", "$suffix-setup.exe"
-            Rename-Item $file.FullName $newName
-            Write-Host "Renamed: $($file.Name) -> $newName"
-          }
-          
-          # 重命名 .nsis.zip 文件
-          $files = Get-ChildItem "$bundlePath\*.nsis.zip"
-          foreach ($file in $files) {
-            $newName = $file.Name -replace "-setup\.nsis\.zip$", "$suffix-setup.nsis.zip"
-            Rename-Item $file.FullName $newName
-            Write-Host "Renamed: $($file.Name) -> $newName"
-          }
-          
-          # 重命名 .exe.sig 签名文件
-          $files = Get-ChildItem "$bundlePath\*-setup.exe.sig"
-          foreach ($file in $files) {
-            $newName = $file.Name -replace "-setup\.exe\.sig$", "$suffix-setup.exe.sig"
-            Rename-Item $file.FullName $newName
-            Write-Host "Renamed: $($file.Name) -> $newName"
-          }
-          
-          Write-Host "File renaming completed successfully"
-        shell: pwsh
