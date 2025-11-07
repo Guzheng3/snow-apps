@@ -23,7 +23,9 @@ export default defineConfig({
 			{
 				tag: "script",
 				attrs: {
-					src: "/scripts/excalidraw.js",
+					src: import.meta.env.PUBLIC_ONLINE_STATUS
+						? "/scripts/excalidraw.js"
+						: "/scripts/excalidraw.offline.js",
 				},
 			},
 			{

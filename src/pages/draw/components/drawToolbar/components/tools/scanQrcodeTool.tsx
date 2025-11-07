@@ -73,7 +73,10 @@ const ScanQrcodeToolCore: React.FC = () => {
 				"https://snowshot.top/npm/qr-scanner-wechat/dist/index.mjs"
 			);
 		} else {
-			QrCodeScanner = await import("qr-scanner-wechat");
+			QrCodeScanner = await import(
+				// @ts-expect-error
+				"/npm/qr-scanner-wechat/dist/index.mjs"
+			);
 		}
 		try {
 			await QrCodeScanner.ready();

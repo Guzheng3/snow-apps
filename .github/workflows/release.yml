@@ -89,6 +89,11 @@ jobs:
             target: "x86_64-pc-windows-msvc"
             fixedRuntime: true
 
+          # Windows offline version
+          - platform: "windows-latest"
+            target: "x86_64-pc-windows-msvc"
+            offline: true
+
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout repository
@@ -160,7 +165,11 @@ jobs:
       # 创建 .env 文件以支持联网功能
       - name: Create .env file
         run: |
-          echo "PUBLIC_ONLINE_STATUS=true" > .env
+          if [ "${{ matrix.offline }}" = "true" ]; then
+            echo "PUBLIC_ONLINE_STATUS=false" > .env
+          else
+            echo "PUBLIC_ONLINE_STATUS=true" > .env
+          fi
         shell: bash
 
       # 安装前端依赖并打包
@@ -170,6 +179,33 @@ jobs:
       # 构建 Excalidraw
       - name: Build Excalidraw
         run: pnpm update:excalidraw
+
+      # 下载 offline 资源 (Windows offline only)
+      - name: Download and setup offline resources
+        if: matrix.platform == 'windows-latest' && matrix.offline == true
+        run: |
+          # 下载 npm.zip
+          Write-Host "Downloading npm.zip..."
+          Invoke-WebRequest -Uri "https://github.com/mg-chao/snow-shot-webview-runtime/releases/download/Resources_20251107/npm.zip" -OutFile "npm.zip"
+          
+          # 下载 plugins.zip
+          Write-Host "Downloading plugins.zip..."
+          Invoke-WebRequest -Uri "https://github.com/mg-chao/snow-shot-webview-runtime/releases/download/Resources_20251107/plugins.zip" -OutFile "plugins.zip"
+          
+          # 解压 npm.zip 到 public 目录
+          Write-Host "Extracting npm.zip to public directory..."
+          Expand-Archive -Path "npm.zip" -DestinationPath "public" -Force
+          
+          # 解压 plugins.zip 到 public 目录
+          Write-Host "Extracting plugins.zip to public directory..."
+          Expand-Archive -Path "plugins.zip" -DestinationPath "public" -Force
+          
+          # 清理临时文件
+          Remove-Item -Path "npm.zip" -Force
+          Remove-Item -Path "plugins.zip" -Force
+          
+          Write-Host "Offline resources setup completed successfully"
+        shell: pwsh
 
       # 下载并配置 onnxruntime (Windows only)
       - name: Download and setup onnxruntime (Windows)
@@ -222,6 +258,12 @@ jobs:
           
           # 清理临时文件
           Remove-Item -Path $cabFile -Force
+          
+          # 移除原有的 tauri.windows.conf.json 并使用 webview2.x64.json
+          Write-Host "Replacing tauri.windows.conf.json with webview2.x64.json..."
+          Remove-Item -Path ".\src-tauri\tauri.windows.conf.json" -Force -ErrorAction SilentlyContinue
+          Move-Item -Path ".\src-tauri\webview2.x64.json" -Destination ".\src-tauri\tauri.windows.conf.json" -Force
+          Write-Host "Configuration files updated successfully"
         shell: pwsh
 
       # 下载并配置 onnxruntime (macOS only)
@@ -277,7 +319,7 @@ jobs:
         with:
           tagName: ${{ needs.create-release.outputs.app_version }}
           releaseName: Snow Shot ${{ needs.create-release.outputs.app_version }}
-          releaseBody: "最新版 Windows 的 WebView 在 4K 分辨率及以上的显示器（或多个显示器组合）上存在渲染性能问题，请尝试使用 fixedRuntime 版本修复"
+          releaseBody: "# 最新版 Windows 存在渲染性能问题，请尝试使用 webview 版本修复"
           releaseDraft: true
           prerelease: false
-          args: --target ${{ matrix.target }} ${{ matrix.fixedRuntime == true && '--config src-tauri/tauri.fixedRuntime.conf.json' || '' }}
+          args: --target ${{ matrix.target }}
