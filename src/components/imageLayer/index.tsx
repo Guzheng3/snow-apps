@@ -19,7 +19,6 @@ import type { CaptureHistoryItem } from "@/utils/appStore";
 import { getCaptureHistoryImageAbsPath } from "@/utils/captureHistory";
 import { supportOffscreenCanvas } from "@/utils/environment";
 import { appWarn } from "@/utils/log";
-import { getPlatform } from "@/utils/platform";
 import {
 	addImageToContainerAction,
 	applyProcessImageConfigToCanvasAction,

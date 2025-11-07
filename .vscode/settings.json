@@ -56,5 +56,8 @@
 	},
 	"search.exclude": {
 		"**/routeTree.gen.ts": true
+	},
+	"[github-actions-workflow]": {
+		"editor.defaultFormatter": "redhat.vscode-yaml"
 	}
 }

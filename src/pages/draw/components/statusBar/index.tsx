@@ -15,14 +15,13 @@ import {
 import { FormattedMessage } from "react-intl";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { KeyboardIcon, MouseIcon } from "@/components/icons";
-import { AppContext } from "@/contexts/appContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
 import { useCallbackRender } from "@/hooks/useCallbackRender";
 import { useStateRef } from "@/hooks/useStateRef";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import { useContentScale } from "@/hooks/useTextScaleFactor";
-import { AppSettingsGroup, AppSettingsTheme } from "@/types/appSettings";
+import { AppSettingsGroup } from "@/types/appSettings";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { DrawState } from "@/types/draw";
 import { formatKey } from "@/utils/format";
@@ -149,7 +148,6 @@ export const useMonitorRect = (
 const StatusBar: React.FC = () => {
 	const { token } = theme.useToken();
 
-	const { currentTheme } = useContext(AppContext);
 	const [hotKeyTipOpacity, setHotKeyTipOpacity] = useState(100);
 	useAppSettingsLoad(
 		useCallback((settings) => {

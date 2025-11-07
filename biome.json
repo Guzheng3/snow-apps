@@ -16,7 +16,9 @@
 			"*.json",
 			"src-tauri/**/*.json",
 			"rsbuild.config.ts",
-			"!src/routeTree.gen.ts"
+			"!src/routeTree.gen.ts",
+			"!src-tauri/Microsoft*/*",
+			"!src-tauri/target/*"
 		]
 	},
 	"formatter": {
