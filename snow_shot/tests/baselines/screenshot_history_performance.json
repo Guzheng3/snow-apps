@@ -1,0 +1,16 @@
+{
+  "policy": "report-only",
+  "fixture": {
+    "records": 10,
+    "displays_per_record": 2,
+    "image_width": 3840,
+    "image_height": 2160
+  },
+  "behavioral_limits": {
+    "decode_worker_limit": 2,
+    "decoded_cache_limit_bytes": 67108864,
+    "gui_thread_payload_io": false,
+    "persistent_thumbnail_cache": true
+  },
+  "timing_and_memory_thresholds": null
+}

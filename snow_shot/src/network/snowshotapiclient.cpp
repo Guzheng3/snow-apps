@@ -1,0 +1,230 @@
+#include "snow_shot/network/snowshotapiclient.h"
+
+#include "snowimageqtcodec.h"
+
+#include <QHttpMultiPart>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonValue>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QTimer>
+#include <QUuid>
+
+#include <algorithm>
+#include <utility>
+
+namespace {
+constexpr int kMaximumSide = 2880;
+constexpr int kWebpQuality = 75;
+constexpr int kRequestTimeoutMs = 35'000;
+constexpr qsizetype kMaximumResponseBytes = 4 * 1024 * 1024;
+
+QString normalizedBaseUrl(QString value) {
+    value = value.trimmed();
+    while (value.endsWith(u'/')) {
+        value.chop(1);
+    }
+    return value;
+}
+
+QString problemDetail(const QJsonObject& object) {
+    const QString detail = object.value(QStringLiteral("detail")).toString().trimmed();
+    if (!detail.isEmpty()) {
+        return detail;
+    }
+    return object.value(QStringLiteral("message")).toString().trimmed();
+}
+} // namespace
+
+struct SnowShotApiClient::Request {
+    QPointer<QObject> receiver;
+    Completion completion;
+    QPointer<QNetworkReply> reply;
+    QPointer<QTimer> timeout;
+};
+
+SnowShotApiClient::SnowShotApiClient(QString baseUrl, QObject* parent)
+    : QObject(parent), m_baseUrl(normalizedBaseUrl(std::move(baseUrl))) {}
+
+SnowShotApiClient::~SnowShotApiClient() {
+    const auto tokens = m_requests.keys();
+    for (const RequestToken token : tokens) {
+        cancel(token);
+    }
+}
+
+const QString& SnowShotApiClient::baseUrl() const {
+    return m_baseUrl;
+}
+
+QImage SnowShotApiClient::prepareImage(const QImage& image) {
+    if (image.isNull()) {
+        return {};
+    }
+    const int longestSide = std::max(image.width(), image.height());
+    if (longestSide <= kMaximumSide) {
+        return image;
+    }
+    return image.scaled(kMaximumSide, kMaximumSide, Qt::KeepAspectRatio,
+                        Qt::SmoothTransformation);
+}
+
+QByteArray SnowShotApiClient::encodeWebp(const QImage& image) {
+    return snow_shot::image_codec::encodeWebp(image, kWebpQuality);
+}
+
+QString SnowShotApiClient::formatFailure(int httpStatus, const QString& failureCode,
+                                         const QString& description) {
+    const QString conciseDescription = description.simplified();
+    const QString code = httpStatus > 0 && httpStatus != 200
+                             ? QString::number(httpStatus)
+                             : failureCode.trimmed();
+    if (code.isEmpty()) {
+        return conciseDescription;
+    }
+    if (conciseDescription.isEmpty()) {
+        return code;
+    }
+    return QStringLiteral("%1: %2").arg(code, conciseDescription);
+}
+
+SnowShotApiClient::RequestToken SnowShotApiClient::extractTable(const QImage& source,
+                                                               QObject* receiver,
+                                                               Completion completion) {
+    if (receiver == nullptr || !completion || m_baseUrl.isEmpty()) {
+        return 0;
+    }
+
+    const QByteArray webp = encodeWebp(prepareImage(source));
+    if (webp.isEmpty()) {
+        return 0;
+    }
+
+    auto* manager = findChild<QNetworkAccessManager*>();
+    if (manager == nullptr) {
+        manager = new QNetworkAccessManager(this);
+    }
+
+    const RequestToken token = ++m_nextToken;
+    auto* requestState = new Request{QPointer<QObject>(receiver), std::move(completion), nullptr,
+                                     nullptr};
+    m_requests.insert(token, requestState);
+
+    QNetworkRequest request(QUrl(m_baseUrl + QStringLiteral("/api/v1/table/extract")));
+    request.setRawHeader("X-Request-ID", QUuid::createUuid().toString(QUuid::WithoutBraces).toUtf8());
+    request.setTransferTimeout(kRequestTimeoutMs);
+
+    auto* multipart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
+    QHttpPart imagePart;
+    imagePart.setHeader(QNetworkRequest::ContentDispositionHeader,
+                        QVariant(QStringLiteral("form-data; name=\"image\"; filename=\"table.webp\"")));
+    imagePart.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("image/webp"));
+    imagePart.setBody(webp);
+    multipart->append(imagePart);
+
+    QNetworkReply* reply = manager->post(request, multipart);
+    multipart->setParent(reply);
+    requestState->reply = reply;
+
+    auto* timeout = new QTimer(reply);
+    timeout->setSingleShot(true);
+    timeout->setInterval(kRequestTimeoutMs);
+    requestState->timeout = timeout;
+    connect(timeout, &QTimer::timeout, reply, [reply]() {
+        if (reply != nullptr && reply->isRunning()) {
+            reply->abort();
+        }
+    });
+    timeout->start();
+
+    connect(reply, &QNetworkReply::finished, this, [this, token, reply]() {
+        if (!m_requests.contains(token)) {
+            reply->deleteLater();
+            return;
+        }
+
+        SnowShotTableResult result;
+        result.httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const QByteArray body = reply->read(kMaximumResponseBytes + 1);
+        if (body.size() > kMaximumResponseBytes) {
+            result.error = tr("Table recognition response is too large");
+        } else {
+            QJsonParseError parseError{};
+            const QJsonDocument document = QJsonDocument::fromJson(body, &parseError);
+            const QJsonObject root = document.isObject() ? document.object() : QJsonObject{};
+            result.code = root.value(QStringLiteral("code")).toVariant().toString();
+
+            if (reply->error() != QNetworkReply::NoError) {
+                if (reply->error() == QNetworkReply::OperationCanceledError) {
+                    result.error = tr("Table recognition request timed out");
+                } else {
+                    QString description = problemDetail(root);
+                    if (description.isEmpty() && result.httpStatus > 0) {
+                        description = reply
+                                          ->attribute(QNetworkRequest::HttpReasonPhraseAttribute)
+                                          .toString();
+                    }
+                    if (description.isEmpty()) {
+                        description = reply->errorString();
+                    }
+                    result.error = formatFailure(result.httpStatus, result.code, description);
+                }
+            } else if (!document.isObject()) {
+                result.error = tr("Invalid table recognition response");
+            } else {
+                if (result.httpStatus == 200 && root.value(QStringLiteral("data")).isObject()) {
+                    const QJsonObject data = root.value(QStringLiteral("data")).toObject();
+                    result.html = data.value(QStringLiteral("html")).toString();
+                    if (result.html.trimmed().isEmpty()) {
+                        result.error = tr("Table recognition returned no table");
+                    }
+                } else {
+                    result.error = problemDetail(root);
+                    if (result.error.isEmpty()) {
+                        result.error = tr("Table recognition failed");
+                    }
+                    result.error = formatFailure(result.httpStatus, result.code, result.error);
+                }
+            }
+        }
+        finish(token, std::move(result));
+    });
+
+    return token;
+}
+
+void SnowShotApiClient::cancel(RequestToken token) {
+    auto it = m_requests.find(token);
+    if (it == m_requests.end()) {
+        return;
+    }
+    Request* request = it.value();
+    m_requests.erase(it);
+    if (request->timeout != nullptr) {
+        request->timeout->stop();
+    }
+    if (request->reply != nullptr && request->reply->isRunning()) {
+        request->reply->abort();
+    }
+    delete request;
+}
+
+void SnowShotApiClient::finish(RequestToken token, SnowShotTableResult result) {
+    auto it = m_requests.find(token);
+    if (it == m_requests.end()) {
+        return;
+    }
+    Request* request = it.value();
+    m_requests.erase(it);
+    if (request->timeout != nullptr) {
+        request->timeout->stop();
+    }
+    const QPointer<QObject> receiver = request->receiver;
+    Completion completion = std::move(request->completion);
+    delete request;
+    if (receiver != nullptr && completion) {
+        completion(std::move(result));
+    }
+}

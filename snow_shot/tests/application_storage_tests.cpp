@@ -1,0 +1,373 @@
+#include "snow_shot/storage/applicationstorage.h"
+#include "snow_shot/storage/configurationstore.h"
+#include "snow_shot/storage/persistedselectioncodec.h"
+#include "snow_shot/storage/settingsadapters.h"
+
+#include <QCoreApplication>
+#include <QDateTime>
+#include <QDir>
+#include <QFile>
+#include <QFileInfoList>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QTemporaryDir>
+
+#include <atomic>
+#include <cstdlib>
+#include <iostream>
+#include <thread>
+
+namespace storage = snow_shot::storage;
+
+namespace {
+void require(bool condition, const char* message) {
+    if (!condition) {
+        std::cerr << message << '\n';
+        std::exit(1);
+    }
+}
+
+void writeBytes(const QString& path, const QByteArray& bytes) {
+    QFile file(path);
+    require(file.open(QIODevice::WriteOnly | QIODevice::Truncate), "failed to open test file");
+    require(file.write(bytes) == bytes.size(), "failed to write test file");
+}
+
+QByteArray readBytes(const QString& path) {
+    QFile file(path);
+    require(file.open(QIODevice::ReadOnly), "failed to read test file");
+    return file.readAll();
+}
+
+QJsonObject readObject(const QString& path) {
+    QJsonParseError error;
+    const QJsonDocument document = QJsonDocument::fromJson(readBytes(path), &error);
+    require(error.error == QJsonParseError::NoError && document.isObject(),
+            "stored configuration is not valid JSON");
+    return document.object();
+}
+
+storage::ApplicationStorage& initialize(const QString& executableDirectory,
+                                        const QString& appDataDirectory,
+                                        int debounceMilliseconds = 60000) {
+    auto& applicationStorage = storage::ApplicationStorage::instance();
+    static_cast<void>(applicationStorage.initialize(
+        {executableDirectory, appDataDirectory, debounceMilliseconds}));
+    return applicationStorage;
+}
+
+void markerResolutionAndStatus() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "failed to create marker test directory");
+    const QString executable = QDir(temporary.path()).filePath(QStringLiteral("bin"));
+    const QString fallback = QDir(temporary.path()).filePath(QStringLiteral("fallback"));
+    require(QDir().mkpath(executable), "failed to create executable directory");
+
+    auto& missing = initialize(executable, fallback);
+    require(missing.configurationDirectory() == QDir::cleanPath(fallback) &&
+                missing.status().effectiveMode == storage::StorageMode::ApplicationData,
+            "missing marker did not select application data storage");
+
+    const QString marker = QDir(executable).filePath(QStringLiteral("__data_directory"));
+    writeBytes(marker, QByteArrayLiteral("portable"));
+    auto& portable = initialize(executable, fallback);
+    require(portable.configurationDirectory() ==
+                    QDir(executable).filePath(QStringLiteral("portable")) &&
+                portable.status().effectiveMode == storage::StorageMode::Portable,
+            "relative marker did not select portable storage");
+
+    const QString blocking = QDir(temporary.path()).filePath(QStringLiteral("file-target"));
+    writeBytes(blocking, QByteArrayLiteral("file"));
+    writeBytes(marker, blocking.toUtf8());
+    auto& fallbackStorage = initialize(executable, fallback);
+    require(fallbackStorage.configurationDirectory() == QDir::cleanPath(fallback) &&
+                !fallbackStorage.status().fallbackReason.isEmpty(),
+            "unwritable portable target did not report fallback");
+}
+
+void defaultsAndTypedRoundTrip() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "failed to create defaults directory");
+    const QString config = QDir(temporary.path()).filePath(QStringLiteral("config.json"));
+    storage::ConfigurationStore store(config, true, true, 60000);
+    require(store.isDirty() && store.flushNow().success,
+            "default configuration was not materialized");
+    const QJsonObject root = readObject(config);
+    const QJsonObject history = root.value(QStringLiteral("capture_history")).toObject();
+    require(root.value(QStringLiteral("storage"))
+                        .toObject()
+                        .value(QStringLiteral("schema_version"))
+                        .toInt() == 1 &&
+                root.value(QStringLiteral("screenshot_selection"))
+                    .toObject()
+                    .value(QStringLiteral("smart_selection"))
+                    .toBool() &&
+                history.value(QStringLiteral("enabled")).toBool() &&
+                history.value(QStringLiteral("retention_days")).toInt() == 7 &&
+                history.value(QStringLiteral("max_entries")).toInt() == 100 &&
+                history.value(QStringLiteral("max_disk_mib")).toInt() == 1024 &&
+                !history.contains(QStringLiteral("records")),
+            "schema-v1 defaults are incomplete");
+    require(readBytes(config).endsWith('\n'), "configuration has no final newline");
+
+    require(store.setValues({
+                {QStringLiteral("interface/theme_mode"), QStringLiteral("DARK")},
+                {QStringLiteral("interface/language"), QStringLiteral("zh-CN")},
+                {QStringLiteral("capture_history/retention_days"), 30},
+                {QStringLiteral("capture_history/max_entries"), 250},
+                {QStringLiteral("capture_history/max_disk_mib"), 2048},
+                {QStringLiteral("screenshot_selection/smart_selection"), false},
+            }) &&
+                store.flushNow().success,
+            "typed configuration mutation failed");
+    storage::ConfigurationStore reloaded(config, true, true, 60000);
+    require(reloaded.value(QStringLiteral("interface/theme_mode")).toString() ==
+                    QStringLiteral("dark") &&
+                reloaded.value(QStringLiteral("interface/language")).toString() ==
+                    QStringLiteral("zh_CN") &&
+                reloaded.value(QStringLiteral("capture_history/retention_days")).toInt() == 30 &&
+                !reloaded.value(QStringLiteral("screenshot_selection/smart_selection")).toBool(),
+            "typed values did not normalize and round-trip");
+}
+
+void smartSelectionAccessorAndSignal() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "failed to create smart-selection directory");
+    const QString executable = QDir(temporary.path()).filePath(QStringLiteral("bin"));
+    require(QDir().mkpath(executable), "failed to create smart-selection executable directory");
+    auto& applicationStorage = initialize(executable, temporary.path());
+    bool changed = false;
+    QObject::connect(&applicationStorage, &storage::ApplicationStorage::smartSelectionChanged,
+                     [&changed](bool enabled) { changed = !enabled; });
+    require(applicationStorage.smartSelectionEnabled() &&
+                applicationStorage.requestSmartSelection(false) &&
+                !applicationStorage.smartSelectionEnabled() && changed,
+            "smart-selection accessor did not persist or signal changes");
+    require(applicationStorage.requestSmartSelection(true) &&
+                applicationStorage.smartSelectionEnabled(),
+            "smart-selection setting did not restore its enabled default");
+}
+
+void unknownFieldsArePreserved() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "failed to create unknown-field directory");
+    const QString config = QDir(temporary.path()).filePath(QStringLiteral("config.json"));
+    writeBytes(config,
+               QByteArrayLiteral("{\n"
+                                 "  \"storage\": {\"schema_version\": 1, \"future_flag\": true},\n"
+                                 "  \"interface\": {\"theme_mode\": \"light\"},\n"
+                                 "  \"extension\": {\"nested\": [1, 2, 3]}\n"
+                                 "}\n"));
+    storage::ConfigurationStore store(config, true, true, 60000);
+    require(store.setValue(QStringLiteral("interface/sidebar_collapsed"), true) &&
+                store.flushNow().success,
+            "failed to update document containing unknown fields");
+    const QJsonObject root = readObject(config);
+    require(root.value(QStringLiteral("storage"))
+                    .toObject()
+                    .value(QStringLiteral("future_flag"))
+                    .toBool() &&
+                root.value(QStringLiteral("extension"))
+                        .toObject()
+                        .value(QStringLiteral("nested"))
+                        .toArray()
+                        .size() == 3,
+            "schema-v1 unknown fields were erased");
+}
+
+void malformedConfigurationIsCopiedAndReplaced() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "failed to create malformed directory");
+    const QString config = QDir(temporary.path()).filePath(QStringLiteral("config.json"));
+    writeBytes(config, QByteArrayLiteral("{broken"));
+    storage::ConfigurationStore store(config, true, true, 60000);
+    require(store.compatibility() == storage::ConfigurationCompatibility::RecoveredDefaults &&
+                store.isDirty(),
+            "malformed configuration did not load recoverable defaults");
+    require(!QDir(temporary.path())
+                 .entryInfoList({QStringLiteral("config.json.corrupt.*.json")}, QDir::Files)
+                 .isEmpty(),
+            "malformed configuration was not copied to a corrupt backup");
+    require(store.flushNow().success && readObject(config)
+                                                .value(QStringLiteral("storage"))
+                                                .toObject()
+                                                .value(QStringLiteral("schema_version"))
+                                                .toInt() == 1,
+            "malformed configuration was not replaced cleanly");
+
+    const QString expiredBackup =
+        QDir(temporary.path())
+            .filePath(QStringLiteral("config.json.corrupt.20000101T000000000Z.json"));
+    writeBytes(expiredBackup, QByteArrayLiteral("old"));
+    QFile expiredFile(expiredBackup);
+    require(expiredFile.open(QIODevice::ReadWrite), "failed to open aged corrupt backup");
+    require(expiredFile.setFileTime(QDateTime::currentDateTimeUtc().addDays(-31),
+                                    QFileDevice::FileModificationTime),
+            "failed to age corrupt configuration backup");
+    expiredFile.close();
+    storage::ConfigurationStore cleanup(config, true, true, 60000);
+    require(!QFileInfo::exists(expiredBackup) &&
+                !QDir(temporary.path())
+                     .entryInfoList({QStringLiteral("config.json.corrupt.*.json")}, QDir::Files)
+                     .isEmpty(),
+            "expired corrupt configuration backups were not cleaned up");
+
+    writeBytes(config, QByteArrayLiteral("{\"storage\": {}}"));
+    storage::ConfigurationStore missingVersion(config, true, true, 60000);
+    require(missingVersion.compatibility() ==
+                storage::ConfigurationCompatibility::RecoveredDefaults,
+            "missing schema version was not treated as corrupt");
+}
+
+void futureVersionIsReadOnly() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "failed to create future-version directory");
+    const QString config = QDir(temporary.path()).filePath(QStringLiteral("config.json"));
+    writeBytes(config, QByteArrayLiteral("{\n"
+                                         "  \"storage\": {\"schema_version\": 2},\n"
+                                         "  \"interface\": {\"theme_mode\": \"dark\"},\n"
+                                         "  \"future\": {\"value\": 42}\n"
+                                         "}\n"));
+    const QByteArray original = readBytes(config);
+    storage::ConfigurationStore store(config, true, true, 60000);
+    bool rejected = false;
+    QObject::connect(&store, &storage::ConfigurationStore::mutationRejected,
+                     [&rejected](const QString&, const QString&) { rejected = true; });
+    require(store.compatibility() == storage::ConfigurationCompatibility::FutureVersion &&
+                !store.isWritable() &&
+                store.value(QStringLiteral("interface/theme_mode")).toString() ==
+                    QStringLiteral("dark") &&
+                !store.setValue(QStringLiteral("interface/theme_mode"), QStringLiteral("light")) &&
+                rejected && store.flushNow().success && readBytes(config) == original,
+            "future configuration was not loaded conservatively in read-only mode");
+
+    const QString executable = QDir(temporary.path()).filePath(QStringLiteral("bin"));
+    require(QDir().mkpath(executable), "failed to create future-version executable directory");
+    auto& applicationStorage = initialize(executable, temporary.path());
+    const storage::StorageStatus status = applicationStorage.status();
+    require(status.effectiveMode == storage::StorageMode::FutureVersionReadOnly &&
+                !status.writeAvailable &&
+                status.configurationCompatibility ==
+                    storage::ConfigurationCompatibility::FutureVersion &&
+                !applicationStorage.requestCaptureHistoryClear(),
+            "application storage did not propagate future-version read-only mode");
+}
+
+void failedWriteCanBeRetried() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "failed to create retry directory");
+    const QString config = QDir(temporary.path()).filePath(QStringLiteral("config.json"));
+    require(QDir().mkpath(config), "failed to create blocking config directory");
+    storage::ConfigurationStore store(config, true, true, 60000);
+    require(!store.flushNow().success && store.isDirty(),
+            "failed configuration write did not remain dirty");
+    require(QDir(config).removeRecursively(), "failed to remove blocking config directory");
+    require(store.flushNow().success && !store.isDirty() && QFileInfo::exists(config),
+            "configuration write did not recover on retry");
+}
+
+void concurrentFlushKeepsLatestRevision() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "failed to create concurrency directory");
+    const QString config = QDir(temporary.path()).filePath(QStringLiteral("config.json"));
+    storage::ConfigurationStore store(config, true, true, 60000);
+    require(store.flushNow().success, "failed to write concurrency defaults");
+
+    std::atomic<bool> start{false};
+    std::thread first([&store, &start]() {
+        while (!start.load()) {
+            std::this_thread::yield();
+        }
+        for (int index = 0; index < 50; ++index) {
+            static_cast<void>(
+                store.setValue(QStringLiteral("interface/sidebar_collapsed"), index % 2 == 0));
+            static_cast<void>(store.flushNow());
+        }
+    });
+    std::thread second([&store, &start]() {
+        while (!start.load()) {
+            std::this_thread::yield();
+        }
+        for (int index = 0; index < 50; ++index) {
+            static_cast<void>(
+                store.setValue(QStringLiteral("interface/theme_mode"),
+                               index % 2 == 0 ? QStringLiteral("dark") : QStringLiteral("light")));
+            static_cast<void>(store.flushNow());
+        }
+    });
+    start = true;
+    first.join();
+    second.join();
+    require(store.setValues({
+                {QStringLiteral("interface/sidebar_collapsed"), true},
+                {QStringLiteral("interface/theme_mode"), QStringLiteral("dark")},
+            }) &&
+                store.flushNow().success,
+            "failed to flush final concurrent revision");
+    const QJsonObject interface = readObject(config).value(QStringLiteral("interface")).toObject();
+    require(interface.value(QStringLiteral("sidebar_collapsed")).toBool() &&
+                interface.value(QStringLiteral("theme_mode")).toString() == QStringLiteral("dark"),
+            "an older concurrent snapshot overwrote the latest revision");
+}
+
+void persistedSelectionCodecIsCanonicalAndStrict() {
+    storage::PersistedSelection selection;
+    selection.rectangle = QRect(4, 5, 120, 80);
+    selection.cornerRadius = 8;
+    selection.shadowWidth = 3;
+    selection.shadowColor = QColor(10, 20, 30, 120);
+    selection.lockAspectRatio = true;
+    const QJsonObject encoded = storage::persistedSelectionToJson(selection);
+    const auto decoded = storage::normalizePersistedSelection(encoded);
+    require(decoded.valid && decoded.value == selection && !decoded.changed,
+            "persisted selection codec did not round-trip canonically");
+
+    QJsonObject malformed = encoded;
+    malformed.insert(QStringLiteral("corner_radius"), 257);
+    require(!storage::normalizePersistedSelection(malformed).valid,
+            "persisted selection codec accepted an out-of-range radius");
+}
+
+void asynchronousMutationResultsAreObservable() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "failed to create async mutation directory");
+    const QString executable = QDir(temporary.path()).filePath(QStringLiteral("bin"));
+    require(QDir().mkpath(executable), "failed to create async mutation executable directory");
+    auto& applicationStorage = initialize(executable, temporary.path(), 60000);
+
+    storage::CaptureHistoryPolicy policy = applicationStorage.captureHistoryPolicy();
+    policy.maxEntries = 2;
+    const auto policyResult = applicationStorage.requestCaptureHistoryPolicyAsync(policy);
+    require(policyResult.valid() && policyResult.get().success,
+            "asynchronous policy mutation did not complete successfully");
+    QCoreApplication::processEvents();
+    require(!applicationStorage.status().historyPolicyUpdating,
+            "policy mutation remained busy after completion");
+
+    const auto clearResult = applicationStorage.requestCaptureHistoryClearAsync();
+    require(clearResult.valid() && clearResult.get().success,
+            "asynchronous history clear did not complete successfully");
+    QCoreApplication::processEvents();
+    require(!applicationStorage.status().historyClearing,
+            "history clear remained busy after completion");
+}
+} // namespace
+
+int main(int argc, char** argv) {
+    QCoreApplication application(argc, argv);
+    QCoreApplication::setOrganizationName(QStringLiteral("SnowShotTests"));
+    QCoreApplication::setApplicationName(QStringLiteral("storage-tests"));
+    markerResolutionAndStatus();
+    defaultsAndTypedRoundTrip();
+    smartSelectionAccessorAndSignal();
+    unknownFieldsArePreserved();
+    malformedConfigurationIsCopiedAndReplaced();
+    futureVersionIsReadOnly();
+    failedWriteCanBeRetried();
+    concurrentFlushKeepsLatestRevision();
+    persistedSelectionCodecIsCanonicalAndStrict();
+    asynchronousMutationResultsAreObservable();
+    storage::ApplicationStorage::instance().shutdown();
+    return 0;
+}
