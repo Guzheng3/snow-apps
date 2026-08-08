@@ -1,0 +1,246 @@
+#ifndef SNOW_SHOT_PRESENTATION_SCREENSHOTPINNEDWINDOW_H
+#define SNOW_SHOT_PRESENTATION_SCREENSHOTPINNEDWINDOW_H
+
+#include "snow_draw_engine_qt/snow_canvas_runtime.h"
+#include "snow_shot/presentation/screenshotimagesource.h"
+#include "snow_shot/presentation/screenshotresultcompositor.h"
+
+#include <QByteArray>
+#include <QImage>
+#include <QPoint>
+#include <QPointer>
+#include <QRect>
+#include <QRectF>
+#include <QSize>
+#include <QTransform>
+#include <QWidget>
+
+#include <memory>
+
+namespace adqt::widgets {
+class AdButton;
+class AdContextMenu;
+} // namespace adqt::widgets
+
+class QAction;
+class QActionGroup;
+class QFrame;
+class QLabel;
+class QCloseEvent;
+class QContextMenuEvent;
+class QEvent;
+class QKeyEvent;
+class QMouseEvent;
+class QMoveEvent;
+class QResizeEvent;
+class QScreen;
+class QShowEvent;
+class QTimer;
+class QVariantAnimation;
+class QWheelEvent;
+class SnowCanvasWidget;
+class ScreenshotCanvasRenderer;
+class ScreenshotOcrPresentation;
+class ScreenshotOcrRecognitionPort;
+class ScreenshotQrRecognitionPort;
+class SnowShotApiClient;
+class ScreenshotRecognitionWindow;
+class ScreenshotRecognitionSessionController;
+class ScreenshotPinnedEditController;
+class ScreenshotPinnedCopyService;
+class ScreenshotPinnedNativeGeometryController;
+
+class ScreenshotPinnedWindow final : public QWidget {
+    Q_OBJECT
+
+  public:
+    enum class RuntimeMode {
+        CloneDocument,
+        NoDocument,
+    };
+
+    struct Config {
+        QRect nativeGeometry;
+        QRectF canvasSourceRect;
+        QRectF contentCanvasRect;
+        QRectF surfaceCanvasRect;
+        ScreenshotResultStyle resultStyle;
+        QSize fullResolutionScaleBasis;
+        double initialScalePercent = 100.0;
+        ScreenshotImageSource imageSource;
+        // Compatibility input for direct callers. New pin transactions use imageSource.
+        QImage backgroundImage;
+        QScreen* screen = nullptr;
+        bool enableEditing = true;
+        ScreenshotOcrRecognitionPort* recognition = nullptr;
+        ScreenshotQrRecognitionPort* qrRecognition = nullptr;
+        SnowShotApiClient* tableRecognition = nullptr;
+    };
+
+    explicit ScreenshotPinnedWindow(SnowCanvasRuntime& sourceRuntime, QWidget* parent = nullptr);
+    explicit ScreenshotPinnedWindow(RuntimeMode mode, QWidget* parent = nullptr);
+    ~ScreenshotPinnedWindow() override;
+
+    bool present(const Config& config);
+    bool prepareDocument(SnowCanvasRuntime& sourceRuntime);
+    bool prewarm(QScreen* screen = nullptr);
+    QRect currentNativeGeometry() const;
+
+  private:
+    ScreenshotPinnedWindow(SnowCanvasRuntime* sourceRuntime, RuntimeMode mode,
+                           QWidget* parent);
+
+    enum class GeometryMutation {
+        Scale,
+        ImageTransform,
+        Thumbnail,
+        Animation,
+    };
+
+    bool event(QEvent* event) override;
+    bool nativeEvent(const QByteArray& eventType, void* message, qintptr* result) override;
+    void changeEvent(QEvent* event) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
+    void closeEvent(QCloseEvent* event) override;
+    void contextMenuEvent(QContextMenuEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
+    void moveEvent(QMoveEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void wheelEvent(QWheelEvent* event) override;
+
+    void createUi();
+    void createContextMenu();
+    void retranslateUi();
+    void refreshContextMenu();
+    void showContextMenu(const QPoint& globalPosition);
+    void updateCanvasViewport();
+    void updateControlsGeometry();
+    void destroyCanvas();
+    bool ensureMaterializedImage();
+    void ensureEditController();
+    void setEditMode(bool enabled);
+    void setOcrMode(bool enabled);
+    void stopRecognition();
+    void updateOcrPresentation();
+    void updateRecognitionContentGeometry();
+    void activateRecognitionMode(int mode);
+    void deactivateRecognition();
+    void updateRecognitionToolbarState();
+    void handleTextEditingRequested();
+    void handleTextResetRequested();
+    void handleTextFormattingRequested(const QString& value);
+    void handleTextPunctuationRequested(const QString& value);
+    void handleTableMergeRequested();
+    void handleTableSplitRequested();
+    void handleTableResetRequested();
+    QPointF canvasPositionForViewPosition(const QPointF& position) const;
+    void copyCurrentViewport();
+    void copyOriginalContent();
+    void invalidatePendingCopy();
+    void applyImageOperation(const QTransform& operation, int quarterTurnDelta = 0);
+    void resetImageTransform();
+    void rebuildTransformedImage();
+    void applyScale(int percent);
+    void applyScaleAroundCursor(int percent, const QPointF& nativeCursor);
+    bool handleOpacityWheel(QObject* watched, QWheelEvent* event);
+    bool handleScaleWheel(QObject* watched, QWheelEvent* event);
+    QSize orientedInitialPhysicalSize() const;
+    QRect logicalRectForNativeRect(const QRect& nativeRect) const;
+    void setEffectiveScale(double percent, bool showReadout);
+    void showScaleReadout();
+    void showOpacityReadout();
+    void scheduleNativeScaleAdoption();
+    void adoptSettledNativeScale();
+    void setOpacityPercent(int percent);
+    void setThumbnailMode(bool enabled, bool animate = true);
+    void restoreFromThumbnailImmediately();
+    void animateGeometryTo(const QRect& nativeTarget);
+    bool applyWindowGeometry(const QRect& nativeGeometry, GeometryMutation mutation);
+    bool finishNativeGeometryInteraction();
+    bool reconcilePassiveNativeGeometry();
+    bool restoreCommittedNativeGeometry();
+    QRect nativeRectForLogicalRect(const QRect& logical, QScreen* screen) const;
+    QRectF visibleCanvasRect() const;
+    void showAllPinnedWindows();
+    void hideOtherPinnedWindows();
+    void closeOtherPinnedWindows();
+    void closeAllPinnedWindows();
+    bool startSystemWindowMove();
+    bool windowDragEnabled() const;
+    void updateWindowDragCursor(const QPoint& position);
+    void setWindowDragCursor(Qt::CursorShape shape);
+    void clearWindowDragCursor();
+    bool resizingEnabled() const;
+    QPointF windowPositionForEvent(QObject* watched, const QPointF& position) const;
+    QPointF nativePositionForWindowPosition(const QPointF& position) const;
+    QPoint globalPositionForNativePosition(const QPoint& position) const;
+    bool isControlsPanelPosition(const QPoint& position) const;
+
+    SnowCanvasRuntime m_runtime;
+    std::unique_ptr<ScreenshotPinnedCopyService> m_copyService;
+    SnowCanvasWidget* m_canvas = nullptr;
+    std::unique_ptr<ScreenshotCanvasRenderer> m_screenshotRenderer;
+    QFrame* m_borderFrame = nullptr;
+    QFrame* m_controlsPanel = nullptr;
+    QLabel* m_scaleLabel = nullptr;
+    QTimer* m_scaleLabelTimer = nullptr;
+    QTimer* m_nativeScaleSettleTimer = nullptr;
+    ScreenshotPinnedEditController* m_editController = nullptr;
+    adqt::widgets::AdButton* m_editButton = nullptr;
+    adqt::widgets::AdButton* m_closeButton = nullptr;
+    adqt::widgets::AdContextMenu* m_contextMenu = nullptr;
+    QAction* m_ocrAction = nullptr;
+    QAction* m_drawingAction = nullptr;
+    QAction* m_thumbnailAction = nullptr;
+    QActionGroup* m_opacityActions = nullptr;
+    QActionGroup* m_scaleActions = nullptr;
+    QAction* m_opacityReadoutAction = nullptr;
+    QAction* m_scaleReadoutAction = nullptr;
+    QVariantAnimation* m_geometryAnimation = nullptr;
+    QRectF m_canvasSourceRect;
+    QRectF m_backgroundCanvasRect;
+    QRectF m_resultSurfaceCanvasRect;
+    ScreenshotResultStyle m_resultStyle;
+    ScreenshotImageSource m_imageSource;
+    QImage m_originalImage;
+    QImage m_transformedImage;
+    QTransform m_imageTransform;
+    std::shared_ptr<ScreenshotOcrPresentation> m_originalOcrPresentation;
+    std::shared_ptr<ScreenshotOcrPresentation> m_displayOcrPresentation;
+    QPointer<ScreenshotOcrRecognitionPort> m_recognition;
+    QPointer<ScreenshotQrRecognitionPort> m_qrRecognition;
+    QPointer<SnowShotApiClient> m_tableRecognition;
+    ScreenshotRecognitionWindow* m_recognitionContent = nullptr;
+    QSize m_initialPhysicalSize;
+    QSize m_originalPixelSize;
+    QRect m_preThumbnailNativeGeometry;
+    std::unique_ptr<ScreenshotPinnedNativeGeometryController> m_nativeGeometryController;
+    std::unique_ptr<ScreenshotRecognitionSessionController> m_recognitionSession;
+    double m_viewportZoom = 1.0;
+    QPointF m_viewportCenter;
+    double m_scalePercent = 100.0;
+    int m_wheelAngleRemainder = 0;
+    int m_opacityWheelAngleRemainder = 0;
+    int m_opacityPercent = 100;
+    int m_quarterTurns = 0;
+    bool m_ocrReady = false;
+    bool m_ocrSupported = false;
+    bool m_ocrMode = false;
+    bool m_editingEnabled = true;
+    bool m_thumbnailMode = false;
+    bool m_thumbnailAnimationTarget = false;
+    bool m_geometryAnimating = false;
+    bool m_preserveScaleForSettledGeometry = false;
+    bool m_presented = false;
+    bool m_closing = false;
+    bool m_systemSizingActive = false;
+    bool m_windowDragActive = false;
+    bool m_windowDragCursorSet = false;
+    bool m_pointerInside = false;
+    bool m_passiveGeometryReconciliationActive = false;
+    WId m_synchronizedResizeWindowId = 0;
+};
+
+#endif // SNOW_SHOT_PRESENTATION_SCREENSHOTPINNEDWINDOW_H

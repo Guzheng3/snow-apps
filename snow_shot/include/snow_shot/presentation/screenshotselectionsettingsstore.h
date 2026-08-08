@@ -1,0 +1,26 @@
+#ifndef SNOW_SHOT_PRESENTATION_SCREENSHOTSELECTIONSETTINGSSTORE_H
+#define SNOW_SHOT_PRESENTATION_SCREENSHOTSELECTIONSETTINGSSTORE_H
+
+#include "snow_shot/presentation/screenshotselectionexportworkflowports.h"
+#include "snow_shot/presentation/screenshotselectionparams.h"
+
+#include <QString>
+#include <QVector>
+
+class ScreenshotSelectionSettingsStore final : public ScreenshotSelectionParamsStorePort {
+  public:
+    explicit ScreenshotSelectionSettingsStore(const QString& organization = QString(),
+                                              const QString& application = QString());
+
+    [[nodiscard]] bool hasPreviousSelectionParams() const;
+    [[nodiscard]] ScreenshotSelectionParams previousSelectionParams() const;
+    void setPreviousSelectionParams(const ScreenshotSelectionParams& params) override;
+
+    [[nodiscard]] QVector<ScreenshotSelectionPreset> presets() const;
+    void setPresets(const QVector<ScreenshotSelectionPreset>& presets);
+
+    void clear();
+
+};
+
+#endif // SNOW_SHOT_PRESENTATION_SCREENSHOTSELECTIONSETTINGSSTORE_H

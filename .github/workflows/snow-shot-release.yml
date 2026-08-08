@@ -1,0 +1,94 @@
+name: Snow Shot Static Release
+
+on:
+  push:
+    tags:
+      - "v*_snow-shot"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snow-shot-release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    name: Build and draft Snow Shot release
+    runs-on: windows-2022
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select MSVC x64 tools
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.1
+          target: x86_64-pc-windows-msvc
+          components: rustfmt, clippy
+
+      - name: Cache static Qt kit
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.tool_cache }}\snow-qt\6.10.3\msvc2022_64-static
+          key: snow-qt-static-6.10.3-msvc2022-x64-${{ runner.os }}
+
+      - name: Prepare Qt 6.10.3 static kit
+        shell: pwsh
+        env:
+          PREINSTALLED_QT_STATIC_DIR: ${{ vars.SNOW_QT_STATIC_DIR }}
+        run: |
+          $prefix = Join-Path $env:RUNNER_TOOL_CACHE "snow-qt\6.10.3\msvc2022_64-static"
+          $qtDir = $env:PREINSTALLED_QT_STATIC_DIR
+          if ([string]::IsNullOrWhiteSpace($qtDir)) {
+            & "$env:GITHUB_WORKSPACE\scripts\build-static-qt.ps1" -QtVersion 6.10.3 -InstallPrefix $prefix
+            if ($LASTEXITCODE -ne 0) { throw "Static Qt bootstrap failed." }
+            $qtDir = Join-Path $prefix "lib\cmake\Qt6"
+          }
+          if (-not (Test-Path -LiteralPath (Join-Path $qtDir "Qt6Config.cmake") -PathType Leaf)) {
+            throw "Qt 6.10.3 static CMake package was not found at $qtDir"
+          }
+          "SNOW_QT_STATIC_DIR=$qtDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "Qt6_DIR=$qtDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install vcpkg and project dependencies
+        shell: pwsh
+        run: .\scripts\bootstrap.ps1 -Qt6Dir $env:SNOW_QT_STATIC_DIR
+
+      - name: Build, audit, and package statically
+        shell: pwsh
+        run: .\scripts\stage-snow-shot-release.ps1
+
+      - name: Verify tag and locate package
+        id: package
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_NAME -notmatch '^v.+_snow-shot$') {
+            throw "Unexpected release tag: $env:GITHUB_REF_NAME"
+          }
+          $packages = @(Get-ChildItem build\snow-shot-msvc-release -File |
+            Where-Object { $_.Name -match '^snow-shot-.+\.exe$' -or $_.Name -match '^snow-shot-.+\.exe\.sha256$' })
+          if ($packages.Count -lt 2) { throw "The package and SHA-256 checksum were not produced." }
+          $assets = ($packages | ForEach-Object { $_.FullName }) -join "`n"
+          "assets<<SNOW_ASSETS" | Out-File $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          $assets | Out-File $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "SNOW_ASSETS" | Out-File $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Create draft prerelease with generated changelog
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assets = "${{ steps.package.outputs.assets }}" -split "`n" | Where-Object { $_ }
+          gh release create $env:GITHUB_REF_NAME @assets `
+            --draft `
+            --prerelease `
+            --generate-notes `
+            --title "Snow Shot $env:GITHUB_REF_NAME"
