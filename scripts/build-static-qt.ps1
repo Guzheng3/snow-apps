@@ -3,7 +3,7 @@ param(
     [string]$QtVersion = "6.10.3",
     [Parameter(Mandatory = $true)][string]$InstallPrefix,
     [string]$SourceDirectory = "",
-    [string]$QtMirrorBaseUrl = "https://mirrors.aliyun.com/qt/official_releases"
+    [string]$QtMirrorBaseUrl = "https://qt.mirror.constant.com/official_releases"
 )
 
 $ErrorActionPreference = "Stop"
