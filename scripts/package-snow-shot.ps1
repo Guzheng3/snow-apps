@@ -21,10 +21,12 @@ function Initialize-ReleaseToolchainEnvironment {
             throw "Visual Studio locator 'vswhere.exe' was not found. Install Visual Studio 2022 with the MSVC x64 build tools."
         }
 
-        $visualStudioPath = (& $vswherePath -latest -products * `
+        $visualStudioCandidates = @(& $vswherePath -latest -products * `
             -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-            -property installationPath | Select-Object -First 1)
-        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($visualStudioPath)) {
+            -property installationPath)
+        $vswhereExitCode = $LASTEXITCODE
+        $visualStudioPath = $visualStudioCandidates | Select-Object -First 1
+        if ($vswhereExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($visualStudioPath)) {
             throw "Visual Studio 2022 with the MSVC x64 build tools was not found."
         }
 
