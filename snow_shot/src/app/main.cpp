@@ -3,6 +3,7 @@
 #include "snow_shot/presentation/languagemanager.h"
 #include "snow_shot/presentation/components/icons/snowshoticons.h"
 #include "snow_shot/presentation/styles/thememanager.h"
+#include "snow_shot/presentation/settings/applicationpriority.h"
 #include "snow_shot/storage/applicationstorage.h"
 #include "../presentation/pinned/screenshotpintoperfinstrumentation.h"
 
@@ -56,6 +57,7 @@ int main(int argc, char* argv[]) {
     }
 
     static_cast<void>(snow_shot::storage::ApplicationStorage::instance().initialize());
+    static_cast<void>(snow_shot::presentation::settings::applyConfiguredApplicationPriority());
     QApplication::setQuitOnLastWindowClosed(false);
     QApplication::setWindowIcon(
         adqt::icons::makeIcon(snow_shot::presentation::icons::custom::app::ApplicationIcon()));

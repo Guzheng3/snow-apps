@@ -316,6 +316,7 @@ set(SNOW_SHOT_SETTINGS_SOURCES
     include/snow_shot/presentation/components/shortcutkeyrow.h
     include/snow_shot/presentation/components/storagestatussettingswidget.h
     include/snow_shot/presentation/settings/settingsruntimebindings.h
+    include/snow_shot/presentation/settings/applicationpriority.h
     include/snow_shot/presentation/styles/thememanager.h
     src/presentation/components/infotooltipicon.cpp
     src/presentation/components/pagecontainerwidget.cpp
@@ -327,6 +328,7 @@ set(SNOW_SHOT_SETTINGS_SOURCES
     src/presentation/components/storagestatussettingswidget.cpp
     src/presentation/services/globalshortcutmanager.cpp
     src/presentation/settings/settingsruntimebindings.cpp
+    src/presentation/settings/applicationpriority.cpp
     src/presentation/styles/buttonborder.cpp
     src/presentation/styles/mainwindowcomponenttoken.cpp
     src/presentation/styles/themecolorscheme.cpp

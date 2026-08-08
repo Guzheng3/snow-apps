@@ -82,7 +82,15 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
     }
 
     QVariant selectValue(settings::SettingsSelectBinding binding) const override {
-        return binding == settings::SettingsSelectBinding::Theme ? m_theme : m_language;
+        switch (binding) {
+        case settings::SettingsSelectBinding::Theme:
+            return m_theme;
+        case settings::SettingsSelectBinding::Language:
+            return m_language;
+        case settings::SettingsSelectBinding::ApplicationPriority:
+            return m_applicationPriority;
+        }
+        return {};
     }
 
     QVector<settings::SettingsRuntimeOption>
@@ -100,8 +108,10 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
         }
         if (binding == settings::SettingsSelectBinding::Theme) {
             m_theme = value.toString();
-        } else {
+        } else if (binding == settings::SettingsSelectBinding::Language) {
             m_language = value.toString();
+        } else {
+            m_applicationPriority = value.toString();
         }
         emit synchronized();
         return true;
@@ -229,6 +239,7 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
   private:
     QString m_theme = QStringLiteral("system");
     QString m_language = QStringLiteral("en_US");
+    QString m_applicationPriority = QStringLiteral("above_normal");
     bool m_historyEnabled = true;
     bool m_smartSelection = true;
     int m_retentionDays = 7;
@@ -740,12 +751,15 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
     SettingsPageWidget interfacePage(catalog, QStringLiteral("interface-settings"), bindings);
     SettingsPageWidget storagePage(catalog, QStringLiteral("storage-and-privacy"), bindings);
     SettingsPageWidget functionPage(catalog, QStringLiteral("function-settings"), bindings);
+    SettingsPageWidget systemPage(catalog, QStringLiteral("system-settings"), bindings);
     interfacePage.resize(720, 360);
     storagePage.resize(720, 480);
     functionPage.resize(720, 240);
+    systemPage.resize(720, 240);
     interfacePage.show();
     storagePage.show();
     functionPage.show();
+    systemPage.show();
     flushEvents();
 
     auto* theme = interfacePage.findChild<adqt::widgets::AdSelect*>(
@@ -800,6 +814,20 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
     require(theme->currentValue() == QStringLiteral("light"),
             "rejected select writes must restore the bound value");
     bindings.acceptWrites = true;
+
+    auto* applicationPriority = systemPage.findChild<adqt::widgets::AdSelect*>(
+        QStringLiteral("settings-control-system-application-priority"));
+    require(applicationPriority != nullptr && applicationPriority->options().size() == 4 &&
+                applicationPriority->currentValue() == QStringLiteral("above_normal") &&
+                applicationPriority->currentText() == QStringLiteral("Above normal") &&
+                applicationPriority->selectedModelIndexes().size() == 1,
+            "application priority must resolve its stored value to the labeled selected option");
+    applicationPriority->setCurrentValue(QStringLiteral("high"));
+    require(bindings.selectValue(settings::SettingsSelectBinding::ApplicationPriority) ==
+                QStringLiteral("high") &&
+                applicationPriority->currentText() == QStringLiteral("High") &&
+                applicationPriority->selectedModelIndexes().size() == 1,
+            "application priority changes must update both its label and dropdown selection");
 
     auto* historySwitch = storagePage.findChild<adqt::widgets::AdSwitch*>(
         QStringLiteral("settings-control-history-enabled"));
@@ -1005,14 +1033,14 @@ void catalogExpansionUpdatesAllConsumers() {
     auto* search = header.findChild<ApplicationSearchWidget*>(
         QStringLiteral("globalTopSearchBar"));
     auto* searchSelect = search != nullptr ? search->findChild<adqt::widgets::AdSelect*>() : nullptr;
-    require(stack != nullptr && stack->count() == 6,
+    require(stack != nullptr && stack->count() == 7,
             "route stack must add catalog pages automatically");
     require(content.findChild<ScreenshotHistoryPageWidget*>(
                 QStringLiteral("screenshotHistoryPage")) == nullptr,
             "main-content construction eagerly instantiated screenshot history");
     require(menu != nullptr && menu->model() != nullptr && menu->model()->rowCount() == 4,
             "sidebar must add a catalog navigation node automatically");
-    require(searchSelect != nullptr && searchSelect->options().size() == 6,
+    require(searchSelect != nullptr && searchSelect->options().size() == 7,
             "application search must add every catalog page to its default results");
 
     content.setCurrentRoute(QStringLiteral("/history"));

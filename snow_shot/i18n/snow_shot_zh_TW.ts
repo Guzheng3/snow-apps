@@ -1972,8 +1972,56 @@
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="327"/>
+        <source>Core</source>
+        <translation>核心</translation>
+    </message>
+    <message>
+        <source>System Settings</source>
+        <translation>系統設定</translation>
+    </message>
+    <message>
         <source>Settings</source>
         <translation>設定</translation>
+    </message>
+    <message>
+        <source>Configure application process behavior</source>
+        <translation>設定應用程式處理程序行為</translation>
+    </message>
+    <message>
+        <source>Core application settings</source>
+        <translation>核心應用程式設定</translation>
+    </message>
+    <message>
+        <source>Application priority</source>
+        <translation>應用程式優先順序</translation>
+    </message>
+    <message>
+        <source>Choose how much execution time the application receives</source>
+        <translation>選擇應用程式取得的執行時間</translation>
+    </message>
+    <message>
+        <source>Process priority</source>
+        <translation>處理程序優先順序</translation>
+    </message>
+    <message>
+        <source>Execution order</source>
+        <translation>執行順序</translation>
+    </message>
+    <message>
+        <source>Normal</source>
+        <translation>正常</translation>
+    </message>
+    <message>
+        <source>Above normal</source>
+        <translation>高於正常</translation>
+    </message>
+    <message>
+        <source>High</source>
+        <translation>高</translation>
+    </message>
+    <message>
+        <source>Real-time</source>
+        <translation>即時</translation>
     </message>
 </context>
 <context>

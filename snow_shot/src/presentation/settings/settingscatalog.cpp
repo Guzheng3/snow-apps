@@ -25,6 +25,7 @@ constexpr auto HISTORY_PAGE_ID = "screenshot-history";
 constexpr auto FUNCTION_PAGE_ID = "function-settings";
 constexpr auto INTERFACE_PAGE_ID = "interface-settings";
 constexpr auto STORAGE_PAGE_ID = "storage-and-privacy";
+constexpr auto SYSTEM_PAGE_ID = "system-settings";
 
 SettingsItemDefinition screenshotItem() {
     SettingsShortcutActionDefinition payload;
@@ -97,6 +98,31 @@ SettingsItemDefinition languageItem() {
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Locale")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Translation"))},
         QStringLiteral("interface/language"),
+        payload,
+    };
+}
+
+SettingsItemDefinition applicationPriorityItem() {
+    SettingsSelectDefinition payload;
+    payload.options = {
+        {QStringLiteral("normal"),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Normal"))},
+        {QStringLiteral("above_normal"),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Above normal"))},
+        {QStringLiteral("high"),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "High"))},
+        {QStringLiteral("real_time"),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Real-time"))},
+    };
+    payload.binding = SettingsSelectBinding::ApplicationPriority;
+    return {
+        QStringLiteral("system.application-priority"),
+        settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Application priority")),
+        settingsText(QT_TRANSLATE_NOOP(
+            "SettingsCatalog", "Choose how much execution time the application receives")),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Process priority")),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Execution order"))},
+        QStringLiteral("system/application_priority"),
         payload,
     };
 }
@@ -308,6 +334,22 @@ QVector<SettingsPageDefinition> builtInPages() {
                 },
             },
         },
+        {
+            QString::fromLatin1(SYSTEM_PAGE_ID),
+            QStringLiteral("/settings/systemSettings"),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "System Settings")),
+            settingsText(QT_TRANSLATE_NOOP(
+                "SettingsCatalog", "Configure application process behavior")),
+            {
+                {
+                    QStringLiteral("core"),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Core")),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Core application settings")),
+                    SettingsSectionReset::SystemSettings,
+                    {applicationPriorityItem()},
+                },
+            },
+        },
     };
 }
 
@@ -341,6 +383,11 @@ QVector<SettingsNavigationNode> builtInNavigation() {
             QStringLiteral("nav.storage-and-privacy"),
             QString::fromLatin1(STORAGE_PAGE_ID),
             []() { return outlined_icons::Lock(); },
+        },
+        {
+            QStringLiteral("nav.system-settings"),
+            QString::fromLatin1(SYSTEM_PAGE_ID),
+            []() { return outlined_icons::Control(); },
         },
     };
     return {quick, history, settingsGroup};
@@ -566,14 +613,20 @@ QStringList SettingsCatalog::validationErrors() const {
                 if (const auto* select = std::get_if<SettingsSelectDefinition>(
                         &itemDefinition.payload);
                     select != nullptr) {
-                    const QString expectedKey =
-                        select->binding == SettingsSelectBinding::Theme
-                            ? QStringLiteral("interface/theme_mode")
-                            : QStringLiteral("interface/language");
-                    const SettingsSelectSource expectedSource =
-                        select->binding == SettingsSelectBinding::Theme
-                            ? SettingsSelectSource::Fixed
-                            : SettingsSelectSource::LanguageCatalog;
+                    QString expectedKey;
+                    SettingsSelectSource expectedSource = SettingsSelectSource::Fixed;
+                    switch (select->binding) {
+                    case SettingsSelectBinding::Theme:
+                        expectedKey = QStringLiteral("interface/theme_mode");
+                        break;
+                    case SettingsSelectBinding::Language:
+                        expectedKey = QStringLiteral("interface/language");
+                        expectedSource = SettingsSelectSource::LanguageCatalog;
+                        break;
+                    case SettingsSelectBinding::ApplicationPriority:
+                        expectedKey = QStringLiteral("system/application_priority");
+                        break;
+                    }
                     if (schemaEntry == nullptr ||
                         schemaEntry->valueKind != storage::ConfigurationValueKind::String ||
                         select->options.isEmpty()) {

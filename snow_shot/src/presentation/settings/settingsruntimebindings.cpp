@@ -1,4 +1,5 @@
 #include "snow_shot/presentation/settings/settingsruntimebindings.h"
+#include "snow_shot/presentation/settings/applicationpriority.h"
 
 #include "snow_shot/presentation/languagemanager.h"
 #include "snow_shot/presentation/styles/thememanager.h"
@@ -98,6 +99,14 @@ QVariant BuiltInSettingsRuntimeBindings::selectValue(SettingsSelectBinding bindi
         return themeModeValue(styles::ThemeManager::instance().themeMode());
     case SettingsSelectBinding::Language:
         return LanguageManager::instance().languagePreference();
+    case SettingsSelectBinding::ApplicationPriority: {
+        auto& storage = storage::ApplicationStorage::instance();
+        if (!storage.isInitialized()) {
+            static_cast<void>(storage.initialize());
+        }
+        return storage.configuration().value(QStringLiteral("system/application_priority"))
+            .toString();
+    }
     }
     return {};
 }
@@ -126,6 +135,30 @@ bool BuiltInSettingsRuntimeBindings::applySelectValue(SettingsSelectBinding bind
     }
     case SettingsSelectBinding::Language:
         return LanguageManager::instance().setLanguage(value.toString());
+    case SettingsSelectBinding::ApplicationPriority: {
+        const auto requested = applicationPriorityForValue(value.toString());
+        if (!requested.has_value()) {
+            return false;
+        }
+        auto& storage = storage::ApplicationStorage::instance();
+        if (!storage.isInitialized()) {
+            static_cast<void>(storage.initialize());
+        }
+        const auto previous = applicationPriorityForValue(
+            storage.configuration().value(QStringLiteral("system/application_priority"))
+                .toString());
+        if (!applyApplicationPriority(*requested)) {
+            return false;
+        }
+        const bool persisted = storage.configuration().setValue(
+            QStringLiteral("system/application_priority"), applicationPriorityValue(*requested));
+        if (persisted) {
+            emit synchronized();
+        } else if (previous.has_value()) {
+            static_cast<void>(applyApplicationPriority(*previous));
+        }
+        return persisted;
+    }
     }
     return false;
 }
@@ -253,6 +286,29 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
             storage::ConfigurationSchema::defaultValue(
                 QStringLiteral("screenshot_selection/smart_selection"))
                 .toBool());
+    case SettingsSectionReset::SystemSettings: {
+        auto& storage = storage::ApplicationStorage::instance();
+        if (!storage.isInitialized()) {
+            static_cast<void>(storage.initialize());
+        }
+        const auto previous = applicationPriorityForValue(
+            storage.configuration().value(QStringLiteral("system/application_priority"))
+                .toString());
+        const auto priority = applicationPriorityForValue(
+            storage::ConfigurationSchema::defaultValue(
+                QStringLiteral("system/application_priority"))
+                .toString());
+        const bool accepted =
+            priority.has_value() && applyApplicationPriority(*priority) &&
+            storage.configuration().setValue(
+                QStringLiteral("system/application_priority"), applicationPriorityValue(*priority));
+        if (accepted) {
+            emit synchronized();
+        } else if (previous.has_value()) {
+            static_cast<void>(applyApplicationPriority(*previous));
+        }
+        return accepted;
+    }
     case SettingsSectionReset::None:
         return true;
     }

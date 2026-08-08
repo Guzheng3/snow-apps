@@ -62,6 +62,7 @@ enum class SettingsSelectSource {
 enum class SettingsSelectBinding {
     Theme,
     Language,
+    ApplicationPriority,
 };
 
 struct SettingsSelectDefinition {
@@ -149,6 +150,7 @@ enum class SettingsSectionReset {
     GeneralSettings,
     HistoryPolicy,
     ScreenshotSettings,
+    SystemSettings,
 };
 
 struct SettingsSectionDefinition {

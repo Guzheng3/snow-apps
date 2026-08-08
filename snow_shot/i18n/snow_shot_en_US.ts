@@ -1973,8 +1973,56 @@
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="327"/>
+        <source>Core</source>
+        <translation>Core</translation>
+    </message>
+    <message>
+        <source>System Settings</source>
+        <translation>System Settings</translation>
+    </message>
+    <message>
         <source>Settings</source>
         <translation>Settings</translation>
+    </message>
+    <message>
+        <source>Configure application process behavior</source>
+        <translation>Configure application process behavior</translation>
+    </message>
+    <message>
+        <source>Core application settings</source>
+        <translation>Core application settings</translation>
+    </message>
+    <message>
+        <source>Application priority</source>
+        <translation>Application priority</translation>
+    </message>
+    <message>
+        <source>Choose how much execution time the application receives</source>
+        <translation>Choose how much execution time the application receives</translation>
+    </message>
+    <message>
+        <source>Process priority</source>
+        <translation>Process priority</translation>
+    </message>
+    <message>
+        <source>Execution order</source>
+        <translation>Execution order</translation>
+    </message>
+    <message>
+        <source>Normal</source>
+        <translation>Normal</translation>
+    </message>
+    <message>
+        <source>Above normal</source>
+        <translation>Above normal</translation>
+    </message>
+    <message>
+        <source>High</source>
+        <translation>High</translation>
+    </message>
+    <message>
+        <source>Real-time</source>
+        <translation>Real-time</translation>
     </message>
 </context>
 <context>

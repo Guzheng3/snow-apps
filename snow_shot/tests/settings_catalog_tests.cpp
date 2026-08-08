@@ -57,7 +57,7 @@ class CatalogTranslator final : public QTranslator {
 void builtInCatalogIsCompleteAndValid() {
     const settings::SettingsCatalog& catalog = settings::builtInSettingsCatalog();
     require(catalog.validationErrors().isEmpty(), "built-in settings catalog must validate");
-    require(catalog.pages().size() == 5, "catalog must contain five pages");
+    require(catalog.pages().size() == 6, "catalog must contain six pages");
 
     qsizetype sectionCount = 0;
     qsizetype itemCount = 0;
@@ -91,8 +91,8 @@ void builtInCatalogIsCompleteAndValid() {
             }
         }
     }
-    require(sectionCount == 6 && itemCount == 11,
-            "catalog must contain the expected six sections and eleven items");
+    require(sectionCount == 7 && itemCount == 12,
+            "catalog must contain the expected seven sections and twelve items");
     const auto* functionPage = catalog.page(QStringLiteral("function-settings"));
     const auto* smartSelection = catalog.item(
         {QStringLiteral("function-settings"), QStringLiteral("screenshot-settings"),
@@ -111,6 +111,10 @@ void builtInCatalogIsCompleteAndValid() {
                 settingsGroup->pages.at(0).pageId == QStringLiteral("interface-settings") &&
                 settingsGroup->pages.at(1).pageId == QStringLiteral("function-settings"),
             "Function Settings must appear below Interface Settings in the Settings navigation");
+    require(settingsGroup->title.translated() == QStringLiteral("Settings") &&
+                settingsGroup->pages.size() == 4 &&
+                settingsGroup->pages.constLast().pageId == QStringLiteral("system-settings"),
+            "Settings navigation group must expose System Settings");
 
     const auto* retention =
         storage::ConfigurationSchema::entry(QStringLiteral("capture_history/retention_days"));
@@ -197,8 +201,8 @@ void invalidCatalogReportsAllConformanceErrors() {
 
 void searchIndexIsGeneratedAndRanked() {
     settings::SettingsSearchIndex index(settings::builtInSettingsCatalog());
-    require(index.entries().size() == 22 && index.search(QString()).size() == 22,
-            "search must generate all twenty-two catalog nodes in catalog order");
+    require(index.entries().size() == 25 && index.search(QString()).size() == 25,
+            "search must generate all twenty-five catalog nodes in catalog order");
 
     int pages = 0;
     int sections = 0;
@@ -221,7 +225,7 @@ void searchIndexIsGeneratedAndRanked() {
             break;
         }
     }
-    require(pages == 5 && sections == 6 && items == 11,
+    require(pages == 6 && sections == 7 && items == 12,
             "search node counts must match catalog page, section, and item counts");
 
     const auto theme = index.search(QStringLiteral("theme"));
@@ -298,7 +302,7 @@ void addingCatalogNodesAutomaticallyExpandsSearch() {
     require(expanded.validationErrors().isEmpty(),
             "a normal additional catalog page must validate without consumer changes");
     settings::SettingsSearchIndex index(expanded);
-    require(index.entries().size() == 25 &&
+    require(index.entries().size() == 28 &&
                 index.search(QStringLiteral("extra item")).constFirst().location ==
                     settings::SettingsLocation{QStringLiteral("extra-page"),
                                                QStringLiteral("extra-section"),
