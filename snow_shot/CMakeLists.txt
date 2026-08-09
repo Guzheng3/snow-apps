@@ -31,12 +31,12 @@ if(SNOW_SHOT_ENABLE_STRICT_COMPILE)
 endif()
 snow_enable_clang_tidy()
 
-find_package(Qt6 6.10.3 EXACT REQUIRED COMPONENTS Widgets LinguistTools Svg Network)
+find_package(Qt6 6.11.1 EXACT REQUIRED COMPONENTS Widgets LinguistTools Svg Network)
 
 if(SNOW_SHOT_QT_STATIC)
     if(NOT QT_FEATURE_static)
         message(FATAL_ERROR
-            "SNOW_SHOT_QT_STATIC requires a static Qt 6.10.3 kit. "
+            "SNOW_SHOT_QT_STATIC requires a static Qt 6.11.1 kit. "
             "Set SNOW_QT_STATIC_DIR or Qt6_DIR to its lib/cmake/Qt6 directory.")
     endif()
     foreach(_snow_shot_static_qt_plugin IN ITEMS
@@ -64,7 +64,7 @@ if(NOT DEFINED SNOW_SHOT_API_BASE_URL OR SNOW_SHOT_API_BASE_URL STREQUAL "")
     endif()
 endif()
 if(WIN32)
-    find_package(Qt6GuiPrivate 6.10.3 EXACT REQUIRED CONFIG
+    find_package(Qt6GuiPrivate 6.11.1 EXACT REQUIRED CONFIG
         PATHS "${Qt6_DIR}/.."
         NO_DEFAULT_PATH
     )
@@ -147,6 +147,11 @@ if(DEFINED OpenCV_DIR)
        EXISTS "${_SNOW_SHOT_OPENCV_INSTALL_PREFIX}/share")
         list(PREPEND CMAKE_PREFIX_PATH "${_SNOW_SHOT_OPENCV_INSTALL_PREFIX}")
     endif()
+endif()
+if(SNOW_SHOT_RELEASE_STATIC)
+    # OpenCV's Windows package dispatcher uses this variable to select the
+    # x64/<runtime>/staticlib target files instead of the shared-library set.
+    set(OpenCV_STATIC ON)
 endif()
 find_package(OpenCV CONFIG REQUIRED COMPONENTS core imgproc dnn objdetect wechat_qrcode)
 find_package(onnxruntime CONFIG REQUIRED)

@@ -43,8 +43,8 @@ $toolsRoot = Join-Path $repoRoot ".tools"
 $vcpkgRoot = Join-Path $toolsRoot "vcpkg"
 $vcpkgExe = Join-Path $vcpkgRoot "vcpkg.exe"
 $vcpkgInstalledRoot = Join-Path $vcpkgRoot "installed"
-$vcpkgBaseline = "ffc071e0c08432c60c9b64f00334c0227667931b"
-$rustToolchain = "1.93.1"
+$vcpkgBaseline = "ea1a7396b05637a53bf23c078647ecc0edee4b80"
+$rustToolchain = "1.97.1"
 $rustTarget = "x86_64-pc-windows-msvc"
 
 $git = Require-Command "git"
@@ -56,8 +56,8 @@ $cmakeVersionLine = (& $cmake.Source --version | Select-Object -First 1)
 if ($cmakeVersionLine -notmatch "cmake version (\d+)\.(\d+)") {
     throw "Unable to determine the installed CMake version: $cmakeVersionLine"
 }
-if ([int]$Matches[1] -lt 3 -or ([int]$Matches[1] -eq 3 -and [int]$Matches[2] -lt 30)) {
-    throw "CMake 3.30 or newer is required; found $cmakeVersionLine"
+if ([int]$Matches[1] -lt 4 -or ([int]$Matches[1] -eq 4 -and [int]$Matches[2] -lt 2)) {
+    throw "CMake 4.2 or newer is required for the Visual Studio 2026 generator; found $cmakeVersionLine"
 }
 
 if ($Reset) {
@@ -120,10 +120,11 @@ if (-not $SkipDependencyInstall) {
             "--x-manifest-root=$repoRoot",
             "--x-install-root=$tripletInstallRoot",
             "--triplet=$triplet",
-            "--x-feature=snow-shot"
-        ) + $overlayPortArguments + @(
-            "--clean-after-build"
-        )
+              "--x-feature=snow-shot"
+          ) + $overlayPortArguments + @(
+              "--overlay-triplets=$(Join-Path $repoRoot 'cmake/vcpkg-overlay-triplets')",
+              "--clean-after-build"
+          )
         if ($variant -eq "Dynamic") {
             $vcpkgArguments += "--x-feature=full-codecs"
         }
@@ -157,7 +158,7 @@ if ([string]::IsNullOrWhiteSpace($Qt6Dir) -and $env:QTDIR) {
 }
 if ([string]::IsNullOrWhiteSpace($Qt6Dir) -or
     -not (Test-Path -LiteralPath (Join-Path $Qt6Dir "Qt6Config.cmake"))) {
-    throw "Qt 6.10.3 was not found. Set -Qt6Dir, Qt6_DIR, SNOW_QT_STATIC_DIR, or QTDIR."
+    throw "Qt 6.11.1 was not found. Set -Qt6Dir, Qt6_DIR, SNOW_QT_STATIC_DIR, or QTDIR."
 }
 $qt6VersionFiles = @(
     (Join-Path $Qt6Dir "Qt6ConfigVersion.cmake"),
@@ -170,9 +171,9 @@ if ([string]::IsNullOrWhiteSpace($qt6VersionText)) {
     throw "Qt 6 version metadata is missing under $Qt6Dir"
 }
 $qt6VersionMatch = [regex]::Match($qt6VersionText, 'PACKAGE_VERSION\s+"([^"]+)"')
-if (-not $qt6VersionMatch.Success -or $qt6VersionMatch.Groups[1].Value -ne "6.10.3") {
+if (-not $qt6VersionMatch.Success -or $qt6VersionMatch.Groups[1].Value -ne "6.11.1") {
     $detectedQtVersion = if ($qt6VersionMatch.Success) { $qt6VersionMatch.Groups[1].Value } else { "unknown" }
-    throw "Qt 6.10.3 is required; detected $detectedQtVersion at $Qt6Dir"
+    throw "Qt 6.11.1 is required; detected $detectedQtVersion at $Qt6Dir"
 }
 
 $libclangDirectory = Join-Path $toolsRoot "llvm\bin"

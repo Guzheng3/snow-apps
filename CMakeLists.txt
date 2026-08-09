@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 4.2)
 
 project(snow_apps VERSION 0.2.0 LANGUAGES CXX)
 

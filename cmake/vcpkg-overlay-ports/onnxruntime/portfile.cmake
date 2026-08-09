@@ -8,10 +8,8 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO microsoft/onnxruntime
     REF "v${VERSION}"
-    SHA512 373c51575ada457b8aead5d195a5f3eba62fb747b6370a2a9889fff875c40ea30af8fd49104d58cc86f79247410e829086b0979f37ca8635c6dd34960e9cc424
+    SHA512 31ee13a8b89f2bfd0c58086258c15b11218a675e577d287d94acc20723b0ca0110458bfaf268d3e9140fe86e9a0fe3f89abbc2d6d347f8ea65624fc0716f14c1
     PATCHES
-        "${VCPKG_ROOT_DIR}/ports/onnxruntime/fix-cmake.patch"
-        "${VCPKG_ROOT_DIR}/ports/onnxruntime/fix-cmake-cuda.patch"
         fix-static-delay-load.patch
         generate-reduced-ops-during-configure.patch
 )
@@ -94,10 +92,35 @@ if(VCPKG_LIBRARY_LINKAGE STREQUAL "static" AND "directml" IN_LIST FEATURES)
     set(VCPKG_POLICY_DLLS_IN_STATIC_LIBRARY enabled)
 endif()
 
+set(SNOW_ORT_PLATFORM_OPTIONS)
+set(SNOW_ORT_RELEASE_OPTIONS)
+set(SNOW_ORT_DEBUG_OPTIONS)
+if(VCPKG_TARGET_IS_WINDOWS)
+    if(VCPKG_CRT_LINKAGE STREQUAL "static")
+        set(SNOW_ORT_MSVC_RUNTIME_RELEASE "MultiThreaded")
+        set(SNOW_ORT_MSVC_RUNTIME_DEBUG "MultiThreadedDebug")
+    else()
+        set(SNOW_ORT_MSVC_RUNTIME_RELEASE "MultiThreadedDLL")
+        set(SNOW_ORT_MSVC_RUNTIME_DEBUG "MultiThreadedDebugDLL")
+    endif()
+    list(APPEND SNOW_ORT_RELEASE_OPTIONS
+        "-DCMAKE_MSVC_RUNTIME_LIBRARY=${SNOW_ORT_MSVC_RUNTIME_RELEASE}")
+    list(APPEND SNOW_ORT_DEBUG_OPTIONS
+        "-DCMAKE_MSVC_RUNTIME_LIBRARY=${SNOW_ORT_MSVC_RUNTIME_DEBUG}")
+
+    if(VCPKG_TARGET_ARCHITECTURE STREQUAL "x64")
+        # MLAS includes macamd64.inc from the Windows SDK. MASM does not inherit
+        # CMAKE_C/CXX_FLAGS, so provide its SDK include directory explicitly.
+        list(APPEND SNOW_ORT_PLATFORM_OPTIONS
+            "-DCMAKE_ASM_MASM_FLAGS=/IC:/PROGRA~2/WI3CF2~1/10/Include/100261~1.0/shared")
+    endif()
+endif()
+
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}/cmake"
     OPTIONS
         ${FEATURE_OPTIONS}
+        ${SNOW_ORT_PLATFORM_OPTIONS}
         "-DPython_EXECUTABLE:FILEPATH=${PYTHON3}"
         "-DProtobuf_PROTOC_EXECUTABLE:FILEPATH=${PROTOC}"
         "-DONNX_CUSTOM_PROTOC_EXECUTABLE:FILEPATH=${PROTOC}"
@@ -122,7 +145,10 @@ vcpkg_cmake_configure(
         -Donnxruntime_DISABLE_RTTI=OFF
         -Donnxruntime_DISABLE_ABSEIL=OFF
         --compile-no-warning-as-error
+    OPTIONS_RELEASE
+        ${SNOW_ORT_RELEASE_OPTIONS}
     OPTIONS_DEBUG
+        ${SNOW_ORT_DEBUG_OPTIONS}
         -Donnxruntime_ENABLE_MEMLEAK_CHECKER=OFF
         -Donnxruntime_DEBUG_NODE_INPUTS_OUTPUTS=1
     MAYBE_UNUSED_VARIABLES
@@ -170,21 +196,29 @@ if("directml" IN_LIST FEATURES)
     endforeach()
 
     file(INSTALL "${DIRECTML_IMPORT_LIBRARY}" DESTINATION "${CURRENT_PACKAGES_DIR}/lib")
-    set(ONNXRUNTIME_TARGETS_FILE
-        "${CURRENT_PACKAGES_DIR}/share/onnxruntime/onnxruntimeTargets.cmake")
     file(TO_CMAKE_PATH "${DIRECTML_IMPORT_LIBRARY}" DIRECTML_IMPORT_LIBRARY_CMAKE)
-    file(READ "${ONNXRUNTIME_TARGETS_FILE}" ONNXRUNTIME_TARGETS_CONTENT)
-    string(REPLACE
-        "${DIRECTML_IMPORT_LIBRARY_CMAKE}"
-        "\${_IMPORT_PREFIX}/lib/DirectML.lib"
-        RELOCATABLE_ONNXRUNTIME_TARGETS_CONTENT
-        "${ONNXRUNTIME_TARGETS_CONTENT}"
-    )
-    if(RELOCATABLE_ONNXRUNTIME_TARGETS_CONTENT STREQUAL ONNXRUNTIME_TARGETS_CONTENT)
-        message(FATAL_ERROR
-            "ONNX Runtime targets did not contain the expected DirectML import library path")
+    file(GLOB ONNXRUNTIME_TARGETS_FILES
+        "${CURRENT_PACKAGES_DIR}/share/onnxruntime/onnxruntimeTargets*.cmake")
+    set(DIRECTML_TARGET_REFERENCE_FOUND FALSE)
+    foreach(ONNXRUNTIME_TARGETS_FILE IN LISTS ONNXRUNTIME_TARGETS_FILES)
+        file(READ "${ONNXRUNTIME_TARGETS_FILE}" ONNXRUNTIME_TARGETS_CONTENT)
+        string(REPLACE
+            "${DIRECTML_IMPORT_LIBRARY_CMAKE}"
+            "\${_IMPORT_PREFIX}/lib/DirectML.lib"
+            RELOCATABLE_ONNXRUNTIME_TARGETS_CONTENT
+            "${ONNXRUNTIME_TARGETS_CONTENT}"
+        )
+        if(NOT RELOCATABLE_ONNXRUNTIME_TARGETS_CONTENT STREQUAL ONNXRUNTIME_TARGETS_CONTENT)
+            set(DIRECTML_TARGET_REFERENCE_FOUND TRUE)
+            file(WRITE "${ONNXRUNTIME_TARGETS_FILE}"
+                "${RELOCATABLE_ONNXRUNTIME_TARGETS_CONTENT}")
+        endif()
+    endforeach()
+    if(NOT DIRECTML_TARGET_REFERENCE_FOUND)
+        message(STATUS
+            "ONNX Runtime targets do not reference an absolute DirectML import path; "
+            "using the staged lib/DirectML.lib directly")
     endif()
-    file(WRITE "${ONNXRUNTIME_TARGETS_FILE}" "${RELOCATABLE_ONNXRUNTIME_TARGETS_CONTENT}")
 
     file(INSTALL "${DIRECTML_RUNTIME}" DESTINATION "${CURRENT_PACKAGES_DIR}/bin")
     file(INSTALL "${DIRECTML_RUNTIME}" DESTINATION "${CURRENT_PACKAGES_DIR}/debug/bin")

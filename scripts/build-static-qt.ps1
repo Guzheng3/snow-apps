@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$QtVersion = "6.10.3",
+    [string]$QtVersion = "6.11.1",
     [Parameter(Mandatory = $true)][string]$InstallPrefix,
     [string]$SourceDirectory = "",
     [string]$QtMirrorBaseUrl = "https://qt.mirror.constant.com/official_releases"
@@ -125,8 +125,19 @@ if (-not (Test-Path -LiteralPath $sourceDirectory -PathType Container)) {
             throw "All Qt source mirrors failed."
         }
     }
-    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $sourceDirectory) | Out-Null
-    Invoke-Checked -Command "tar" -Arguments @("-xf", $archivePath, "-C", (Split-Path -Parent $sourceDirectory))
+    $sourceParent = Split-Path -Parent $sourceDirectory
+    $extractedSourceDirectory = Join-Path $sourceParent "qt-everywhere-src-$QtVersion"
+    New-Item -ItemType Directory -Force -Path $sourceParent | Out-Null
+    if (-not (Test-Path -LiteralPath $extractedSourceDirectory -PathType Container)) {
+        Invoke-Checked -Command "tar" -Arguments @("-xf", $archivePath, "-C", $sourceParent)
+    }
+    if ($sourceDirectory -ne $extractedSourceDirectory -and
+        (Test-Path -LiteralPath $extractedSourceDirectory -PathType Container)) {
+        Move-Item -LiteralPath $extractedSourceDirectory -Destination $sourceDirectory
+    }
+    if (-not (Test-Path -LiteralPath $sourceDirectory -PathType Container)) {
+        throw "Qt source archive did not produce the expected directory: $sourceDirectory"
+    }
 }
 
 New-Item -ItemType Directory -Force -Path $installPrefix | Out-Null
@@ -151,6 +162,7 @@ $configureArguments = @(
     "-skip", "qtopcua",
     "-skip", "qtpositioning",
     "-skip", "qtquick3d",
+    "-skip", "qtquick3dphysics",
     "-skip", "qtquicktimeline",
     "-skip", "qtremoteobjects",
     "-skip", "qtscxml",
