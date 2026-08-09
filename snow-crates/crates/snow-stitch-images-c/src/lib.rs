@@ -16,8 +16,8 @@ use snow_stitch_images::{
     StitchOptions, StitchTraceEvent, Stitcher, TiledCanvasSnapshot,
 };
 
-const DEFAULT_MAX_OUTPUT_HEIGHT: u32 = 2_160 * 64;
-const DEFAULT_MAX_OUTPUT_PIXELS: u64 = 3_840 * 2_160 * 64;
+const DEFAULT_MAX_OUTPUT_HEIGHT: u32 = 2_160 * 32;
+const DEFAULT_MAX_OUTPUT_PIXELS: u64 = 3_840 * 2_160 * 32;
 const DEFAULT_MIN_OVERLAP_ROWS: u32 = 48;
 const DEFAULT_MIN_OVERLAP_RATIO: f32 = 0.15;
 const DEFAULT_ACCEPTED_HISTORY_CAPACITY: usize = 4;

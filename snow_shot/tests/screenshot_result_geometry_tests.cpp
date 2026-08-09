@@ -45,12 +45,23 @@ void fitUsesAvailableGeometryMarginAndNeverUpscales() {
     require(insetNative.contains(small.nativeGeometry),
             "result is not centered inside the taskbar-safe inset");
 }
+
+void fitDoesNotDropBelowMinimumZoom() {
+    const ScreenshotPinnedImageFit huge = ScreenshotGeometryMapper::fitImageToAvailableGeometry(
+        QSize(10000, 10000), QRect(0, 0, 1280, 680), QRect(0, 0, 1280, 720),
+        QRect(0, 0, 1600, 900));
+    require(huge.valid && huge.scalePercent == 10.0 &&
+                huge.fullResolutionSize == QSize(10000, 10000) &&
+                huge.nativeGeometry.size() == QSize(1000, 1000),
+            "adaptive fit dropped below the minimum zoom");
+}
 } // namespace
 
 int main() {
     try {
         landscapeAndPortraitResultsFitBothAxes();
         fitUsesAvailableGeometryMarginAndNeverUpscales();
+        fitDoesNotDropBelowMinimumZoom();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return EXIT_FAILURE;

@@ -255,6 +255,7 @@ class ScreenshotScrollingCaptureProducer final : public QObject {
         m_cadence = AdaptiveScrollCadence(cadenceConfig);
         m_lastCaptureDispatch.reset();
         m_lastLoggedFps = -1;
+        m_allowOneRegionDuplicate = true;
         m_active = true;
         m_useLegacyCapture = false;
         destroyRegionSession();
@@ -273,6 +274,7 @@ class ScreenshotScrollingCaptureProducer final : public QObject {
         m_generation = generation;
         m_active = false;
         m_lastCaptureDispatch.reset();
+        m_allowOneRegionDuplicate = false;
         if (m_timer != nullptr) {
             m_timer->stop();
         }
@@ -445,6 +447,7 @@ class ScreenshotScrollingCaptureProducer final : public QObject {
     int m_lastLoggedFps = -1;
     bool m_active = false;
     bool m_useLegacyCapture = false;
+    bool m_allowOneRegionDuplicate = false;
 };
 
 ScrollCaptureResult ScreenshotScrollingCaptureProducer::capture(quint64 generation) {
@@ -475,7 +478,8 @@ ScrollCaptureResult ScreenshotScrollingCaptureProducer::capture(quint64 generati
                      snow_capture_last_error_message());
             activateLegacyCapture();
         } else {
-            if (region.is_duplicate != 0) {
+            const bool duplicate = region.is_duplicate != 0;
+            if (duplicate && !m_allowOneRegionDuplicate) {
                 return complete();
             }
             const size_t expected = static_cast<size_t>(m_selection.width()) *
@@ -501,6 +505,10 @@ ScrollCaptureResult ScreenshotScrollingCaptureProducer::capture(quint64 generati
             }
             std::memcpy(input.rgba_bytes, region.rgba_bytes, expected);
             result.wakeConsumer = m_mailbox->publish(generation, OwnedScrollFrame(stitchFrame));
+            // A newly observed frame earns one repeated capture. The stitcher uses
+            // that repeat to retry rejected motion against its last accepted viewport;
+            // later duplicates are suppressed until the backend reports new pixels.
+            m_allowOneRegionDuplicate = !duplicate;
             return complete();
         }
     }
