@@ -10,6 +10,7 @@ mod output;
 mod pipeline;
 mod rec;
 mod runtime;
+mod service;
 mod types;
 mod vision;
 
@@ -31,6 +32,7 @@ pub use pipeline::{
     },
 };
 pub use runtime::provider::{ProviderResolution, ResolvedExecutionProvider};
+pub use service::{OcrService, RequestToken, ServiceStats};
 pub use types::{LineResult, RecognizeOutput, WordBox, WordInfo, WordType};
 
 pub type Quad = [[f32; 2]; 4];

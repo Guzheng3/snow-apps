@@ -49,12 +49,23 @@ pub fn resolve_execution_providers(
                 fallback_used: false,
             },
         }),
+        ProviderPreference::Auto { device_id } => resolve_directml_execution_providers(
+            ProviderPreference::Auto {
+                device_id: *device_id,
+            },
+            *device_id,
+            cpu_provider(),
+            false,
+        ),
         ProviderPreference::Cuda { device_id } => resolve_cuda_execution_providers(
             *device_id,
             cpu_provider(),
             fail_if_provider_unavailable,
         ),
         ProviderPreference::DirectMl { device_id } => resolve_directml_execution_providers(
+            ProviderPreference::DirectMl {
+                device_id: *device_id,
+            },
             *device_id,
             cpu_provider(),
             fail_if_provider_unavailable,
@@ -95,13 +106,14 @@ fn resolve_cuda_execution_providers(
 }
 
 fn resolve_directml_execution_providers(
+    requested: ProviderPreference,
     device_id: usize,
     cpu_provider: ExecutionProviderDispatch,
     fail_if_provider_unavailable: bool,
 ) -> Result<ProviderChain> {
     resolve_accelerator_execution_providers(
         "DirectML",
-        ProviderPreference::DirectMl { device_id },
+        requested,
         ResolvedExecutionProvider::DirectMl,
         device_id,
         cpu_provider,
@@ -202,6 +214,7 @@ fn decide_provider_resolution(
 fn format_provider_preference(preference: ProviderPreference) -> String {
     match preference {
         ProviderPreference::Cpu => "cpu".to_string(),
+        ProviderPreference::Auto { device_id } => format!("auto(device_id={device_id})"),
         ProviderPreference::Cuda { device_id } => format!("cuda(device_id={device_id})"),
         ProviderPreference::DirectMl { device_id } => {
             format!("directml(device_id={device_id})")
@@ -227,6 +240,14 @@ mod tests {
     fn directml_preference_has_cpu_fallback() {
         assert_cpu_fallback(
             ProviderPreference::DirectMl { device_id: 0 },
+            ResolvedExecutionProvider::DirectMl,
+        );
+    }
+
+    #[test]
+    fn auto_preference_has_cpu_fallback() {
+        assert_cpu_fallback(
+            ProviderPreference::Auto { device_id: 0 },
             ResolvedExecutionProvider::DirectMl,
         );
     }

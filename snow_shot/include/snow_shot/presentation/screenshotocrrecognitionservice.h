@@ -42,8 +42,15 @@ class ScreenshotOcrRecognitionService final : public ScreenshotOcrRecognitionPor
     Q_OBJECT
 
   public:
+    struct Options {
+        int engineIdleTimeoutMs = 16'000;
+    };
+
     explicit ScreenshotOcrRecognitionService(QObject* parent = nullptr);
     explicit ScreenshotOcrRecognitionService(std::function<bool()> directMlEnabled,
+                                             QObject* parent = nullptr);
+    explicit ScreenshotOcrRecognitionService(const Options& options,
+                                             std::function<bool()> directMlEnabled = {},
                                              QObject* parent = nullptr);
     ~ScreenshotOcrRecognitionService() override;
 
