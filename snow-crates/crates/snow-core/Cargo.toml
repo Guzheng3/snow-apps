@@ -11,4 +11,4 @@ windows = { workspace = true, features = [
 ] }
 
 [dev-dependencies]
-proptest = "1"
+proptest = "1.11.0"

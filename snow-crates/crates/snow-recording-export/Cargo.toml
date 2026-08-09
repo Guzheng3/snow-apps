@@ -16,5 +16,5 @@ thiserror.workspace = true
 zstd.workspace = true
 
 [dev-dependencies]
-proptest = "1"
+proptest = "1.11.0"
 tempfile.workspace = true

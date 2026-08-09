@@ -38,7 +38,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-proptest = "1.9"
+proptest = "1.11.0"
 tempfile.workspace = true
 
 [[example]]
