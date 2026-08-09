@@ -12,6 +12,9 @@
 #include <limits>
 
 namespace {
+// Keep adaptive pinned-image sizing within the canvas engine's camera range.
+constexpr double kMinimumZoom = 0.1;
+
 int floorToInt(double value) {
     return static_cast<int>(std::floor(value));
 }
@@ -822,9 +825,10 @@ ScreenshotPinnedImageFit ScreenshotGeometryMapper::fitImageToAvailableGeometry(
         return fit;
     }
 
-    const double scale = std::min(
-        {1.0, static_cast<double>(insetNative.width()) / fullResolutionSize.width(),
-         static_cast<double>(insetNative.height()) / fullResolutionSize.height()});
+    const double scale = std::max(
+        kMinimumZoom,
+        std::min({1.0, static_cast<double>(insetNative.width()) / fullResolutionSize.width(),
+                  static_cast<double>(insetNative.height()) / fullResolutionSize.height()}));
     if (!(scale > 0.0)) {
         return fit;
     }
