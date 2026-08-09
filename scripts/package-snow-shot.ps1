@@ -37,20 +37,6 @@ function Initialize-ReleaseToolchainEnvironment {
         $env:VCINSTALLDIR = $vcInstallDirectory
     }
 
-    $vcRedistRoot = Join-Path $env:VCINSTALLDIR "Redist\MSVC"
-    $vcRedistDirectory = Get-ChildItem -LiteralPath $vcRedistRoot -Directory -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -match '^\d+(\.\d+)+$' } |
-        Sort-Object { [version]$_.Name } -Descending |
-        Select-Object -First 1
-    if (-not $vcRedistDirectory) {
-        throw "The x64 MSVC redistributable directory was not found under $vcRedistRoot"
-    }
-    $vcRuntimeDirectory = Join-Path $vcRedistDirectory.FullName "x64\Microsoft.VC143.CRT"
-    if (-not (Test-Path -LiteralPath $vcRuntimeDirectory -PathType Container)) {
-        throw "The x64 MSVC redistributable runtime was not found: $vcRuntimeDirectory"
-    }
-    $env:VCToolsRedistDir = $vcRedistDirectory.FullName + [System.IO.Path]::DirectorySeparatorChar
-
     $msvcToolsRoot = Join-Path $env:VCINSTALLDIR "Tools\MSVC"
     $msvcToolsDirectory = Get-ChildItem -LiteralPath $msvcToolsRoot -Directory -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -match '^\d+(\.\d+)+$' } |
@@ -64,29 +50,7 @@ function Initialize-ReleaseToolchainEnvironment {
         throw "The x64 PE inspection tool was not found: $script:DumpbinPath"
     }
 
-    $windowsSdkRoot = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10"
-    $windowsSdkBinRoot = Join-Path $windowsSdkRoot "bin"
-    $windowsSdkDirectory = Get-ChildItem -LiteralPath $windowsSdkBinRoot -Directory -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
-        Sort-Object { [version]$_.Name } -Descending |
-        Where-Object {
-            $x64Directory = Join-Path $_.FullName "x64"
-            (Test-Path -LiteralPath (Join-Path $x64Directory "dxcompiler.dll")) -and
-                (Test-Path -LiteralPath (Join-Path $x64Directory "dxil.dll"))
-        } |
-        Select-Object -First 1
-    if (-not $windowsSdkDirectory) {
-        throw "A Windows 10/11 SDK containing the x64 DirectX Shader Compiler was not found under $windowsSdkBinRoot"
-    }
-
-    $windowsSdkX64Directory = Join-Path $windowsSdkDirectory.FullName "x64"
-    $env:WindowsSdkDir = $windowsSdkRoot + [System.IO.Path]::DirectorySeparatorChar
-    $env:WindowsSDKVersion = $windowsSdkDirectory.Name + [System.IO.Path]::DirectorySeparatorChar
-    $env:Path = "$windowsSdkX64Directory;$env:Path"
-
     Write-Output "Visual Studio C++ tools: $env:VCINSTALLDIR"
-    Write-Output "MSVC redistributable: $env:VCToolsRedistDir"
-    Write-Output "Windows SDK runtime tools: $windowsSdkX64Directory"
     Write-Output "PE dependency inspector: $script:DumpbinPath"
 }
 
@@ -191,18 +155,21 @@ foreach ($property in $expectedBinaryMetadata.Keys) {
 
 $requiredStageFiles = @(
     "bin\snow_shot.exe",
-    "bin\MSVCP140.dll",
-    "bin\MSVCP140_1.dll",
-    "bin\VCRUNTIME140.dll",
-    "bin\VCRUNTIME140_1.dll",
-    "bin\dxcompiler.dll",
-    "bin\dxil.dll"
+    "bin\DirectML.dll"
 )
 $missingStageFiles = @($requiredStageFiles | Where-Object {
     -not (Test-Path -LiteralPath (Join-Path $installDirectory $_) -PathType Leaf)
 })
 if ($missingStageFiles.Count -gt 0) {
     throw "Release staging is missing required runtime files: $($missingStageFiles -join ', ')"
+}
+
+$forbiddenRuntimeFiles = @(Get-ChildItem -LiteralPath $installDirectory -Recurse -File |
+    Where-Object {
+        $_.Name -match '(?i)^(?:dxcompiler|dxil|msvcp\d+(?:_\d+)?|vcruntime\d+(?:_\d+)?|concrt\d+)\.dll$'
+    })
+if ($forbiddenRuntimeFiles.Count -gt 0) {
+    throw "Static release staging contains unused bundled runtimes: $($forbiddenRuntimeFiles.FullName -join ', ')"
 }
 
 $stagedQtDlls = @(Get-ChildItem -LiteralPath $installDirectory -Recurse -File -Filter "Qt6*.dll")
@@ -234,6 +201,17 @@ if ($debugArtifacts.Count -gt 0) {
 
 $stagedBinaries = @(Get-ChildItem -LiteralPath $installDirectory -Recurse -File |
     Where-Object { $_.Extension.ToLowerInvariant() -in @(".dll", ".exe") })
+$expectedBinaryPaths = @(
+    "bin\snow_shot.exe",
+    "bin\DirectML.dll"
+)
+$unexpectedBinaries = @($stagedBinaries | Where-Object {
+    $relativePath = [System.IO.Path]::GetRelativePath($installDirectory, $_.FullName)
+    $relativePath -notin $expectedBinaryPaths
+})
+if ($unexpectedBinaries.Count -gt 0) {
+    throw "Release staging contains unexpected binary files: $($unexpectedBinaries.FullName -join ', ')"
+}
 $stagedBinDirectory = Join-Path $installDirectory "bin"
 $windowsSystemDirectory = [Environment]::GetFolderPath([Environment+SpecialFolder]::System)
 $debugRuntimeImports = [System.Collections.Generic.List[string]]::new()

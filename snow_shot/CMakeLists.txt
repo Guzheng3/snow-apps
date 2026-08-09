@@ -115,31 +115,23 @@ if(WIN32)
     endif()
 endif()
 
-snow_add_rust_static_library(snow_capture_c
-    PACKAGE snow-capture-c
+snow_add_rust_static_libraries(snow_shot_rust_ffi
     MANIFEST_DIR "${SNOW_SHOT_CAPTURE_CRATES_DIR}"
-    OUTPUT_NAME snow_capture_c
-    STRIP_MSVC_DIRECTIVES
-)
-
-snow_add_rust_static_library(snow_ui_selector_c
-    PACKAGE snow-ui-selector-c
-    MANIFEST_DIR "${SNOW_SHOT_CAPTURE_CRATES_DIR}"
-    OUTPUT_NAME snow_ui_selector_c
-    STRIP_MSVC_DIRECTIVES
-)
-
-snow_add_rust_static_library(snow_stitch_images_c
-    PACKAGE snow-stitch-images-c
-    MANIFEST_DIR "${SNOW_SHOT_CAPTURE_CRATES_DIR}"
-    OUTPUT_NAME snow_stitch_images_c
-    STRIP_MSVC_DIRECTIVES
-)
-
-snow_add_rust_static_library(snow_ocr_c
-    PACKAGE snow-ocr-c
-    MANIFEST_DIR "${SNOW_SHOT_CAPTURE_CRATES_DIR}"
-    OUTPUT_NAME snow_ocr_c
+    TARGETS
+        snow_capture_c
+        snow_ui_selector_c
+        snow_stitch_images_c
+        snow_ocr_c
+    PACKAGES
+        snow-capture-c
+        snow-ui-selector-c
+        snow-stitch-images-c
+        snow-ocr-c
+    OUTPUT_NAMES
+        snow_capture_c
+        snow_ui_selector_c
+        snow_stitch_images_c
+        snow_ocr_c
     STRIP_MSVC_DIRECTIVES
 )
 
@@ -156,7 +148,7 @@ if(DEFINED OpenCV_DIR)
         list(PREPEND CMAKE_PREFIX_PATH "${_SNOW_SHOT_OPENCV_INSTALL_PREFIX}")
     endif()
 endif()
-find_package(OpenCV CONFIG REQUIRED COMPONENTS world wechat_qrcode)
+find_package(OpenCV CONFIG REQUIRED COMPONENTS core imgproc dnn objdetect wechat_qrcode)
 find_package(onnxruntime CONFIG REQUIRED)
 
 if(WIN32)
@@ -176,7 +168,7 @@ if(WIN32)
     unset(_snow_shot_directml_runtime)
 endif()
 
-target_link_libraries(snow_stitch_images_c INTERFACE opencv_world)
+target_link_libraries(snow_stitch_images_c INTERFACE opencv_wechat_qrcode)
 target_link_libraries(snow_ocr_c INTERFACE onnxruntime::onnxruntime)
 
 set(SNOW_SHOT_SNOW_IMAGE_DIR
@@ -198,6 +190,7 @@ set(SNOW_SHOT_IMAGE_CODEC_SOURCES
     src/image/snowimageqtcodec.cpp
 )
 add_library(snow_shot_image_codec STATIC ${SNOW_SHOT_IMAGE_CODEC_SOURCES})
+snow_enable_unity_build(snow_shot_image_codec)
 target_include_directories(snow_shot_image_codec PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/src/image"
 )
@@ -250,6 +243,7 @@ set(SNOW_SHOT_STORAGE_SOURCES
     src/storage/storagelogging.cpp
 )
 add_library(snow_shot_storage STATIC ${SNOW_SHOT_STORAGE_SOURCES})
+snow_enable_unity_build(snow_shot_storage)
 target_include_directories(snow_shot_storage PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(snow_shot_storage PUBLIC
     snow_shot_image_codec
@@ -298,6 +292,7 @@ set(SNOW_SHOT_SETTINGS_CATALOG_SOURCES
     src/presentation/settings/settingscatalog.cpp
 )
 add_library(snow_shot_settings_catalog STATIC ${SNOW_SHOT_SETTINGS_CATALOG_SOURCES})
+snow_enable_unity_build(snow_shot_settings_catalog)
 target_include_directories(snow_shot_settings_catalog PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(snow_shot_settings_catalog PUBLIC
     ant_design_icons_qt
@@ -313,6 +308,7 @@ set(SNOW_SHOT_SETTINGS_SEARCH_SOURCES
     src/presentation/settings/settingssearchindex.cpp
 )
 add_library(snow_shot_settings_search STATIC ${SNOW_SHOT_SETTINGS_SEARCH_SOURCES})
+snow_enable_unity_build(snow_shot_settings_search)
 target_include_directories(snow_shot_settings_search PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(snow_shot_settings_search PUBLIC
     ant_design_icons_qt
@@ -354,6 +350,7 @@ set(SNOW_SHOT_SETTINGS_SOURCES
     src/presentation/styles/thememanager.cpp
 )
 add_library(snow_shot_settings STATIC ${SNOW_SHOT_SETTINGS_SOURCES})
+snow_enable_unity_build(snow_shot_settings)
 target_include_directories(snow_shot_settings PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(snow_shot_settings PRIVATE
     "${SNOW_SHOT_CAPTURE_CRATES_DIR}/crates/snow-ocr-c/include"
@@ -1998,7 +1995,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
     )
     target_link_libraries(snow-shot-qr-recognition-service-tests PRIVATE
-        opencv_world
+        opencv_wechat_qrcode
         Qt6::Core
         Qt6::Gui
     )
@@ -2008,7 +2005,7 @@ if(SNOW_SHOT_BUILD_TESTS)
     )
     set_tests_properties(snow-shot-qr-recognition-service-tests PROPERTIES
         ENVIRONMENT_MODIFICATION
-            "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>;PATH=path_list_prepend:$<TARGET_FILE_DIR:opencv_world>"
+            "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>;PATH=path_list_prepend:$<TARGET_FILE_DIR:opencv_wechat_qrcode>"
     )
 
     add_executable(snow-shot-api-client-tests
@@ -2179,6 +2176,19 @@ target_include_directories(snow_shot PRIVATE
     "${SNOW_SHOT_CAPTURE_CRATES_DIR}/crates/snow-stitch-images-c/include"
     "${SNOW_SHOT_CAPTURE_CRATES_DIR}/crates/snow-ocr-c/include"
 )
+target_precompile_headers(snow_shot PRIVATE
+    <algorithm>
+    <memory>
+    <optional>
+    <string>
+    <vector>
+    <QtCore/QObject>
+    <QtCore/QString>
+    <QtGui/QColor>
+    <QtGui/QImage>
+    <QtGui/QPainter>
+    <QtWidgets/QWidget>
+)
 
 target_link_libraries(
     snow_shot PRIVATE
@@ -2192,7 +2202,7 @@ target_link_libraries(
         snow_ui_selector_c
         snow_stitch_images_c
         snow_ocr_c
-        opencv_world
+        opencv_wechat_qrcode
         Qt6::Widgets
         Qt6::Svg
         Qt6::Network
@@ -2295,8 +2305,6 @@ if(WIN32)
     set(ENV{PKG_CONFIG_PATH} "${SNOW_FFMPEG_ROOT}/lib/pkgconfig")
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(SNOW_SHOT_FFMPEG REQUIRED IMPORTED_TARGET GLOBAL
-        libavdevice
-        libavfilter
         libavformat
         libavcodec
         libswresample
@@ -2443,31 +2451,6 @@ install(TARGETS snow_shot
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
-if(WIN32 AND SNOW_SHOT_QT_STATIC)
-    # Static Qt no longer runs windeployqt, so retain the DirectX shader
-    # runtime that the Windows graphics stack may load at runtime.
-    file(TO_CMAKE_PATH "$ENV{WindowsSdkDir}" _snow_shot_windows_sdk_root)
-    file(TO_CMAKE_PATH "$ENV{WindowsSDKVersion}" _snow_shot_windows_sdk_version)
-    string(REGEX REPLACE "/$" "" _snow_shot_windows_sdk_root
-        "${_snow_shot_windows_sdk_root}")
-    string(REGEX REPLACE "/$" "" _snow_shot_windows_sdk_version
-        "${_snow_shot_windows_sdk_version}")
-    set(_snow_shot_windows_sdk_bin_dir
-        "${_snow_shot_windows_sdk_root}/bin/${_snow_shot_windows_sdk_version}/x64")
-    foreach(_snow_shot_directx_runtime IN ITEMS dxcompiler.dll dxil.dll)
-        if(EXISTS "${_snow_shot_windows_sdk_bin_dir}/${_snow_shot_directx_runtime}")
-            install(FILES
-                "${_snow_shot_windows_sdk_bin_dir}/${_snow_shot_directx_runtime}"
-                DESTINATION ${CMAKE_INSTALL_BINDIR}
-            )
-        endif()
-    endforeach()
-    unset(_snow_shot_windows_sdk_root)
-    unset(_snow_shot_windows_sdk_version)
-    unset(_snow_shot_windows_sdk_bin_dir)
-    unset(_snow_shot_directx_runtime)
-endif()
-
 if(WIN32 AND NOT SNOW_SHOT_RELEASE_STATIC)
     install(FILES "$<TARGET_FILE:onnxruntime::onnxruntime>"
         DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -2481,12 +2464,6 @@ if(WIN32)
 endif()
 
 if(WIN32 AND NOT SNOW_SHOT_RELEASE_STATIC)
-    if(TARGET opencv_world)
-        install(FILES "$<TARGET_FILE:opencv_world>"
-            DESTINATION ${CMAKE_INSTALL_BINDIR}
-        )
-    endif()
-
     get_filename_component(_SNOW_SHOT_OPENCV_PREFIX
         "${OpenCV_DIR}/../.."
         ABSOLUTE
@@ -2609,6 +2586,7 @@ if(SNOW_SHOT_QT_STATIC)
     # Static Qt does not load these plugins from a deployment directory.
     # Import only the integrations required by the Windows release binary.
     qt_import_plugins(snow_shot
+        NO_DEFAULT
         INCLUDE
             Qt6::QWindowsIntegrationPlugin
             Qt6::QSchannelBackendPlugin

@@ -14,6 +14,9 @@ set(SNOW_SHOT_COPYRIGHT "Copyright (C) 2026 mg-chao")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+if(MSVC)
+    add_compile_options(/MP)
+endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(ProjectWarnings)
@@ -55,6 +58,8 @@ set(SNOW_RUST_CARGO_TARGET_DIR
     "${CMAKE_BINARY_DIR}/cargo"
     CACHE PATH
     "Cargo target directory for the active CMake build tree.")
+set(SNOW_RUST_RELEASE_PROFILE "release" CACHE STRING
+    "Cargo profile used for non-Debug Rust builds.")
 
 snow_workspace_configure_paths()
 snow_workspace_configure_options()
@@ -300,10 +305,6 @@ endif()
 if(SNOW_APPS_PACKAGE_SNOW_SHOT)
     if(NOT TARGET snow_shot)
         message(FATAL_ERROR "SNOW_APPS_PACKAGE_SNOW_SHOT requires SNOW_APPS_BUILD_SNOW_SHOT=ON")
-    endif()
-    if(MSVC)
-        set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION bin)
-        include(InstallRequiredSystemLibraries)
     endif()
     set(CPACK_PACKAGE_NAME "snow-shot")
     set(CPACK_PACKAGE_VENDOR "${SNOW_SHOT_VENDOR}")

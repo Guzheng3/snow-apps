@@ -36,7 +36,9 @@ file(GLOB_RECURSE ADQT_ICONS_SOURCES CONFIGURE_DEPENDS
 # for useful source-level linting. It remains subject to strict compilation.
 set_source_files_properties(
     "${CMAKE_CURRENT_SOURCE_DIR}/packages/ant_design_icons_qt/src/antd_icons.cpp"
-    PROPERTIES SKIP_LINTING ON
+    PROPERTIES
+        SKIP_LINTING ON
+        SKIP_UNITY_BUILD_INCLUSION ON
 )
 add_library(ant_design_icons_qt STATIC ${ADQT_ICONS_SOURCES})
 add_library(adqt::icons ALIAS ant_design_icons_qt)
@@ -56,6 +58,21 @@ target_include_directories(ant_design_qt SYSTEM PUBLIC
 )
 target_link_libraries(ant_design_qt PUBLIC adqt::icon_core adqt::icons
     Qt6::Widgets Qt6::Svg Qt6::Network)
+target_precompile_headers(ant_design_qt PRIVATE
+    <algorithm>
+    <memory>
+    <optional>
+    <string>
+    <vector>
+    <QtCore/QObject>
+    <QtCore/QString>
+    <QtGui/QColor>
+    <QtGui/QImage>
+    <QtGui/QPainter>
+    <QtWidgets/QWidget>
+)
+# Widget sources reuse common anonymous-namespace helper names extensively,
+# which makes this target unsafe to combine into unity translation units.
 
 set(QT_I18N_SOURCE_LANGUAGE en_US)
 file(GLOB ADQT_TS_FILES CONFIGURE_DEPENDS

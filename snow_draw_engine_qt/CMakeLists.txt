@@ -50,10 +50,12 @@ qt_add_library(snow_draw_engine_qt_canvas STATIC
 )
 
 if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set_source_files_properties(
+set_source_files_properties(
         src/rendering/snow_canvas_filter_avx2.cpp
         src/rendering/snow_canvas_pen_mask_avx2.cpp
-        PROPERTIES COMPILE_OPTIONS "/arch:AVX2"
+        PROPERTIES
+            COMPILE_OPTIONS "/arch:AVX2"
+            SKIP_UNITY_BUILD_INCLUSION ON
     )
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64|i.86)$")
     set_source_files_properties(
@@ -85,6 +87,20 @@ target_link_libraries(snow_draw_engine_qt_canvas
         userenv
         ws2_32
 )
+target_precompile_headers(snow_draw_engine_qt_canvas PRIVATE
+    <algorithm>
+    <memory>
+    <optional>
+    <string>
+    <vector>
+    <QtCore/QObject>
+    <QtCore/QString>
+    <QtGui/QColor>
+    <QtGui/QImage>
+    <QtGui/QPainter>
+    <QtWidgets/QWidget>
+)
+snow_enable_unity_build(snow_draw_engine_qt_canvas)
 
 if(SNOW_DRAW_ENGINE_QT_BUILD_DEMO)
     add_subdirectory(qt-demo)

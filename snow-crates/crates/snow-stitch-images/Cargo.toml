@@ -10,9 +10,28 @@ publish = false
 name = "snow_stitch_images"
 path = "src/lib.rs"
 
+[features]
+default = ["full-image-io"]
+full-image-io = [
+    "image/avif",
+    "image/bmp",
+    "image/dds",
+    "image/ff",
+    "image/gif",
+    "image/hdr",
+    "image/ico",
+    "image/jpeg",
+    "image/pnm",
+    "image/qoi",
+    "image/rayon",
+    "image/tga",
+    "image/tiff",
+    "image/webp",
+]
+
 [dependencies]
 anyhow.workspace = true
-image = { workspace = true, default-features = false, features = ["avif", "bmp", "dds", "ff", "gif", "hdr", "ico", "jpeg", "png", "pnm", "qoi", "rayon", "tga", "tiff", "webp"] }
+image.workspace = true
 rayon.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -24,3 +43,4 @@ tempfile.workspace = true
 
 [[example]]
 name = "scroll_4_benchmark"
+required-features = ["full-image-io"]

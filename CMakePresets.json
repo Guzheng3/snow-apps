@@ -23,7 +23,8 @@
         "SNOW_APPS_ENABLE_RELEASE_OPTIMIZATION": "ON",
         "VCPKG_TARGET_TRIPLET": "x64-windows",
         "VCPKG_INSTALLED_DIR": "${sourceDir}/.tools/vcpkg/installed/dynamic",
-        "VCPKG_OVERLAY_PORTS": "${sourceDir}/cmake/vcpkg-overlay-ports",
+        "VCPKG_OVERLAY_PORTS": "${sourceDir}/cmake/vcpkg-overlay-ports/onnx;${sourceDir}/cmake/vcpkg-overlay-ports/onnxruntime;${sourceDir}/cmake/vcpkg-overlay-ports/opencv4;${sourceDir}/cmake/vcpkg-overlay-ports/zlib",
+        "VCPKG_MANIFEST_FEATURES": "snow-shot;full-codecs",
         "SNOW_APPS_STRICT_COMPILE": "ON",
         "SNOW_APPS_ENABLE_CLANG_TIDY": "OFF",
         "SNOW_APPS_BUILD_ANT_DESIGN_QT": "ON",
@@ -80,6 +81,7 @@
         "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded",
         "VCPKG_TARGET_TRIPLET": "x64-windows-static",
         "VCPKG_INSTALLED_DIR": "${sourceDir}/.tools/vcpkg/installed/static",
+        "VCPKG_MANIFEST_FEATURES": "snow-shot",
         "SNOW_APPS_BUILD_ANT_DESIGN_QT": "ON",
         "SNOW_APPS_BUILD_SNOW_IMAGE": "ON",
         "SNOW_APPS_BUILD_DRAW_ENGINE": "ON",
@@ -94,6 +96,18 @@
         "SNOW_APPS_API_BASE_URL": "https://snowshot.top",
         "SNOW_IMAGE_PROFILE": "redistributable",
         "SNOW_IMAGE_DEFAULT_LINKAGE": "static"
+      }
+    },
+    {
+      "name": "snow-shot-msvc-fast",
+      "displayName": "Snow Shot MSVC Fast Static Build",
+      "inherits": "snow-shot-msvc-release",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "SNOW_APPS_ENABLE_RELEASE_OPTIMIZATION": "OFF",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE": "OFF",
+        "SNOW_APPS_PACKAGE_SNOW_SHOT": "OFF",
+        "SNOW_RUST_RELEASE_PROFILE": "release-fast"
       }
     }
   ],
@@ -113,6 +127,12 @@
     {
       "name": "build-snow-shot-msvc-release",
       "configurePreset": "snow-shot-msvc-release",
+      "configuration": "Release",
+      "targets": ["snow_shot"]
+    },
+    {
+      "name": "build-snow-shot-msvc-fast",
+      "configurePreset": "snow-shot-msvc-fast",
       "configuration": "Release",
       "targets": ["snow_shot"]
     }

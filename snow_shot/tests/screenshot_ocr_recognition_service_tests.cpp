@@ -95,6 +95,9 @@ void embeddedEngineCompletesThroughTheQtWorker(bool directMlEnabled) {
     loop.exec();
 
     require(!timedOut && completed, "OCR recognition should complete within the test timeout");
+    if (!output.error.isEmpty()) {
+        std::cerr << "OCR error: " << output.error.toStdString() << '\n';
+    }
     require(output.error.isEmpty(), "the embedded OCR engine should not report an error");
     require(output.presentation != nullptr, "OCR recognition should return a presentation");
 }

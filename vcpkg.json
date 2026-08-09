@@ -3,24 +3,33 @@
   "name": "snow-apps",
   "version-semver": "0.1.0",
   "builtin-baseline": "ffc071e0c08432c60c9b64f00334c0227667931b",
-  "dependencies": [
-    "ffmpeg",
-    "giflib",
-    { "name": "libheif", "default-features": false, "features": ["aom"] },
-    "libjpeg-turbo",
-    "libjxl",
-    { "name": "libpng", "features": ["apng"] },
-    "libwebp",
-    "lunasvg",
-    { "name": "onnxruntime", "features": ["directml"] },
-    { "name": "opencv4", "features": ["contrib", "world"] },
-    "openexr",
-    "vulkan-headers"
-  ],
+  "dependencies": [],
   "overrides": [
     { "name": "flatbuffers", "version": "23.5.26" }
   ],
   "features": {
+    "snow-shot": {
+      "description": "Build the minimal native dependency set required by Snow Shot.",
+      "dependencies": [
+        {
+          "name": "ffmpeg",
+          "default-features": false,
+          "features": ["avcodec", "avformat", "swresample", "swscale"]
+        },
+        { "name": "libpng", "features": ["apng"] },
+        "libwebp",
+        {
+          "name": "onnxruntime",
+          "default-features": false,
+          "features": ["directml"]
+        },
+        {
+          "name": "opencv4",
+          "default-features": false,
+          "features": ["contrib", "dnn"]
+        }
+      ]
+    },
     "full-codecs": {
       "description": "Enable the complete Snow Image codec profile.",
       "dependencies": [
@@ -28,6 +37,7 @@
         { "name": "libheif", "default-features": false, "features": ["aom", "hevc"] },
         "libjpeg-turbo",
         "libjxl",
+        { "name": "libpng", "features": ["apng"] },
         "libwebp",
         "lunasvg",
         "openexr"

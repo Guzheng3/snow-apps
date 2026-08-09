@@ -281,6 +281,17 @@ endfunction()
 
 if(SNOW_IMAGE_BUILD_STATIC)
     snow_image_configure_target(snow_image_static STATIC)
+    target_precompile_headers(snow_image_static PRIVATE
+        <algorithm>
+        <array>
+        <cstdint>
+        <memory>
+        <optional>
+        <span>
+        <string>
+        <vector>
+    )
+    snow_enable_unity_build(snow_image_static)
     add_library(snow_image::snow_image_static ALIAS snow_image_static)
 endif()
 if(SNOW_IMAGE_BUILD_SHARED)

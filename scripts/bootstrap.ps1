@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$Qt6Dir = "",
+    [ValidateSet("Dynamic", "Static")]
+    [string[]]$VcpkgVariants = @("Dynamic", "Static"),
     [switch]$Reset,
     [switch]$SkipVcpkgInstall,
     [switch]$SkipDependencyInstall
@@ -105,17 +107,27 @@ if (-not $SkipDependencyInstall) {
     if (-not (Test-Path -LiteralPath $vcpkgExe)) {
         throw "Repository-local vcpkg is not installed. Rerun without -SkipVcpkgInstall."
     }
-    foreach ($triplet in @("x64-windows", "x64-windows-static")) {
-        $installVariant = if ($triplet -eq "x64-windows-static") { "static" } else { "dynamic" }
+    foreach ($variant in $VcpkgVariants) {
+        $triplet = if ($variant -eq "Static") { "x64-windows-static" } else { "x64-windows" }
+        $installVariant = $variant.ToLowerInvariant()
         $tripletInstallRoot = Join-Path $vcpkgInstalledRoot $installVariant
-        Invoke-Checked -Command $vcpkgExe -Arguments @(
+        $overlayPortArguments = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot "cmake/vcpkg-overlay-ports") -Directory |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName "portfile.cmake") -PathType Leaf } |
+            Sort-Object Name |
+            ForEach-Object { "--overlay-ports=$($_.FullName)" })
+        $vcpkgArguments = @(
             "install",
             "--x-manifest-root=$repoRoot",
             "--x-install-root=$tripletInstallRoot",
             "--triplet=$triplet",
-            "--overlay-ports=$(Join-Path $repoRoot 'cmake/vcpkg-overlay-ports')",
+            "--x-feature=snow-shot"
+        ) + $overlayPortArguments + @(
             "--clean-after-build"
-        ) -WorkingDirectory $repoRoot
+        )
+        if ($variant -eq "Dynamic") {
+            $vcpkgArguments += "--x-feature=full-codecs"
+        }
+        Invoke-Checked -Command $vcpkgExe -Arguments $vcpkgArguments -WorkingDirectory $repoRoot
     }
 }
 
@@ -172,8 +184,10 @@ Write-Host "Snow Apps build environment is ready."
 Write-Host "Repository: $repoRoot"
 Write-Host "CMake: $cmakeVersionLine"
 Write-Host "vcpkg: $vcpkgRoot"
-Write-Host "vcpkg dynamic installed: $(Join-Path $vcpkgInstalledRoot 'dynamic')"
-Write-Host "vcpkg static installed: $(Join-Path $vcpkgInstalledRoot 'static')"
+foreach ($variant in $VcpkgVariants) {
+    $installVariant = $variant.ToLowerInvariant()
+    Write-Host "vcpkg $installVariant installed: $(Join-Path $vcpkgInstalledRoot $installVariant)"
+}
 Write-Host "Qt6_DIR: $Qt6Dir"
 if (-not [string]::IsNullOrWhiteSpace($env:SNOW_QT_STATIC_DIR)) {
     Write-Host "SNOW_QT_STATIC_DIR: $env:SNOW_QT_STATIC_DIR"

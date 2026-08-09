@@ -12,11 +12,23 @@ vcpkg_from_github(
     PATCHES
         "${VCPKG_ROOT_DIR}/ports/onnxruntime/fix-cmake.patch"
         "${VCPKG_ROOT_DIR}/ports/onnxruntime/fix-cmake-cuda.patch"
+        fix-static-delay-load.patch
+        generate-reduced-ops-during-configure.patch
 )
 
 find_program(PROTOC NAMES protoc PATHS "${CURRENT_HOST_INSTALLED_DIR}/tools/protobuf" REQUIRED NO_DEFAULT_PATH NO_CMAKE_PATH)
 find_program(FLATC NAMES flatc PATHS "${CURRENT_HOST_INSTALLED_DIR}/tools/flatbuffers" REQUIRED NO_DEFAULT_PATH NO_CMAKE_PATH)
-vcpkg_find_acquire_program(PYTHON3)
+x_vcpkg_get_python_packages(
+    PYTHON_VERSION "3"
+    PACKAGES flatbuffers
+    OUT_PYTHON_VAR PYTHON3
+)
+
+set(SNOW_SHOT_REQUIRED_OPERATORS "${CMAKE_CURRENT_LIST_DIR}/required_operators.config")
+if(NOT EXISTS "${SNOW_SHOT_REQUIRED_OPERATORS}")
+    message(FATAL_ERROR
+        "Snow Shot ONNX Runtime operator configuration is missing: ${SNOW_SHOT_REQUIRED_OPERATORS}")
+endif()
 
 vcpkg_execute_required_process(
     COMMAND "${PYTHON3}" onnxruntime/core/flatbuffers/schema/compile_schema.py --flatc "${FLATC}"
@@ -78,6 +90,9 @@ if("tensorrt" IN_LIST FEATURES)
 endif()
 
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" BUILD_SHARED)
+if(VCPKG_LIBRARY_LINKAGE STREQUAL "static" AND "directml" IN_LIST FEATURES)
+    set(VCPKG_POLICY_DLLS_IN_STATIC_LIBRARY enabled)
+endif()
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}/cmake"
@@ -101,6 +116,9 @@ vcpkg_cmake_configure(
         -Donnxruntime_ENABLE_EXTERNAL_CUSTOM_OP_SCHEMAS=OFF
         -Donnxruntime_ENABLE_MEMORY_PROFILE=OFF
         -Donnxruntime_ENABLE_LAZY_TENSOR=OFF
+        -Donnxruntime_MINIMAL_BUILD=OFF
+        -Donnxruntime_REDUCED_OPS_BUILD=ON
+        "-Donnxruntime_REDUCED_OPS_CONFIG=${SNOW_SHOT_REQUIRED_OPERATORS}"
         -Donnxruntime_DISABLE_RTTI=OFF
         -Donnxruntime_DISABLE_ABSEIL=OFF
         --compile-no-warning-as-error
@@ -144,9 +162,30 @@ endif()
 if("directml" IN_LIST FEATURES)
     set(DIRECTML_PACKAGE_DIR "${CURRENT_BUILDTREES_DIR}/packages/Microsoft.AI.DirectML.1.15.4")
     set(DIRECTML_RUNTIME "${DIRECTML_PACKAGE_DIR}/bin/x64-win/DirectML.dll")
-    if(NOT EXISTS "${DIRECTML_RUNTIME}")
-        message(FATAL_ERROR "DirectML runtime was not restored: ${DIRECTML_RUNTIME}")
+    set(DIRECTML_IMPORT_LIBRARY "${DIRECTML_PACKAGE_DIR}/bin/x64-win/DirectML.lib")
+    foreach(DIRECTML_FILE IN ITEMS "${DIRECTML_RUNTIME}" "${DIRECTML_IMPORT_LIBRARY}")
+        if(NOT EXISTS "${DIRECTML_FILE}")
+            message(FATAL_ERROR "DirectML package file was not restored: ${DIRECTML_FILE}")
+        endif()
+    endforeach()
+
+    file(INSTALL "${DIRECTML_IMPORT_LIBRARY}" DESTINATION "${CURRENT_PACKAGES_DIR}/lib")
+    set(ONNXRUNTIME_TARGETS_FILE
+        "${CURRENT_PACKAGES_DIR}/share/onnxruntime/onnxruntimeTargets.cmake")
+    file(TO_CMAKE_PATH "${DIRECTML_IMPORT_LIBRARY}" DIRECTML_IMPORT_LIBRARY_CMAKE)
+    file(READ "${ONNXRUNTIME_TARGETS_FILE}" ONNXRUNTIME_TARGETS_CONTENT)
+    string(REPLACE
+        "${DIRECTML_IMPORT_LIBRARY_CMAKE}"
+        "\${_IMPORT_PREFIX}/lib/DirectML.lib"
+        RELOCATABLE_ONNXRUNTIME_TARGETS_CONTENT
+        "${ONNXRUNTIME_TARGETS_CONTENT}"
+    )
+    if(RELOCATABLE_ONNXRUNTIME_TARGETS_CONTENT STREQUAL ONNXRUNTIME_TARGETS_CONTENT)
+        message(FATAL_ERROR
+            "ONNX Runtime targets did not contain the expected DirectML import library path")
     endif()
+    file(WRITE "${ONNXRUNTIME_TARGETS_FILE}" "${RELOCATABLE_ONNXRUNTIME_TARGETS_CONTENT}")
+
     file(INSTALL "${DIRECTML_RUNTIME}" DESTINATION "${CURRENT_PACKAGES_DIR}/bin")
     file(INSTALL "${DIRECTML_RUNTIME}" DESTINATION "${CURRENT_PACKAGES_DIR}/debug/bin")
 endif()

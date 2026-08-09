@@ -8,5 +8,5 @@ crate-type = ["staticlib", "rlib"]
 
 [dependencies]
 png.workspace = true
-snow-stitch-images = { path = "../snow-stitch-images" }
+snow-stitch-images = { path = "../snow-stitch-images", default-features = false }
 tempfile.workspace = true

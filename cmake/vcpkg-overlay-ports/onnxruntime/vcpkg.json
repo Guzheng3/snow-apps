@@ -61,6 +61,10 @@
       "host": true
     },
     {
+      "name": "vcpkg-get-python-packages",
+      "host": true
+    },
+    {
       "name": "wil",
       "platform": "windows"
     }
