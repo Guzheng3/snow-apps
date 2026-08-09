@@ -7,13 +7,51 @@
 #include "snow_shot/presentation/screenshottoolbarcommands.h"
 #include "snow_shot/presentation/screenshottoolbarwindow.h"
 
+#include <QCoreApplication>
 #include <QCursor>
+#include <QEvent>
 #include <QGuiApplication>
 #include <QWidget>
+
+#if defined(Q_OS_WIN) || defined(_WIN32)
+#include <qt_windows.h>
+#endif
 
 namespace {
 template <typename Widget> Widget* trackedWidget(QPointer<Widget>& pointer) {
     return pointer.data();
+}
+
+void showPreparedWidget(QWidget* widget) {
+    if (widget == nullptr) {
+        return;
+    }
+
+    const bool wasVisible = widget->isVisible();
+    const bool concealFirstPaint = !wasVisible && widget->isWindow() &&
+                                   QGuiApplication::platformName() == QStringLiteral("windows");
+    const qreal previousOpacity = widget->windowOpacity();
+    if (concealFirstPaint) {
+        widget->setWindowOpacity(0.0);
+    }
+
+    widget->show();
+    widget->repaint();
+    QCoreApplication::sendPostedEvents(widget->window(), QEvent::UpdateRequest);
+
+#if defined(Q_OS_WIN) || defined(_WIN32)
+    if (QGuiApplication::platformName() == QStringLiteral("windows")) {
+        const HWND hwnd = reinterpret_cast<HWND>(widget->winId());
+        if (hwnd != nullptr) {
+            static_cast<void>(RedrawWindow(hwnd, nullptr, nullptr,
+                                           RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN));
+        }
+    }
+#endif
+
+    if (concealFirstPaint) {
+        widget->setWindowOpacity(previousOpacity);
+    }
 }
 } // namespace
 
@@ -156,7 +194,7 @@ void ScreenshotOverlayUiHost::attachSelectionToolbarToOverlay(ScreenshotOverlayW
     toolbarWindow->setAttribute(Qt::WA_TranslucentBackground, true);
     toolbarWindow->setFocusPolicy(Qt::NoFocus);
     if (wasVisible && overlay != nullptr && overlay->isVisible()) {
-        toolbarWindow->show();
+        showPreparedWidget(toolbarWindow);
         toolbarWindow->raise();
     }
 }
@@ -281,7 +319,14 @@ void ScreenshotOverlayUiHost::resetToolbarForNewCapture() {
         }
     }
     if (m_selectionToolbar != nullptr) {
+        const bool wasVisible = m_selectionToolbar->isVisible();
         m_selectionToolbar->resetForNewCapture();
+        if (wasVisible) {
+            // The selection toolbar is normally a child of a layered overlay.
+            // Paint its reset state while that surface is still composited so
+            // a later show cannot reuse the previous selection frame.
+            m_selectionToolbar->repaint();
+        }
     }
 }
 
@@ -298,7 +343,7 @@ void ScreenshotOverlayUiHost::showToolbar() {
         return;
     }
     toolbarWindow->prepareForDisplay();
-    toolbarWindow->show();
+    showPreparedWidget(toolbarWindow);
     toolbarWindow->raise();
 }
 
@@ -321,7 +366,7 @@ void ScreenshotOverlayUiHost::showSelectionToolbar() {
         return;
     }
     toolbarWindow->prepareForDisplay();
-    toolbarWindow->show();
+    showPreparedWidget(toolbarWindow);
     toolbarWindow->raise();
 }
 

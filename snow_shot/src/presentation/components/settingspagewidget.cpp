@@ -473,8 +473,9 @@ class SettingsPageWidget::Impl {
                     runtime.switchControl->setChecked(
                         runtimeBindings.switchValue(definition->binding));
                 }
-                runtime.switchControl->setEnabled(storageStatus.writeAvailable &&
-                                                  !storageStatus.historyPolicyUpdating);
+                runtime.switchControl->setEnabled(
+                    storageStatus.writeAvailable && !storageStatus.historyPolicyUpdating &&
+                    runtimeBindings.switchEnabled(definition->binding));
             }
             if (runtime.integerControl != nullptr) {
                 const QSignalBlocker blocker(runtime.integerControl);

@@ -9,23 +9,26 @@
     { "name": "libheif", "default-features": false, "features": ["aom"] },
     "libjpeg-turbo",
     "libjxl",
-    "libwebp",
     { "name": "libpng", "features": ["apng"] },
+    "libwebp",
     "lunasvg",
-    "onnxruntime",
+    { "name": "onnxruntime", "features": ["directml"] },
     { "name": "opencv4", "features": ["contrib", "world"] },
     "openexr",
     "vulkan-headers"
+  ],
+  "overrides": [
+    { "name": "flatbuffers", "version": "23.5.26" }
   ],
   "features": {
     "full-codecs": {
       "description": "Enable the complete Snow Image codec profile.",
       "dependencies": [
         "giflib",
+        { "name": "libheif", "default-features": false, "features": ["aom", "hevc"] },
         "libjpeg-turbo",
         "libjxl",
         "libwebp",
-        { "name": "libheif", "default-features": false, "features": ["aom", "hevc"] },
         "lunasvg",
         "openexr"
       ]

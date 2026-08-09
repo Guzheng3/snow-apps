@@ -6,6 +6,8 @@
 #include "snow_shot/presentation/screenshotscrollingthumbnailwidget.h"
 #include "snow_draw_engine_qt/snow_canvas_widget.h"
 #include <QEvent>
+#include <QCoreApplication>
+#include <QGuiApplication>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
@@ -347,6 +349,37 @@ void ScreenshotOverlayWindow::restorePresentationCanvas() {
 
     m_canvasHiddenForPresentationClear = false;
     m_canvas->show();
+}
+
+void ScreenshotOverlayWindow::showPreparedFrame() {
+    const bool wasVisible = isVisible();
+    const bool concealFirstPaint = !wasVisible && isWindow() &&
+                                   QGuiApplication::platformName() == QStringLiteral("windows");
+    const qreal previousOpacity = windowOpacity();
+    if (concealFirstPaint) {
+        setWindowOpacity(0.0);
+    }
+
+    show();
+    // show() queues a normal update, but a translucent native window can be
+    // composited from its previous backing surface first. Commit the prepared
+    // frame synchronously before making the window opaque.
+    repaint();
+    QCoreApplication::sendPostedEvents(this, QEvent::UpdateRequest);
+
+#if defined(Q_OS_WIN) || defined(_WIN32)
+    if (QGuiApplication::platformName() == QStringLiteral("windows")) {
+        const HWND hwnd = reinterpret_cast<HWND>(winId());
+        if (hwnd != nullptr) {
+            static_cast<void>(RedrawWindow(hwnd, nullptr, nullptr,
+                                           RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN));
+        }
+    }
+#endif
+
+    if (concealFirstPaint) {
+        setWindowOpacity(previousOpacity);
+    }
 }
 
 void ScreenshotOverlayWindow::initializeScreenshotSurface() {

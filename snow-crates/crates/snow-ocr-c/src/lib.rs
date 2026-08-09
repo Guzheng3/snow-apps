@@ -2,21 +2,29 @@ mod fill;
 
 use rapid_ocr_rs::{
     DictionarySource, EngineConfig, LangDet, LangRec, ModelSource, ModelType, OcrCallOptions,
-    OcrInput, OcrResult, OcrVersion, PipelineSources, Quad, RapidOcrEngine,
-    initialize_onnx_runtime,
+    OcrInput, OcrResult, OcrVersion, PipelineSources, ProviderPreference, Quad, RapidOcrEngine,
+    ResolvedExecutionProvider, directml_is_available, initialize_onnx_runtime,
 };
 use std::{
     cell::RefCell,
     ffi::{CString, c_char},
     mem::size_of,
+    panic::{AssertUnwindSafe, catch_unwind},
     ptr, slice,
-    sync::OnceLock,
+    sync::{
+        OnceLock,
+        atomic::{AtomicUsize, Ordering},
+    },
 };
 
 const DETECTOR_BYTES: &[u8] = include_bytes!("../assets/ppocrv6-small/PP-OCRv6_det_small.onnx");
 const RECOGNIZER_BYTES: &[u8] = include_bytes!("../assets/ppocrv6-small/PP-OCRv6_rec_small.onnx");
 const DICTIONARY_TEXT: &str = include_str!("../assets/ppocrv6-small/ppocrv6_dict.txt");
 static ONNX_RUNTIME_INITIALIZATION: OnceLock<Result<(), String>> = OnceLock::new();
+static DIRECTML_AVAILABILITY: OnceLock<bool> = OnceLock::new();
+static LIVE_ENGINES: AtomicUsize = AtomicUsize::new(0);
+static LIVE_RESULTS: AtomicUsize = AtomicUsize::new(0);
+static LIVE_OWNED_IMAGES: AtomicUsize = AtomicUsize::new(0);
 
 thread_local! {
     static LAST_ERROR: RefCell<CString> = RefCell::new(CString::new("").expect("empty C string"));
@@ -30,6 +38,31 @@ pub struct SnowOcrRequestV1 {
     pub stride_bytes: u32,
     pub rgba_bytes: *const u8,
     pub rgba_len: usize,
+}
+
+#[repr(C)]
+pub struct SnowOcrEngineConfigV1 {
+    pub struct_size: u32,
+    pub intra_threads: u32,
+    pub inter_threads: u32,
+    pub rayon_threads: u32,
+    pub enable_cpu_mem_arena: u8,
+    pub use_directml: u8,
+    pub reserved: [u8; 2],
+}
+
+#[repr(C)]
+pub struct SnowOcrRuntimeInfoV1 {
+    pub struct_size: u32,
+    pub physical_core_count: u32,
+}
+
+#[repr(C)]
+pub struct SnowOcrResourceCountsV1 {
+    pub struct_size: u32,
+    pub engines: usize,
+    pub results: usize,
+    pub owned_images: usize,
 }
 
 #[repr(C)]
@@ -78,6 +111,12 @@ pub struct SnowOcrResult {
     lines: Vec<OwnedLine>,
 }
 
+pub struct SnowOcrOwnedImage {
+    width: u32,
+    height: u32,
+    rgba: Vec<u8>,
+}
+
 struct OwnedLine {
     text: Vec<u8>,
     confidence: f32,
@@ -96,7 +135,43 @@ fn clear_last_error() {
     set_last_error("");
 }
 
-fn create_engine() -> rapid_ocr_rs::Result<RapidOcrEngine> {
+#[derive(Clone, Copy)]
+struct EngineSettings {
+    intra_threads: Option<usize>,
+    inter_threads: Option<usize>,
+    rayon_threads: Option<usize>,
+    enable_cpu_mem_arena: bool,
+    use_directml: bool,
+}
+
+impl EngineSettings {
+    fn legacy(use_directml: bool) -> Self {
+        Self {
+            intra_threads: None,
+            inter_threads: None,
+            rayon_threads: None,
+            enable_cpu_mem_arena: true,
+            use_directml,
+        }
+    }
+}
+
+fn engine_settings_from_config(config: &SnowOcrEngineConfigV1) -> EngineSettings {
+    let nonzero = |value: u32| (value > 0).then_some(value as usize);
+    EngineSettings {
+        intra_threads: nonzero(config.intra_threads),
+        inter_threads: nonzero(config.inter_threads),
+        rayon_threads: nonzero(config.rayon_threads),
+        enable_cpu_mem_arena: config.enable_cpu_mem_arena != 0,
+        use_directml: config.use_directml != 0,
+    }
+}
+
+fn create_engine(use_directml: bool) -> rapid_ocr_rs::Result<RapidOcrEngine> {
+    create_engine_with_settings(EngineSettings::legacy(use_directml))
+}
+
+fn create_engine_with_settings(settings: EngineSettings) -> rapid_ocr_rs::Result<RapidOcrEngine> {
     ensure_onnx_runtime().map_err(rapid_ocr_rs::RapidOcrError::Config)?;
     let mut config = EngineConfig::default();
     config.global.use_det = true;
@@ -110,8 +185,31 @@ fn create_engine() -> rapid_ocr_rs::Result<RapidOcrEngine> {
     config.rec.model.ocr_version = OcrVersion::PPocrV6;
     config.rec.model.model_type = ModelType::Small;
     config.rec.model.allow_download = false;
+    for runtime in [
+        &mut config.det.runtime,
+        &mut config.cls.runtime,
+        &mut config.rec.runtime,
+    ] {
+        runtime.intra_threads = settings.intra_threads;
+        runtime.inter_threads = settings.inter_threads;
+        runtime.rayon_threads = settings.rayon_threads;
+        runtime.enable_cpu_mem_arena = settings.enable_cpu_mem_arena;
+        if settings.intra_threads.is_some()
+            || settings.inter_threads.is_some()
+            || settings.rayon_threads.is_some()
+        {
+            runtime.auto_tune_threads = false;
+        }
+    }
+    if settings.use_directml {
+        let provider = ProviderPreference::DirectMl { device_id: 0 };
+        config.det.runtime.provider_preference = provider;
+        config.det.runtime.fail_if_provider_unavailable = true;
+        config.rec.runtime.provider_preference = provider;
+        config.rec.runtime.fail_if_provider_unavailable = true;
+    }
 
-    RapidOcrEngine::new_with_sources(
+    let engine = RapidOcrEngine::new_with_sources(
         config,
         PipelineSources {
             det: Some(ModelSource::Memory {
@@ -128,7 +226,22 @@ fn create_engine() -> rapid_ocr_rs::Result<RapidOcrEngine> {
                 text: DICTIONARY_TEXT,
             }),
         },
-    )
+    )?;
+    if settings.use_directml {
+        let providers = engine.provider_resolutions();
+        if !matches!(
+            providers.det.map(|provider| provider.resolved),
+            Some(ResolvedExecutionProvider::DirectMl)
+        ) || !matches!(
+            providers.rec.map(|provider| provider.resolved),
+            Some(ResolvedExecutionProvider::DirectMl)
+        ) {
+            return Err(rapid_ocr_rs::RapidOcrError::Config(
+                "DirectML was not selected for every enabled OCR stage".to_string(),
+            ));
+        }
+    }
+    Ok(engine)
 }
 
 fn ensure_onnx_runtime() -> Result<(), String> {
@@ -142,16 +255,101 @@ fn ensure_onnx_runtime() -> Result<(), String> {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn snow_ocr_engine_create() -> *mut SnowOcrEngine {
-    match create_engine() {
-        Ok(engine) => {
+    snow_ocr_engine_create_with_directml(0)
+}
+
+fn create_engine_handle(settings: EngineSettings) -> *mut SnowOcrEngine {
+    match catch_unwind(AssertUnwindSafe(|| create_engine_with_settings(settings))) {
+        Ok(Ok(engine)) => {
             clear_last_error();
+            LIVE_ENGINES.fetch_add(1, Ordering::Relaxed);
             Box::into_raw(Box::new(SnowOcrEngine { engine }))
         }
-        Err(error) => {
+        Ok(Err(error)) => {
             set_last_error(error);
             ptr::null_mut()
         }
+        Err(_) => {
+            set_last_error("OCR engine creation panicked");
+            ptr::null_mut()
+        }
     }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn snow_ocr_engine_create_with_directml(enabled: u8) -> *mut SnowOcrEngine {
+    create_engine_handle(EngineSettings::legacy(enabled != 0))
+}
+
+#[unsafe(no_mangle)]
+/// # Safety
+/// `config` must be null or point to a readable `SnowOcrEngineConfigV1`.
+pub unsafe extern "C" fn snow_ocr_engine_create_with_config_v1(
+    config: *const SnowOcrEngineConfigV1,
+) -> *mut SnowOcrEngine {
+    let Some(config) = (unsafe { config.as_ref() }) else {
+        set_last_error("OCR engine config is null");
+        return ptr::null_mut();
+    };
+    if config.struct_size as usize != size_of::<SnowOcrEngineConfigV1>() {
+        set_last_error("OCR engine config has an incompatible struct size");
+        return ptr::null_mut();
+    }
+    create_engine_handle(engine_settings_from_config(config))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn snow_ocr_directml_is_available() -> u8 {
+    *DIRECTML_AVAILABILITY.get_or_init(|| {
+        catch_unwind(AssertUnwindSafe(|| {
+            ensure_onnx_runtime().is_ok() && directml_is_available() && create_engine(true).is_ok()
+        }))
+        .unwrap_or(false)
+    }) as u8
+}
+
+#[unsafe(no_mangle)]
+/// # Safety
+/// `out_info` must point to a writable `SnowOcrRuntimeInfoV1`.
+pub unsafe extern "C" fn snow_ocr_runtime_info_v1(out_info: *mut SnowOcrRuntimeInfoV1) -> u8 {
+    let Some(out_info) = (unsafe { out_info.as_mut() }) else {
+        set_last_error("OCR runtime info output is null");
+        return 0;
+    };
+    if out_info.struct_size as usize != size_of::<SnowOcrRuntimeInfoV1>() {
+        set_last_error("OCR runtime info output has an incompatible struct size");
+        return 0;
+    }
+    *out_info = SnowOcrRuntimeInfoV1 {
+        struct_size: size_of::<SnowOcrRuntimeInfoV1>() as u32,
+        physical_core_count: num_cpus::get_physical().max(1) as u32,
+    };
+    clear_last_error();
+    1
+}
+
+#[unsafe(no_mangle)]
+/// # Safety
+/// `out_counts` must point to a writable `SnowOcrResourceCountsV1`.
+pub unsafe extern "C" fn snow_ocr_resource_counts_v1(
+    out_counts: *mut SnowOcrResourceCountsV1,
+) -> u8 {
+    let Some(out_counts) = (unsafe { out_counts.as_mut() }) else {
+        set_last_error("OCR resource counts output is null");
+        return 0;
+    };
+    if out_counts.struct_size as usize != size_of::<SnowOcrResourceCountsV1>() {
+        set_last_error("OCR resource counts output has an incompatible struct size");
+        return 0;
+    }
+    *out_counts = SnowOcrResourceCountsV1 {
+        struct_size: size_of::<SnowOcrResourceCountsV1>() as u32,
+        engines: LIVE_ENGINES.load(Ordering::Relaxed),
+        results: LIVE_RESULTS.load(Ordering::Relaxed),
+        owned_images: LIVE_OWNED_IMAGES.load(Ordering::Relaxed),
+    };
+    clear_last_error();
+    1
 }
 
 #[unsafe(no_mangle)]
@@ -160,6 +358,7 @@ pub extern "C" fn snow_ocr_engine_create() -> *mut SnowOcrEngine {
 pub unsafe extern "C" fn snow_ocr_engine_destroy(engine: *mut SnowOcrEngine) {
     if !engine.is_null() {
         drop(unsafe { Box::from_raw(engine) });
+        LIVE_ENGINES.fetch_sub(1, Ordering::Relaxed);
     }
 }
 
@@ -184,13 +383,18 @@ pub unsafe extern "C" fn snow_ocr_engine_recognize_rgba(
         return ptr::null_mut();
     }
 
-    match recognize(engine, request) {
-        Ok(result) => {
+    match catch_unwind(AssertUnwindSafe(|| recognize(engine, request))) {
+        Ok(Ok(result)) => {
             clear_last_error();
+            LIVE_RESULTS.fetch_add(1, Ordering::Relaxed);
             Box::into_raw(Box::new(result))
         }
-        Err(error) => {
+        Ok(Err(error)) => {
             set_last_error(error);
+            ptr::null_mut()
+        }
+        Err(_) => {
+            set_last_error("OCR recognition panicked");
             ptr::null_mut()
         }
     }
@@ -216,16 +420,21 @@ fn recognize(
 
     let source = unsafe { slice::from_raw_parts(request.rgba_bytes, required) };
     let mut rgba = Vec::with_capacity(row_bytes * height);
+    let mut bgr = Vec::with_capacity(width * height * 3);
     for row in source.chunks(stride).take(height) {
-        rgba.extend_from_slice(&row[..row_bytes]);
+        let pixels = &row[..row_bytes];
+        rgba.extend_from_slice(pixels);
+        for pixel in pixels.chunks_exact(4) {
+            bgr.extend_from_slice(&[pixel[2], pixel[1], pixel[0]]);
+        }
     }
     let result = engine
         .engine
         .run(
-            OcrInput::RgbaU8 {
+            OcrInput::BgrU8 {
                 width,
                 height,
-                data: rgba.clone(),
+                data: bgr,
             },
             OcrCallOptions {
                 use_det: Some(true),
@@ -281,7 +490,70 @@ fn ffi_quad(quad: Quad) -> SnowOcrQuad {
 pub unsafe extern "C" fn snow_ocr_result_destroy(result: *mut SnowOcrResult) {
     if !result.is_null() {
         drop(unsafe { Box::from_raw(result) });
+        LIVE_RESULTS.fetch_sub(1, Ordering::Relaxed);
     }
+}
+
+#[unsafe(no_mangle)]
+/// # Safety
+/// `result` must be a live result. The image may be taken at most once.
+pub unsafe extern "C" fn snow_ocr_result_take_image(
+    result: *mut SnowOcrResult,
+) -> *mut SnowOcrOwnedImage {
+    let Some(result) = (unsafe { result.as_mut() }) else {
+        set_last_error("OCR result is null");
+        return ptr::null_mut();
+    };
+    if result.rgba.is_empty() {
+        set_last_error("OCR result image has already been taken");
+        return ptr::null_mut();
+    }
+    let image = SnowOcrOwnedImage {
+        width: result.width,
+        height: result.height,
+        rgba: std::mem::take(&mut result.rgba),
+    };
+    clear_last_error();
+    LIVE_OWNED_IMAGES.fetch_add(1, Ordering::Relaxed);
+    Box::into_raw(Box::new(image))
+}
+
+#[unsafe(no_mangle)]
+/// # Safety
+/// `image` must be null or a live handle returned by `snow_ocr_result_take_image`.
+pub unsafe extern "C" fn snow_ocr_owned_image_destroy(image: *mut SnowOcrOwnedImage) {
+    if !image.is_null() {
+        drop(unsafe { Box::from_raw(image) });
+        LIVE_OWNED_IMAGES.fetch_sub(1, Ordering::Relaxed);
+    }
+}
+
+#[unsafe(no_mangle)]
+/// # Safety
+/// `image` must be live and `out_image` must be writable.
+pub unsafe extern "C" fn snow_ocr_owned_image_info(
+    image: *const SnowOcrOwnedImage,
+    out_image: *mut SnowOcrImageInfoV1,
+) -> u8 {
+    let (Some(image), Some(out_image)) = (unsafe { image.as_ref() }, unsafe { out_image.as_mut() })
+    else {
+        set_last_error("OCR owned image or output is null");
+        return 0;
+    };
+    if out_image.struct_size as usize != size_of::<SnowOcrImageInfoV1>() {
+        set_last_error("OCR image output has an incompatible struct size");
+        return 0;
+    }
+    *out_image = SnowOcrImageInfoV1 {
+        struct_size: size_of::<SnowOcrImageInfoV1>() as u32,
+        width: image.width,
+        height: image.height,
+        stride_bytes: image.width.saturating_mul(4),
+        rgba_bytes: image.rgba.as_ptr(),
+        rgba_len: image.rgba.len(),
+    };
+    clear_last_error();
+    1
 }
 
 #[unsafe(no_mangle)]
@@ -421,9 +693,81 @@ mod tests {
     }
 
     #[test]
+    fn ffi_runtime_info_validates_the_versioned_output() {
+        let mut invalid = SnowOcrRuntimeInfoV1 {
+            struct_size: 0,
+            physical_core_count: 0,
+        };
+        assert_eq!(unsafe { snow_ocr_runtime_info_v1(&mut invalid) }, 0);
+        assert_eq!(unsafe { snow_ocr_runtime_info_v1(ptr::null_mut()) }, 0);
+
+        let mut info = SnowOcrRuntimeInfoV1 {
+            struct_size: size_of::<SnowOcrRuntimeInfoV1>() as u32,
+            physical_core_count: 0,
+        };
+        assert_eq!(unsafe { snow_ocr_runtime_info_v1(&mut info) }, 1);
+        assert_eq!(info.struct_size as usize, size_of::<SnowOcrRuntimeInfoV1>());
+        assert!(info.physical_core_count >= 1);
+    }
+
+    #[test]
+    fn ffi_engine_config_maps_zero_threads_to_automatic_values() {
+        let settings = engine_settings_from_config(&SnowOcrEngineConfigV1 {
+            struct_size: size_of::<SnowOcrEngineConfigV1>() as u32,
+            intra_threads: 0,
+            inter_threads: 2,
+            rayon_threads: 3,
+            enable_cpu_mem_arena: 0,
+            use_directml: 1,
+            reserved: [0; 2],
+        });
+
+        assert_eq!(settings.intra_threads, None);
+        assert_eq!(settings.inter_threads, Some(2));
+        assert_eq!(settings.rayon_threads, Some(3));
+        assert!(!settings.enable_cpu_mem_arena);
+        assert!(settings.use_directml);
+    }
+
+    #[test]
+    fn ffi_owned_image_transfer_has_deterministic_ownership() {
+        let baseline = LIVE_OWNED_IMAGES.load(Ordering::Relaxed);
+        let mut result = SnowOcrResult {
+            width: 2,
+            height: 1,
+            rgba: vec![1, 2, 3, 4, 5, 6, 7, 8],
+            lines: Vec::new(),
+        };
+
+        let image = unsafe { snow_ocr_result_take_image(&mut result) };
+        assert!(!image.is_null());
+        assert!(result.rgba.is_empty());
+        assert_eq!(LIVE_OWNED_IMAGES.load(Ordering::Relaxed), baseline + 1);
+
+        let mut info = SnowOcrImageInfoV1 {
+            struct_size: size_of::<SnowOcrImageInfoV1>() as u32,
+            width: 0,
+            height: 0,
+            stride_bytes: 0,
+            rgba_bytes: ptr::null(),
+            rgba_len: 0,
+        };
+        assert_eq!(unsafe { snow_ocr_owned_image_info(image, &mut info) }, 1);
+        assert_eq!((info.width, info.height, info.stride_bytes), (2, 1, 8));
+        assert_eq!(
+            unsafe { slice::from_raw_parts(info.rgba_bytes, info.rgba_len) },
+            &[1, 2, 3, 4, 5, 6, 7, 8]
+        );
+        assert!(unsafe { snow_ocr_result_take_image(&mut result) }.is_null());
+
+        unsafe { snow_ocr_owned_image_destroy(image) };
+        assert_eq!(LIVE_OWNED_IMAGES.load(Ordering::Relaxed), baseline);
+    }
+
+    #[test]
     fn embedded_pipeline_recognizes_an_rgba_image() {
         let mut engine = SnowOcrEngine {
-            engine: create_engine().expect("embedded OCR engine should initialize"),
+            engine: create_engine(false).expect("embedded OCR engine should initialize"),
         };
         let rgba = vec![255_u8; 64 * 64 * 4];
         let request = SnowOcrRequestV1 {

@@ -148,7 +148,7 @@ void scheduleOverlayActivation(ScreenshotOverlayWindow* overlay) {
 }
 
 void showOverlayWindow(ScreenshotOverlayWindow& overlay) {
-    overlay.show();
+    overlay.showPreparedFrame();
 }
 
 struct ActiveOverlayEntry {

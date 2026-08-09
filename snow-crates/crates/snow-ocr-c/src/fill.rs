@@ -15,34 +15,36 @@ pub fn white_blur_fill(
         return vec![[0, 0, 0, 255]; line_quads.len()];
     }
 
-    let original = rgba.to_vec();
-    let mut line_masks = Vec::with_capacity(line_quads.len());
     let mut global_mask = vec![false; pixel_count];
     for line_quad in line_quads {
         let short_side = quad_short_side(line_quad).max(1.0);
         let margin = (short_side * 0.08).clamp(1.0, 4.0);
-        let mut line_mask = vec![false; pixel_count];
+        rasterize_quad(
+            &expanded_quad(line_quad, margin),
+            width,
+            height,
+            &mut global_mask,
+        );
+    }
+
+    let mut foregrounds = Vec::with_capacity(line_quads.len());
+    let mut line_mask = vec![false; pixel_count];
+    for line_quad in line_quads {
+        let short_side = quad_short_side(line_quad).max(1.0);
+        let margin = (short_side * 0.08).clamp(1.0, 4.0);
+        line_mask.fill(false);
         rasterize_quad(
             &expanded_quad(line_quad, margin),
             width,
             height,
             &mut line_mask,
         );
-        for (global, line) in global_mask.iter_mut().zip(&line_mask) {
-            *global |= *line;
-        }
-        line_masks.push(line_mask);
+        let ring = exterior_ring(line_quad, &line_mask, &global_mask, width, height);
+        let background = robust_color(rgba, &ring).unwrap_or([255, 255, 255, 255]);
+        foregrounds.push(estimate_foreground(rgba, &line_mask, background));
     }
 
-    let mut foregrounds = Vec::with_capacity(line_quads.len());
-    for (index, line_quad) in line_quads.iter().enumerate() {
-        let mask = &line_masks[index];
-        let ring = exterior_ring(line_quad, mask, &global_mask, width, height);
-        let background = robust_color(&original, &ring).unwrap_or([255, 255, 255, 255]);
-        foregrounds.push(estimate_foreground(&original, mask, background));
-    }
-
-    let blurred = gaussian_blur(&original, width, height, BACKGROUND_BLUR_SIGMA);
+    let blurred = gaussian_blur(rgba, width, height, BACKGROUND_BLUR_SIGMA);
     for (index, masked) in global_mask.into_iter().enumerate() {
         if !masked {
             continue;

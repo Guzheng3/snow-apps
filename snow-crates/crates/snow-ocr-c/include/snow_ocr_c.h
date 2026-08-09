@@ -10,6 +10,29 @@ extern "C" {
 
 typedef struct SnowOcrEngine SnowOcrEngine;
 typedef struct SnowOcrResult SnowOcrResult;
+typedef struct SnowOcrOwnedImage SnowOcrOwnedImage;
+
+typedef struct SnowOcrEngineConfigV1 {
+    uint32_t struct_size;
+    uint32_t intra_threads;
+    uint32_t inter_threads;
+    uint32_t rayon_threads;
+    uint8_t enable_cpu_mem_arena;
+    uint8_t use_directml;
+    uint8_t reserved[2];
+} SnowOcrEngineConfigV1;
+
+typedef struct SnowOcrRuntimeInfoV1 {
+    uint32_t struct_size;
+    uint32_t physical_core_count;
+} SnowOcrRuntimeInfoV1;
+
+typedef struct SnowOcrResourceCountsV1 {
+    uint32_t struct_size;
+    size_t engines;
+    size_t results;
+    size_t owned_images;
+} SnowOcrResourceCountsV1;
 
 typedef struct SnowOcrRequestV1 {
     uint32_t struct_size;
@@ -50,12 +73,25 @@ typedef struct SnowOcrLineInfoV1 {
 } SnowOcrLineInfoV1;
 
 SnowOcrEngine* snow_ocr_engine_create(void);
+SnowOcrEngine* snow_ocr_engine_create_with_directml(uint8_t enabled);
+SnowOcrEngine* snow_ocr_engine_create_with_config_v1(
+    const SnowOcrEngineConfigV1* config
+);
+uint8_t snow_ocr_directml_is_available(void);
+uint8_t snow_ocr_runtime_info_v1(SnowOcrRuntimeInfoV1* out_info);
+uint8_t snow_ocr_resource_counts_v1(SnowOcrResourceCountsV1* out_counts);
 void snow_ocr_engine_destroy(SnowOcrEngine* engine);
 SnowOcrResult* snow_ocr_engine_recognize_rgba(
     SnowOcrEngine* engine,
     const SnowOcrRequestV1* request
 );
 void snow_ocr_result_destroy(SnowOcrResult* result);
+SnowOcrOwnedImage* snow_ocr_result_take_image(SnowOcrResult* result);
+void snow_ocr_owned_image_destroy(SnowOcrOwnedImage* image);
+uint8_t snow_ocr_owned_image_info(
+    const SnowOcrOwnedImage* image,
+    SnowOcrImageInfoV1* out_image
+);
 uint8_t snow_ocr_result_image(
     const SnowOcrResult* result,
     SnowOcrImageInfoV1* out_image

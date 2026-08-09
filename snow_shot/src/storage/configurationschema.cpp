@@ -28,6 +28,8 @@ const QVector<ConfigurationSchemaEntry> kEntries = {
      ConfigurationValueKind::String, std::nullopt,
      {QStringLiteral("normal"), QStringLiteral("above_normal"), QStringLiteral("high"),
       QStringLiteral("real_time")}},
+    {QStringLiteral("text_recognition/direct_ml_acceleration"), true,
+     ConfigurationValueKind::Boolean},
     {QStringLiteral("interface/sidebar_collapsed"), false, ConfigurationValueKind::Boolean},
     {QStringLiteral("global_shortcuts/screenshot"),
      QJsonArray(),

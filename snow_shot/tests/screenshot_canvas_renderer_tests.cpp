@@ -1479,6 +1479,41 @@ void scrollingModeClearsPassThroughMaskBeforeRestoringRenderer() {
     canvas->removeEventFilter(&paintObserver);
 }
 
+void hiddenPresentationFrameUsesPreparedReveal() {
+    NoopOverlayEventSink eventSink;
+    auto* canvas = new SnowCanvasWidget;
+    ScreenshotOverlayWindow overlay(eventSink, canvas);
+    overlay.resize(80, 80);
+    overlay.show();
+    QApplication::processEvents();
+    overlay.hide();
+    QApplication::processEvents();
+
+    CanvasPaintObserver paintObserver(overlay);
+    overlay.installEventFilter(&paintObserver);
+    paintObserver.begin();
+    const qreal initialOpacity = overlay.windowOpacity();
+
+    overlay.clearPresentationFrame();
+
+    require(!paintObserver.sawPaint(),
+            "clearing a hidden overlay must defer painting until the next show");
+    overlay.showPreparedFrame();
+    if (QGuiApplication::platformName() == QStringLiteral("windows")) {
+        require(paintObserver.sawPaint(),
+                "showing a cleared overlay must synchronously refresh its native surface");
+    }
+    require(qFuzzyCompare(overlay.windowOpacity() + 1.0, initialOpacity + 1.0),
+            "clearing a hidden overlay must restore its window opacity");
+    require(canvas->isHidden(),
+            "the presentation canvas must stay hidden until a new frame is applied");
+
+    overlay.hide();
+    overlay.restorePresentationCanvas();
+    require(!canvas->isHidden(), "restoring presentation must re-enable the canvas");
+    overlay.removeEventFilter(&paintObserver);
+}
+
 void scrollingThumbnailIsAnEmbeddedScreenshotWidget() {
     NoopOverlayEventSink eventSink;
     auto* canvas = new SnowCanvasWidget;
@@ -2111,6 +2146,7 @@ int main(int argc, char** argv) {
     ocrTextAspectFitUsesWidthConstraintWithoutVerticalStretch();
     verticalOcrTextKeepsCjkGraphemesUprightAndSelectable();
     scrollingModeClearsPassThroughMaskBeforeRestoringRenderer();
+    hiddenPresentationFrameUsesPreparedReveal();
     scrollingThumbnailIsAnEmbeddedScreenshotWidget();
     scrollingThumbnailStaysWithinHostDisplayWhenNeitherSideFits();
     scrollingThumbnailAlignsWithTopEdgeSelection();

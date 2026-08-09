@@ -159,6 +159,11 @@ where
             resolution,
         })
     } else {
+        let provider_dispatch = if fail_if_provider_unavailable {
+            provider_dispatch.error_on_failure()
+        } else {
+            provider_dispatch
+        };
         Ok(ProviderChain {
             providers: vec![provider_dispatch, cpu_provider],
             resolution,

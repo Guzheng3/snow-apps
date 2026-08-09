@@ -153,6 +153,19 @@ SettingsItemDefinition smartSelectionItem() {
     };
 }
 
+SettingsItemDefinition directMlAccelerationItem() {
+    return {
+        QStringLiteral("text-recognition.direct-ml-acceleration"),
+        settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Direct ML acceleration")),
+        settingsText(QT_TRANSLATE_NOOP(
+            "SettingsCatalog", "Use Direct ML for GPU-accelerated text recognition when available")),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "DirectML")),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "GPU acceleration"))},
+        QStringLiteral("text_recognition/direct_ml_acceleration"),
+        SettingsSwitchDefinition{SettingsSwitchBinding::DirectMlAcceleration},
+    };
+}
+
 SettingsItemDefinition historyIntegerItem(const QString& id, TranslatableText title,
                                            TranslatableText description, const QString& key,
                                            SettingsIntegerBinding binding,
@@ -347,6 +360,14 @@ QVector<SettingsPageDefinition> builtInPages() {
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Core application settings")),
                     SettingsSectionReset::SystemSettings,
                     {applicationPriorityItem()},
+                },
+                {
+                    QStringLiteral("text-recognition"),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Text Recognition")),
+                    settingsText(QT_TRANSLATE_NOOP(
+                        "SettingsCatalog", "Configure text recognition acceleration")),
+                    SettingsSectionReset::TextRecognition,
+                    {directMlAccelerationItem()},
                 },
             },
         },
@@ -666,6 +687,9 @@ QStringList SettingsCatalog::validationErrors() const {
                         break;
                     case SettingsSwitchBinding::SmartSelection:
                         expectedKey = QStringLiteral("screenshot_selection/smart_selection");
+                        break;
+                    case SettingsSwitchBinding::DirectMlAcceleration:
+                        expectedKey = QStringLiteral("text_recognition/direct_ml_acceleration");
                         break;
                     }
                     if (itemDefinition.configurationKey != expectedKey || schemaEntry == nullptr ||

@@ -35,6 +35,10 @@ class SettingsRuntimeBindings : public QObject {
                                                 const QVariant& value) = 0;
 
     [[nodiscard]] virtual bool switchValue(SettingsSwitchBinding binding) const = 0;
+    [[nodiscard]] virtual bool switchEnabled(SettingsSwitchBinding binding) const {
+        Q_UNUSED(binding);
+        return true;
+    }
     [[nodiscard]] virtual bool applySwitchValue(SettingsSwitchBinding binding, bool value) = 0;
 
     [[nodiscard]] virtual int integerValue(SettingsIntegerBinding binding) const = 0;
@@ -72,6 +76,7 @@ class BuiltInSettingsRuntimeBindings final : public SettingsRuntimeBindings {
     [[nodiscard]] bool applySelectValue(SettingsSelectBinding binding,
                                         const QVariant& value) override;
     [[nodiscard]] bool switchValue(SettingsSwitchBinding binding) const override;
+    [[nodiscard]] bool switchEnabled(SettingsSwitchBinding binding) const override;
     [[nodiscard]] bool applySwitchValue(SettingsSwitchBinding binding, bool value) override;
     [[nodiscard]] int integerValue(SettingsIntegerBinding binding) const override;
     [[nodiscard]] bool applyIntegerValue(SettingsIntegerBinding binding, int value) override;

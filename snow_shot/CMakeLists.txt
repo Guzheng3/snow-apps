@@ -159,6 +159,23 @@ endif()
 find_package(OpenCV CONFIG REQUIRED COMPONENTS world wechat_qrcode)
 find_package(onnxruntime CONFIG REQUIRED)
 
+if(WIN32)
+    set(SNOW_SHOT_DIRECTML_RUNTIME_DLL_DEBUG
+        "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin/DirectML.dll")
+    set(SNOW_SHOT_DIRECTML_RUNTIME_DLL_RELEASE
+        "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/DirectML.dll")
+    foreach(_snow_shot_directml_runtime IN ITEMS
+            "${SNOW_SHOT_DIRECTML_RUNTIME_DLL_DEBUG}"
+            "${SNOW_SHOT_DIRECTML_RUNTIME_DLL_RELEASE}")
+        if(NOT EXISTS "${_snow_shot_directml_runtime}")
+            message(FATAL_ERROR
+                "The DirectML-enabled ONNX Runtime package is incomplete: "
+                "${_snow_shot_directml_runtime} was not found.")
+        endif()
+    endforeach()
+    unset(_snow_shot_directml_runtime)
+endif()
+
 target_link_libraries(snow_stitch_images_c INTERFACE opencv_world)
 target_link_libraries(snow_ocr_c INTERFACE onnxruntime::onnxruntime)
 
@@ -317,6 +334,7 @@ set(SNOW_SHOT_SETTINGS_SOURCES
     include/snow_shot/presentation/components/storagestatussettingswidget.h
     include/snow_shot/presentation/settings/settingsruntimebindings.h
     include/snow_shot/presentation/settings/applicationpriority.h
+    include/snow_shot/presentation/settings/textrecognitionacceleration.h
     include/snow_shot/presentation/styles/thememanager.h
     src/presentation/components/infotooltipicon.cpp
     src/presentation/components/pagecontainerwidget.cpp
@@ -329,6 +347,7 @@ set(SNOW_SHOT_SETTINGS_SOURCES
     src/presentation/services/globalshortcutmanager.cpp
     src/presentation/settings/settingsruntimebindings.cpp
     src/presentation/settings/applicationpriority.cpp
+    src/presentation/settings/textrecognitionacceleration.cpp
     src/presentation/styles/buttonborder.cpp
     src/presentation/styles/mainwindowcomponenttoken.cpp
     src/presentation/styles/themecolorscheme.cpp
@@ -336,15 +355,19 @@ set(SNOW_SHOT_SETTINGS_SOURCES
 )
 add_library(snow_shot_settings STATIC ${SNOW_SHOT_SETTINGS_SOURCES})
 target_include_directories(snow_shot_settings PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(snow_shot_settings PRIVATE
+    "${SNOW_SHOT_CAPTURE_CRATES_DIR}/crates/snow-ocr-c/include"
+)
 target_link_libraries(snow_shot_settings PUBLIC
     ant_design_icons_qt
     ant_design_qt
     snow_shot_settings_search
     snow_shot_storage
+    snow_ocr_c
     Qt6::Widgets
 )
 if(WIN32)
-    target_link_libraries(snow_shot_settings PUBLIC user32)
+    target_link_libraries(snow_shot_settings PUBLIC user32 bcrypt ntdll)
 endif()
 
 set(PROJECT_HEADERS
@@ -1947,11 +1970,21 @@ if(SNOW_SHOT_BUILD_TESTS)
         )
     endif()
     add_test(
-        NAME snow-shot-ocr-recognition-service-tests
+        NAME snow-shot-ocr-cpu-recognition-service-tests
         COMMAND snow-shot-ocr-recognition-service-tests
     )
-    set_tests_properties(snow-shot-ocr-recognition-service-tests PROPERTIES
-        TIMEOUT 30
+    add_test(
+        NAME snow-shot-ocr-directml-recognition-service-tests
+        COMMAND snow-shot-ocr-recognition-service-tests --directml
+    )
+    set_tests_properties(snow-shot-ocr-cpu-recognition-service-tests PROPERTIES
+        TIMEOUT 120
+        ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+    set_tests_properties(snow-shot-ocr-directml-recognition-service-tests PROPERTIES
+        TIMEOUT 120
+        SKIP_RETURN_CODE 77
         ENVIRONMENT_MODIFICATION
             "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
@@ -2195,19 +2228,28 @@ endif()
 
 snow_shot_add_translations(snow_shot)
 
-if(WIN32 AND NOT SNOW_SHOT_RELEASE_STATIC)
-    foreach(_ocr_dynamic_runtime_target IN ITEMS snow_shot snow-shot-ocr-recognition-service-tests)
-        if(TARGET ${_ocr_dynamic_runtime_target})
-            add_custom_command(TARGET ${_ocr_dynamic_runtime_target} POST_BUILD
+if(WIN32)
+    foreach(_ocr_runtime_target IN ITEMS snow_shot snow-shot-ocr-recognition-service-tests)
+        if(TARGET ${_ocr_runtime_target})
+            add_custom_command(TARGET ${_ocr_runtime_target} POST_BUILD
                 COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-                    "$<TARGET_FILE:onnxruntime::onnxruntime>"
-                    "$<TARGET_FILE_DIR:${_ocr_dynamic_runtime_target}>/onnxruntime.dll"
-                COMMENT "Staging dynamic ONNX Runtime for ${_ocr_dynamic_runtime_target}"
+                    "$<IF:$<CONFIG:Debug>,${SNOW_SHOT_DIRECTML_RUNTIME_DLL_DEBUG},${SNOW_SHOT_DIRECTML_RUNTIME_DLL_RELEASE}>"
+                    "$<TARGET_FILE_DIR:${_ocr_runtime_target}>/DirectML.dll"
+                COMMENT "Staging DirectML for ${_ocr_runtime_target}"
                 VERBATIM
             )
+            if(NOT SNOW_SHOT_RELEASE_STATIC)
+                add_custom_command(TARGET ${_ocr_runtime_target} POST_BUILD
+                    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                        "$<TARGET_FILE:onnxruntime::onnxruntime>"
+                        "$<TARGET_FILE_DIR:${_ocr_runtime_target}>/onnxruntime.dll"
+                    COMMENT "Staging dynamic ONNX Runtime for ${_ocr_runtime_target}"
+                    VERBATIM
+                )
+            endif()
         endif()
     endforeach()
-    unset(_ocr_dynamic_runtime_target)
+    unset(_ocr_runtime_target)
 endif()
 
 if(SNOW_SHOT_ENABLE_AGGRESSIVE_RELEASE_OPTIMIZATION OR SNOW_SHOT_RELEASE_STATIC)
@@ -2428,6 +2470,12 @@ endif()
 
 if(WIN32 AND NOT SNOW_SHOT_RELEASE_STATIC)
     install(FILES "$<TARGET_FILE:onnxruntime::onnxruntime>"
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
+
+if(WIN32)
+    install(FILES "${SNOW_SHOT_DIRECTML_RUNTIME_DLL_RELEASE}"
         DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
 endif()

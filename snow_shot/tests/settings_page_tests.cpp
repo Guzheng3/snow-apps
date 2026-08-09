@@ -118,8 +118,20 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
     }
 
     bool switchValue(settings::SettingsSwitchBinding binding) const override {
-        return binding == settings::SettingsSwitchBinding::SmartSelection ? m_smartSelection
-                                                                            : m_historyEnabled;
+        switch (binding) {
+        case settings::SettingsSwitchBinding::HistoryEnabled:
+            return m_historyEnabled;
+        case settings::SettingsSwitchBinding::SmartSelection:
+            return m_smartSelection;
+        case settings::SettingsSwitchBinding::DirectMlAcceleration:
+            return m_directMlAcceleration;
+        }
+        return false;
+    }
+
+    bool switchEnabled(settings::SettingsSwitchBinding binding) const override {
+        return binding != settings::SettingsSwitchBinding::DirectMlAcceleration ||
+               directMlSupported;
     }
 
     bool applySwitchValue(settings::SettingsSwitchBinding binding, bool value) override {
@@ -129,6 +141,8 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
         ++switchApplyCount;
         if (binding == settings::SettingsSwitchBinding::SmartSelection) {
             m_smartSelection = value;
+        } else if (binding == settings::SettingsSwitchBinding::DirectMlAcceleration) {
+            m_directMlAcceleration = value;
         } else {
             m_historyEnabled = value;
         }
@@ -230,6 +244,7 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
     }
 
     bool acceptWrites = true;
+    bool directMlSupported = true;
     int switchApplyCount = 0;
     bool actionTriggered = false;
     settings::SettingsActionBinding triggeredAction =
@@ -242,6 +257,7 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
     QString m_applicationPriority = QStringLiteral("above_normal");
     bool m_historyEnabled = true;
     bool m_smartSelection = true;
+    bool m_directMlAcceleration = true;
     int m_retentionDays = 7;
     int m_maxEntries = 100;
     int m_maxDiskMiB = 1024;
@@ -828,6 +844,20 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                 applicationPriority->currentText() == QStringLiteral("High") &&
                 applicationPriority->selectedModelIndexes().size() == 1,
             "application priority changes must update both its label and dropdown selection");
+
+    auto* directMlAcceleration = systemPage.findChild<adqt::widgets::AdSwitch*>(
+        QStringLiteral("settings-control-text-recognition-direct-ml-acceleration"));
+    require(directMlAcceleration != nullptr && directMlAcceleration->isEnabled() &&
+                directMlAcceleration->isChecked(),
+            "supported Direct ML acceleration must render enabled and on by default");
+    directMlAcceleration->setChecked(false);
+    require(!bindings.switchValue(settings::SettingsSwitchBinding::DirectMlAcceleration),
+            "Direct ML acceleration changes must flow through runtime bindings");
+    bindings.directMlSupported = false;
+    emit bindings.synchronized();
+    flushEvents();
+    require(!directMlAcceleration->isEnabled(),
+            "Direct ML acceleration must be disabled when the environment is unsupported");
 
     auto* historySwitch = storagePage.findChild<adqt::widgets::AdSwitch*>(
         QStringLiteral("settings-control-history-enabled"));

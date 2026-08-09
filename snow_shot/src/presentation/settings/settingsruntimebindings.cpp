@@ -1,5 +1,6 @@
 #include "snow_shot/presentation/settings/settingsruntimebindings.h"
 #include "snow_shot/presentation/settings/applicationpriority.h"
+#include "snow_shot/presentation/settings/textrecognitionacceleration.h"
 
 #include "snow_shot/presentation/languagemanager.h"
 #include "snow_shot/presentation/styles/thememanager.h"
@@ -169,13 +170,36 @@ bool BuiltInSettingsRuntimeBindings::switchValue(SettingsSwitchBinding binding) 
         return storage::ApplicationStorage::instance().captureHistoryPolicy().enabled;
     case SettingsSwitchBinding::SmartSelection:
         return storage::ApplicationStorage::instance().smartSelectionEnabled();
+    case SettingsSwitchBinding::DirectMlAcceleration:
+        return directMlTextRecognitionSupported() &&
+               storage::ApplicationStorage::instance()
+                   .configuration()
+                   .value(QStringLiteral("text_recognition/direct_ml_acceleration"))
+                   .toBool();
     }
     return false;
+}
+
+bool BuiltInSettingsRuntimeBindings::switchEnabled(SettingsSwitchBinding binding) const {
+    return binding != SettingsSwitchBinding::DirectMlAcceleration ||
+           directMlTextRecognitionSupported();
 }
 
 bool BuiltInSettingsRuntimeBindings::applySwitchValue(SettingsSwitchBinding binding, bool value) {
     if (binding == SettingsSwitchBinding::SmartSelection) {
         return storage::ApplicationStorage::instance().requestSmartSelection(value);
+    }
+    if (binding == SettingsSwitchBinding::DirectMlAcceleration) {
+        if (!directMlTextRecognitionSupported()) {
+            return false;
+        }
+        auto& storage = storage::ApplicationStorage::instance();
+        const bool accepted = storage.configuration().setValue(
+            QStringLiteral("text_recognition/direct_ml_acceleration"), value);
+        if (accepted) {
+            emit synchronized();
+        }
+        return accepted;
     }
 
     auto policy = storage::ApplicationStorage::instance().captureHistoryPolicy();
@@ -184,6 +208,8 @@ bool BuiltInSettingsRuntimeBindings::applySwitchValue(SettingsSwitchBinding bind
         policy.enabled = value;
         break;
     case SettingsSwitchBinding::SmartSelection:
+        return false;
+    case SettingsSwitchBinding::DirectMlAcceleration:
         return false;
     }
     return storage::ApplicationStorage::instance().requestCaptureHistoryPolicy(policy);
@@ -306,6 +332,17 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
             emit synchronized();
         } else if (previous.has_value()) {
             static_cast<void>(applyApplicationPriority(*previous));
+        }
+        return accepted;
+    }
+    case SettingsSectionReset::TextRecognition: {
+        auto& storage = storage::ApplicationStorage::instance();
+        const bool accepted = storage.configuration().setValue(
+            QStringLiteral("text_recognition/direct_ml_acceleration"),
+            storage::ConfigurationSchema::defaultValue(
+                QStringLiteral("text_recognition/direct_ml_acceleration")));
+        if (accepted) {
+            emit synchronized();
         }
         return accepted;
     }

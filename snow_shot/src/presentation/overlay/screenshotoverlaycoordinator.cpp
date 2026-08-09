@@ -147,9 +147,12 @@ void ScreenshotOverlayCoordinator::showOverlayWindows(
 
 void ScreenshotOverlayCoordinator::hideOverlayWindowsImmediately(
     const ScreenshotDisplaySession& displaySession) {
-    // This method is on the pin presentation critical path. Hide the current
-    // input surfaces only. Pooled-surface reset is safe once the top-level
-    // windows are hidden and runs either on a full hide or before the next show/reset.
+    // Reset the pooled toolbars before hiding them. Translucent Windows
+    // surfaces retain their last composed frame while hidden, so resetting
+    // after hide lets the old style/selection row flash on the next show.
+    // Keep the canvas untouched here: pin/copy exports may still consume it
+    // asynchronously after this immediate hide.
+    m_uiHost.resetToolbarForNewCapture();
     m_uiHost.hideToolbar();
     SNOW_SHOT_PIN_PERF_MILESTONE("overlay.toolbar_hidden");
     displaySession.forEachOverlay(
@@ -167,8 +170,27 @@ void ScreenshotOverlayCoordinator::hideOverlayWindowsImmediately(
 
 void ScreenshotOverlayCoordinator::hideOverlayWindows(
     const ScreenshotDisplaySession& displaySession) {
-    hideOverlayWindowsImmediately(displaySession);
-    flushDeferredOverlayMaintenance(displaySession);
+    // The full hide is used once an active export has settled. Clear each
+    // visible overlay surface while it is still composited, then hide it. A
+    // hidden layered window cannot reliably receive the repaint that clears
+    // its previous frame.
+    if (m_overlayMaintenancePending) {
+        flushDeferredOverlayMaintenance(displaySession);
+        return;
+    }
+
+    m_uiHost.resetToolbarForNewCapture();
+    m_uiHost.hideToolbar();
+    displaySession.forEachOverlay([this](qsizetype, ScreenshotOverlayWindow* overlay) {
+        if (overlay == nullptr) {
+            return;
+        }
+        overlay->setCanvasClearBackgroundEnabled(false);
+        overlay->clearInputPassThroughRect();
+        m_canvasPresenter.clearOverlayCanvas(overlay);
+        overlay->hide();
+    });
+    m_overlayMaintenancePending = false;
 }
 
 void ScreenshotOverlayCoordinator::flushDeferredOverlayMaintenance(

@@ -66,6 +66,7 @@ class ScreenshotOverlayWindow final : public QWidget {
 #endif
     void clearPresentationFrame();
     void restorePresentationCanvas();
+    void showPreparedFrame();
 
   protected:
     bool eventFilter(QObject* watched, QEvent* event) override;

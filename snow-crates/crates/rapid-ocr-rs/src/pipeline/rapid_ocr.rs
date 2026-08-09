@@ -1,5 +1,6 @@
+use std::sync::Arc;
+use std::thread;
 use std::time::Instant;
-use std::{sync::Once, thread};
 
 use crate::{
     cls::classifier::{Classifier, ClassifierConfig},
@@ -59,6 +60,7 @@ struct RunBuffers {
 
 #[derive(Debug)]
 pub struct RapidOcr {
+    executor: Arc<rayon::ThreadPool>,
     config: EngineConfig,
     detector: Option<Detector>,
     classifier: Option<Classifier>,
@@ -73,7 +75,7 @@ impl RapidOcr {
 
     pub fn new_with_sources(config: EngineConfig, sources: PipelineSources<'_>) -> Result<Self> {
         config.validate()?;
-        init_rayon_global_pool(&config);
+        let executor = build_executor(&config)?;
         let det = if config.global.use_det {
             Some(match sources.det {
                 Some(source) => {
@@ -107,6 +109,7 @@ impl RapidOcr {
             None
         };
         Ok(Self {
+            executor,
             config,
             detector: det,
             classifier: cls,
@@ -116,6 +119,11 @@ impl RapidOcr {
     }
 
     pub fn run(&mut self, input: OcrInput, opts: OcrCallOptions) -> Result<OcrOutput> {
+        let executor = Arc::clone(&self.executor);
+        executor.install(|| self.run_inner(input, opts))
+    }
+
+    fn run_inner(&mut self, input: OcrInput, opts: OcrCallOptions) -> Result<OcrOutput> {
         let e2e_start = Instant::now();
         let mut output = OcrOutput::default();
         let switches = self.resolve_run_switches(&opts);
@@ -380,15 +388,14 @@ impl RapidOcr {
     }
 }
 
-fn init_rayon_global_pool(config: &EngineConfig) {
-    static INIT: Once = Once::new();
-    INIT.call_once(|| {
-        let mut builder = rayon::ThreadPoolBuilder::new();
-        if let Some(threads) = resolve_rayon_threads(config) {
-            builder = builder.num_threads(threads.max(1));
-        }
-        let _ = builder.build_global();
-    });
+fn build_executor(config: &EngineConfig) -> Result<Arc<rayon::ThreadPool>> {
+    let threads = resolve_rayon_threads(config).unwrap_or(1).max(1);
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(threads)
+        .thread_name(|index| format!("rapid-ocr-{index}"))
+        .build()
+        .map(Arc::new)
+        .map_err(|error| RapidOcrError::Config(format!("unable to create OCR executor: {error}")))
 }
 
 fn resolve_rayon_threads(config: &EngineConfig) -> Option<usize> {

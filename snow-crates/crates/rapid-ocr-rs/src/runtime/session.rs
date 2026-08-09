@@ -9,7 +9,7 @@ use ort::{
 };
 
 use crate::{
-    config::{RuntimeBackend, RuntimeConfig},
+    config::{ProviderPreference, RuntimeBackend, RuntimeConfig},
     error::{RapidOcrError, Result},
     model_source::ModelSource,
     runtime::provider::{ProviderResolution, resolve_execution_providers},
@@ -48,6 +48,17 @@ impl OrtSession {
         builder = builder
             .with_optimization_level(GraphOptimizationLevel::Level3)
             .map_err(ort::Error::from)?;
+
+        if matches!(
+            runtime_cfg.provider_preference,
+            ProviderPreference::DirectMl { .. }
+        ) {
+            builder = builder
+                .with_memory_pattern(false)
+                .map_err(ort::Error::from)?
+                .with_parallel_execution(false)
+                .map_err(ort::Error::from)?;
+        }
 
         let (intra_threads, inter_threads) = derive_runtime_threads(runtime_cfg);
 

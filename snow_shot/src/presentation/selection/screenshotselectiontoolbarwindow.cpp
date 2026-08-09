@@ -467,6 +467,10 @@ bool ScreenshotSelectionToolbarWindow::nativeEvent(const QByteArray& eventType, 
 
 void ScreenshotSelectionToolbarWindow::showEvent(QShowEvent* event) {
     QWidget::showEvent(event);
+    // The toolbar is pooled with its overlay. Paint the prepared state during
+    // showEvent so a layered child surface cannot expose its previous frame
+    // while an asynchronous update is still pending.
+    repaint();
     syncToolbarHoverFromCursor();
 }
 

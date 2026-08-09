@@ -1,15 +1,12 @@
 #ifndef SNOW_SHOT_PRESENTATION_SCREENSHOTOCRRECOGNITIONSERVICE_H
 #define SNOW_SHOT_PRESENTATION_SCREENSHOTOCRRECOGNITIONSERVICE_H
 
-#include <QHash>
 #include <QImage>
 #include <QObject>
-#include <QPointer>
 #include <QRectF>
 #include <QSize>
 #include <QString>
 
-#include <atomic>
 #include <functional>
 #include <memory>
 
@@ -24,8 +21,6 @@ inline constexpr qint64 kScreenshotOcrMaximumPixels = 3840LL * 2160LL;
 }
 
 class ScreenshotOcrPresentation;
-class QThread;
-
 struct ScreenshotOcrRecognitionResult {
     std::shared_ptr<ScreenshotOcrPresentation> presentation;
     QString error;
@@ -48,6 +43,8 @@ class ScreenshotOcrRecognitionService final : public ScreenshotOcrRecognitionPor
 
   public:
     explicit ScreenshotOcrRecognitionService(QObject* parent = nullptr);
+    explicit ScreenshotOcrRecognitionService(std::function<bool()> directMlEnabled,
+                                             QObject* parent = nullptr);
     ~ScreenshotOcrRecognitionService() override;
 
     RequestToken recognize(QImage image, const QRectF& canvasRect, QObject* receiver,
@@ -55,16 +52,8 @@ class ScreenshotOcrRecognitionService final : public ScreenshotOcrRecognitionPor
     void cancel(RequestToken token) override;
 
   private:
-    class Worker;
-
-    void deliver(RequestToken token, const QPointer<QObject>& receiver,
-                 const Completion& completion, ScreenshotOcrRecognitionResult result);
-
-    using CancellationFlag = std::shared_ptr<std::atomic_bool>;
-
-    QThread* m_workerThread = nullptr;
-    Worker* m_worker = nullptr;
-    QHash<RequestToken, CancellationFlag> m_requests;
+    class Impl;
+    std::unique_ptr<Impl> m_impl;
     RequestToken m_nextToken = 0;
 };
 

@@ -210,6 +210,7 @@ void ScreenshotFloatingToolPaletteWindow::setOwnerWindow(QWidget* owner) {
 
     if (wasVisible && (owner == nullptr || owner->isVisible())) {
         show();
+        repaint();
         raise();
     }
 }
@@ -558,8 +559,13 @@ void ScreenshotFloatingToolPaletteWindow::updatePaletteGeometryForVisibleContent
 }
 
 void ScreenshotFloatingToolPaletteWindow::refreshPaletteWindow(bool forceRepaint) {
-    Q_UNUSED(forceRepaint);
-    if (isVisible()) {
+    if (!isVisible()) {
+        return;
+    }
+
+    if (forceRepaint) {
+        repaint();
+    } else {
         update();
     }
 }
@@ -743,7 +749,11 @@ void ScreenshotFloatingToolPaletteWindow::drainGeometryUpdates() {
     if (updatesWereEnabled) {
         setUpdatesEnabled(true);
         if ((committed || forceRepaint) && isVisible()) {
-            update();
+            if (forceRepaint) {
+                repaint();
+            } else {
+                update();
+            }
         }
     }
 }

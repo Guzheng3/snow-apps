@@ -91,8 +91,8 @@ void builtInCatalogIsCompleteAndValid() {
             }
         }
     }
-    require(sectionCount == 7 && itemCount == 12,
-            "catalog must contain the expected seven sections and twelve items");
+    require(sectionCount == 8 && itemCount == 13,
+            "catalog must contain the expected eight sections and thirteen items");
     const auto* functionPage = catalog.page(QStringLiteral("function-settings"));
     const auto* smartSelection = catalog.item(
         {QStringLiteral("function-settings"), QStringLiteral("screenshot-settings"),
@@ -201,8 +201,8 @@ void invalidCatalogReportsAllConformanceErrors() {
 
 void searchIndexIsGeneratedAndRanked() {
     settings::SettingsSearchIndex index(settings::builtInSettingsCatalog());
-    require(index.entries().size() == 25 && index.search(QString()).size() == 25,
-            "search must generate all twenty-five catalog nodes in catalog order");
+    require(index.entries().size() == 27 && index.search(QString()).size() == 27,
+            "search must generate all twenty-seven catalog nodes in catalog order");
 
     int pages = 0;
     int sections = 0;
@@ -225,7 +225,7 @@ void searchIndexIsGeneratedAndRanked() {
             break;
         }
     }
-    require(pages == 6 && sections == 7 && items == 12,
+    require(pages == 6 && sections == 8 && items == 13,
             "search node counts must match catalog page, section, and item counts");
 
     const auto theme = index.search(QStringLiteral("theme"));
@@ -302,7 +302,7 @@ void addingCatalogNodesAutomaticallyExpandsSearch() {
     require(expanded.validationErrors().isEmpty(),
             "a normal additional catalog page must validate without consumer changes");
     settings::SettingsSearchIndex index(expanded);
-    require(index.entries().size() == 28 &&
+    require(index.entries().size() == 30 &&
                 index.search(QStringLiteral("extra item")).constFirst().location ==
                     settings::SettingsLocation{QStringLiteral("extra-page"),
                                                QStringLiteral("extra-section"),

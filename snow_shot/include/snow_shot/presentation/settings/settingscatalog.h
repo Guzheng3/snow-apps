@@ -74,6 +74,7 @@ struct SettingsSelectDefinition {
 enum class SettingsSwitchBinding {
     HistoryEnabled,
     SmartSelection,
+    DirectMlAcceleration,
 };
 
 struct SettingsSwitchDefinition {
@@ -151,6 +152,7 @@ enum class SettingsSectionReset {
     HistoryPolicy,
     ScreenshotSettings,
     SystemSettings,
+    TextRecognition,
 };
 
 struct SettingsSectionDefinition {
