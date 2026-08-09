@@ -1,7 +1,10 @@
-use ort::execution_providers::{
-    CANNExecutionProvider, CPUExecutionProvider, CUDAExecutionProvider, DirectMLExecutionProvider,
-    ExecutionProvider, ExecutionProviderDispatch,
-};
+#[cfg(feature = "cann-provider")]
+use ort::ep::CANN;
+#[cfg(feature = "cuda-provider")]
+use ort::ep::CUDA;
+#[cfg(feature = "directml-provider")]
+use ort::ep::DirectML;
+use ort::ep::{CPU, ExecutionProvider, ExecutionProviderDispatch};
 
 use crate::{
     config::ProviderPreference,
@@ -35,7 +38,7 @@ pub fn resolve_execution_providers(
     fail_if_provider_unavailable: bool,
 ) -> Result<ProviderChain> {
     let cpu_provider = || {
-        CPUExecutionProvider::default()
+        CPU::default()
             .with_arena_allocator(enable_cpu_mem_arena)
             .build()
     };
@@ -99,8 +102,16 @@ fn resolve_cuda_execution_providers(
         cpu_provider,
         fail_if_provider_unavailable,
         |id| {
-            let provider = CUDAExecutionProvider::default().with_device_id(id);
-            Ok((provider.is_available()?, provider.build()))
+            #[cfg(feature = "cuda-provider")]
+            {
+                let provider = CUDA::default().with_device_id(id);
+                Ok((provider.is_available()?, provider.build()))
+            }
+            #[cfg(not(feature = "cuda-provider"))]
+            {
+                let _ = id;
+                Ok((false, CPU::default().build()))
+            }
         },
     )
 }
@@ -119,8 +130,16 @@ fn resolve_directml_execution_providers(
         cpu_provider,
         fail_if_provider_unavailable,
         |id| {
-            let provider = DirectMLExecutionProvider::default().with_device_id(id);
-            Ok((provider.is_available()?, provider.build()))
+            #[cfg(feature = "directml-provider")]
+            {
+                let provider = DirectML::default().with_device_id(id);
+                Ok((provider.is_available()?, provider.build()))
+            }
+            #[cfg(not(feature = "directml-provider"))]
+            {
+                let _ = id;
+                Ok((false, CPU::default().build()))
+            }
         },
     )
 }
@@ -138,8 +157,16 @@ fn resolve_cann_execution_providers(
         cpu_provider,
         fail_if_provider_unavailable,
         |id| {
-            let provider = CANNExecutionProvider::default().with_device_id(id);
-            Ok((provider.is_available()?, provider.build()))
+            #[cfg(feature = "cann-provider")]
+            {
+                let provider = CANN::default().with_device_id(id);
+                Ok((provider.is_available()?, provider.build()))
+            }
+            #[cfg(not(feature = "cann-provider"))]
+            {
+                let _ = id;
+                Ok((false, CPU::default().build()))
+            }
         },
     )
 }

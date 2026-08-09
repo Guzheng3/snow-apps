@@ -18,7 +18,7 @@ function Initialize-ReleaseToolchainEnvironment {
             Where-Object { Test-Path -LiteralPath $_ } |
             Select-Object -First 1
         if (-not $vswherePath) {
-            throw "Visual Studio locator 'vswhere.exe' was not found. Install Visual Studio 2022 with the MSVC x64 build tools."
+            throw "Visual Studio locator 'vswhere.exe' was not found. Install Visual Studio 2026 with the MSVC v145 x64 build tools."
         }
 
         $visualStudioCandidates = @(& $vswherePath -latest -products * `
@@ -27,7 +27,7 @@ function Initialize-ReleaseToolchainEnvironment {
         $vswhereExitCode = $LASTEXITCODE
         $visualStudioPath = $visualStudioCandidates | Select-Object -First 1
         if ($vswhereExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($visualStudioPath)) {
-            throw "Visual Studio 2022 with the MSVC x64 build tools was not found."
+            throw "Visual Studio 2026 with the MSVC v145 x64 build tools was not found."
         }
 
         $vcInstallDirectory = Join-Path $visualStudioPath.Trim() "VC"
@@ -44,6 +44,9 @@ function Initialize-ReleaseToolchainEnvironment {
         Select-Object -First 1
     if (-not $msvcToolsDirectory) {
         throw "The MSVC toolset directory was not found under $msvcToolsRoot"
+    }
+    if ([version]$msvcToolsDirectory.Name -lt [version]"14.50") {
+        throw "MSVC v145 (14.50 or newer) is required; found $($msvcToolsDirectory.Name)"
     }
     $script:DumpbinPath = Join-Path $msvcToolsDirectory.FullName "bin\Hostx64\x64\dumpbin.exe"
     if (-not (Test-Path -LiteralPath $script:DumpbinPath -PathType Leaf)) {

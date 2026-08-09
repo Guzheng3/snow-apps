@@ -1,40 +1,28 @@
 set(USE_QT_VERSION "6")
 
-# fix to get version from eigen after v3.4.0
-vcpkg_download_distfile(
-    PATCH1_FILE
-    URLS https://github.com/opencv/opencv/commit/468de9b36740b3355f0d5cd8be2ce28b340df120.patch?full_index=1
-    SHA512 09ee552fcd9a96359230104d7bf8610a63e05d743a3b51d58c6469331729a6440444e05c616464380dbebaefdd7ee6fb06cac5fc70694af85f9c8d40201aad10
-    FILENAME 468de9b36740b3355f0d5cd8be2ce28b340df120.patch
-)
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO opencv/opencv
     REF "${VERSION}"
-    SHA512 8ac63ddd61e22cc0eaeafee4f30ae6e1cab05fc4929e2cea29070203b9ca8dfead12cc0fd7c4a87b65c1e20ec6b9ab4865a1b83fad33d114fc0708fdf107c51b
+    SHA512 37143de2ba76a9af351d6901358635b42b671b5fbe3ccc75d4d27133b0a6c6a0400564e6eaf228fc1705e25a2af09c8e2638039ca9af0ce9428da253dd31d3e0
     HEAD_REF master
     PATCHES
-      0001-disable-downloading.patch
-      0002-install-options.patch
-      0003-force-package-requirements.patch
-      0004-opencl.diff
-      0005-vulkan.diff
-      0008-devendor-quirc.patch
-      0009-fix-protobuf.patch
-      0010-fix-uwp-tiff-imgcodecs.patch
-      0012-miss-openexr.patch
-      0015-fix-freetype.patch
-      0017-fix-flatbuffers.patch
-      0020-fix-narrow-filesystem.diff
-      0021-fix-qt-gen-def.patch
-      0022-android-use-vcpkg-cpu-features.patch
-      0023-ffmpeg8-support.patch
-      "${PATCH1_FILE}"
+      0028-ffmpeg9-support.patch
+      0029-protobuf-caffe-generation.patch
 )
+
+vcpkg_download_distfile(CAFFE_PROTO_FILE
+    URLS "https://raw.githubusercontent.com/opencv/opencv/4.x/modules/dnn/src/caffe/opencv-caffe.proto"
+    SHA512 0b5f14ee72ebd236dd9af66716256127429fc1a817155c9afb93c109b6768b84ff1d22de989de960908e4719551fb2ead0be8072bf6b45e31fc404211fb35bb9
+    FILENAME "opencv-cache/caffe/opencv-caffe.proto"
+)
+file(COPY "${CAFFE_PROTO_FILE}" DESTINATION "${SOURCE_PATH}/modules/dnn/src/caffe")
+
 # Disallow accidental build of vendored copies``
 file(GLOB third_party "${SOURCE_PATH}/3rdparty/*")
+list(FILTER third_party EXCLUDE REGEX "/flatbuffers\$")
 list(FILTER third_party EXCLUDE REGEX "/ippicv\$")
+list(FILTER third_party EXCLUDE REGEX "/mlas\$")
 file(REMOVE_RECURSE ${third_party})
 file(REMOVE "${SOURCE_PATH}/cmake/FindCUDNN.cmake")
 
@@ -200,7 +188,7 @@ if("contrib" IN_LIST FEATURES)
     OUT_SOURCE_PATH CONTRIB_SOURCE_PATH
     REPO opencv/opencv_contrib
     REF "${VERSION}"
-    SHA512 574121ca57328671741413df91fbf600cc04bb9a9beeacfb7bc20c15b2b4e8c9e031df30aafbcc34f82d85edfb098e5d008a744f4e6d833d6e47537a042045c6
+    SHA512 09841f4637f6a51a5e12a5516710e61a3cedd2622455366004cd9e35484a6d03cc9c12de52edae4072dc37af104d7fd9099201effee82c52dd40b8a58c51fdc5
     HEAD_REF master
     PATCHES
       0007-contrib-fix-hdf5.patch
@@ -407,7 +395,7 @@ vcpkg_cmake_configure(
         -DCV_TRACE=OFF
         -DCMAKE_DEBUG_POSTFIX=d
         -DOPENCV_DEBUG_POSTFIX=d
-        -DOPENCV_DLLVERSION=4
+        -DOPENCV_DLLVERSION=5
         -DOPENCV_FFMPEG_USE_FIND_PACKAGE=FFMPEG
         -DOPENCV_FFMPEG_SKIP_BUILD_CHECK=TRUE
         -DOPENCV_FORCE_EIGEN_FIND_PACKAGE_CONFIG=ON
@@ -494,14 +482,30 @@ vcpkg_copy_pdbs()
 
 if (NOT VCPKG_BUILD_TYPE)
   # Update debug paths for libs in Android builds (e.g. sdk/native/staticlibs/armeabi-v7a)
-  vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/share/opencv4/OpenCVModules-debug.cmake"
-      "\${_IMPORT_PREFIX}/sdk"
-      "\${_IMPORT_PREFIX}/debug/sdk"
-      IGNORE_UNCHANGED
-  )
+  file(GLOB_RECURSE OPENCV_DEBUG_MODULE_FILES
+      "${CURRENT_PACKAGES_DIR}/share/opencv4/OpenCVModules-debug.cmake")
+  foreach(OPENCV_DEBUG_MODULE_FILE IN LISTS OPENCV_DEBUG_MODULE_FILES)
+    vcpkg_replace_string("${OPENCV_DEBUG_MODULE_FILE}"
+        "\${_IMPORT_PREFIX}/sdk"
+        "\${_IMPORT_PREFIX}/debug/sdk"
+        IGNORE_UNCHANGED
+    )
+  endforeach()
 endif()
 
-file(READ "${CURRENT_PACKAGES_DIR}/share/opencv4/OpenCVModules.cmake" OPENCV_MODULES)
+file(GLOB_RECURSE OPENCV_MODULES_FILES
+    "${CURRENT_PACKAGES_DIR}/share/opencv4/OpenCVModules.cmake")
+list(LENGTH OPENCV_MODULES_FILES OPENCV_MODULES_FILE_COUNT)
+if(NOT OPENCV_MODULES_FILE_COUNT EQUAL 1)
+  message(FATAL_ERROR
+      "Expected one OpenCVModules.cmake file, found ${OPENCV_MODULES_FILE_COUNT}")
+endif()
+list(GET OPENCV_MODULES_FILES 0 OPENCV_MODULES_FILE)
+vcpkg_replace_string("${OPENCV_MODULES_FILE}"
+    "# Create imported target opencv_core"
+    "set(_IMPORT_PREFIX \"\${VCPKG_IMPORT_PREFIX}\")\n\n# Create imported target opencv_core"
+)
+file(READ "${OPENCV_MODULES_FILE}" OPENCV_MODULES)
 set(DEPS_STRING "include(CMakeFindDependencyMacro)
 if(${BUILD_opencv_dnn} AND NOT TARGET libprotobuf)  #Check if the CMake target libprotobuf is already defined
   find_dependency(Protobuf CONFIG REQUIRED)
@@ -616,7 +620,7 @@ if("ovis" IN_LIST FEATURES)
                  "OgreGLSupport" OPENCV_MODULES "${OPENCV_MODULES}")
 endif()
 
-file(WRITE "${CURRENT_PACKAGES_DIR}/share/opencv4/OpenCVModules.cmake" "${OPENCV_MODULES}")
+file(WRITE "${OPENCV_MODULES_FILE}" "${OPENCV_MODULES}")
 
 if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
   file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/bin" "${CURRENT_PACKAGES_DIR}/debug/bin")

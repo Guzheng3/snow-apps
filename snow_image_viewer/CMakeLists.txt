@@ -20,8 +20,8 @@ endif()
 snow_enable_clang_tidy()
 
 set(QT_NO_PRIVATE_MODULE_WARNING ON)
-find_package(Qt6 6.10.3 EXACT REQUIRED COMPONENTS Widgets Svg Network Concurrent)
-find_package(Qt6GuiPrivate 6.10.3 EXACT REQUIRED)
+find_package(Qt6 6.11.1 EXACT REQUIRED COMPONENTS Widgets Svg Network Concurrent)
+find_package(Qt6GuiPrivate 6.11.1 EXACT REQUIRED)
 find_package(VulkanHeaders CONFIG REQUIRED)
 
 if(NOT TARGET snow_image::snow_image)
@@ -217,6 +217,6 @@ endif()
 
 if(SNOW_IMAGE_VIEWER_BUILD_TESTS)
     enable_testing()
-    find_package(Qt6 6.10.3 EXACT REQUIRED COMPONENTS Test)
+    find_package(Qt6 6.11.1 EXACT REQUIRED COMPONENTS Test)
     add_subdirectory(tests)
 endif()

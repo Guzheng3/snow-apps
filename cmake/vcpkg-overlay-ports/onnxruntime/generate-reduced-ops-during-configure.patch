@@ -1,11 +1,8 @@
 diff --git a/cmake/CMakeLists.txt b/cmake/CMakeLists.txt
-index b3b782f..5a5ca61 100644
+index 398c4d7..ab83fd1 100644
 --- a/cmake/CMakeLists.txt
 +++ b/cmake/CMakeLists.txt
-@@ -1683,6 +1683,23 @@ if (WIN32 AND NOT GDK_PLATFORM AND NOT CMAKE_CROSSCOMPILING)
-   endif()
- endif()
- 
+@@ -1800,3 +1800,20 @@ endif()
 +if(onnxruntime_REDUCED_OPS_BUILD AND onnxruntime_REDUCED_OPS_CONFIG)
 +  execute_process(
 +    COMMAND "${Python_EXECUTABLE}"
@@ -23,6 +20,6 @@ index b3b782f..5a5ca61 100644
 +  endif()
 +endif()
 +
- foreach(target_name ${ONNXRUNTIME_CMAKE_FILES})
-   include(${target_name}.cmake)
+ foreach(onnxruntime_cmake_file ${ONNXRUNTIME_CMAKE_FILES})
+   include(${onnxruntime_cmake_file}.cmake)
  endforeach()
