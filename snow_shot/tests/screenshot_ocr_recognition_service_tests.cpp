@@ -41,14 +41,6 @@ SnowOcrResourceCountsV1 resourceCounts() {
     return counts;
 }
 
-int expectedWorkerCount(int requestCount) {
-    SnowOcrRuntimeInfoV1 info{};
-    info.struct_size = static_cast<std::uint32_t>(sizeof(SnowOcrRuntimeInfoV1));
-    require(snow_ocr_runtime_info_v1(&info) != 0, "OCR runtime info should be available");
-    const int budget = (std::max)(1, static_cast<int>(info.physical_core_count / 2));
-    return (std::min)(requestCount, budget);
-}
-
 bool waitUntil(const std::function<bool()>& condition, int timeoutMs) {
     if (condition()) {
         return true;
@@ -117,7 +109,9 @@ void concurrentRequestsCompleteExactlyOnce() {
     timeout.setSingleShot(true);
     bool timedOut = false;
     int completions = 0;
+    std::vector<int> completionOrder;
     std::vector<ScreenshotOcrRecognitionResult> outputs;
+    completionOrder.reserve(kRequestCount);
     outputs.reserve(kRequestCount);
     QObject::connect(&timeout, &QTimer::timeout, &loop, [&]() {
         timedOut = true;
@@ -128,8 +122,9 @@ void concurrentRequestsCompleteExactlyOnce() {
         const QImage image = whiteImage();
         const auto token = service.recognize(
             image, QRectF(QPointF(index, index), QSizeF(image.size())), &receiver,
-            [&](ScreenshotOcrRecognitionResult result) {
+            [&, index](ScreenshotOcrRecognitionResult result) {
                 ++completions;
+                completionOrder.push_back(index);
                 outputs.push_back(std::move(result));
                 if (completions == kRequestCount) {
                     loop.quit();
@@ -142,6 +137,9 @@ void concurrentRequestsCompleteExactlyOnce() {
     loop.exec();
     require(!timedOut, "concurrent OCR requests should finish within the test timeout");
     require(completions == kRequestCount, "every concurrent OCR request should complete once");
+    std::sort(completionOrder.begin(), completionOrder.end());
+    require(completionOrder == std::vector<int>({0, 1, 2}),
+            "every OCR request should complete exactly once");
     for (const auto& output : outputs) {
         require(output.error.isEmpty(), "concurrent OCR should not report an error");
         require(output.presentation != nullptr,
@@ -149,8 +147,8 @@ void concurrentRequestsCompleteExactlyOnce() {
     }
 
     SnowOcrResourceCountsV1 counts = resourceCounts();
-    require(counts.engines == static_cast<std::size_t>(expectedWorkerCount(kRequestCount)),
-            "concurrent OCR should create one exclusive engine per budgeted worker");
+    require(counts.engines == 2,
+            "a three-request burst should initialize exactly two OCR engines");
     require(counts.results == 0, "FFI results should be released before Qt delivery");
     require(counts.owned_images == kRequestCount,
             "each live presentation should own exactly one transferred image");
@@ -161,11 +159,12 @@ void concurrentRequestsCompleteExactlyOnce() {
             "releasing presentations should release every transferred image");
 }
 
-void idleWorkersRetireToZero() {
-    qputenv("SNOW_SHOT_OCR_IDLE_TIMEOUT_MS", "150");
+void idleEngineRecyclesAndCanBeRecreated() {
     require(resourceCounts().engines == 0,
             "the previous OCR service should destroy its engines during shutdown");
-    ScreenshotOcrRecognitionService service;
+    ScreenshotOcrRecognitionService::Options options;
+    options.engineIdleTimeoutMs = 150;
+    ScreenshotOcrRecognitionService service(options);
     QObject receiver;
     QEventLoop loop;
     QTimer timeout;
@@ -197,10 +196,49 @@ void idleWorkersRetireToZero() {
     require(resourceCounts().owned_images == 0,
             "releasing the presentation should release its transferred image");
     require(waitUntil([]() { return resourceCounts().engines == 0; }, 10'000),
-            "idle workers should destroy every OCR engine");
+            "idle timeout should destroy the OCR engine");
     const SnowOcrResourceCountsV1 counts = resourceCounts();
     require(counts.results == 0 && counts.owned_images == 0,
-            "idle retirement should leave no live OCR result resources");
+            "idle recycling should leave no live OCR result resources");
+
+    bool recreated = false;
+    const auto secondToken = service.recognize(
+        image, QRectF(QPointF(), QSizeF(image.size())), &receiver,
+        [&](ScreenshotOcrRecognitionResult result) {
+            recreated = result.presentation != nullptr && result.error.isEmpty();
+        });
+    require(secondToken != 0, "a request after idle recycling should be accepted");
+    require(waitUntil([&]() { return recreated; }, kRecognitionTimeoutMs),
+            "a request after idle recycling should recreate the OCR engine");
+    require(resourceCounts().engines == 1,
+            "engine recreation should create exactly one OCR engine");
+}
+
+void queuedCancellationSkipsExecution() {
+    ScreenshotOcrRecognitionService service;
+    QObject receiver;
+    QEventLoop loop;
+    QTimer timeout;
+    timeout.setSingleShot(true);
+    int completions = 0;
+    QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+    std::vector<ScreenshotOcrRecognitionPort::RequestToken> tokens;
+    for (int index = 0; index < 3; ++index) {
+        const QImage image = whiteImage(256);
+        tokens.push_back(service.recognize(
+            image, QRectF(QPointF(), QSizeF(image.size())), &receiver,
+            [&](ScreenshotOcrRecognitionResult) {
+                ++completions;
+                if (completions == 2) {
+                    loop.quit();
+                }
+            }));
+        require(tokens.back() != 0, "queued cancellation requests should be accepted");
+    }
+    service.cancel(tokens.back());
+    timeout.start(kRecognitionTimeoutMs);
+    loop.exec();
+    require(completions == 2, "cancelling the queued third request must suppress delivery");
 }
 
 void cancellationSuppressesCompletion() {
@@ -266,7 +304,8 @@ int main(int argc, char** argv) {
     embeddedEngineCompletesThroughTheQtWorker(directMlRequested);
     if (!directMlRequested) {
         concurrentRequestsCompleteExactlyOnce();
-        idleWorkersRetireToZero();
+        queuedCancellationSkipsExecution();
+        idleEngineRecyclesAndCanBeRecreated();
         cancellationSuppressesCompletion();
         receiverDestructionSuppressesCompletion();
         serviceDestructionJoinsWorkersAndSuppressesLateDelivery();

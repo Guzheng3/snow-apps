@@ -2,8 +2,8 @@ mod fill;
 
 use rapid_ocr_rs::{
     DictionarySource, EngineConfig, LangDet, LangRec, ModelSource, ModelType, OcrCallOptions,
-    OcrInput, OcrResult, OcrVersion, PipelineSources, ProviderPreference, Quad, RapidOcrEngine,
-    ResolvedExecutionProvider, directml_is_available, initialize_onnx_runtime,
+    OcrInput, OcrResult, OcrService, OcrVersion, PipelineSources, ProviderPreference, Quad,
+    RapidOcr, ResolvedExecutionProvider, directml_is_available, initialize_onnx_runtime,
 };
 use std::{
     cell::RefCell,
@@ -41,7 +41,7 @@ pub struct SnowOcrRequestV1 {
 }
 
 #[repr(C)]
-pub struct SnowOcrEngineConfigV1 {
+pub struct SnowOcrEngineConfigV2 {
     pub struct_size: u32,
     pub intra_threads: u32,
     pub inter_threads: u32,
@@ -101,7 +101,7 @@ pub struct SnowOcrLineInfoV1 {
 }
 
 pub struct SnowOcrEngine {
-    engine: RapidOcrEngine,
+    service: OcrService,
 }
 
 pub struct SnowOcrResult {
@@ -156,7 +156,7 @@ impl EngineSettings {
     }
 }
 
-fn engine_settings_from_config(config: &SnowOcrEngineConfigV1) -> EngineSettings {
+fn engine_settings_from_config(config: &SnowOcrEngineConfigV2) -> EngineSettings {
     let nonzero = |value: u32| (value > 0).then_some(value as usize);
     EngineSettings {
         intra_threads: nonzero(config.intra_threads),
@@ -167,12 +167,13 @@ fn engine_settings_from_config(config: &SnowOcrEngineConfigV1) -> EngineSettings
     }
 }
 
-fn create_engine(use_directml: bool) -> rapid_ocr_rs::Result<RapidOcrEngine> {
-    create_engine_with_settings(EngineSettings::legacy(use_directml))
+fn create_engine_with_settings(settings: EngineSettings) -> rapid_ocr_rs::Result<OcrService> {
+    ensure_onnx_runtime().map_err(rapid_ocr_rs::RapidOcrError::Config)?;
+    let (config, sources) = embedded_pipeline(settings);
+    OcrService::new_with_sources_and_workers(config, sources, 1)
 }
 
-fn create_engine_with_settings(settings: EngineSettings) -> rapid_ocr_rs::Result<RapidOcrEngine> {
-    ensure_onnx_runtime().map_err(rapid_ocr_rs::RapidOcrError::Config)?;
+fn embedded_pipeline(settings: EngineSettings) -> (EngineConfig, PipelineSources<'static>) {
     let mut config = EngineConfig::default();
     config.global.use_det = true;
     config.global.use_cls = false;
@@ -207,41 +208,41 @@ fn create_engine_with_settings(settings: EngineSettings) -> rapid_ocr_rs::Result
         config.det.runtime.fail_if_provider_unavailable = true;
         config.rec.runtime.provider_preference = provider;
         config.rec.runtime.fail_if_provider_unavailable = true;
+    } else {
+        // The C ABI's flag is an explicit provider choice. Preserve its legacy
+        // meaning even though generic Rust defaults use stage-aware Auto.
+        config.det.runtime.provider_preference = ProviderPreference::Cpu;
+        config.rec.runtime.provider_preference = ProviderPreference::Cpu;
     }
 
-    let engine = RapidOcrEngine::new_with_sources(
-        config,
-        PipelineSources {
-            det: Some(ModelSource::Memory {
-                name: "embedded:PP-OCRv6_det_small.onnx",
-                bytes: DETECTOR_BYTES,
-            }),
-            cls: None,
-            rec: Some(ModelSource::Memory {
-                name: "embedded:PP-OCRv6_rec_small.onnx",
-                bytes: RECOGNIZER_BYTES,
-            }),
-            rec_dictionary: Some(DictionarySource::Memory {
-                name: "embedded:ppocrv6_dict.txt",
-                text: DICTIONARY_TEXT,
-            }),
-        },
-    )?;
-    if settings.use_directml {
-        let providers = engine.provider_resolutions();
-        if !matches!(
-            providers.det.map(|provider| provider.resolved),
-            Some(ResolvedExecutionProvider::DirectMl)
-        ) || !matches!(
-            providers.rec.map(|provider| provider.resolved),
-            Some(ResolvedExecutionProvider::DirectMl)
-        ) {
-            return Err(rapid_ocr_rs::RapidOcrError::Config(
-                "DirectML was not selected for every enabled OCR stage".to_string(),
-            ));
-        }
-    }
-    Ok(engine)
+    let sources = PipelineSources {
+        det: Some(ModelSource::Memory {
+            name: "embedded:PP-OCRv6_det_small.onnx",
+            bytes: DETECTOR_BYTES,
+        }),
+        cls: None,
+        rec: Some(ModelSource::Memory {
+            name: "embedded:PP-OCRv6_rec_small.onnx",
+            bytes: RECOGNIZER_BYTES,
+        }),
+        rec_dictionary: Some(DictionarySource::Memory {
+            name: "embedded:ppocrv6_dict.txt",
+            text: DICTIONARY_TEXT,
+        }),
+    };
+    (config, sources)
+}
+
+fn validate_directml_engine() -> rapid_ocr_rs::Result<bool> {
+    ensure_onnx_runtime().map_err(rapid_ocr_rs::RapidOcrError::Config)?;
+    let (config, sources) = embedded_pipeline(EngineSettings::legacy(true));
+    let engine = RapidOcr::new_with_sources(config, sources)?;
+    let providers = engine.provider_resolutions();
+    Ok([providers.det, providers.rec]
+        .into_iter()
+        .all(|resolution| {
+            resolution.is_some_and(|value| value.resolved == ResolvedExecutionProvider::DirectMl)
+        }))
 }
 
 fn ensure_onnx_runtime() -> Result<(), String> {
@@ -263,7 +264,7 @@ fn create_engine_handle(settings: EngineSettings) -> *mut SnowOcrEngine {
         Ok(Ok(engine)) => {
             clear_last_error();
             LIVE_ENGINES.fetch_add(1, Ordering::Relaxed);
-            Box::into_raw(Box::new(SnowOcrEngine { engine }))
+            Box::into_raw(Box::new(SnowOcrEngine { service: engine }))
         }
         Ok(Err(error)) => {
             set_last_error(error);
@@ -283,15 +284,15 @@ pub extern "C" fn snow_ocr_engine_create_with_directml(enabled: u8) -> *mut Snow
 
 #[unsafe(no_mangle)]
 /// # Safety
-/// `config` must be null or point to a readable `SnowOcrEngineConfigV1`.
-pub unsafe extern "C" fn snow_ocr_engine_create_with_config_v1(
-    config: *const SnowOcrEngineConfigV1,
+/// `config` must be null or point to a readable `SnowOcrEngineConfigV2`.
+pub unsafe extern "C" fn snow_ocr_engine_create_with_config_v2(
+    config: *const SnowOcrEngineConfigV2,
 ) -> *mut SnowOcrEngine {
     let Some(config) = (unsafe { config.as_ref() }) else {
         set_last_error("OCR engine config is null");
         return ptr::null_mut();
     };
-    if config.struct_size as usize != size_of::<SnowOcrEngineConfigV1>() {
+    if config.struct_size as usize != size_of::<SnowOcrEngineConfigV2>() {
         set_last_error("OCR engine config has an incompatible struct size");
         return ptr::null_mut();
     }
@@ -302,7 +303,7 @@ pub unsafe extern "C" fn snow_ocr_engine_create_with_config_v1(
 pub extern "C" fn snow_ocr_directml_is_available() -> u8 {
     *DIRECTML_AVAILABILITY.get_or_init(|| {
         catch_unwind(AssertUnwindSafe(|| {
-            ensure_onnx_runtime().is_ok() && directml_is_available() && create_engine(true).is_ok()
+            directml_is_available() && validate_directml_engine().unwrap_or(false)
         }))
         .unwrap_or(false)
     }) as u8
@@ -370,7 +371,7 @@ pub unsafe extern "C" fn snow_ocr_engine_recognize_rgba(
     engine: *mut SnowOcrEngine,
     request: *const SnowOcrRequestV1,
 ) -> *mut SnowOcrResult {
-    let Some(engine) = (unsafe { engine.as_mut() }) else {
+    let Some(engine) = (unsafe { engine.as_ref() }) else {
         set_last_error("OCR engine is null");
         return ptr::null_mut();
     };
@@ -400,10 +401,7 @@ pub unsafe extern "C" fn snow_ocr_engine_recognize_rgba(
     }
 }
 
-fn recognize(
-    engine: &mut SnowOcrEngine,
-    request: &SnowOcrRequestV1,
-) -> Result<SnowOcrResult, String> {
+fn recognize(engine: &SnowOcrEngine, request: &SnowOcrRequestV1) -> Result<SnowOcrResult, String> {
     let width = request.width as usize;
     let height = request.height as usize;
     let stride = request.stride_bytes as usize;
@@ -428,9 +426,9 @@ fn recognize(
             bgr.extend_from_slice(&[pixel[2], pixel[1], pixel[0]]);
         }
     }
-    let result = engine
-        .engine
-        .run(
+    let (_, receiver) = engine
+        .service
+        .submit(
             OcrInput::BgrU8 {
                 width,
                 height,
@@ -443,6 +441,10 @@ fn recognize(
                 ..OcrCallOptions::default()
             },
         )
+        .map_err(|error| error.to_string())?;
+    let result = receiver
+        .recv()
+        .map_err(|error| error.to_string())?
         .map_err(|error| error.to_string())?;
 
     let mut lines = match result {
@@ -712,8 +714,8 @@ mod tests {
 
     #[test]
     fn ffi_engine_config_maps_zero_threads_to_automatic_values() {
-        let settings = engine_settings_from_config(&SnowOcrEngineConfigV1 {
-            struct_size: size_of::<SnowOcrEngineConfigV1>() as u32,
+        let settings = engine_settings_from_config(&SnowOcrEngineConfigV2 {
+            struct_size: size_of::<SnowOcrEngineConfigV2>() as u32,
             intra_threads: 0,
             inter_threads: 2,
             rayon_threads: 3,
@@ -767,7 +769,8 @@ mod tests {
     #[test]
     fn embedded_pipeline_recognizes_an_rgba_image() {
         let mut engine = SnowOcrEngine {
-            engine: create_engine(false).expect("embedded OCR engine should initialize"),
+            service: create_engine_with_settings(EngineSettings::legacy(false))
+                .expect("embedded OCR service should initialize"),
         };
         let rgba = vec![255_u8; 64 * 64 * 4];
         let request = SnowOcrRequestV1 {
