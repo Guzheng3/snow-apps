@@ -5,6 +5,7 @@
 #include "widgets/context_menu.h"
 
 #include <QAction>
+#include <QApplication>
 #include <QCoreApplication>
 #include <QIcon>
 #include <QSystemTrayIcon>
@@ -78,6 +79,13 @@ SystemTrayController::SystemTrayController(QObject* parent)
 SystemTrayController::~SystemTrayController() = default;
 
 void SystemTrayController::show() {
+    if (m_impl->trayIcon->icon().isNull()) {
+        QIcon fallbackIcon = QApplication::windowIcon();
+        if (fallbackIcon.isNull()) {
+            fallbackIcon = QIcon(QCoreApplication::applicationFilePath());
+        }
+        m_impl->trayIcon->setIcon(fallbackIcon);
+    }
     m_impl->trayIcon->show();
 }
 

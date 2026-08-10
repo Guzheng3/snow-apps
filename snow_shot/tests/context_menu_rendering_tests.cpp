@@ -18,6 +18,10 @@
 #include <iostream>
 #include <stdexcept>
 
+#ifdef Q_OS_WIN
+#include <qt_windows.h>
+#endif
+
 #include "theme/theme_manager.h"
 #include "widgets/context_menu.h"
 
@@ -40,11 +44,16 @@ bool waitUntil(const std::function<bool()>& predicate, int timeoutMs = 3000) {
 }
 
 std::array<QPoint, 4> cornerPixels(const QSize& size) {
-    return {QPoint(0, 0), QPoint(size.width() - 1, 0),
-            QPoint(0, size.height() - 1), QPoint(size.width() - 1, size.height() - 1)};
+    return {QPoint(0, 0), QPoint(size.width() - 1, 0), QPoint(0, size.height() - 1),
+            QPoint(size.width() - 1, size.height() - 1)};
 }
 
 void populateProductionSizedMenu(adqt::widgets::AdContextMenu& menu) {
+    adqt::widgets::AdContextMenu::ComponentTokens tokens;
+    tokens.background = QColor(QStringLiteral("#ffffff"));
+    tokens.border = QColor(QStringLiteral("#1677ff"));
+    tokens.borderRadius = 8;
+    menu.setComponentTokens(tokens);
     menu.setFixedWidth(300);
     menu.addItem(QStringLiteral("Copy to Clipboard"));
     QAction* disabled = menu.addItem(QStringLiteral("Recognizing text"));
@@ -58,6 +67,42 @@ void populateProductionSizedMenu(adqt::widgets::AdContextMenu& menu) {
     menu.addSubMenu(QStringLiteral("Opacity"))->addItem(QStringLiteral("100%"));
     menu.addSeparator();
     menu.addItem(QStringLiteral("Close"));
+}
+
+QPixmap captureCompositedWindow(const QWidget& widget) {
+#ifdef Q_OS_WIN
+    const HWND hwnd = reinterpret_cast<HWND>(widget.winId()); // NOLINT(performance-no-int-to-ptr)
+    RECT windowRect{};
+    require(hwnd != nullptr && GetWindowRect(hwnd, &windowRect) != FALSE,
+            "native context menu geometry was unavailable");
+
+    MONITORINFO monitorInfo{};
+    monitorInfo.cbSize = sizeof(monitorInfo);
+    const HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    require(monitor != nullptr && GetMonitorInfoW(monitor, &monitorInfo) != FALSE,
+            "native context menu monitor geometry was unavailable");
+
+    QScreen* screen = widget.screen();
+    require(screen != nullptr, "native context menu has no screen");
+    const QImage monitorCapture = screen->grabWindow(0).toImage();
+    require(!monitorCapture.isNull(), "native monitor capture failed");
+
+    const QRect physicalWindowRect(
+        windowRect.left - monitorInfo.rcMonitor.left, windowRect.top - monitorInfo.rcMonitor.top,
+        windowRect.right - windowRect.left, windowRect.bottom - windowRect.top);
+    require(QRect(QPoint(0, 0), monitorCapture.size()).contains(physicalWindowRect),
+            "native context menu lay outside its monitor capture");
+
+    QImage windowCapture = monitorCapture.copy(physicalWindowRect);
+    windowCapture.setDevicePixelRatio(widget.devicePixelRatioF());
+    return QPixmap::fromImage(windowCapture);
+#else
+    QScreen* screen = widget.screen();
+    require(screen != nullptr, "native context menu has no screen");
+    const QPoint globalTopLeft = widget.mapToGlobal(QPoint(0, 0));
+    return screen->grabWindow(0, globalTopLeft.x(), globalTopLeft.y(), widget.width(),
+                              widget.height());
+#endif
 }
 
 void dirtyRenderTargetCornersAreCleared() {
@@ -109,7 +154,7 @@ void nativePopupCornersCompositeOverTheirBackdrop() {
 
     const QColor backdropColor(QStringLiteral("#c12f76"));
     QWidget backdrop;
-    backdrop.setWindowFlag(Qt::FramelessWindowHint, true);
+    backdrop.setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
     backdrop.setAutoFillBackground(true);
     QPalette palette = backdrop.palette();
     palette.setColor(QPalette::Window, backdropColor);
@@ -132,24 +177,58 @@ void nativePopupCornersCompositeOverTheirBackdrop() {
                        menu.windowHandle()->isExposed();
             }),
             "native context menu was not exposed");
+    require(waitUntil([&menu]() { return menu.windowOpacity() >= 0.99; }),
+            "native context menu fade-in did not settle");
     QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
 
-    QScreen* screen = menu.screen();
-    require(screen != nullptr, "native context menu has no screen");
-    const QRect menuGeometry(menu.mapToGlobal(QPoint(0, 0)), menu.size());
-    const QPixmap capture = screen->grabWindow(0, menuGeometry.x(), menuGeometry.y(),
-                                                menuGeometry.width(), menuGeometry.height());
+    const QPixmap capture = captureCompositedWindow(menu);
     require(!capture.isNull(), "native context menu capture failed");
 
+    const QColor expectedBorder(QStringLiteral("#1677ff"));
+    const QColor expectedBackground(QStringLiteral("#ffffff"));
     for (const QPoint& corner : cornerPixels(menu.size())) {
         const int xDirection = corner.x() == 0 ? 1 : -1;
         const int yDirection = corner.y() == 0 ? 1 : -1;
-        for (int y = 0; y < 3; ++y) {
-            for (int x = 0; x < 3; ++x) {
+        for (int y = 0; y < 2; ++y) {
+            for (int x = 0; x < 2; ++x) {
                 const QPoint sample = corner + QPoint(x * xDirection, y * yDirection);
                 require(colorDistance(logicalPixel(capture, sample), backdropColor) <= 12,
-                        "native context menu corner did not composite over the known backdrop");
+                        "native context menu outer corner did not composite over its backdrop");
             }
+        }
+    }
+
+    const int cornerRadius = 8;
+    for (int x = cornerRadius + 2; x < menu.width() - cornerRadius - 2; ++x) {
+        require(colorDistance(logicalPixel(capture, QPoint(x, 0)), expectedBorder) <= 24,
+                "native context menu top border contains a gap");
+        require(colorDistance(logicalPixel(capture, QPoint(x, menu.height() - 1)),
+                              expectedBorder) <= 24,
+                "native context menu bottom border contains a gap");
+    }
+    for (int y = cornerRadius + 2; y < menu.height() - cornerRadius - 2; ++y) {
+        require(colorDistance(logicalPixel(capture, QPoint(0, y)), expectedBorder) <= 24,
+                "native context menu left border contains a gap");
+        require(colorDistance(logicalPixel(capture, QPoint(menu.width() - 1, y)), expectedBorder) <=
+                    24,
+                "native context menu right border contains a gap");
+    }
+
+    require(colorDistance(logicalPixel(capture, QPoint(menu.width() / 2, menu.height() / 2)),
+                          expectedBackground) <= 12,
+            "native context menu panel fill is not opaque");
+
+    for (int y = 0; y <= cornerRadius + 1; ++y) {
+        for (int x = 0; x <= cornerRadius + 1; ++x) {
+            const QColor topLeft = logicalPixel(capture, QPoint(x, y));
+            const QColor topRight = logicalPixel(capture, QPoint(menu.width() - 1 - x, y));
+            const QColor bottomLeft = logicalPixel(capture, QPoint(x, menu.height() - 1 - y));
+            const QColor bottomRight =
+                logicalPixel(capture, QPoint(menu.width() - 1 - x, menu.height() - 1 - y));
+            require(colorDistance(topLeft, topRight) <= 24 &&
+                        colorDistance(topLeft, bottomLeft) <= 24 &&
+                        colorDistance(topLeft, bottomRight) <= 24,
+                    "native context menu rounded corners are not symmetric");
         }
     }
     menu.hide();

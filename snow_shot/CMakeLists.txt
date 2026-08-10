@@ -596,6 +596,13 @@ endif()
 target_compile_definitions(snow_shot PRIVATE
     SNOW_SHOT_API_BASE_URL=\"${SNOW_SHOT_API_BASE_URL}\"
 )
+if(MSVC AND TARGET Qt6::BundledLibpng)
+    # Snow Image also links libpng. Load the implementation used to build
+    # static Qt first so Qt's PNG image handler cannot bind to another ABI.
+    target_link_libraries(snow_shot PRIVATE
+        "$<LINK_LIBRARY:WHOLE_ARCHIVE,Qt6::BundledLibpng>"
+    )
+endif()
 target_link_libraries(snow_shot PRIVATE snow_shot_image_codec)
 
 qt_add_resources(snow_shot "snow_shot_app_assets"
@@ -831,12 +838,21 @@ if(SNOW_SHOT_BUILD_TESTS)
         NAME snow-shot-system-tray-controller-tests
         COMMAND snow-shot-system-tray-controller-tests
     )
-    set_tests_properties(snow-shot-system-tray-controller-tests PROPERTIES
-        ENVIRONMENT
-            "QT_QPA_PLATFORM=offscreen;QT_QPA_PLATFORM_PLUGIN_PATH=$<TARGET_FILE_DIR:Qt6::QOffscreenIntegrationPlugin>"
-        ENVIRONMENT_MODIFICATION
-            "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
-    )
+    if(WIN32)
+        set_tests_properties(snow-shot-system-tray-controller-tests PROPERTIES
+            ENVIRONMENT
+                "QT_QPA_PLATFORM=windows;QT_QPA_PLATFORM_PLUGIN_PATH=$<TARGET_FILE_DIR:Qt6::QWindowsIntegrationPlugin>"
+            ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+        )
+    else()
+        set_tests_properties(snow-shot-system-tray-controller-tests PROPERTIES
+            ENVIRONMENT
+                "QT_QPA_PLATFORM=offscreen;QT_QPA_PLATFORM_PLUGIN_PATH=$<TARGET_FILE_DIR:Qt6::QOffscreenIntegrationPlugin>"
+            ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+        )
+    endif()
 
     add_executable(snow-shot-context-menu-rendering-tests
         tests/context_menu_rendering_tests.cpp
@@ -2443,10 +2459,13 @@ if(MSVC AND SNOW_SHOT_RELEASE_STATIC AND NOT SNOW_SHOT_QT_STATIC)
     set_property(TARGET snow_shot PROPERTY qt_no_entrypoint TRUE)
     target_link_options(snow_shot PRIVATE /ENTRY:mainCRTStartup)
 endif()
-if(MSVC AND SNOW_SHOT_RELEASE_STATIC)
+if(MSVC AND (SNOW_SHOT_RELEASE_STATIC OR
+             (CMAKE_MSVC_RUNTIME_LIBRARY MATCHES "^MultiThreaded" AND
+              NOT CMAKE_MSVC_RUNTIME_LIBRARY MATCHES "DLL")))
     # Each independently built Rust staticlib carries its own copy of Rust's
-    # runtime support. They are ABI-identical and intentionally coalesced by
-    # the final executable link.
+    # runtime support. Static Qt can also bundle codec symbols supplied by
+    # Snow Image. These implementations are ABI-identical and intentionally
+    # coalesced by the final executable link.
     target_link_options(snow_shot PRIVATE /FORCE:MULTIPLE)
 endif()
 

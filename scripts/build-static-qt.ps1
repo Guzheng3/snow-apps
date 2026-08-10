@@ -3,6 +3,7 @@ param(
     [string]$QtVersion = "6.11.1",
     [Parameter(Mandatory = $true)][string]$InstallPrefix,
     [string]$SourceDirectory = "",
+    [ValidateSet("Debug", "Release")][string]$Configuration = "Release",
     [string]$QtMirrorBaseUrl = "https://qt.mirror.constant.com/official_releases"
 )
 
@@ -92,7 +93,7 @@ function Save-RemoteFile {
 $installPrefix = [System.IO.Path]::GetFullPath($InstallPrefix)
 $qtConfig = Join-Path $installPrefix "lib\cmake\Qt6\Qt6Config.cmake"
 if (Test-Path -LiteralPath $qtConfig -PathType Leaf) {
-    Write-Output "Static Qt $QtVersion is already available at $installPrefix"
+    Write-Output "Static Qt $QtVersion ($Configuration) is already available at $installPrefix"
     exit 0
 }
 
@@ -100,6 +101,7 @@ if ([string]::IsNullOrWhiteSpace($SourceDirectory)) {
     $SourceDirectory = Join-Path $env:RUNNER_TEMP "qt-everywhere-src-$QtVersion"
 }
 $sourceDirectory = [System.IO.Path]::GetFullPath($SourceDirectory)
+$configurationArgument = if ($Configuration -eq "Debug") { "-debug" } else { "-release" }
 $archivePath = Join-Path ([System.IO.Path]::GetDirectoryName($sourceDirectory)) "qt-everywhere-src-$QtVersion.tar.xz"
 $sourceRelativePath = "qt/$($QtVersion.Substring(0, $QtVersion.LastIndexOf('.')))/$QtVersion/single/qt-everywhere-src-$QtVersion.tar.xz"
 $sourceUrls = @(
@@ -143,7 +145,7 @@ if (-not (Test-Path -LiteralPath $sourceDirectory -PathType Container)) {
 New-Item -ItemType Directory -Force -Path $installPrefix | Out-Null
 $configureArguments = @(
     "-static",
-    "-release",
+    $configurationArgument,
     "-static-runtime",
     "-opensource",
     "-confirm-license",
@@ -156,6 +158,7 @@ $configureArguments = @(
     "-skip", "qtconnectivity",
     "-skip", "qtdatavis3d",
     "-skip", "qtgraphs",
+    "-skip", "qtgrpc",
     "-skip", "qtlocation",
     "-skip", "qtmultimedia",
     "-skip", "qtnetworkauth",
@@ -177,10 +180,14 @@ $configureArguments = @(
     "-skip", "qtwebview"
 )
 Invoke-Checked -Command (Join-Path $sourceDirectory "configure.bat") -Arguments $configureArguments -WorkingDirectory $sourceDirectory
+$buildFile = Join-Path $sourceDirectory "build.ninja"
+if (-not (Test-Path -LiteralPath $buildFile -PathType Leaf)) {
+    throw "Qt configure did not produce $buildFile. Review the configure output above."
+}
 Invoke-Checked -Command "cmake" -Arguments @("--build", ".", "--parallel") -WorkingDirectory $sourceDirectory
 Invoke-Checked -Command "cmake" -Arguments @("--install", ".") -WorkingDirectory $sourceDirectory
 
 if (-not (Test-Path -LiteralPath $qtConfig -PathType Leaf)) {
     throw "Qt $QtVersion installation did not produce $qtConfig"
 }
-Write-Output "Static Qt $QtVersion installed at $installPrefix"
+Write-Output "Static Qt $QtVersion ($Configuration) installed at $installPrefix"
