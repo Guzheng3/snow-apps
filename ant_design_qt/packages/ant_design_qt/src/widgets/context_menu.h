@@ -9,6 +9,9 @@
 
 #include "icon_core.h"
 
+class QPaintEvent;
+class QResizeEvent;
+
 namespace adqt::widgets {
 
 namespace detail {
@@ -93,12 +96,15 @@ class AdContextMenu final : public QMenu {
  protected:
   bool eventFilter(QObject* watched, QEvent* event) override;
   void changeEvent(QEvent* event) override;
+  void paintEvent(QPaintEvent* event) override;
+  void resizeEvent(QResizeEvent* event) override;
   void showEvent(QShowEvent* event) override;
 
  private:
   friend class detail::AdContextMenuStyle;
 
   void refreshVisuals(bool relayout);
+  void updateWindowShape();
 
   class Private;
   std::unique_ptr<Private> d_;

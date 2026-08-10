@@ -6,9 +6,12 @@
 #include <QCoreApplication>
 #include <QEvent>
 #include <QFontMetrics>
+#include <QPaintEvent>
 #include <QPainter>
 #include <QPainterPath>
 #include <QProxyStyle>
+#include <QResizeEvent>
+#include <QRegion>
 #include <QShowEvent>
 #include <QStyleOptionMenuItem>
 #include <algorithm>
@@ -194,7 +197,7 @@ QString actionShortcutText(const QAction* action, const QString& optionText) {
   if (tab >= 0) {
     return optionText.mid(tab + 1);
   }
-  if (action && !action->shortcut().isEmpty()) {
+  if (action && action->isShortcutVisibleInContextMenu() && !action->shortcut().isEmpty()) {
     return action->shortcut().toString(QKeySequence::NativeText);
   }
   return {};
@@ -214,7 +217,13 @@ int maximumShortcutWidth(const QMenu* menu, const QFontMetrics& metrics) {
     if (!action || !action->isVisible() || action->isSeparator()) {
       continue;
     }
-    const QString shortcut = action->shortcut().toString(QKeySequence::NativeText);
+    QString shortcut;
+    const qsizetype tab = action->text().indexOf(QLatin1Char('\t'));
+    if (tab >= 0) {
+      shortcut = action->text().mid(tab + 1);
+    } else if (action->isShortcutVisibleInContextMenu() && !action->shortcut().isEmpty()) {
+      shortcut = action->shortcut().toString(QKeySequence::NativeText);
+    }
     result = std::max(result, metrics.horizontalAdvance(shortcut));
   }
   return result;
@@ -529,7 +538,15 @@ AdContextMenu::AdContextMenu(QWidget* parent) : QMenu(parent), d_(std::make_uniq
   setObjectName(QStringLiteral("ad-context-menu"));
   setSeparatorsCollapsible(false);
   setToolTipsVisible(true);
+
+  // A translucent top-level widget must be frameless on Windows.  Keeping the
+  // Popup type preserves QMenu's native focus, keyboard, submenu, and tray
+  // integration while preventing the platform from adding an opaque frame or
+  // a second drop shadow around our painted surface.
+  setWindowFlags(Qt::Popup | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
   setAttribute(Qt::WA_TranslucentBackground, true);
+  setAttribute(Qt::WA_NoSystemBackground, true);
+  setAttribute(Qt::WA_OpaquePaintEvent, false);
   setAutoFillBackground(false);
 
   d_->menuStyle = new detail::AdContextMenuStyle(this);
@@ -624,8 +641,13 @@ void AdContextMenu::setActionIcon(QAction* action, const adqt::icons::IconRef& i
   if (!action) {
     return;
   }
-  action->setProperty(kActionIconProperty, QVariant::fromValue(icon));
-  action->setIcon(adqt::icons::isValid(icon) ? adqt::icons::makeIcon(icon) : QIcon());
+  if (adqt::icons::isValid(icon)) {
+    action->setProperty(kActionIconProperty, QVariant::fromValue(icon));
+    action->setIcon(adqt::icons::makeIcon(icon));
+  } else {
+    action->setProperty(kActionIconProperty, QVariant());
+    action->setIcon(QIcon());
+  }
   refreshVisuals(true);
 }
 
@@ -681,8 +703,59 @@ void AdContextMenu::changeEvent(QEvent* event) {
 }
 
 void AdContextMenu::showEvent(QShowEvent* event) {
+  updateWindowShape();
   refreshVisuals(false);
   QMenu::showEvent(event);
+}
+
+void AdContextMenu::paintEvent(QPaintEvent* event) {
+  Q_UNUSED(event);
+
+  // QMenu is a native popup on Windows and its backing store is not
+  // guaranteed to be initialized before the first paint.  Clear the entire
+  // surface with Source composition before QMenu asks the style to paint the
+  // rounded panel and its items.  This makes pixels outside the panel's path
+  // explicitly transparent instead of retaining the platform's black
+  // window background.
+  QPainter painter(this);
+  painter.setCompositionMode(QPainter::CompositionMode_Source);
+  painter.fillRect(rect(), Qt::transparent);
+  painter.end();
+  QMenu::paintEvent(event);
+}
+
+void AdContextMenu::resizeEvent(QResizeEvent* event) {
+  QMenu::resizeEvent(event);
+  // A hidden QMenu is also used as an off-screen render target by tests and
+  // by callers that pre-measure a menu.  Applying a native mask at that point
+  // would clip the render target before the transparent clear can run.  The
+  // show path applies the mask before the native popup is exposed, and visible
+  // resizes keep it in sync for DPI/theme changes.
+  if (isVisible()) {
+    updateWindowShape();
+  }
+}
+
+void AdContextMenu::updateWindowShape() {
+  if (width() <= 0 || height() <= 0) {
+    clearMask();
+    return;
+  }
+
+  const ContextMenuVisualStyle visual = resolveVisualStyle(this);
+  if (visual.borderRadius <= 0) {
+    clearMask();
+    return;
+  }
+
+  // The alpha channel is the primary source of truth.  A native region is a
+  // deliberate fallback for compositors that ignore transparent pixels in a
+  // QMenu's popup backing store (notably older Windows configurations).  It
+  // also prevents a platform drop-shadow implementation from exposing square
+  // corners around the rounded panel.
+  QPainterPath path;
+  path.addRoundedRect(QRectF(rect()), visual.borderRadius, visual.borderRadius);
+  setMask(QRegion(path.toFillPolygon().toPolygon()));
 }
 
 void AdContextMenu::refreshVisuals(bool relayout) {
