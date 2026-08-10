@@ -9,6 +9,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "snow-build-environment.ps1")
 
 function Invoke-Checked {
     param(
@@ -43,7 +44,9 @@ $toolsRoot = Join-Path $repoRoot ".tools"
 $vcpkgRoot = Join-Path $toolsRoot "vcpkg"
 $vcpkgExe = Join-Path $vcpkgRoot "vcpkg.exe"
 $vcpkgInstalledRoot = Join-Path $vcpkgRoot "installed"
-$vcpkgBaseline = "ea1a7396b05637a53bf23c078647ecc0edee4b80"
+# Keep this paired with the available vcpkg tool release and CMake 4.2.3:
+# newer snapshots require an unsupported manifest-tool schema or bundled CMake 4.4+.
+$vcpkgBaseline = "4497409a47f19db373a410a0efb84eca4747adbf"
 $rustToolchain = "1.97.1"
 $rustTarget = "x86_64-pc-windows-msvc"
 
@@ -51,6 +54,12 @@ $git = Require-Command "git"
 $cmake = Require-Command "cmake"
 $cargo = Require-Command "cargo"
 $rustup = Require-Command "rustup"
+
+# vcpkg's app-local packaging invokes dumpbin to discover DLL dependencies of
+# host tools. Without the MSVC bin directory, it can install unusable tools and
+# still record their packages as successfully installed.
+Add-SnowMsvcToolsToPath | Out-Null
+Require-Command "dumpbin" | Out-Null
 
 $cmakeVersionLine = (& $cmake.Source --version | Select-Object -First 1)
 if ($cmakeVersionLine -notmatch "cmake version (\d+)\.(\d+)") {
@@ -93,7 +102,33 @@ if (Test-Path -LiteralPath $vcpkgGitDirectory) {
     ) -WorkingDirectory $vcpkgRoot
 }
 
-if (-not (Test-Path -LiteralPath $vcpkgExe) -and -not $SkipVcpkgInstall) {
+function Test-VcpkgToolAlignment {
+    if (-not (Test-Path -LiteralPath $vcpkgExe -PathType Leaf)) {
+        return $false
+    }
+
+    $metadataPath = Join-Path $vcpkgRoot "scripts\vcpkg-tool-metadata.txt"
+    if (-not (Test-Path -LiteralPath $metadataPath -PathType Leaf)) {
+        return $false
+    }
+    $metadata = ConvertFrom-StringData (Get-Content -LiteralPath $metadataPath -Raw)
+    $expectedRelease = $metadata.VCPKG_TOOL_RELEASE_TAG
+    if ([string]::IsNullOrWhiteSpace($expectedRelease)) {
+        return $false
+    }
+
+    $versionOutput = & $vcpkgExe version --disable-metrics 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0 -or $versionOutput -notmatch "version\s+($([regex]::Escape($expectedRelease)))") {
+        return $false
+    }
+    return $true
+}
+
+$vcpkgNeedsBootstrap = -not (Test-VcpkgToolAlignment)
+if ($vcpkgNeedsBootstrap -and $SkipVcpkgInstall) {
+    Write-Host "Repository-local vcpkg.exe is missing or stale; refreshing it from the pinned checkout."
+}
+if ($vcpkgNeedsBootstrap) {
     $bootstrap = Join-Path $vcpkgRoot "bootstrap-vcpkg.bat"
     if (-not (Test-Path -LiteralPath $bootstrap)) {
         throw "vcpkg bootstrap script was not found at $bootstrap"
@@ -101,6 +136,31 @@ if (-not (Test-Path -LiteralPath $vcpkgExe) -and -not $SkipVcpkgInstall) {
     Invoke-Checked -Command $env:ComSpec -Arguments @(
         "/d", "/c", $bootstrap, "-disableMetrics"
     ) -WorkingDirectory $vcpkgRoot
+}
+
+function Repair-VcpkgHostTools {
+    param([Parameter(Mandatory = $true)][string]$InstallRoot)
+
+    $hostRoot = Join-Path $InstallRoot "x64-windows"
+    $hostBin = Join-Path $hostRoot "bin"
+    $hostTools = Join-Path $hostRoot "tools"
+    if (-not (Test-Path -LiteralPath $hostTools -PathType Container) -or
+        -not (Test-Path -LiteralPath $hostBin -PathType Container)) {
+        return
+    }
+
+    $appLocal = Join-Path $vcpkgRoot "scripts\buildsystems\msbuild\applocal.ps1"
+    if (-not (Test-Path -LiteralPath $appLocal -PathType Leaf)) {
+        throw "vcpkg app-local deployment script was not found at $appLocal"
+    }
+    Get-ChildItem -LiteralPath $hostTools -Filter "*.exe" -File -Recurse | ForEach-Object {
+        & $appLocal -TargetBinary $_.FullName -InstalledDir $hostBin
+    }
+}
+
+foreach ($variant in $VcpkgVariants) {
+    $installVariant = $variant.ToLowerInvariant()
+    Repair-VcpkgHostTools -InstallRoot (Join-Path $vcpkgInstalledRoot $installVariant)
 }
 
 if (-not $SkipDependencyInstall) {

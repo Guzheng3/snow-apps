@@ -33,6 +33,14 @@ const COLORS: [COLORREF; 4] = [
     COLORREF(0x00ff_0000),
     COLORREF(0x0000_ffff),
 ];
+const EXPECTED_RGB: [[u8; 3]; 4] = [
+    [0xff, 0x00, 0x00],
+    [0x00, 0xff, 0x00],
+    [0x00, 0x00, 0xff],
+    [0xff, 0xff, 0x00],
+];
+const COLOR_CHANNEL_TOLERANCE: u8 = 64;
+const MIN_SOLID_COLOR_RATIO: f64 = 0.9;
 
 struct ColorWindowState {
     color_index: usize,
@@ -252,6 +260,36 @@ fn changed_pixel_ratio(left: &[u8], right: &[u8]) -> f64 {
     changed as f64 / (left.len() / 4) as f64
 }
 
+fn strongest_expected_color_ratio(frame: &[u8]) -> f64 {
+    EXPECTED_RGB
+        .iter()
+        .map(|expected| {
+            frame
+                .chunks_exact(4)
+                .filter(|pixel| {
+                    pixel[..3].iter().zip(expected).all(|(actual, expected)| {
+                        actual.abs_diff(*expected) <= COLOR_CHANNEL_TOLERANCE
+                    })
+                })
+                .count() as f64
+                / (frame.len() / 4) as f64
+        })
+        .fold(0.0, f64::max)
+}
+
+fn assert_frames_are_complete_solid_presents(frames: &[Vec<u8>], label: &str) {
+    let (worst_index, worst_ratio) = frames
+        .iter()
+        .enumerate()
+        .map(|(index, frame)| (index, strongest_expected_color_ratio(frame)))
+        .min_by(|left, right| left.1.total_cmp(&right.1))
+        .expect("recording should contain at least one frame");
+    assert!(
+        worst_ratio >= MIN_SOLID_COLOR_RATIO,
+        "{label} frame {worst_index} mixed pixels from different presents; only {worst_ratio:.3} of its pixels matched one expected solid color"
+    );
+}
+
 #[test]
 fn dxgi_window_recording_exports_visually_changing_gif_frames() {
     let temp = tempdir().expect("temporary output directory should be created");
@@ -286,6 +324,7 @@ fn dxgi_window_recording_exports_visually_changing_gif_frames() {
         source_frames.len() >= 2,
         "intermediate recording should decode to multiple frames"
     );
+    assert_frames_are_complete_solid_presents(&source_frames, "intermediate recording");
     assert!(
         source_max_changed_ratio > 0.5,
         "intermediate recording frames should visibly change; maximum changed-pixel ratio was {source_max_changed_ratio:.3} across {} decoded frames",
@@ -301,6 +340,7 @@ fn dxgi_window_recording_exports_visually_changing_gif_frames() {
 
     let frames = decode_video_rgba(&output_path);
     assert!(frames.len() >= 2, "GIF should decode to multiple frames");
+    assert_frames_are_complete_solid_presents(&frames, "GIF");
     let max_changed_ratio = frames
         .windows(2)
         .map(|pair| changed_pixel_ratio(&pair[0], &pair[1]))
