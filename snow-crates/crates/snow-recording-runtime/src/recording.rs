@@ -29,7 +29,9 @@ use uuid::Uuid;
 use crate::adapter::video::resolve_capture_target;
 use crate::config::{IntermediateRecordingProfile, RecordingConfig, VideoEncodeConfig};
 use crate::error::{Result, ScreenRecorderError};
-use crate::ffmpeg_util::{copy_rgba_into_frame, ensure_ffmpeg_initialized, is_eagain};
+use crate::ffmpeg_util::{
+    copy_rgba_into_frame, ensure_ffmpeg_initialized, ensure_video_frame_writable, is_eagain,
+};
 use crate::processor::{CursorProcessor, VideoProcessor};
 use crate::temp::TempLayout;
 use crate::video_quality::{quality_to_h264_crf, smart_quality_bitrate_bps};
@@ -643,6 +645,7 @@ impl LiveVideoEncoder {
         }
 
         copy_rgba_into_frame(&mut self.rgba_frame, self.width, rgba);
+        ensure_video_frame_writable(&mut self.encode_frame)?;
         self.scaler
             .run(&self.rgba_frame, &mut self.encode_frame)
             .map_err(|err| {
