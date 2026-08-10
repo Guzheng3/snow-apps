@@ -6,7 +6,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+. (Join-Path $PSScriptRoot "snow-build-environment.ps1")
+$repoRoot = (Set-SnowBuildEnvironment).RepoRoot
 
 function Initialize-ReleaseToolchainEnvironment {
     if ([string]::IsNullOrWhiteSpace($env:VCINSTALLDIR)) {

@@ -238,6 +238,58 @@ function(_snow_collect_build_targets directory output_variable)
     set(${output_variable} "${_collected_targets}" PARENT_SCOPE)
 endfunction()
 
+# Qt's static kit deliberately changes Qt-created targets to MultiThreadedDebug
+# for Debug configurations. This workspace uses the release-runtime static Qt
+# kit, so every locally compiled target must use the same CRT and iterator ABI.
+# Static vcpkg dependencies are likewise mapped to their release configurations
+# by the Debug preset above.
+if(MSVC AND SNOW_APPS_RELEASE_STATIC AND SNOW_APPS_QT_STATIC)
+    set(CMAKE_MAP_IMPORTED_CONFIG_DEBUG Release CACHE STRING
+        "Use release-configured imported static libraries for the Debug ABI." FORCE)
+    get_property(_snow_imported_targets GLOBAL PROPERTY TARGETS)
+    foreach(_snow_imported_target IN LISTS _snow_imported_targets)
+        get_target_property(_snow_imported "${_snow_imported_target}" IMPORTED)
+        get_target_property(_snow_rust_imported "${_snow_imported_target}" SNOW_RUST_IMPORTED)
+        if(_snow_imported AND NOT _snow_rust_imported)
+            set_property(TARGET "${_snow_imported_target}" PROPERTY
+                MAP_IMPORTED_CONFIG_DEBUG Release)
+        endif()
+        unset(_snow_imported)
+        unset(_snow_rust_imported)
+    endforeach()
+    unset(_snow_imported_target)
+    unset(_snow_imported_targets)
+    _snow_collect_build_targets("${CMAKE_CURRENT_BINARY_DIR}" _snow_workspace_abi_targets)
+    foreach(_snow_abi_target IN LISTS _snow_workspace_abi_targets)
+        get_target_property(_snow_abi_type "${_snow_abi_target}" TYPE)
+        if(_snow_abi_type MATCHES "^(EXECUTABLE|STATIC_LIBRARY|SHARED_LIBRARY|MODULE_LIBRARY|OBJECT_LIBRARY)$")
+            set_property(TARGET "${_snow_abi_target}" PROPERTY MSVC_RUNTIME_LIBRARY MultiThreaded)
+            target_compile_options("${_snow_abi_target}" PRIVATE
+                "$<$<CONFIG:Debug>:/D_ITERATOR_DEBUG_LEVEL=0>"
+            )
+        endif()
+        unset(_snow_abi_type)
+    endforeach()
+    unset(_snow_abi_target)
+    unset(_snow_workspace_abi_targets)
+    # RustStaticLibrary targets are imported by design. Their CMake Debug
+    # location is deliberately redirected to the ABI-compatible Cargo release
+    # archive by RustStaticLibrary.cmake, so retain that explicit mapping.
+    foreach(_snow_rust_target IN ITEMS
+        snow_capture_c
+        snow_ui_selector_c
+        snow_stitch_images_c
+        snow_ocr_c
+        snow_draw_engine_c
+    )
+        if(TARGET "${_snow_rust_target}")
+            set_property(TARGET "${_snow_rust_target}" PROPERTY
+                MAP_IMPORTED_CONFIG_DEBUG Debug)
+        endif()
+    endforeach()
+    unset(_snow_rust_target)
+endif()
+
 if(NOT TARGET snow-all)
     add_custom_target(snow-all)
     _snow_collect_build_targets("${CMAKE_CURRENT_BINARY_DIR}" _snow_workspace_targets)

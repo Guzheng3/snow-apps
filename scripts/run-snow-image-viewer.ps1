@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("windows-msvc-debug", "windows-msvc-release")]
+    [ValidateSet("windows-msvc-debug", "windows-msvc-performance")]
     [string]$Preset = "windows-msvc-debug",
     [switch]$Clean,
     [switch]$NoBuild,
@@ -8,15 +8,13 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$buildDirectory = Join-Path $repoRoot "build/$Preset"
+. (Join-Path $PSScriptRoot "snow-build-environment.ps1")
+$toolchain = Set-SnowBuildEnvironment
+$repoRoot = $toolchain.RepoRoot
 if (-not $NoBuild) {
     & (Join-Path $PSScriptRoot "build.ps1") -Preset $Preset -Target snow_image_viewer -Clean:$Clean
     if ($LASTEXITCODE -ne 0) { throw "Snow Image Viewer build failed." }
 }
-$configuration = if ($Preset -eq "windows-msvc-debug") { "Debug" } else { "Release" }
-$executable = Get-ChildItem -LiteralPath $buildDirectory -Filter "snow_image_viewer.exe" -File -Recurse -ErrorAction SilentlyContinue |
-    Where-Object { $_.FullName -match "\\$configuration\\" } | Select-Object -First 1
-if (-not $executable) { throw "snow_image_viewer.exe was not found under $buildDirectory." }
+$executable = Resolve-SnowExecutable -Preset $Preset -Name "snow_image_viewer.exe"
 if ($Detached) { Start-Process -FilePath $executable.FullName -WorkingDirectory $executable.DirectoryName | Out-Null }
 else { Push-Location $executable.DirectoryName; try { & $executable.FullName } finally { Pop-Location } }

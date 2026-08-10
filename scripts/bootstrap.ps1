@@ -2,7 +2,7 @@
 param(
     [string]$Qt6Dir = "",
     [ValidateSet("Dynamic", "Static")]
-    [string[]]$VcpkgVariants = @("Dynamic", "Static"),
+    [string[]]$VcpkgVariants = @("Static"),
     [switch]$Reset,
     [switch]$SkipVcpkgInstall,
     [switch]$SkipDependencyInstall
@@ -175,6 +175,9 @@ if (-not $qt6VersionMatch.Success -or $qt6VersionMatch.Groups[1].Value -ne "6.11
     $detectedQtVersion = if ($qt6VersionMatch.Success) { $qt6VersionMatch.Groups[1].Value } else { "unknown" }
     throw "Qt 6.11.1 is required; detected $detectedQtVersion at $Qt6Dir"
 }
+$env:SNOW_QT_STATIC_DIR = $Qt6Dir
+$env:Qt6_DIR = $Qt6Dir
+$env:QTDIR = [System.IO.Path]::GetFullPath((Join-Path $Qt6Dir "..\..\.."))
 
 $libclangDirectory = Join-Path $toolsRoot "llvm\bin"
 if (-not (Test-Path -LiteralPath (Join-Path $libclangDirectory "libclang.dll"))) {

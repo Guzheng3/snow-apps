@@ -68,8 +68,16 @@ function(snow_add_rust_static_libraries batch_name)
     endif()
 
     if(CMAKE_CONFIGURATION_TYPES)
-        set(_profile "$<IF:$<CONFIG:Debug>,debug,${SNOW_RUST_RELEASE_PROFILE}>")
-        set(_cargo_profile "$<IF:$<CONFIG:Debug>,dev,${SNOW_RUST_RELEASE_PROFILE}>")
+        if(SNOW_APPS_QT_STATIC AND SNOW_APPS_RELEASE_STATIC)
+            # The installed static Qt kit is release-runtime only. Keep the
+            # native CMake configuration Debug, but use release Cargo archives
+            # so Rust's native dependencies use the same CRT ABI as Qt.
+            set(_profile "${SNOW_RUST_RELEASE_PROFILE}")
+            set(_cargo_profile "${SNOW_RUST_RELEASE_PROFILE}")
+        else()
+            set(_profile "$<IF:$<CONFIG:Debug>,debug,${SNOW_RUST_RELEASE_PROFILE}>")
+            set(_cargo_profile "$<IF:$<CONFIG:Debug>,dev,${SNOW_RUST_RELEASE_PROFILE}>")
+        endif()
     elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
         set(_profile debug)
         set(_cargo_profile dev)
@@ -98,8 +106,13 @@ function(snow_add_rust_static_libraries batch_name)
         list(APPEND _cargo_package_args --package "${_package}")
         list(APPEND _static_libraries
             "${SNOW_RUST_CARGO_TARGET_DIR}/${SNOW_RUST_TARGET}/${_profile}/${_lib_prefix}${_output_stem}${_lib_suffix}")
-        list(APPEND _debug_libraries
-            "${SNOW_RUST_CARGO_TARGET_DIR}/${SNOW_RUST_TARGET}/debug/${_lib_prefix}${_output_stem}${_lib_suffix}")
+        if(SNOW_APPS_QT_STATIC AND SNOW_APPS_RELEASE_STATIC)
+            list(APPEND _debug_libraries
+                "${SNOW_RUST_CARGO_TARGET_DIR}/${SNOW_RUST_TARGET}/${SNOW_RUST_RELEASE_PROFILE}/${_lib_prefix}${_output_stem}${_lib_suffix}")
+        else()
+            list(APPEND _debug_libraries
+                "${SNOW_RUST_CARGO_TARGET_DIR}/${SNOW_RUST_TARGET}/debug/${_lib_prefix}${_output_stem}${_lib_suffix}")
+        endif()
         list(APPEND _release_libraries
             "${SNOW_RUST_CARGO_TARGET_DIR}/${SNOW_RUST_TARGET}/${SNOW_RUST_RELEASE_PROFILE}/${_lib_prefix}${_output_stem}${_lib_suffix}")
     endforeach()
@@ -138,7 +151,14 @@ function(snow_add_rust_static_libraries batch_name)
     if(MSVC AND (CMAKE_CONFIGURATION_TYPES OR CMAKE_BUILD_TYPE STREQUAL "Debug" OR
                  SNOW_APPS_RELEASE_STATIC OR SNOW_SHOT_RELEASE_STATIC))
         if(SNOW_APPS_RELEASE_STATIC OR SNOW_SHOT_RELEASE_STATIC)
-            set(_rust_debug_runtime "/MTd /D_DEBUG")
+            if(SNOW_APPS_QT_STATIC AND CMAKE_CONFIGURATION_TYPES)
+                # The static Qt kit is release-runtime only. Do not pass
+                # /D_DEBUG to Cargo's native build helpers even when CMake is
+                # generating its Debug configuration, or cc will select /MTd.
+                set(_rust_debug_runtime "/MT /D_ITERATOR_DEBUG_LEVEL=0")
+            else()
+                set(_rust_debug_runtime "/MT /D_DEBUG /D_ITERATOR_DEBUG_LEVEL=0")
+            endif()
             set(_rust_release_runtime "/MT")
         else()
             set(_rust_debug_runtime "/MDd /D_DEBUG")
@@ -163,6 +183,10 @@ function(snow_add_rust_static_libraries batch_name)
         if(SNOW_APPS_RELEASE_STATIC OR SNOW_SHOT_RELEASE_STATIC)
             list(INSERT _cargo_environment 0
                 "RUSTFLAGS=$ENV{RUSTFLAGS} -Dwarnings -C target-feature=+crt-static")
+            # The cc crate otherwise appends its own Debug /MTd default after
+            # CXXFLAGS. Disable only those defaults; the explicit runtime flags
+            # above remain in force for every native Rust build script.
+            list(INSERT _cargo_environment 0 "CRATE_CC_NO_DEFAULTS=1")
         endif()
     endif()
 
@@ -197,6 +221,7 @@ function(snow_add_rust_static_libraries batch_name)
         list(GET _debug_libraries ${_index} _debug_library)
         list(GET _release_libraries ${_index} _release_library)
         add_library("${_target_name}" STATIC IMPORTED GLOBAL)
+        set_property(TARGET "${_target_name}" PROPERTY SNOW_RUST_IMPORTED TRUE)
         if(CMAKE_CONFIGURATION_TYPES)
             set_target_properties("${_target_name}" PROPERTIES
                 IMPORTED_CONFIGURATIONS "DEBUG;RELEASE;RELWITHDEBINFO;MINSIZEREL"

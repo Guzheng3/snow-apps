@@ -7,7 +7,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+. (Join-Path $PSScriptRoot "snow-build-environment.ps1")
+$repoRoot = (Set-SnowBuildEnvironment).RepoRoot
 
 if (-not $SkipBuild) {
     & (Join-Path $PSScriptRoot "build.ps1") -Preset $Preset -Target "" -SkipBootstrap

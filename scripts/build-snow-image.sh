@@ -2,6 +2,5 @@
 set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-preset=${1:-portable-debug}
-cmake --preset "$preset" -S "$repo_root"
-cmake --build --preset "build-$preset" --target snow_image_static --parallel
+preset=${1:-windows-msvc-debug}
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$repo_root/scripts/build-snow-image.ps1" -Preset "$preset" -SkipBootstrap
