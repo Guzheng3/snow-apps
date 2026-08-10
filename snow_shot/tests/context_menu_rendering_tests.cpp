@@ -62,6 +62,14 @@ void populateProductionSizedMenu(adqt::widgets::AdContextMenu& menu) {
 
 void dirtyRenderTargetCornersAreCleared() {
     adqt::widgets::AdContextMenu menu;
+    require(menu.windowFlags().testFlag(Qt::Popup),
+            "context menu must remain a native popup for tray and keyboard behavior");
+    require(menu.windowFlags().testFlag(Qt::FramelessWindowHint),
+            "translucent context menu must use a frameless top-level window");
+    require(menu.windowFlags().testFlag(Qt::NoDropShadowWindowHint),
+            "context menu must own its shadow contract instead of using a platform shadow");
+    require(menu.testAttribute(Qt::WA_TranslucentBackground),
+            "context menu surface must expose an alpha channel");
     populateProductionSizedMenu(menu);
     menu.ensurePolished();
     menu.adjustSize();
