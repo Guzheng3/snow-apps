@@ -6,6 +6,7 @@
 #include "snow_shot/presentation/systemtraycontroller.h"
 
 #include <QApplication>
+#include <QTimer>
 
 #include <memory>
 
@@ -13,8 +14,12 @@ namespace snow_shot::app {
 class ApplicationController::Impl {
   public:
     Impl(ApplicationController& owner, QApplication& application) : q(owner), app(application) {
-        QObject::connect(&systemTray, &presentation::SystemTrayController::screenshotRequested,
-                         &screenshotController, &ScreenshotController::startCapture);
+        QObject::connect(&systemTray, &presentation::SystemTrayController::screenshotRequested, &q,
+                         [this]() {
+                             if (ScreenshotController* controller = ensureScreenshotController()) {
+                                 controller->startCapture();
+                             }
+                         });
         QObject::connect(&systemTray, &presentation::SystemTrayController::showMainWindowRequested,
                          &q, [this]() { showMainWindow(); });
         QObject::connect(&systemTray, &presentation::SystemTrayController::exitRequested, &q,
@@ -26,7 +31,10 @@ class ApplicationController::Impl {
                          &q, [this](presentation::GlobalShortcutAction action) {
                              switch (action) {
                              case presentation::GlobalShortcutAction::Screenshot:
-                                 screenshotController.startCapture();
+                                 if (ScreenshotController* controller =
+                                         ensureScreenshotController()) {
+                                     controller->startCapture();
+                                 }
                                  break;
                              case presentation::GlobalShortcutAction::OpenSettings:
                                  showInterfaceSettings();
@@ -44,13 +52,26 @@ class ApplicationController::Impl {
         started = true;
 
         systemTray.show();
-        screenshotController.prewarmResources();
         globalShortcutManager.initialize();
+        QTimer::singleShot(0, &q, [this]() {
+            if (ScreenshotController* controller = ensureScreenshotController()) {
+                controller->prewarmResources();
+            }
+        });
+    }
+
+    ScreenshotController* ensureScreenshotController() {
+        if (screenshotController == nullptr) {
+            screenshotController = std::make_unique<ScreenshotController>();
+        }
+        return screenshotController.get();
     }
 
     MainWindow& ensureMainWindow() {
         if (mainWindow == nullptr) {
-            mainWindow = std::make_unique<MainWindow>(screenshotController, globalShortcutManager);
+            ScreenshotController* controller = ensureScreenshotController();
+            Q_ASSERT(controller != nullptr);
+            mainWindow = std::make_unique<MainWindow>(*controller, globalShortcutManager);
         }
         return *mainWindow;
     }
@@ -65,9 +86,9 @@ class ApplicationController::Impl {
 
     ApplicationController& q;
     QApplication& app;
-    ScreenshotController screenshotController;
-    presentation::GlobalShortcutManager globalShortcutManager;
     presentation::SystemTrayController systemTray;
+    presentation::GlobalShortcutManager globalShortcutManager;
+    std::unique_ptr<ScreenshotController> screenshotController;
     std::unique_ptr<MainWindow> mainWindow;
     bool started = false;
 };

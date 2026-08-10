@@ -10,8 +10,6 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QProxyStyle>
-#include <QResizeEvent>
-#include <QRegion>
 #include <QShowEvent>
 #include <QStyleOptionMenuItem>
 #include <algorithm>
@@ -549,6 +547,11 @@ AdContextMenu::AdContextMenu(QWidget* parent) : QMenu(parent), d_(std::make_uniq
   setAttribute(Qt::WA_OpaquePaintEvent, false);
   setAutoFillBackground(false);
 
+  // The ARGB surface is also the window shape.  Do not add QWidget::setMask()
+  // here: its binary QRegion is rounded independently at device-pixel
+  // boundaries and clips the antialiased outer half of the 1 px border,
+  // producing asymmetric or missing corner pixels at fractional DPI scales.
+
   d_->menuStyle = new detail::AdContextMenuStyle(this);
   QMenu::setStyle(d_->menuStyle);
 
@@ -703,7 +706,6 @@ void AdContextMenu::changeEvent(QEvent* event) {
 }
 
 void AdContextMenu::showEvent(QShowEvent* event) {
-  updateWindowShape();
   refreshVisuals(false);
   QMenu::showEvent(event);
 }
@@ -722,40 +724,6 @@ void AdContextMenu::paintEvent(QPaintEvent* event) {
   painter.fillRect(rect(), Qt::transparent);
   painter.end();
   QMenu::paintEvent(event);
-}
-
-void AdContextMenu::resizeEvent(QResizeEvent* event) {
-  QMenu::resizeEvent(event);
-  // A hidden QMenu is also used as an off-screen render target by tests and
-  // by callers that pre-measure a menu.  Applying a native mask at that point
-  // would clip the render target before the transparent clear can run.  The
-  // show path applies the mask before the native popup is exposed, and visible
-  // resizes keep it in sync for DPI/theme changes.
-  if (isVisible()) {
-    updateWindowShape();
-  }
-}
-
-void AdContextMenu::updateWindowShape() {
-  if (width() <= 0 || height() <= 0) {
-    clearMask();
-    return;
-  }
-
-  const ContextMenuVisualStyle visual = resolveVisualStyle(this);
-  if (visual.borderRadius <= 0) {
-    clearMask();
-    return;
-  }
-
-  // The alpha channel is the primary source of truth.  A native region is a
-  // deliberate fallback for compositors that ignore transparent pixels in a
-  // QMenu's popup backing store (notably older Windows configurations).  It
-  // also prevents a platform drop-shadow implementation from exposing square
-  // corners around the rounded panel.
-  QPainterPath path;
-  path.addRoundedRect(QRectF(rect()), visual.borderRadius, visual.borderRadius);
-  setMask(QRegion(path.toFillPolygon().toPolygon()));
 }
 
 void AdContextMenu::refreshVisuals(bool relayout) {

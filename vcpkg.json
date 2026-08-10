@@ -2,10 +2,12 @@
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "name": "snow-apps",
   "version-semver": "0.1.0",
-  "builtin-baseline": "4497409a47f19db373a410a0efb84eca4747adbf",
   "dependencies": [],
   "overrides": [
-    { "name": "flatbuffers", "version": "23.5.26" }
+    { "name": "flatbuffers", "version": "23.5.26" },
+    { "name": "abseil", "version": "20250814.1" },
+    { "name": "ffmpeg", "version": "9.0" },
+    { "name": "ffmpeg-bin2c", "version": "9.0" }
   ],
   "features": {
     "snow-shot": {
@@ -27,7 +29,8 @@
           "name": "opencv4",
           "default-features": false,
           "features": ["contrib", "dnn"]
-        }
+        },
+        "vulkan-headers"
       ]
     },
     "full-codecs": {

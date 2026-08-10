@@ -120,6 +120,13 @@ function(snow_add_rust_static_libraries batch_name)
         endif()
     endif()
 
+    set(_snow_rust_static_crt FALSE)
+    if(SNOW_APPS_RELEASE_STATIC OR SNOW_SHOT_RELEASE_STATIC OR
+       (MSVC AND CMAKE_MSVC_RUNTIME_LIBRARY MATCHES "^MultiThreaded" AND
+        NOT CMAKE_MSVC_RUNTIME_LIBRARY MATCHES "DLL"))
+        set(_snow_rust_static_crt TRUE)
+    endif()
+
     set(_vcpkg_dynamic 1)
     if(SNOW_APPS_RELEASE_STATIC OR SNOW_SHOT_RELEASE_STATIC)
         set(_vcpkg_dynamic 0)
@@ -137,7 +144,7 @@ function(snow_add_rust_static_libraries batch_name)
 
     if(MSVC AND (CMAKE_CONFIGURATION_TYPES OR CMAKE_BUILD_TYPE STREQUAL "Debug" OR
                  SNOW_APPS_RELEASE_STATIC OR SNOW_SHOT_RELEASE_STATIC))
-        if(SNOW_APPS_RELEASE_STATIC OR SNOW_SHOT_RELEASE_STATIC)
+        if(_snow_rust_static_crt)
             set(_rust_debug_runtime "/MTd /D_DEBUG")
             set(_rust_release_runtime "/MT")
         else()
@@ -160,7 +167,7 @@ function(snow_add_rust_static_libraries batch_name)
             "CXXFLAGS=${_rust_cxxflags}"
             "CFLAGS=${_rust_cflags}"
         )
-        if(SNOW_APPS_RELEASE_STATIC OR SNOW_SHOT_RELEASE_STATIC)
+        if(_snow_rust_static_crt)
             list(INSERT _cargo_environment 0
                 "RUSTFLAGS=$ENV{RUSTFLAGS} -Dwarnings -C target-feature=+crt-static")
         endif()

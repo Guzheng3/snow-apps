@@ -7,57 +7,15 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-
-function Initialize-ReleaseToolchainEnvironment {
-    if ([string]::IsNullOrWhiteSpace($env:VCINSTALLDIR)) {
-        $vswhereCandidates = @(
-            (Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"),
-            (Join-Path ${env:ProgramFiles} "Microsoft Visual Studio\Installer\vswhere.exe")
-        )
-        $vswherePath = $vswhereCandidates |
-            Where-Object { Test-Path -LiteralPath $_ } |
-            Select-Object -First 1
-        if (-not $vswherePath) {
-            throw "Visual Studio locator 'vswhere.exe' was not found. Install Visual Studio 2026 with the MSVC v145 x64 build tools."
-        }
-
-        $visualStudioCandidates = @(& $vswherePath -latest -products * `
-            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-            -property installationPath)
-        $vswhereExitCode = $LASTEXITCODE
-        $visualStudioPath = $visualStudioCandidates | Select-Object -First 1
-        if ($vswhereExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($visualStudioPath)) {
-            throw "Visual Studio 2026 with the MSVC v145 x64 build tools was not found."
-        }
-
-        $vcInstallDirectory = Join-Path $visualStudioPath.Trim() "VC"
-        if (-not (Test-Path -LiteralPath $vcInstallDirectory -PathType Container)) {
-            throw "Visual Studio C++ tools directory was not found: $vcInstallDirectory"
-        }
-        $env:VCINSTALLDIR = $vcInstallDirectory
-    }
-
-    $msvcToolsRoot = Join-Path $env:VCINSTALLDIR "Tools\MSVC"
-    $msvcToolsDirectory = Get-ChildItem -LiteralPath $msvcToolsRoot -Directory -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -match '^\d+(\.\d+)+$' } |
-        Sort-Object { [version]$_.Name } -Descending |
-        Select-Object -First 1
-    if (-not $msvcToolsDirectory) {
-        throw "The MSVC toolset directory was not found under $msvcToolsRoot"
-    }
-    if ([version]$msvcToolsDirectory.Name -lt [version]"14.50") {
-        throw "MSVC v145 (14.50 or newer) is required; found $($msvcToolsDirectory.Name)"
-    }
-    $script:DumpbinPath = Join-Path $msvcToolsDirectory.FullName "bin\Hostx64\x64\dumpbin.exe"
-    if (-not (Test-Path -LiteralPath $script:DumpbinPath -PathType Leaf)) {
-        throw "The x64 PE inspection tool was not found: $script:DumpbinPath"
-    }
-
-    Write-Output "Visual Studio C++ tools: $env:VCINSTALLDIR"
-    Write-Output "PE dependency inspector: $script:DumpbinPath"
+. (Join-Path $PSScriptRoot "snow-build-environment.ps1")
+$buildEnvironment = Set-SnowBuildEnvironment -Preset "snow-shot-msvc-release"
+$script:DumpbinPath = Join-Path $env:VCToolsInstallDir "bin\Hostx64\x64\dumpbin.exe"
+if (-not (Test-Path -LiteralPath $script:DumpbinPath -PathType Leaf)) {
+    throw "The x64 PE inspection tool was not found: $script:DumpbinPath"
 }
-
-Initialize-ReleaseToolchainEnvironment
+Write-Host "Visual Studio C++ tools: $env:VCToolsInstallDir"
+Write-Host "MSVC toolset: $($buildEnvironment.MsvcToolset)"
+Write-Host "PE dependency inspector: $script:DumpbinPath"
 
 $nsisCommand = Get-Command makensis -ErrorAction SilentlyContinue
 if (-not $nsisCommand) {

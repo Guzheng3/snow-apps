@@ -459,6 +459,9 @@ vcpkg_cmake_configure(
         -DWITH_OPENCLAMDBLAS=OFF
         -DWITH_OPENCLAMDFFT=OFF
         -DWITH_QT=${WITH_QT}
+        # OpenCV 5 defaults this POSIX backend to ON even for MSVC builds;
+        # strict configuration verification rejects it when pthreads is absent.
+        -DWITH_PTHREADS_PF=OFF
         -DWITH_SPNG=OFF #spng is mutually exclusive with png, which has been chosen since it's more widely used
         -DWITH_VA=OFF
         -DWITH_VA_INTEL=OFF

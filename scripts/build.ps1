@@ -1,6 +1,11 @@
 [CmdletBinding()]
 param(
-    [ValidateSet("windows-msvc-debug", "windows-msvc-performance", "snow-shot-msvc-release")]
+    [ValidateSet(
+        "windows-msvc-debug",
+        "windows-msvc-performance",
+        "snow-shot-msvc-release",
+        "snow-shot-msvc-fast"
+    )]
     [string]$Preset = "windows-msvc-debug",
     [string]$Target = "snow-all",
     [switch]$Clean,
@@ -8,6 +13,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "snow-build-environment.ps1")
+Set-SnowBuildEnvironment -Preset $Preset | Out-Null
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $buildDirectory = Join-Path $repoRoot "build/$Preset"
 

@@ -50,6 +50,10 @@ $vcpkgBaseline = "4497409a47f19db373a410a0efb84eca4747adbf"
 $rustToolchain = "1.97.1"
 $rustTarget = "x86_64-pc-windows-msvc"
 
+# Resolve and export one validated Qt kit before any bootstrap work. Environment
+# variables often outlive a Qt upgrade, so each candidate is version-checked.
+$Qt6Dir = Set-SnowQtEnvironment -Qt6Dir $Qt6Dir
+
 $git = Require-Command "git"
 $cmake = Require-Command "cmake"
 $cargo = Require-Command "cargo"
@@ -83,13 +87,14 @@ if ($Reset) {
 
 New-Item -ItemType Directory -Path $toolsRoot -Force | Out-Null
 
-if (-not (Test-Path -LiteralPath $vcpkgExe)) {
+$vcpkgGitDirectory = Join-Path $vcpkgRoot ".git"
+if (-not (Test-Path -LiteralPath $vcpkgExe) -and
+    -not (Test-Path -LiteralPath $vcpkgGitDirectory -PathType Container)) {
     Invoke-Checked -Command $git.Source -Arguments @(
         "clone", "https://github.com/microsoft/vcpkg.git", $vcpkgRoot
     ) -WorkingDirectory $repoRoot
 }
 
-$vcpkgGitDirectory = Join-Path $vcpkgRoot ".git"
 if (-not (Test-Path -LiteralPath $vcpkgGitDirectory)) {
     throw "Repository-local vcpkg must be a Git checkout so the pinned baseline can be enforced: $vcpkgRoot. Rerun with -Reset."
 }
@@ -200,41 +205,12 @@ Invoke-Checked -Command $rustup.Source -Arguments @(
     "--target", $rustTarget
 ) -WorkingDirectory $repoRoot
 
-Invoke-Checked -Command $cargo.Source -Arguments @(
+$null = Invoke-Checked -Command $cargo.Source -Arguments @(
     "+$rustToolchain", "metadata", "--format-version", "1", "--no-deps"
 ) -WorkingDirectory (Join-Path $repoRoot "snow-crates")
-Invoke-Checked -Command $cargo.Source -Arguments @(
+$null = Invoke-Checked -Command $cargo.Source -Arguments @(
     "+$rustToolchain", "metadata", "--format-version", "1", "--no-deps"
 ) -WorkingDirectory (Join-Path $repoRoot "snow_draw_engine_qt")
-
-if ([string]::IsNullOrWhiteSpace($Qt6Dir)) {
-    $Qt6Dir = $env:SNOW_QT_STATIC_DIR
-}
-if ([string]::IsNullOrWhiteSpace($Qt6Dir)) {
-    $Qt6Dir = $env:Qt6_DIR
-}
-if ([string]::IsNullOrWhiteSpace($Qt6Dir) -and $env:QTDIR) {
-    $Qt6Dir = Join-Path $env:QTDIR "lib\cmake\Qt6"
-}
-if ([string]::IsNullOrWhiteSpace($Qt6Dir) -or
-    -not (Test-Path -LiteralPath (Join-Path $Qt6Dir "Qt6Config.cmake"))) {
-    throw "Qt 6.11.1 was not found. Set -Qt6Dir, Qt6_DIR, SNOW_QT_STATIC_DIR, or QTDIR."
-}
-$qt6VersionFiles = @(
-    (Join-Path $Qt6Dir "Qt6ConfigVersion.cmake"),
-    (Join-Path $Qt6Dir "Qt6ConfigVersionImpl.cmake")
-)
-$qt6VersionText = ($qt6VersionFiles |
-    Where-Object { Test-Path -LiteralPath $_ } |
-    ForEach-Object { Get-Content -LiteralPath $_ -Raw }) -join "`n"
-if ([string]::IsNullOrWhiteSpace($qt6VersionText)) {
-    throw "Qt 6 version metadata is missing under $Qt6Dir"
-}
-$qt6VersionMatch = [regex]::Match($qt6VersionText, 'PACKAGE_VERSION\s+"([^"]+)"')
-if (-not $qt6VersionMatch.Success -or $qt6VersionMatch.Groups[1].Value -ne "6.11.1") {
-    $detectedQtVersion = if ($qt6VersionMatch.Success) { $qt6VersionMatch.Groups[1].Value } else { "unknown" }
-    throw "Qt 6.11.1 is required; detected $detectedQtVersion at $Qt6Dir"
-}
 
 $libclangDirectory = Join-Path $toolsRoot "llvm\bin"
 if (-not (Test-Path -LiteralPath (Join-Path $libclangDirectory "libclang.dll"))) {
