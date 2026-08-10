@@ -589,7 +589,8 @@ bool ScreenshotPinnedWindow::nativeEvent(const QByteArray& eventType, void* mess
             }
         }
 
-        if (nativeMessage->message == WM_GETMINMAXINFO && resizingEnabled()) {
+        if (nativeMessage->message == WM_GETMINMAXINFO &&
+            nativeTrackSizeConstraintsEnabled()) {
             const QSize baseline = orientedInitialPhysicalSize();
             auto* limits = pointerFromLParam<MINMAXINFO>(nativeMessage->lParam);
             if (limits != nullptr && baseline.isValid() && !baseline.isEmpty()) {
@@ -632,7 +633,8 @@ bool ScreenshotPinnedWindow::nativeEvent(const QByteArray& eventType, void* mess
                 native::currentClientGeometry(reinterpret_cast<WId>(pinnedHwnd));
             const QPoint screenPosition(GET_X_LPARAM(nativeMessage->lParam),
                                         GET_Y_LPARAM(nativeMessage->lParam));
-            if (resizingEnabled() && nativeGeometry.isValid() && !nativeGeometry.isEmpty()) {
+            if (interactiveResizingEnabled() && nativeGeometry.isValid() &&
+                !nativeGeometry.isEmpty()) {
                 const int nativeHitWidth = std::max(
                     1, qRound(kResizeHitWidth * static_cast<double>(nativeGeometry.width()) /
                               std::max(1, width())));
@@ -746,7 +748,7 @@ bool ScreenshotPinnedWindow::nativeEvent(const QByteArray& eventType, void* mess
             const Qt::Edges edges =
                 resizeEdgesForNativeHitTest(static_cast<LRESULT>(nativeMessage->wParam));
             bool started = false;
-            if (handle != nullptr && edges != Qt::Edges() && resizingEnabled()) {
+            if (handle != nullptr && edges != Qt::Edges() && interactiveResizingEnabled()) {
                 resize_geometry::DragHandle dragHandle = resize_geometry::DragHandle::BottomRight;
                 if (dragHandleForHitTest(static_cast<LRESULT>(nativeMessage->wParam),
                                          &dragHandle) &&
@@ -804,7 +806,7 @@ bool ScreenshotPinnedWindow::nativeEvent(const QByteArray& eventType, void* mess
             }
         }
 
-        if (nativeMessage->message == WM_SIZING && resizingEnabled()) {
+        if (nativeMessage->message == WM_SIZING && interactiveResizingEnabled()) {
             m_preserveScaleForSettledGeometry = false;
             resize_geometry::DragHandle handle = resize_geometry::DragHandle::BottomRight;
             auto* proposedNativeRect = pointerFromLParam<RECT>(nativeMessage->lParam);
@@ -3075,7 +3077,14 @@ void ScreenshotPinnedWindow::clearWindowDragCursor() {
     m_windowDragCursorSet = false;
 }
 
-bool ScreenshotPinnedWindow::resizingEnabled() const {
+bool ScreenshotPinnedWindow::nativeTrackSizeConstraintsEnabled() const {
+    // Drawing mode disables interactive resizing, but the existing native size
+    // remains governed by the same bounds. Dropping those bounds lets Windows
+    // clamp long pins to the work area when the edit toolbar takes ownership.
+    return !m_closing && !m_thumbnailMode && !m_geometryAnimating;
+}
+
+bool ScreenshotPinnedWindow::interactiveResizingEnabled() const {
     return !m_closing && !m_thumbnailMode && !m_geometryAnimating &&
            (m_ocrMode || m_editController == nullptr || !m_editController->editMode());
 }

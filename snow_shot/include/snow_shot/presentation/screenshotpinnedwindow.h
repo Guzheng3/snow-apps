@@ -172,7 +172,8 @@ class ScreenshotPinnedWindow final : public QWidget {
     void updateWindowDragCursor(const QPoint& position);
     void setWindowDragCursor(Qt::CursorShape shape);
     void clearWindowDragCursor();
-    bool resizingEnabled() const;
+    bool nativeTrackSizeConstraintsEnabled() const;
+    bool interactiveResizingEnabled() const;
     QPointF windowPositionForEvent(QObject* watched, const QPointF& position) const;
     QPointF nativePositionForWindowPosition(const QPointF& position) const;
     QPoint globalPositionForNativePosition(const QPoint& position) const;

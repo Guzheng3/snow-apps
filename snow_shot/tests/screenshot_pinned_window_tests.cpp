@@ -292,6 +292,45 @@ void pinnedWatermarkEditorAcceptsKeyboardInput(SnowCanvasRuntime& sourceRuntime)
             "pinned window was not deleted after the watermark input test");
 }
 
+void pinnedLargeImageRemainsOpenWhenEnteringDrawingMode(SnowCanvasRuntime& sourceRuntime) {
+    QScreen* screen = QGuiApplication::primaryScreen();
+    require(screen != nullptr, "a primary screen is required");
+
+    auto* pinnedWindow = new ScreenshotPinnedWindow(sourceRuntime);
+    QPointer<ScreenshotPinnedWindow> guardedWindow(pinnedWindow);
+    QImage background(400, 40000, QImage::Format_ARGB32_Premultiplied);
+    background.fill(QColor(42, 84, 126));
+
+    ScreenshotPinnedWindow::Config config;
+    const QSize displayedSize(background.width() / 10, background.height() / 10);
+    config.nativeGeometry = physicalPinGeometry(*screen, QPoint(40, 40), displayedSize);
+    config.canvasSourceRect = QRectF(QPointF(0.0, 0.0), QSizeF(background.size()));
+    config.backgroundImage = background;
+    config.fullResolutionScaleBasis = background.size();
+    config.initialScalePercent = 10.0;
+    config.screen = screen;
+    config.enableEditing = true;
+    require(pinnedWindow->present(config), "large pinned window presentation failed");
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+
+    QPushButton* editButton = buttonNamed(*pinnedWindow, QStringLiteral("Enable drawing mode"));
+    require(editButton != nullptr, "large pinned window edit button was not found");
+    editButton->click();
+    waitForUi(500);
+
+    require(!guardedWindow.isNull() && guardedWindow->isVisible(),
+            "large pinned window closed after entering drawing mode");
+    auto* controller = guardedWindow->findChild<ScreenshotPinnedEditController*>();
+    require(controller != nullptr && controller->editMode(),
+            "large pinned window did not enter drawing mode");
+    require(guardedWindow->currentNativeGeometry() == config.nativeGeometry,
+            "large pinned window geometry changed after entering drawing mode");
+
+    guardedWindow->close();
+    require(processUntilDeleted(guardedWindow, 2000),
+            "large pinned window was not deleted after the drawing-mode test");
+}
+
 void pinnedCopyIncludesSourceCanvasDrawing() {
     QScreen* screen = QGuiApplication::primaryScreen();
     require(screen != nullptr, "a primary screen is required");
@@ -2134,6 +2173,10 @@ int main(int argc, char* argv[]) {
     try {
         SnowCanvasRuntime sourceRuntime;
         require(sourceRuntime.isValid(), "source runtime creation failed");
+        if (app.arguments().contains(QStringLiteral("--large-edit-only"))) {
+            pinnedLargeImageRemainsOpenWhenEnteringDrawingMode(sourceRuntime);
+            return 0;
+        }
         if (app.arguments().contains(QStringLiteral("--recognition-provider-loss-only"))) {
             pinnedRecognitionProviderLossEndsBusyState(sourceRuntime);
             return 0;
@@ -2154,6 +2197,7 @@ int main(int argc, char* argv[]) {
         pinnedRecognitionProviderLossEndsBusyState(sourceRuntime);
         pinnedControlsMatchReferenceStyle(sourceRuntime);
         pinnedControlsHideBelowMinimumNativeSize(sourceRuntime);
+        pinnedLargeImageRemainsOpenWhenEnteringDrawingMode(sourceRuntime);
         pinnedWatermarkEditorAcceptsKeyboardInput(sourceRuntime);
         pinnedEditToolbarControlsCanvasHistory(sourceRuntime);
         spotlightWheelAdjustsMaskOpacity(sourceRuntime);
