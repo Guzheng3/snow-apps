@@ -294,6 +294,7 @@ void ScreenshotOverlayWindow::updateScrollingThumbnail(const QImage& previewImag
                                            replacePreview, replacedPreviewRows);
     m_scrollingThumbnail->show();
     layoutScrollingThumbnail();
+    m_scrollingThumbnail->repaint();
 }
 
 void ScreenshotOverlayWindow::clearScrollingThumbnail() {

@@ -6,6 +6,7 @@
 #include <UIAutomation.h>
 #include <objbase.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
@@ -28,17 +29,24 @@ constexpr wchar_t kScreenshotControlAutomationIdSuffix[] = L".settings-item-quic
 constexpr wchar_t kScrollingScreenshotControlAutomationIdSuffix[] =
     L".screenshotScrollingScreenshotButton";
 constexpr wchar_t kScrollingThumbnailAutomationIdSuffix[] = L".screenshot-scrolling-thumbnail";
+constexpr char kCaptureExcludedArgument[] = "--capture-excluded";
 
-constexpr LONG kSelectionLeft = 0;
-constexpr LONG kSelectionTop = 0;
-constexpr LONG kSelectionRight = 500;
-constexpr LONG kSelectionBottom = 500;
+constexpr LONG kSelectionLeft = 64;
+constexpr LONG kSelectionTop = 64;
+constexpr LONG kSelectionRight = 564;
+constexpr LONG kSelectionBottom = 564;
 
 constexpr wchar_t kArtifactsDirectory[] = L"e2e-artifacts";
 constexpr char kThumbnailBeforeClicksFile[] = "e2e-artifacts/scrolling-thumbnail-before-clicks.bmp";
 constexpr char kThumbnailAfterClicksFile[] = "e2e-artifacts/scrolling-thumbnail-after-clicks.bmp";
 constexpr char kThumbnailBeforeDragFile[] = "e2e-artifacts/scrolling-thumbnail-before-drag.bmp";
 constexpr char kThumbnailAfterDragFile[] = "e2e-artifacts/scrolling-thumbnail-after-drag.bmp";
+constexpr char kThumbnailBeforeSourceScrollFile[] =
+    "e2e-artifacts/scrolling-thumbnail-before-source-scroll.bmp";
+constexpr char kThumbnailAfterSourceScrollFile[] =
+    "e2e-artifacts/scrolling-thumbnail-after-source-scroll.bmp";
+constexpr char kSourceBeforeScrollFile[] = "e2e-artifacts/scrolling-source-before-scroll.bmp";
+constexpr char kSourceAfterScrollFile[] = "e2e-artifacts/scrolling-source-after-scroll.bmp";
 
 template <typename T> class ComPtr final {
   public:
@@ -115,11 +123,12 @@ class ScopedProcess final {
     ScopedProcess(const ScopedProcess&) = delete;
     ScopedProcess& operator=(const ScopedProcess&) = delete;
 
-    bool start(const std::wstring& executablePath) {
-        const std::wstring command =
-            L'"' + executablePath +
-            L"\" --show-main-window --e2e-allow-overlay-capture --e2e-instance-id=" +
-            std::to_wstring(GetCurrentProcessId());
+    bool start(const std::wstring& executablePath, bool captureExcluded) {
+        std::wstring command = L'"' + executablePath + L"\" --show-main-window";
+        if (!captureExcluded) {
+            command += L" --e2e-allow-overlay-capture";
+        }
+        command += L" --e2e-instance-id=" + std::to_wstring(GetCurrentProcessId());
         std::vector<wchar_t> commandLine(command.begin(), command.end());
         commandLine.push_back(L'\0');
 
@@ -165,8 +174,135 @@ void require(bool condition, const char* message) {
     }
 }
 
-[[nodiscard]] std::wstring executablePathFromArguments(int argc, char* argv[]) {
-    require(argc == 2, "expected the snow_shot executable path as the sole argument");
+struct ScrollingSourceState {
+    int offset = 0;
+};
+
+std::uint32_t scrollingSourcePixel(int x, int documentY) {
+    const std::uint32_t cellX = static_cast<std::uint32_t>(x / 16);
+    const std::uint32_t cellY = static_cast<std::uint32_t>(documentY / 16);
+    std::uint32_t hash = cellX * 0x9e3779b9U ^ cellY * 0x85ebca6bU;
+    hash ^= hash >> 16U;
+    int red = 30 + static_cast<int>(hash & 0xbfU);
+    int green = 30 + static_cast<int>((hash >> 8U) & 0xbfU);
+    int blue = 30 + static_cast<int>((hash >> 16U) & 0xbfU);
+    if (x % 37 < 2 || documentY % 43 < 2) {
+        red = 245;
+        green = 245;
+        blue = 245;
+    } else if ((x + documentY) % 61 < 3) {
+        red = 10;
+        green = 10;
+        blue = 10;
+    }
+    return static_cast<std::uint32_t>(blue | (green << 8) | (red << 16));
+}
+
+void presentScrollingSource(HWND window, const ScrollingSourceState& state) {
+    RECT client{};
+    GetClientRect(window, &client);
+    const int width = client.right - client.left;
+    const int height = client.bottom - client.top;
+    HDC screen = GetDC(nullptr);
+    require(screen != nullptr, "could not obtain the desktop DC for the scrolling source");
+    HDC memory = CreateCompatibleDC(screen);
+    require(memory != nullptr, "could not create the scrolling source memory DC");
+
+    BITMAPINFO bitmapInfo{};
+    bitmapInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bitmapInfo.bmiHeader.biWidth = width;
+    bitmapInfo.bmiHeader.biHeight = -height;
+    bitmapInfo.bmiHeader.biPlanes = 1;
+    bitmapInfo.bmiHeader.biBitCount = 32;
+    bitmapInfo.bmiHeader.biCompression = BI_RGB;
+    void* bitmapPixels = nullptr;
+    HBITMAP bitmap = CreateDIBSection(screen, &bitmapInfo, DIB_RGB_COLORS, &bitmapPixels, nullptr, 0);
+    require(bitmap != nullptr && bitmapPixels != nullptr,
+            "could not allocate the scrolling source surface");
+    auto* pixels = static_cast<std::uint32_t*>(bitmapPixels);
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            pixels[static_cast<std::size_t>(y) * static_cast<std::size_t>(width) +
+                   static_cast<std::size_t>(x)] = scrollingSourcePixel(x, y + state.offset);
+        }
+    }
+
+    HGDIOBJ previousBitmap = SelectObject(memory, bitmap);
+    POINT destination{kSelectionLeft, kSelectionTop};
+    SIZE size{width, height};
+    POINT source{};
+    const BOOL presented = UpdateLayeredWindow(window, screen, &destination, &size, memory, &source,
+                                               0, nullptr, ULW_OPAQUE);
+    SelectObject(memory, previousBitmap);
+    DeleteObject(bitmap);
+    DeleteDC(memory);
+    ReleaseDC(nullptr, screen);
+    require(presented != FALSE, "could not present the scrolling source surface");
+}
+
+LRESULT CALLBACK scrollingSourceWindowProc(HWND window, UINT message, WPARAM wParam,
+                                           LPARAM lParam) {
+    return DefWindowProcW(window, message, wParam, lParam);
+}
+
+class ScrollingSourceWindow final {
+  public:
+    ScrollingSourceWindow() {
+        m_instance = GetModuleHandleW(nullptr);
+        WNDCLASSEXW windowClass{};
+        windowClass.cbSize = sizeof(windowClass);
+        windowClass.hInstance = m_instance;
+        windowClass.lpfnWndProc = scrollingSourceWindowProc;
+        windowClass.lpszClassName = m_className;
+        windowClass.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
+        require(RegisterClassExW(&windowClass) != 0,
+                "could not register the scrolling source window class");
+        m_window = CreateWindowExW(
+            WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_LAYERED, m_className, L"",
+            WS_POPUP, kSelectionLeft, kSelectionTop, kSelectionRight - kSelectionLeft,
+            kSelectionBottom - kSelectionTop, nullptr, nullptr, m_instance, nullptr);
+        require(m_window != nullptr, "could not create the scrolling source window");
+        ShowWindow(m_window, SW_SHOWNOACTIVATE);
+        render();
+    }
+
+    ~ScrollingSourceWindow() {
+        if (m_window != nullptr) {
+            DestroyWindow(m_window);
+        }
+        if (m_instance != nullptr) {
+            UnregisterClassW(m_className, m_instance);
+        }
+    }
+
+    void scrollDown() {
+        m_state.offset += 96;
+        render();
+    }
+
+  private:
+    void render() {
+        presentScrollingSource(m_window, m_state);
+    }
+
+    static constexpr wchar_t m_className[] = L"SnowShotScrollingThumbnailE2ESource";
+    HINSTANCE m_instance = nullptr;
+    HWND m_window = nullptr;
+    ScrollingSourceState m_state;
+};
+
+struct TestConfiguration {
+    std::wstring executablePath;
+    bool captureExcluded = false;
+};
+
+[[nodiscard]] TestConfiguration configurationFromArguments(int argc, char* argv[]) {
+    require(argc == 2 || argc == 3,
+            "expected the snow_shot executable path and optional --capture-excluded argument");
+    const std::string scenarioArgument = argc == 3 ? std::string(argv[2]) : std::string();
+    const bool captureExcluded = scenarioArgument == kCaptureExcludedArgument;
+    require(argc == 2 || captureExcluded,
+            "unknown scrolling thumbnail E2E test argument");
 
     const int requiredLength =
         MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, argv[1], -1, nullptr, 0);
@@ -177,7 +313,7 @@ void require(bool condition, const char* message) {
                                 requiredLength) == requiredLength,
             "could not convert the executable path to UTF-16");
     path.pop_back();
-    return path;
+    return {std::move(path), captureExcluded};
 }
 
 [[nodiscard]] ComPtr<IUIAutomationElement> findProcessWindow(IUIAutomation& automation,
@@ -486,6 +622,18 @@ void dragThumbnailHeadHandle(LONG x, LONG startY, LONG endY) {
     return image;
 }
 
+[[nodiscard]] std::size_t differentPixelCount(const std::vector<COLORREF>& first,
+                                              const std::vector<COLORREF>& second) {
+    require(first.size() == second.size(), "screen captures must have matching dimensions");
+    std::size_t different = 0;
+    for (std::size_t index = 0; index < first.size(); ++index) {
+        if ((first[index] & 0x00ffffffU) != (second[index] & 0x00ffffffU)) {
+            ++different;
+        }
+    }
+    return different;
+}
+
 [[nodiscard]] bool isScrollingThumbnailTrimControlPixel(COLORREF pixel) {
     // captureScreenRegion stores the native 32-bit DIB pixels directly.  A
     // Windows DIB is BGRA in memory, whereas COLORREF accessors expect a
@@ -568,9 +716,10 @@ void saveCaptureAsBmp(const char* fileName, const std::vector<COLORREF>& image, 
 
 [[nodiscard]] bool thumbnailTrimControlVisible(const char* artifactFileName,
                                                const RECT& thumbnailBounds) {
+    const LONG cropTop = std::max<LONG>(0, thumbnailBounds.top - 3);
     const RECT thumbnailCrop{
         thumbnailBounds.left,
-        thumbnailBounds.top,
+        cropTop,
         thumbnailBounds.right,
         std::min(thumbnailBounds.bottom, thumbnailBounds.top + 25),
     };
@@ -582,12 +731,19 @@ void saveCaptureAsBmp(const char* fileName, const std::vector<COLORREF>& image, 
 
 [[nodiscard]] std::optional<LONG> thumbnailTrimControlRow(const char* artifactFileName,
                                                           const RECT& thumbnailBounds) {
-    const std::vector<COLORREF> image = captureScreenRegion(thumbnailBounds);
-    const LONG width = thumbnailBounds.right - thumbnailBounds.left;
-    const LONG height = thumbnailBounds.bottom - thumbnailBounds.top;
+    const LONG cropTop = std::max<LONG>(0, thumbnailBounds.top - 3);
+    const RECT headCrop{
+        thumbnailBounds.left,
+        cropTop,
+        thumbnailBounds.right,
+        thumbnailBounds.top + (thumbnailBounds.bottom - thumbnailBounds.top) / 2,
+    };
+    const std::vector<COLORREF> image = captureScreenRegion(headCrop);
+    const LONG width = headCrop.right - headCrop.left;
+    const LONG height = headCrop.bottom - headCrop.top;
     saveCaptureAsBmp(artifactFileName, image, width, height);
     const std::optional<LONG> localRow = scrollingThumbnailTrimControlRow(image, width, height);
-    return localRow.has_value() ? std::optional<LONG>(*localRow + thumbnailBounds.top)
+    return localRow.has_value() ? std::optional<LONG>(*localRow + headCrop.top)
                                 : std::nullopt;
 }
 
@@ -595,7 +751,7 @@ void requireDesktopCanRunScenario() {
     const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
     const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
     require(screenWidth >= kSelectionRight && screenHeight >= kSelectionBottom,
-            "the primary display must contain the 0,0-500,500 selection region");
+            "the primary display must contain the 64,64-564,564 selection region");
 }
 } // namespace
 
@@ -607,6 +763,8 @@ int main(int argc, char* argv[]) {
         const BOOL artifactsDirectoryCreated = CreateDirectoryW(kArtifactsDirectory, nullptr);
         require(artifactsDirectoryCreated != FALSE || GetLastError() == ERROR_ALREADY_EXISTS,
                 "could not create the screenshot artifact directory");
+        const TestConfiguration configuration = configurationFromArguments(argc, argv);
+        ScrollingSourceWindow scrollingSource;
 
         const ScopedCom com;
         require(SUCCEEDED(com.result()), "could not initialize COM for UI Automation");
@@ -617,7 +775,7 @@ int main(int argc, char* argv[]) {
                 "could not create the UI Automation client");
 
         ScopedProcess application;
-        require(application.start(executablePathFromArguments(argc, argv)),
+        require(application.start(configuration.executablePath, configuration.captureExcluded),
                 "could not start snow_shot");
 
         std::this_thread::sleep_for(2s);
@@ -680,6 +838,96 @@ int main(int argc, char* argv[]) {
                     thumbnailBounds.right > thumbnailBounds.left &&
                     thumbnailBounds.bottom > thumbnailBounds.top,
                 "could not determine the scrolling thumbnail bounds through UIA");
+
+        moveCursor((kSelectionLeft + kSelectionRight) / 2,
+                   (kSelectionTop + kSelectionBottom) / 2);
+        std::this_thread::sleep_for(250ms);
+        const LONG thumbnailWidth = thumbnailBounds.right - thumbnailBounds.left;
+        const LONG thumbnailHeight = thumbnailBounds.bottom - thumbnailBounds.top;
+        std::vector<COLORREF> beforeSourceScroll;
+        if (!configuration.captureExcluded) {
+            beforeSourceScroll = captureScreenRegion(thumbnailBounds);
+            saveCaptureAsBmp(kThumbnailBeforeSourceScrollFile, beforeSourceScroll, thumbnailWidth,
+                             thumbnailHeight);
+        }
+        constexpr LONG sourceProbeExtent = 128;
+        const LONG sourceProbeLeft =
+            (kSelectionLeft + kSelectionRight - sourceProbeExtent) / 2;
+        const LONG sourceProbeTop = (kSelectionTop + kSelectionBottom - sourceProbeExtent) / 2;
+        const RECT sourceProbe{sourceProbeLeft, sourceProbeTop,
+                               sourceProbeLeft + sourceProbeExtent,
+                               sourceProbeTop + sourceProbeExtent};
+        const std::vector<COLORREF> sourceBeforeScroll = captureScreenRegion(sourceProbe);
+        saveCaptureAsBmp(kSourceBeforeScrollFile, sourceBeforeScroll, sourceProbeExtent,
+                         sourceProbeExtent);
+
+        scrollingSource.scrollDown();
+        std::this_thread::sleep_for(2s);
+        const std::vector<COLORREF> sourceAfterScroll = captureScreenRegion(sourceProbe);
+        saveCaptureAsBmp(kSourceAfterScrollFile, sourceAfterScroll, sourceProbeExtent,
+                         sourceProbeExtent);
+        const std::size_t changedSourcePixels =
+            differentPixelCount(sourceBeforeScroll, sourceAfterScroll);
+
+        RECT thumbnailBoundsAfterScroll{};
+        std::size_t changedWithoutOverlayInput = 0;
+        bool geometryAdvanced = false;
+        bool pixelsPresented = configuration.captureExcluded;
+        constexpr auto presentationPollInterval = 100ms;
+        constexpr auto presentationPollTimeout = 5s;
+        const auto presentationDeadline =
+            std::chrono::steady_clock::now() + presentationPollTimeout;
+        do {
+            RECT candidateBounds{};
+            if (SUCCEEDED(thumbnail.get()->get_CurrentBoundingRectangle(&candidateBounds)) &&
+                candidateBounds.right > candidateBounds.left &&
+                candidateBounds.bottom > candidateBounds.top) {
+                geometryAdvanced =
+                    candidateBounds.bottom - candidateBounds.top > thumbnailHeight;
+                thumbnailBoundsAfterScroll = candidateBounds;
+            }
+            if (!configuration.captureExcluded) {
+                const std::vector<COLORREF> afterSourceScroll =
+                    captureScreenRegion(thumbnailBounds);
+                changedWithoutOverlayInput =
+                    differentPixelCount(beforeSourceScroll, afterSourceScroll);
+                pixelsPresented =
+                    changedWithoutOverlayInput >= beforeSourceScroll.size() / 20;
+            }
+            if (geometryAdvanced && pixelsPresented) {
+                break;
+            }
+            std::this_thread::sleep_for(presentationPollInterval);
+        } while (std::chrono::steady_clock::now() < presentationDeadline);
+
+        if (!configuration.captureExcluded) {
+            const std::vector<COLORREF> afterSourceScroll = captureScreenRegion(thumbnailBounds);
+            saveCaptureAsBmp(kThumbnailAfterSourceScrollFile, afterSourceScroll, thumbnailWidth,
+                             thumbnailHeight);
+        }
+        if (!configuration.captureExcluded) {
+            std::cout << "thumbnail pixels changed while cursor stayed in hole: "
+                      << changedWithoutOverlayInput << '/' << beforeSourceScroll.size() << '\n';
+        }
+        std::cout << "source pixels changed inside hole: " << changedSourcePixels << '/'
+                  << sourceBeforeScroll.size() << '\n';
+        std::cout << "thumbnail height before/after source scroll: " << thumbnailHeight << '/'
+                  << (thumbnailBoundsAfterScroll.bottom - thumbnailBoundsAfterScroll.top) << '\n';
+
+        require(changedSourcePixels >= sourceBeforeScroll.size() / 2,
+                "the deterministic source did not repaint inside the hollow region");
+        if (!configuration.captureExcluded) {
+            require(pixelsPresented,
+                    "the scrolling thumbnail did not present the stitched frame without mouse "
+                    "input");
+        }
+        require(geometryAdvanced,
+                "the deterministic source scroll was not stitched into the thumbnail");
+        if (configuration.captureExcluded) {
+            return 0;
+        }
+        thumbnailBounds = thumbnailBoundsAfterScroll;
+
         const bool thumbnailVisibleBeforeClicks =
             thumbnailTrimControlVisible(kThumbnailBeforeClicksFile, thumbnailBounds);
         std::cout << "thumbnail crop control before clicks: "
@@ -700,9 +948,12 @@ int main(int argc, char* argv[]) {
         const std::optional<LONG> thumbnailRowBeforeDrag =
             thumbnailTrimControlRow(kThumbnailBeforeDragFile, thumbnailBounds);
         if (thumbnailRowBeforeDrag.has_value()) {
+            const LONG dragStartY =
+                std::clamp(*thumbnailRowBeforeDrag, thumbnailBounds.top + 2,
+                           thumbnailBounds.bottom - 3);
             const LONG targetY = std::min(thumbnailBounds.bottom - 1, thumbnailBounds.top + 100);
             dragThumbnailHeadHandle((thumbnailBounds.left + thumbnailBounds.right) / 2,
-                                    *thumbnailRowBeforeDrag, targetY);
+                                    dragStartY, targetY);
         }
         std::this_thread::sleep_for(1s);
         const std::optional<LONG> thumbnailRowAfterDrag =
@@ -722,6 +973,7 @@ int main(int argc, char* argv[]) {
         require(thumbnailVisibleBeforeClicks && thumbnailVisibleAfterClicks && thumbnailHandleMoved,
                 "the scrolling screenshot thumbnail did not repaint automatically when shown or "
                 "when its crop handle moved");
+
         return 0;
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

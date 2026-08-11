@@ -1263,6 +1263,21 @@ if(SNOW_SHOT_BUILD_TESTS)
         ENVIRONMENT_MODIFICATION
             "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
+    if(WIN32)
+        add_test(
+            NAME snow-shot-scrolling-thumbnail-native-presentation-test
+            COMMAND snow-shot-screenshot-canvas-renderer-tests
+                --native-excluded-scrolling-thumbnail-presentation
+        )
+        set_tests_properties(snow-shot-scrolling-thumbnail-native-presentation-test PROPERTIES
+            LABELS "e2e;interactive;windows"
+            RUN_SERIAL TRUE
+            ENVIRONMENT
+                "QT_QPA_PLATFORM=windows;QT_QPA_PLATFORM_PLUGIN_PATH=$<TARGET_FILE_DIR:Qt6::QWindowsIntegrationPlugin>"
+            ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+        )
+    endif()
 
     add_executable(snow-shot-pinned-resize-geometry-tests
         tests/screenshot_pinned_resize_geometry_tests.cpp
@@ -2067,8 +2082,19 @@ if(SNOW_SHOT_BUILD_TESTS)
             NAME snow-shot-scrolling-thumbnail-uia-e2e-test
             COMMAND snow-shot-scrolling-thumbnail-uia-e2e-test $<TARGET_FILE:snow_shot>
         )
+        add_test(
+            NAME snow-shot-scrolling-thumbnail-capture-excluded-uia-e2e-test
+            COMMAND snow-shot-scrolling-thumbnail-uia-e2e-test
+                $<TARGET_FILE:snow_shot>
+                --capture-excluded
+        )
         set_tests_properties(snow-shot-scrolling-thumbnail-uia-e2e-test PROPERTIES
             LABELS "e2e;uia;interactive"
+            RUN_SERIAL TRUE
+            WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        )
+        set_tests_properties(snow-shot-scrolling-thumbnail-capture-excluded-uia-e2e-test PROPERTIES
+            LABELS "e2e;uia;interactive;windows"
             RUN_SERIAL TRUE
             WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
         )
