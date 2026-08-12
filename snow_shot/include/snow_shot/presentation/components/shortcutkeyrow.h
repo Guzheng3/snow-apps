@@ -32,6 +32,9 @@ struct ShortcutKeyRowConfig {
     int maxShortcutCount = 2;
     std::function<snow_shot::presentation::GlobalShortcutValidationResult(const QString&)>
         shortcutValidator;
+    bool adjustableDelay = false;
+    int delaySeconds = 3;
+    std::function<bool(int)> delaySetter;
 };
 
 class ShortcutKeyRow : public adqt::widgets::AdButton {
@@ -48,9 +51,12 @@ class ShortcutKeyRow : public adqt::widgets::AdButton {
     void retranslateUi();
     void
     setRegistrationState(const snow_shot::presentation::GlobalShortcutRegistrationState& state);
+    void setDelaySeconds(int seconds);
+    [[nodiscard]] int delaySeconds() const;
 
   signals:
     void shortcutsChanged(const QStringList& shortcuts);
+    void delaySecondsChanged(int seconds);
 
   protected:
     void paintEvent(QPaintEvent* event) override;
@@ -70,6 +76,7 @@ class ShortcutKeyRow : public adqt::widgets::AdButton {
     QLabel* m_titleIcon = nullptr;
     adqt::widgets::AdButton* m_shortcutButton = nullptr;
     QString m_rowState;
+    QString m_baseTitle;
     snow_shot::presentation::GlobalShortcutRegistrationState m_registrationState;
     adqt::icons::IconRef m_titleIconRef;
     int m_titleIconSize = 0;
@@ -77,6 +84,9 @@ class ShortcutKeyRow : public adqt::widgets::AdButton {
     int m_rowBorderRadius = 0;
     bool m_useStableBorder = false;
     int m_maxShortcutCount = 2;
+    bool m_adjustableDelay = false;
+    int m_delaySeconds = 3;
+    std::function<bool(int)> m_delaySetter;
     std::function<snow_shot::presentation::GlobalShortcutValidationResult(const QString&)>
         m_shortcutValidator;
     snow_shot::presentation::styles::ThemeColorScheme m_colorScheme;

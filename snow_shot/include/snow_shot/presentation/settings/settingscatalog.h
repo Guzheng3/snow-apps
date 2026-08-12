@@ -41,12 +41,17 @@ struct SettingsLocation {
 
 enum class SettingsCommandKind {
     CaptureScreenshot,
+    ExecuteQuickAction,
     Navigate,
 };
 
 struct SettingsCommand {
     SettingsCommandKind kind = SettingsCommandKind::Navigate;
     SettingsLocation location;
+    // The action to dispatch when kind is ExecuteQuickAction.  Keeping this on
+    // the command lets the settings surface use the same dispatcher as a
+    // global shortcut activation without introducing one signal per action.
+    GlobalShortcutAction shortcutAction = GlobalShortcutAction::Screenshot;
 };
 
 struct SettingsOptionDefinition {
@@ -85,6 +90,7 @@ enum class SettingsIntegerBinding {
     HistoryRetentionDays,
     HistoryMaxEntries,
     HistoryMaxDiskMiB,
+    ScreenshotDelaySeconds,
 };
 
 struct SettingsIntegerDefinition {
@@ -92,10 +98,16 @@ struct SettingsIntegerDefinition {
     TranslatableText suffix;
 };
 
+enum class SettingsShortcutAdjustment {
+    None,
+    ScreenshotDelaySeconds,
+};
+
 struct SettingsShortcutActionDefinition {
     GlobalShortcutAction shortcutAction = GlobalShortcutAction::Screenshot;
     SettingsCommand command;
     std::function<adqt::icons::IconRef()> iconFactory;
+    SettingsShortcutAdjustment adjustment = SettingsShortcutAdjustment::None;
 };
 
 enum class SettingsActionBinding {

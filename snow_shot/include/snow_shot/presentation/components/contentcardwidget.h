@@ -47,6 +47,7 @@ class ContentCardWidget final : public QFrame {
     void sectionListChanged();
     void locationChanged(const snow_shot::presentation::settings::SettingsLocation& location);
     void screenshotRequested();
+    void quickActionRequested(snow_shot::presentation::GlobalShortcutAction action);
     void screenshotHistoryEditRequested(const QString& recordId);
 
   protected:

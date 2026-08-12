@@ -249,6 +249,15 @@ class SettingsPageWidget::Impl {
                         [this](const QString& shortcut) {
                             return runtimeBindings.validateShortcut(shortcut);
                         },
+                        payload.adjustment == settings::SettingsShortcutAdjustment::ScreenshotDelaySeconds,
+                        payload.adjustment == settings::SettingsShortcutAdjustment::ScreenshotDelaySeconds
+                            ? runtimeBindings.integerValue(
+                                  settings::SettingsIntegerBinding::ScreenshotDelaySeconds)
+                            : 3,
+                        [this](int value) {
+                            return runtimeBindings.applyIntegerValue(
+                                settings::SettingsIntegerBinding::ScreenshotDelaySeconds, value);
+                        },
                     };
                     auto* control = new ShortcutKeyRow(config, metric, mainWindowMetric, list);
                     control->setObjectName(settings::generatedObjectName(
@@ -488,6 +497,17 @@ class SettingsPageWidget::Impl {
                 runtime.integerControl->setEnabled(storageStatus.writeAvailable &&
                                                    !storageStatus.historyPolicyUpdating);
             }
+            if (runtime.shortcutControl != nullptr) {
+                const auto* definition = std::get_if<settings::SettingsShortcutActionDefinition>(
+                    &runtime.definition->payload);
+                if (definition != nullptr &&
+                    definition->adjustment ==
+                        settings::SettingsShortcutAdjustment::ScreenshotDelaySeconds) {
+                    runtime.shortcutControl->setDelaySeconds(
+                        runtimeBindings.integerValue(
+                            settings::SettingsIntegerBinding::ScreenshotDelaySeconds));
+                }
+            }
             if (runtime.actionControl != nullptr) {
                 const auto* definition = std::get_if<settings::SettingsActionDefinition>(
                     &runtime.definition->payload);
@@ -539,7 +559,6 @@ class SettingsPageWidget::Impl {
             }
             if (runtime.shortcutControl != nullptr) {
                 runtime.shortcutControl->setTitle(title);
-                runtime.shortcutControl->setAccessibleName(title);
                 runtime.shortcutControl->setAccessibleDescription(description);
                 runtime.shortcutControl->retranslateUi();
             }

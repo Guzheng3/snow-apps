@@ -18,6 +18,14 @@ class ScreenshotController : public QObject {
   public slots:
     void prewarmResources();
     void startCapture();
+    void startDelayedCapture(int delaySeconds);
+    void captureAndPinSelection();
+    void captureAndRecognizeText();
+    void captureAndCopySelection();
+    void captureCurrentMonitor();
+    void captureFocusedWindow();
+    void captureAndStartVideoRecording();
+    void startOrStopVideoRecordingAndCopy();
     void editHistoryRecord(const QString& recordId);
     void cancelCapture();
     void copySelectionToClipboard();

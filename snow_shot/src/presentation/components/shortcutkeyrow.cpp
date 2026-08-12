@@ -48,6 +48,7 @@
 #include <QTimer>
 #include <QVector>
 #include <QVBoxLayout>
+#include <QWheelEvent>
 
 namespace {
 namespace outlined_icons = adqt::icons::antd::outlined;
@@ -1241,10 +1242,13 @@ ShortcutKeyRow::ShortcutKeyRow(
     const snow_shot::presentation::styles::ThemeAliasMetricToken& metric,
     const snow_shot::presentation::styles::MainWindowComponentMetricToken& mainWindowMetric,
     QWidget* parent)
-    : adqt::widgets::AdButton(parent), m_rowState(config.rowState),
+    : adqt::widgets::AdButton(parent), m_rowState(config.rowState), m_baseTitle(config.title),
       m_registrationState(config.registrationState),
       m_maxShortcutCount(std::max(1, config.maxShortcutCount)),
       m_shortcutValidator(config.shortcutValidator),
+      m_adjustableDelay(config.adjustableDelay),
+      m_delaySeconds(std::clamp(config.delaySeconds, 1, 10)),
+      m_delaySetter(config.delaySetter),
       m_colorScheme(snow_shot::presentation::styles::ThemeManager::instance().themeColorScheme()) {
     if (m_registrationState.shortcuts.isEmpty() && !config.shortcuts.isEmpty()) {
         m_registrationState.shortcuts = config.shortcuts;
@@ -1255,7 +1259,10 @@ ShortcutKeyRow::ShortcutKeyRow(
     setAccentRole(adqt::widgets::AdButton::AccentRole::Primary);
     setShape(adqt::widgets::AdButton::Shape::Rounded);
     setFixedHeight(metric.controlHeightLG + metric.paddingXXS);
-    setCursor(Qt::PointingHandCursor);
+    setCursor(m_adjustableDelay ? Qt::SplitVCursor : Qt::PointingHandCursor);
+    if (m_adjustableDelay) {
+        setToolTip(tr("Delay: %1 seconds").arg(m_delaySeconds));
+    }
     setFocusPolicy(Qt::NoFocus);
     setCheckable(false);
     setAttribute(Qt::WA_Hover, true);
@@ -1277,7 +1284,14 @@ ShortcutKeyRow::ShortcutKeyRow(
     titleLayout->setContentsMargins(0, 0, 0, 0);
     titleLayout->setSpacing(metric.marginXS);
 
-    m_titleLabel = new QLabel(config.title, titleWrap);
+    QString initialTitle = config.title;
+    if (m_adjustableDelay) {
+        initialTitle = initialTitle.contains(QStringLiteral("%1"))
+                           ? initialTitle.arg(m_delaySeconds)
+                           : tr("%1 (%2 s)").arg(initialTitle).arg(m_delaySeconds);
+    }
+    m_titleLabel = new QLabel(initialTitle, titleWrap);
+    setAccessibleName(initialTitle);
     m_titleLabel->setAttribute(Qt::WA_TransparentForMouseEvents, true);
     titleLayout->addWidget(m_titleLabel, 0, Qt::AlignVCenter);
 
@@ -1300,6 +1314,9 @@ ShortcutKeyRow::ShortcutKeyRow(
             &ShortcutKeyRow::openShortcutConfigDialog);
     rowLayout->addWidget(shortcutButton, 0, Qt::AlignRight);
     m_shortcutButton = shortcutButton;
+    if (m_adjustableDelay) {
+        m_shortcutButton->setCursor(Qt::SplitVCursor);
+    }
 
     const auto& themeManager = snow_shot::presentation::styles::ThemeManager::instance();
     connect(&themeManager, &snow_shot::presentation::styles::ThemeManager::themeChanged, this,
@@ -1322,13 +1339,23 @@ void ShortcutKeyRow::applyTheme(const snow_shot::presentation::styles::ThemeColo
 }
 
 void ShortcutKeyRow::setTitle(const QString& title) {
+    m_baseTitle = title;
+    const QString displayTitle =
+        m_adjustableDelay
+            ? (m_baseTitle.contains(QStringLiteral("%1"))
+                   ? m_baseTitle.arg(m_delaySeconds)
+                   : tr("%1 (%2 s)").arg(m_baseTitle).arg(m_delaySeconds))
+            : m_baseTitle;
     if (m_titleLabel != nullptr) {
-        m_titleLabel->setText(title);
+        m_titleLabel->setText(displayTitle);
     }
-    setAccessibleName(title);
+    setAccessibleName(displayTitle);
 }
 
 void ShortcutKeyRow::retranslateUi() {
+    if (m_adjustableDelay) {
+        setToolTip(tr("Delay: %1 seconds").arg(m_delaySeconds));
+    }
     syncRegistrationStatus();
     updateGeometry();
     update();
@@ -1340,6 +1367,25 @@ void ShortcutKeyRow::setRegistrationState(
     syncRegistrationStatus();
     updateGeometry();
     update();
+}
+
+void ShortcutKeyRow::setDelaySeconds(int seconds) {
+    if (!m_adjustableDelay) {
+        return;
+    }
+    const int clamped = std::clamp(seconds, 1, 10);
+    if (m_delaySeconds == clamped) {
+        return;
+    }
+    m_delaySeconds = clamped;
+    setTitle(m_baseTitle);
+    setToolTip(tr("Delay: %1 seconds").arg(m_delaySeconds));
+    updateGeometry();
+    update();
+}
+
+int ShortcutKeyRow::delaySeconds() const {
+    return m_delaySeconds;
 }
 
 void ShortcutKeyRow::paintEvent(QPaintEvent* event) {
@@ -1375,6 +1421,24 @@ void ShortcutKeyRow::paintEvent(QPaintEvent* event) {
 }
 
 bool ShortcutKeyRow::event(QEvent* event) {
+    if (m_adjustableDelay && event->type() == QEvent::Wheel) {
+        auto* wheel = static_cast<QWheelEvent*>(event);
+        const int delta = wheel->angleDelta().y() != 0 ? wheel->angleDelta().y()
+                                                        : wheel->pixelDelta().y();
+        if (delta != 0) {
+            const int step = delta > 0 ? 1 : -1;
+            const int next = std::clamp(m_delaySeconds + step, 1, 10);
+            if (next != m_delaySeconds) {
+                const bool persisted = !m_delaySetter || m_delaySetter(next);
+                if (persisted) {
+                    setDelaySeconds(next);
+                    emit delaySecondsChanged(next);
+                }
+            }
+            wheel->accept();
+            return true;
+        }
+    }
     const bool handled = adqt::widgets::AdButton::event(event);
 
     const QEvent::Type type = event->type();
@@ -1393,6 +1457,20 @@ bool ShortcutKeyRow::event(QEvent* event) {
 bool ShortcutKeyRow::eventFilter(QObject* watched, QEvent* event) {
     if (watched == m_shortcutButton) {
         const QEvent::Type type = event->type();
+        if (m_adjustableDelay && type == QEvent::Wheel) {
+            auto* wheel = static_cast<QWheelEvent*>(event);
+            const int delta = wheel->angleDelta().y() != 0 ? wheel->angleDelta().y()
+                                                            : wheel->pixelDelta().y();
+            if (delta != 0) {
+                const int next = std::clamp(m_delaySeconds + (delta > 0 ? 1 : -1), 1, 10);
+                if (next != m_delaySeconds && (!m_delaySetter || m_delaySetter(next))) {
+                    setDelaySeconds(next);
+                    emit delaySecondsChanged(next);
+                }
+                wheel->accept();
+                return true;
+            }
+        }
         if (type == QEvent::Enter || type == QEvent::Leave || type == QEvent::MouseButtonPress ||
             type == QEvent::MouseButtonRelease) {
             syncTitle();

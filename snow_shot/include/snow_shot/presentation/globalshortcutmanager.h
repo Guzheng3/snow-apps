@@ -12,6 +12,16 @@
 namespace snow_shot::presentation {
 enum class GlobalShortcutAction {
     Screenshot,
+    ScreenshotDelay,
+    ScreenshotFixed,
+    ScreenshotOcr,
+    ScreenshotCopy,
+    ScreenshotFullScreen,
+    ScreenshotFocusedWindow,
+    VideoRecord,
+    VideoRecordCopy,
+    ShowOrHideMainWindow,
+    OpenCaptureHistory,
     OpenSettings,
 };
 

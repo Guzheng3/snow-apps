@@ -30,7 +30,6 @@ struct ScreenshotOverlayInputActions {
     std::function<void()> updateOverlayState = []() {};
     std::function<void()> showToolbar = []() {};
     std::function<void()> showSelectionToolbar = []() {};
-
     std::function<void()> cancelCapture = []() {};
     std::function<bool(int delta)> stepStrokeWidth = [](int) { return false; };
     std::function<bool(int delta)> stepSelectionOpacity = [](int) { return false; };
@@ -50,6 +49,12 @@ struct ScreenshotOverlayInputActions {
     std::function<bool()> copyColorPickerColorToClipboard = []() { return false; };
     std::function<bool()> cycleColorPickerFormat = []() { return false; };
     std::function<bool(int dx, int dy)> moveColorPickerCursor = [](int, int) { return false; };
+
+    // Called after a valid selection transitions the interaction into editing.
+    // This is intentionally separate from showToolbar so callers can schedule
+    // a post-selection command (for example, OCR or pinning) without coupling
+    // the input handler to a concrete controller.
+    std::function<void()> selectionConfirmed = []() {};
 };
 
 struct ScreenshotOverlayInputHandlerContext {
@@ -100,7 +105,13 @@ class ScreenshotOverlayInputHandler final {
     [[nodiscard]] bool handleColorPickerKeyPress(int key, Qt::KeyboardModifiers modifiers);
     void requestIntelligentSelectionHitTest(const QPointF& virtualPosition);
     void setIntelligentSelectionIndex(int index);
+  public:
+    // Confirms the current model selection and invokes selectionConfirmed.
+    // This is also used by non-interactive quick actions that select a whole
+    // monitor or a focused window after the capture frame arrives.
     void confirmSelection();
+
+  private:
     [[nodiscard]] QPointF virtualPositionForOverlay(const ScreenshotOverlayWindow* overlay,
                                                     const QPointF& localPosition) const;
     [[nodiscard]] QPoint physicalPositionForCanvasPoint(const QPointF& point) const;

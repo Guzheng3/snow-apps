@@ -109,9 +109,10 @@ void publicationAndRecovery() {
         require(payload.has_value() && payload->displayImages.size() == 1 &&
                     payload->displayImages.constFirst().size() == QSize(32, 24),
                 "published record could not be loaded");
-        require(!QFileInfo::exists(
-                    QDir(temporary.path()).filePath(QStringLiteral("capture_history_catalog.json"))),
-                "capture-history publication unexpectedly created a catalog");
+        require(
+            !QFileInfo::exists(
+                QDir(temporary.path()).filePath(QStringLiteral("capture_history_catalog.json"))),
+            "capture-history publication unexpectedly created a catalog");
     }
 
     {
@@ -122,6 +123,42 @@ void publicationAndRecovery() {
                         storage::CaptureHistorySource::PinnedToScreen,
                 "record was not recovered from its self-contained directory");
     }
+}
+
+void quickCaptureSourcesRoundTrip() {
+    const auto verifySource = [](storage::CaptureHistorySource source,
+                                 const QString& manifestSource) {
+        QTemporaryDir temporary;
+        require(temporary.isValid(), "failed to create quick-capture source directory");
+        const QDateTime createdUtc =
+            QDateTime::fromString(QStringLiteral("2026-08-12T04:30:00.000Z"), Qt::ISODateWithMs);
+        QString recordId;
+
+        {
+            auto repository = storage::makeCaptureHistoryRepository(temporary.path());
+            storage::CaptureHistoryDraft draft = draftAt(createdUtc);
+            draft.source = source;
+            const storage::CaptureHistoryPublishResult result = repository->publish(draft).get();
+            require(result.storage.success, "quick-capture source publication failed");
+            recordId = result.record.id;
+
+            const QString directory = onlyRecordDirectory(temporary.path());
+            const QJsonObject manifest =
+                readObject(QDir(directory).filePath(QStringLiteral("manifest.json")));
+            require(manifest.value(QStringLiteral("source")).toString() == manifestSource &&
+                        result.record.source == source,
+                    "quick-capture source was not encoded in the manifest");
+        }
+
+        auto recovered = storage::makeCaptureHistoryRepository(temporary.path());
+        require(recovered->records().size() == 1 &&
+                    recovered->records().constFirst().id == recordId &&
+                    recovered->records().constFirst().source == source,
+                "quick-capture source was not recovered from its manifest");
+    };
+
+    verifySource(storage::CaptureHistorySource::CurrentMonitor, QStringLiteral("current_monitor"));
+    verifySource(storage::CaptureHistorySource::FocusedWindow, QStringLiteral("focused_window"));
 }
 
 void quarantineTemporaryCleanupAndClear() {
@@ -152,14 +189,13 @@ void quarantineTemporaryCleanupAndClear() {
                 !QFileInfo::exists(expiredQuarantine) && repository->usage().quarantineBytes > 0,
             "startup did not clean temporary data and quarantine the invalid record");
     const auto clearResult = repository->requestClear().get();
-    require(
-        clearResult.success && repository->usage().entryCount == 0 &&
-            repository->usage().totalBytes == 0 &&
-            !QFileInfo::exists(
-                QDir(temporary.path()).filePath(QStringLiteral("capture_history_records"))) &&
-            !QFileInfo::exists(
-                QDir(temporary.path()).filePath(QStringLiteral("capture_history_quarantine"))),
-        "clear did not remove every managed history area");
+    require(clearResult.success && repository->usage().entryCount == 0 &&
+                repository->usage().totalBytes == 0 &&
+                !QFileInfo::exists(
+                    QDir(temporary.path()).filePath(QStringLiteral("capture_history_records"))) &&
+                !QFileInfo::exists(
+                    QDir(temporary.path()).filePath(QStringLiteral("capture_history_quarantine"))),
+            "clear did not remove every managed history area");
 }
 
 void policyBoundariesAndDisabledPreservation() {
@@ -309,6 +345,7 @@ void traversalManifestIsRejected() {
 int main(int argc, char** argv) {
     QCoreApplication application(argc, argv);
     publicationAndRecovery();
+    quickCaptureSourcesRoundTrip();
     quarantineTemporaryCleanupAndClear();
     policyBoundariesAndDisabledPreservation();
     publicationQueueCapacity();

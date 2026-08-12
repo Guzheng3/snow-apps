@@ -185,11 +185,17 @@ struct VideoRecordingController::Impl {
     }
 
     void start() {
-        if (state != ScreenshotToolPalette::RecordingState::Idle || busy ||
+        if (state != ScreenshotToolPalette::RecordingState::Idle || busy || startScheduled ||
             recordingSession != nullptr) {
             return;
         }
+        startScheduled = true;
         QTimer::singleShot(0, &owner, [this]() {
+            startScheduled = false;
+            if (state != ScreenshotToolPalette::RecordingState::Idle || busy ||
+                recordingSession != nullptr || !isOpen()) {
+                return;
+            }
             busy = true;
             syncUi();
             QDir outputDirectory(recordingDirectory());
@@ -407,6 +413,7 @@ struct VideoRecordingController::Impl {
     bool microphoneEnabled = false;
     bool systemAudioEnabled = true;
     bool busy = false;
+    bool startScheduled = false;
     bool pendingCopyToClipboard = false;
     bool pendingCloseAfter = false;
 };
@@ -422,4 +429,16 @@ void VideoRecordingController::open(const QRect& physicalRegion) {
 
 bool VideoRecordingController::isOpen() const {
     return m_impl->isOpen();
+}
+
+bool VideoRecordingController::isRecording() const {
+    return m_impl->state != ScreenshotToolPalette::RecordingState::Idle;
+}
+
+void VideoRecordingController::startRecording() {
+    m_impl->start();
+}
+
+void VideoRecordingController::stopRecordingAndCopyVideo() {
+    m_impl->stop(false, true, false);
 }

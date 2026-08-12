@@ -16,6 +16,8 @@ namespace snow_shot::storage {
 enum class CaptureHistorySource {
     CopiedToClipboard,
     PinnedToScreen,
+    CurrentMonitor,
+    FocusedWindow,
 };
 
 struct PersistedSelection {

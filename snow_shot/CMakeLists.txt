@@ -462,6 +462,7 @@ set(PROJECT_HEADERS
     include/snow_shot/presentation/screenshottoolpalettehost.h
     include/snow_shot/presentation/screenshottoolbarwindow.h
     include/snow_shot/presentation/screenshottypes.h
+    include/snow_shot/presentation/screenshotwindowcapture.h
     include/snow_shot/presentation/videorecordingareawindow.h
     include/snow_shot/presentation/videorecordingcontroller.h
     include/snow_shot/presentation/videorecordingtoolbarwindow.h
@@ -486,6 +487,7 @@ set(PROJECT_CXX_SOURCES
     src/presentation/capture/screenshotcapturedisplaymodelreconciler.cpp
     src/presentation/capture/screenshotcaptureruntimeadapter.cpp
     src/presentation/capture/screenshotcaptureworker.cpp
+    src/presentation/capture/screenshotwindowcapture.cpp
     src/presentation/capture/screenshotcaptureworkflow.cpp
     src/presentation/capture/adaptivescrollingcapturecadence.h
     src/presentation/capture/latestbridgemailbox.h

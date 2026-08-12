@@ -23,8 +23,34 @@ class ShortcutSettings final {
   public:
     [[nodiscard]] QStringList screenshot() const;
     bool setScreenshot(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList screenshotDelay() const;
+    bool setScreenshotDelay(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList screenshotFixed() const;
+    bool setScreenshotFixed(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList screenshotOcr() const;
+    bool setScreenshotOcr(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList screenshotCopy() const;
+    bool setScreenshotCopy(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList screenshotFullScreen() const;
+    bool setScreenshotFullScreen(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList screenshotFocusedWindow() const;
+    bool setScreenshotFocusedWindow(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList videoRecord() const;
+    bool setVideoRecord(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList videoRecordCopy() const;
+    bool setVideoRecordCopy(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList showOrHideMainWindow() const;
+    bool setShowOrHideMainWindow(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList openCaptureHistory() const;
+    bool setOpenCaptureHistory(const QStringList& shortcuts) const;
     [[nodiscard]] QStringList openSettings() const;
     bool setOpenSettings(const QStringList& shortcuts) const;
+};
+
+class ScreenshotSettings final {
+  public:
+    [[nodiscard]] int delaySeconds() const;
+    bool setDelaySeconds(int seconds) const;
 };
 
 class RecordingSettings final {

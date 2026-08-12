@@ -80,8 +80,17 @@ adqt::widgets::AdSelect::Option sourceOption(const QString& value, const QString
 }
 
 QString sourceKey(storage::CaptureHistorySource source) {
-    return source == storage::CaptureHistorySource::PinnedToScreen ? QStringLiteral("pinned")
-                                                                   : QStringLiteral("clipboard");
+    switch (source) {
+    case storage::CaptureHistorySource::CopiedToClipboard:
+        return QStringLiteral("clipboard");
+    case storage::CaptureHistorySource::PinnedToScreen:
+        return QStringLiteral("pinned");
+    case storage::CaptureHistorySource::CurrentMonitor:
+        return QStringLiteral("current-monitor");
+    case storage::CaptureHistorySource::FocusedWindow:
+        return QStringLiteral("focused-window");
+    }
+    return QStringLiteral("clipboard");
 }
 
 QString formattedBytes(qint64 bytes) {
@@ -515,9 +524,20 @@ class HistoryEntryWidget final : public QFrame {
     }
 
     void retranslateUi() {
-        m_sourceLabel->setText(m_record.source == storage::CaptureHistorySource::PinnedToScreen
-                                   ? HistoryEntryWidget::tr("Pin to Screen")
-                                   : HistoryEntryWidget::tr("Copy to Clipboard"));
+        switch (m_record.source) {
+        case storage::CaptureHistorySource::CopiedToClipboard:
+            m_sourceLabel->setText(HistoryEntryWidget::tr("Copy to Clipboard"));
+            break;
+        case storage::CaptureHistorySource::PinnedToScreen:
+            m_sourceLabel->setText(HistoryEntryWidget::tr("Pin to Screen"));
+            break;
+        case storage::CaptureHistorySource::CurrentMonitor:
+            m_sourceLabel->setText(HistoryEntryWidget::tr("Current Monitor"));
+            break;
+        case storage::CaptureHistorySource::FocusedWindow:
+            m_sourceLabel->setText(HistoryEntryWidget::tr("Focused Window"));
+            break;
+        }
         m_editButton->setText(HistoryEntryWidget::tr("Edit"));
         m_editButton->setToolTip(HistoryEntryWidget::tr("Edit screenshot history entry"));
         m_editButton->setAccessibleName(HistoryEntryWidget::tr("Edit screenshot history entry"));
@@ -1039,7 +1059,9 @@ void ScreenshotHistoryPageWidget::retranslateUi() {
     const QVariantList selectedSources = m_sourceFilter->currentValues();
     m_sourceFilter->setOptions(
         {sourceOption(QStringLiteral("clipboard"), tr("Copy to Clipboard")),
-         sourceOption(QStringLiteral("pinned"), tr("Pin to Screen"))});
+         sourceOption(QStringLiteral("pinned"), tr("Pin to Screen")),
+         sourceOption(QStringLiteral("current-monitor"), tr("Current Monitor")),
+         sourceOption(QStringLiteral("focused-window"), tr("Focused Window"))});
     m_sourceFilter->setCurrentValues(selectedSources);
     m_dateRangeFilter->setRangePlaceholders(tr("Start date"), tr("End date"));
     m_deleteAllButton->setToolTip(tr("Delete All History"));

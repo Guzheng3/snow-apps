@@ -5,6 +5,7 @@
 #include "snow_shot/presentation/languagemanager.h"
 #include "snow_shot/presentation/styles/thememanager.h"
 #include "snow_shot/storage/configurationschema.h"
+#include "snow_shot/storage/settingsadapters.h"
 
 #include <QJsonArray>
 
@@ -225,6 +226,8 @@ int BuiltInSettingsRuntimeBindings::integerValue(SettingsIntegerBinding binding)
         return policy.maxEntries;
     case SettingsIntegerBinding::HistoryMaxDiskMiB:
         return policy.maxDiskMiB;
+    case SettingsIntegerBinding::ScreenshotDelaySeconds:
+        return storage::ScreenshotSettings().delaySeconds();
     }
     return 0;
 }
@@ -241,6 +244,19 @@ bool BuiltInSettingsRuntimeBindings::applyIntegerValue(SettingsIntegerBinding bi
     case SettingsIntegerBinding::HistoryMaxDiskMiB:
         policy.maxDiskMiB = value;
         break;
+    case SettingsIntegerBinding::ScreenshotDelaySeconds: {
+        const auto* schema = storage::ConfigurationSchema::entry(
+            QStringLiteral("screenshot/delay_seconds"));
+        if (schema == nullptr || !schema->integerRange.has_value() ||
+            value < schema->integerRange->minimum || value > schema->integerRange->maximum) {
+            return false;
+        }
+        const bool accepted = storage::ScreenshotSettings().setDelaySeconds(value);
+        if (accepted) {
+            emit synchronized();
+        }
+        return accepted;
+    }
     }
     return storage::ApplicationStorage::instance().requestCaptureHistoryPolicy(policy);
 }
@@ -289,12 +305,48 @@ storage::StorageStatus BuiltInSettingsRuntimeBindings::storageStatus() const {
 
 bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
     switch (reset) {
-    case SettingsSectionReset::ScreenshotShortcuts:
-        return applyShortcuts(GlobalShortcutAction::Screenshot,
-                              stringListDefault(QStringLiteral("global_shortcuts/screenshot")));
-    case SettingsSectionReset::OpenSettingsShortcuts:
-        return applyShortcuts(GlobalShortcutAction::OpenSettings,
-                              stringListDefault(QStringLiteral("global_shortcuts/open_settings")));
+    case SettingsSectionReset::ScreenshotShortcuts: {
+        bool accepted = true;
+        const auto resetShortcut = [this, &accepted](GlobalShortcutAction action,
+                                                      const QString& key) {
+            accepted = applyShortcuts(action, stringListDefault(key)) && accepted;
+        };
+        resetShortcut(GlobalShortcutAction::Screenshot,
+                      QStringLiteral("global_shortcuts/screenshot"));
+        resetShortcut(GlobalShortcutAction::ScreenshotDelay,
+                      QStringLiteral("global_shortcuts/screenshot_delay"));
+        resetShortcut(GlobalShortcutAction::ScreenshotFixed,
+                      QStringLiteral("global_shortcuts/screenshot_fixed"));
+        resetShortcut(GlobalShortcutAction::ScreenshotOcr,
+                      QStringLiteral("global_shortcuts/screenshot_ocr"));
+        resetShortcut(GlobalShortcutAction::ScreenshotCopy,
+                      QStringLiteral("global_shortcuts/screenshot_copy"));
+        resetShortcut(GlobalShortcutAction::ScreenshotFullScreen,
+                      QStringLiteral("global_shortcuts/screenshot_full_screen"));
+        resetShortcut(GlobalShortcutAction::ScreenshotFocusedWindow,
+                      QStringLiteral("global_shortcuts/screenshot_focused_window"));
+        accepted = applyIntegerValue(
+                       SettingsIntegerBinding::ScreenshotDelaySeconds,
+                       storage::ConfigurationSchema::defaultValue(
+                           QStringLiteral("screenshot/delay_seconds"))
+                           .toInt()) &&
+                   accepted;
+        return accepted;
+    }
+    case SettingsSectionReset::OpenSettingsShortcuts: {
+        bool accepted = true;
+        const auto resetShortcut = [this, &accepted](GlobalShortcutAction action,
+                                                      const QString& key) {
+            accepted = applyShortcuts(action, stringListDefault(key)) && accepted;
+        };
+        resetShortcut(GlobalShortcutAction::ShowOrHideMainWindow,
+                      QStringLiteral("global_shortcuts/show_or_hide_main_window"));
+        resetShortcut(GlobalShortcutAction::OpenCaptureHistory,
+                      QStringLiteral("global_shortcuts/open_capture_history"));
+        resetShortcut(GlobalShortcutAction::OpenSettings,
+                      QStringLiteral("global_shortcuts/open_settings"));
+        return accepted;
+    }
     case SettingsSectionReset::GeneralSettings: {
         const bool themeAccepted = applySelectValue(
             SettingsSelectBinding::Theme,

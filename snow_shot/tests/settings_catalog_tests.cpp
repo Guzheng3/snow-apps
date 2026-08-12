@@ -1,5 +1,6 @@
 #include "snow_shot/presentation/settings/settingscatalog.h"
 #include "snow_shot/presentation/settings/settingssearchindex.h"
+#include "snow_shot/presentation/components/icons/snowshoticons.h"
 #include "snow_shot/storage/configurationschema.h"
 
 #include "antd_icons.h"
@@ -91,8 +92,8 @@ void builtInCatalogIsCompleteAndValid() {
             }
         }
     }
-    require(sectionCount == 8 && itemCount == 13,
-            "catalog must contain the expected eight sections and thirteen items");
+    require(sectionCount == 9 && itemCount == 23,
+            "catalog must contain the expected nine sections and twenty-three items");
     const auto* functionPage = catalog.page(QStringLiteral("function-settings"));
     const auto* smartSelection = catalog.item(
         {QStringLiteral("function-settings"), QStringLiteral("screenshot-settings"),
@@ -128,6 +129,169 @@ void builtInCatalogIsCompleteAndValid() {
                 shortcuts->valueKind == storage::ConfigurationValueKind::StringList &&
                 shortcuts->maximumListItems == 2,
             "shortcut schema metadata must expose list limits");
+}
+
+void quickFunctionShortcutsHaveStableContracts() {
+    using Action = snow_shot::presentation::GlobalShortcutAction;
+
+    struct ShortcutExpectation {
+        Action action;
+        const char* sectionId;
+        const char* itemId;
+        const char* configurationKey;
+        settings::SettingsCommandKind commandKind;
+        settings::SettingsShortcutAdjustment adjustment =
+            settings::SettingsShortcutAdjustment::None;
+    };
+
+    const QVector<ShortcutExpectation> expectations{
+        {Action::Screenshot, "screenshot", "quick.screenshot", "global_shortcuts/screenshot",
+         settings::SettingsCommandKind::CaptureScreenshot},
+        {Action::ScreenshotDelay, "screenshot", "quick.screenshot-delay",
+         "global_shortcuts/screenshot_delay", settings::SettingsCommandKind::ExecuteQuickAction,
+         settings::SettingsShortcutAdjustment::ScreenshotDelaySeconds},
+        {Action::ScreenshotFixed, "screenshot", "quick.screenshot-fixed",
+         "global_shortcuts/screenshot_fixed", settings::SettingsCommandKind::ExecuteQuickAction},
+        {Action::ScreenshotOcr, "screenshot", "quick.screenshot-ocr",
+         "global_shortcuts/screenshot_ocr", settings::SettingsCommandKind::ExecuteQuickAction},
+        {Action::ScreenshotCopy, "screenshot", "quick.screenshot-copy",
+         "global_shortcuts/screenshot_copy", settings::SettingsCommandKind::ExecuteQuickAction},
+        {Action::ScreenshotFullScreen, "screenshot", "quick.screenshot-full-screen",
+         "global_shortcuts/screenshot_full_screen",
+         settings::SettingsCommandKind::ExecuteQuickAction},
+        {Action::ScreenshotFocusedWindow, "screenshot", "quick.screenshot-focused-window",
+         "global_shortcuts/screenshot_focused_window",
+         settings::SettingsCommandKind::ExecuteQuickAction},
+        {Action::VideoRecord, "screen-recording", "quick.video-record",
+         "global_shortcuts/video_record", settings::SettingsCommandKind::ExecuteQuickAction},
+        {Action::VideoRecordCopy, "screen-recording", "quick.video-record-copy",
+         "global_shortcuts/video_record_copy", settings::SettingsCommandKind::ExecuteQuickAction},
+        {Action::ShowOrHideMainWindow, "other", "quick.show-or-hide-main-window",
+         "global_shortcuts/show_or_hide_main_window",
+         settings::SettingsCommandKind::ExecuteQuickAction},
+        {Action::OpenCaptureHistory, "other", "quick.open-capture-history",
+         "global_shortcuts/open_capture_history",
+         settings::SettingsCommandKind::ExecuteQuickAction},
+        {Action::OpenSettings, "other", "quick.open-interface-settings",
+         "global_shortcuts/open_settings", settings::SettingsCommandKind::Navigate},
+    };
+
+    const settings::SettingsCatalog& catalog = settings::builtInSettingsCatalog();
+    QSet<Action> actions;
+    for (const ShortcutExpectation& expectation : expectations) {
+        const settings::SettingsLocation location{
+            QStringLiteral("quick-functions"), QString::fromLatin1(expectation.sectionId),
+            QString::fromLatin1(expectation.itemId)};
+        const auto* item = catalog.item(location);
+        require(item != nullptr, "every quick-function shortcut item must exist");
+        require(item->configurationKey == QString::fromLatin1(expectation.configurationKey),
+                "quick-function shortcut persistence keys must remain stable");
+
+        const auto* shortcut =
+            std::get_if<settings::SettingsShortcutActionDefinition>(&item->payload);
+        require(shortcut != nullptr && shortcut->shortcutAction == expectation.action &&
+                    shortcut->command.kind == expectation.commandKind &&
+                    shortcut->adjustment == expectation.adjustment,
+                "quick-function shortcut payloads must match their declared action contracts");
+        require(!actions.contains(shortcut->shortcutAction),
+                "quick-function shortcut actions must be unique");
+        actions.insert(shortcut->shortcutAction);
+
+        const auto command = catalog.commandForShortcut(expectation.action);
+        require(command.has_value() && command->kind == expectation.commandKind,
+                "every quick-function shortcut must resolve to its configured command");
+        if (expectation.commandKind == settings::SettingsCommandKind::CaptureScreenshot ||
+            expectation.commandKind == settings::SettingsCommandKind::ExecuteQuickAction) {
+            require(shortcut->command.shortcutAction == expectation.action &&
+                        command->shortcutAction == expectation.action,
+                    "action commands must dispatch their originating shortcut action");
+        }
+    }
+
+    require(actions.size() == expectations.size() && expectations.size() == 12,
+            "the quick-functions catalog must expose all twelve shortcut actions exactly once");
+    const auto openSettings = catalog.commandForShortcut(Action::OpenSettings);
+    require(openSettings.has_value() &&
+                openSettings->location ==
+                    settings::SettingsLocation{QStringLiteral("interface-settings"),
+                                               QStringLiteral("general"), {}},
+            "Open Settings must retain its structured Interface Settings destination");
+
+    const auto* delaySchema =
+        storage::ConfigurationSchema::entry(QStringLiteral("screenshot/delay_seconds"));
+    require(delaySchema != nullptr &&
+                delaySchema->valueKind == storage::ConfigurationValueKind::Integer &&
+                delaySchema->defaultValue.toInt() == 3 && delaySchema->integerRange.has_value() &&
+                delaySchema->integerRange->minimum == 1 &&
+                delaySchema->integerRange->maximum == 10,
+            "delayed screenshots must use the persisted 3-second default and 1-10 second range");
+
+    const auto* ocrItem = catalog.item({QStringLiteral("quick-functions"),
+                                        QStringLiteral("screenshot"),
+                                        QStringLiteral("quick.screenshot-ocr")});
+    const auto* ocrShortcut = ocrItem != nullptr
+                                  ? std::get_if<settings::SettingsShortcutActionDefinition>(
+                                        &ocrItem->payload)
+                                  : nullptr;
+    require(ocrShortcut != nullptr && ocrShortcut->iconFactory &&
+                ocrShortcut->iconFactory() ==
+                    snow_shot::presentation::icons::custom::outlined::ToolRecognizeText(),
+            "Text Recognition quick action must use the screenshot toolbar OCR icon");
+
+    const auto* recordingSection =
+        catalog.section(QStringLiteral("quick-functions"), QStringLiteral("screen-recording"));
+    require(recordingSection != nullptr && recordingSection->title.source != nullptr &&
+                QString::fromLatin1(recordingSection->title.source) ==
+                    QStringLiteral("Screen Recording") && recordingSection->items.size() == 2,
+            "Screen Recording must expose exactly its two quick actions");
+
+    const auto* videoRecord = catalog.item({QStringLiteral("quick-functions"),
+                                            QStringLiteral("screen-recording"),
+                                            QStringLiteral("quick.video-record")});
+    const auto* videoRecordCopy = catalog.item({QStringLiteral("quick-functions"),
+                                                QStringLiteral("screen-recording"),
+                                                QStringLiteral("quick.video-record-copy")});
+    const auto* showOrHide = catalog.item({QStringLiteral("quick-functions"),
+                                           QStringLiteral("other"),
+                                           QStringLiteral("quick.show-or-hide-main-window")});
+    const auto* openHistory = catalog.item({QStringLiteral("quick-functions"),
+                                            QStringLiteral("other"),
+                                            QStringLiteral("quick.open-capture-history")});
+    const auto shortcutPayload = [](const settings::SettingsItemDefinition* item) {
+        return item != nullptr
+                   ? std::get_if<settings::SettingsShortcutActionDefinition>(&item->payload)
+                   : nullptr;
+    };
+    const auto* videoRecordShortcut = shortcutPayload(videoRecord);
+    const auto* videoRecordCopyShortcut = shortcutPayload(videoRecordCopy);
+    const auto* showOrHideShortcut = shortcutPayload(showOrHide);
+    const auto* openHistoryShortcut = shortcutPayload(openHistory);
+    require(videoRecord != nullptr && videoRecord->title.source != nullptr &&
+                QString::fromLatin1(videoRecord->title.source) ==
+                    QStringLiteral("Screen Recording") &&
+                videoRecordShortcut != nullptr && videoRecordShortcut->iconFactory &&
+                videoRecordShortcut->iconFactory() ==
+                    snow_shot::presentation::icons::custom::outlined::RecordVideo(),
+            "Screen Recording must use the screenshot toolbar recording icon");
+    require(videoRecordCopy != nullptr && videoRecordCopy->title.source != nullptr &&
+                QString::fromLatin1(videoRecordCopy->title.source) ==
+                    QStringLiteral("Start Recording / Stop Recording and Copy Video") &&
+                videoRecordCopyShortcut != nullptr && videoRecordCopyShortcut->iconFactory &&
+                videoRecordCopyShortcut->iconFactory() ==
+                    snow_shot::presentation::icons::custom::outlined::ScreenshotCopy(),
+            "recording toggle must use the exact screenshot-copy icon");
+    require(showOrHide != nullptr && showOrHide->title.source != nullptr &&
+                QString::fromLatin1(showOrHide->title.source) ==
+                    QStringLiteral("Show/Hide Main Window") && showOrHideShortcut != nullptr &&
+                showOrHideShortcut->iconFactory &&
+                showOrHideShortcut->iconFactory() == adqt::icons::antd::outlined::Appstore(),
+            "Show/Hide Main Window must use the Appstore outlined icon");
+    require(openHistory != nullptr && openHistory->title.source != nullptr &&
+                QString::fromLatin1(openHistory->title.source) ==
+                    QStringLiteral("Screenshot History") && openHistoryShortcut != nullptr &&
+                openHistoryShortcut->iconFactory &&
+                openHistoryShortcut->iconFactory() == adqt::icons::antd::outlined::History(),
+            "Screenshot History must use the History outlined icon");
 }
 
 void structuredFallbackIsDeterministic() {
@@ -201,8 +365,8 @@ void invalidCatalogReportsAllConformanceErrors() {
 
 void searchIndexIsGeneratedAndRanked() {
     settings::SettingsSearchIndex index(settings::builtInSettingsCatalog());
-    require(index.entries().size() == 27 && index.search(QString()).size() == 27,
-            "search must generate all twenty-seven catalog nodes in catalog order");
+    require(index.entries().size() == 38 && index.search(QString()).size() == 38,
+            "search must generate all thirty-eight catalog nodes in catalog order");
 
     int pages = 0;
     int sections = 0;
@@ -225,7 +389,7 @@ void searchIndexIsGeneratedAndRanked() {
             break;
         }
     }
-    require(pages == 6 && sections == 8 && items == 13,
+    require(pages == 6 && sections == 9 && items == 23,
             "search node counts must match catalog page, section, and item counts");
 
     const auto theme = index.search(QStringLiteral("theme"));
@@ -302,7 +466,7 @@ void addingCatalogNodesAutomaticallyExpandsSearch() {
     require(expanded.validationErrors().isEmpty(),
             "a normal additional catalog page must validate without consumer changes");
     settings::SettingsSearchIndex index(expanded);
-    require(index.entries().size() == 30 &&
+    require(index.entries().size() == 41 &&
                 index.search(QStringLiteral("extra item")).constFirst().location ==
                     settings::SettingsLocation{QStringLiteral("extra-page"),
                                                QStringLiteral("extra-section"),
@@ -314,6 +478,7 @@ void addingCatalogNodesAutomaticallyExpandsSearch() {
 int main(int argc, char** argv) {
     QCoreApplication application(argc, argv);
     builtInCatalogIsCompleteAndValid();
+    quickFunctionShortcutsHaveStableContracts();
     structuredFallbackIsDeterministic();
     invalidCatalogReportsAllConformanceErrors();
     searchIndexIsGeneratedAndRanked();

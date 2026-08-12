@@ -4,6 +4,8 @@
 #include <QByteArray>
 #include <QMainWindow>
 
+#include "snow_shot/presentation/globalshortcutmanager.h"
+
 class QEvent;
 class QResizeEvent;
 class QWidget;
@@ -30,6 +32,10 @@ class MainWindow : public QMainWindow {
 
     void showAndActivate();
     void showInterfaceSettings();
+    void showScreenshotHistory();
+
+  signals:
+    void quickActionRequested(snow_shot::presentation::GlobalShortcutAction action);
 
   protected:
     bool event(QEvent* event) override;

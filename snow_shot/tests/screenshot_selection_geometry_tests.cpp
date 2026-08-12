@@ -1,3 +1,5 @@
+#include "snow_shot/presentation/screenshotdisplaysession.h"
+#include "snow_shot/presentation/screenshotgeometry.h"
 #include "snow_shot/presentation/screenshotselectionmodel.h"
 
 #include <QRectF>
@@ -135,6 +137,45 @@ void selectionShadowDefaultsToRequestedColor() {
     require(selection.shadowColor() == expected,
             "reset selections should restore the #333333 shadow color");
 }
+
+CapturedDisplayModel syntheticDisplay(const QRect& physicalRect, const QRect& canvasRect) {
+    CapturedDisplayModel display;
+    display.physicalRect = physicalRect;
+    display.canvasRect = canvasRect;
+    display.logicalRect = physicalRect;
+    display.active = true;
+    return display;
+}
+
+void physicalPointMappingUsesHalfOpenMonitorBounds() {
+    ScreenshotDisplaySession displays;
+    displays.appendDisplay(syntheticDisplay(QRect(0, 0, 100, 100), QRect(0, 0, 100, 100)));
+    displays.appendDisplay(syntheticDisplay(QRect(100, 0, 200, 100), QRect(100, 0, 200, 100)));
+
+    ScreenshotGeometryMapper geometry;
+    require(geometry.displayForPhysicalPoint(displays, QPointF(50, 50)) == &displays.displayAt(0),
+            "physical pointer inside the first monitor selected the wrong display");
+    require(geometry.displayForPhysicalPoint(displays, QPointF(100, 50)) == &displays.displayAt(1),
+            "the shared monitor edge must belong to the next half-open display");
+    require(geometry.displayForPhysicalPoint(displays, QPointF(300, 50)) == nullptr,
+            "a pointer on the exclusive right edge must not select a monitor");
+}
+
+void physicalWindowRectIsClippedAndMappedAcrossMonitors() {
+    ScreenshotDisplaySession displays;
+    displays.appendDisplay(syntheticDisplay(QRect(0, 0, 100, 100), QRect(0, 0, 100, 100)));
+    displays.appendDisplay(syntheticDisplay(QRect(100, 0, 200, 100), QRect(100, 0, 200, 100)));
+
+    ScreenshotGeometryMapper geometry;
+    const QRectF windowRect(-25.0, 20.0, 350.0, 60.0);
+    const QRectF canvasRect = geometry.canvasRectForPhysicalRect(displays, windowRect);
+    require(canvasRect == QRectF(0.0, 20.0, 300.0, 60.0),
+            "a cross-monitor window must be clipped to visible desktop geometry");
+
+    const QRectF offDesktopRect(-80.0, -80.0, 40.0, 40.0);
+    require(geometry.canvasRectForPhysicalRect(displays, offDesktopRect).isEmpty(),
+            "a fully off-screen window must produce an empty selection geometry");
+}
 } // namespace
 
 int main() {
@@ -144,5 +185,7 @@ int main() {
     lockedCornerResizeCanFlipBothAxes();
     unlockedResizeCanChangeAspectRatio();
     selectionShadowDefaultsToRequestedColor();
+    physicalPointMappingUsesHalfOpenMonitorBounds();
+    physicalWindowRectIsClippedAndMappedAcrossMonitors();
     return 0;
 }

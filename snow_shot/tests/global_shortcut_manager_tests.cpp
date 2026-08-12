@@ -92,7 +92,9 @@ struct IsolatedSettings {
         snow_shot::storage::ShortcutSettings().setOpenSettings({});
     }
 
-    ~IsolatedSettings() { snow_shot::storage::ApplicationStorage::instance().shutdown(); }
+    ~IsolatedSettings() {
+        snow_shot::storage::ApplicationStorage::instance().shutdown();
+    }
 
     QString organization;
     QString application;
@@ -210,6 +212,61 @@ void releasedApplicationConflictIsReconciled() {
             "changing another action should retry bindings whose conflict was released");
 }
 
+void everyQuickActionHasIndependentPersistenceAndRegistration() {
+    IsolatedSettings settings;
+    const QVector<QPair<shortcuts::GlobalShortcutAction, QString>> actions = {
+        {shortcuts::GlobalShortcutAction::Screenshot, QStringLiteral("Ctrl+Alt+1")},
+        {shortcuts::GlobalShortcutAction::ScreenshotDelay, QStringLiteral("Ctrl+Alt+2")},
+        {shortcuts::GlobalShortcutAction::ScreenshotFixed, QStringLiteral("Ctrl+Alt+3")},
+        {shortcuts::GlobalShortcutAction::ScreenshotOcr, QStringLiteral("Ctrl+Alt+4")},
+        {shortcuts::GlobalShortcutAction::ScreenshotCopy, QStringLiteral("Ctrl+Alt+5")},
+        {shortcuts::GlobalShortcutAction::ScreenshotFullScreen, QStringLiteral("Ctrl+Alt+6")},
+        {shortcuts::GlobalShortcutAction::ScreenshotFocusedWindow, QStringLiteral("Ctrl+Alt+7")},
+        {shortcuts::GlobalShortcutAction::VideoRecord, QStringLiteral("Ctrl+Alt+8")},
+        {shortcuts::GlobalShortcutAction::VideoRecordCopy, QStringLiteral("Ctrl+Alt+9")},
+        {shortcuts::GlobalShortcutAction::ShowOrHideMainWindow, QStringLiteral("Ctrl+Alt+A")},
+        {shortcuts::GlobalShortcutAction::OpenCaptureHistory, QStringLiteral("Ctrl+Alt+B")},
+        {shortcuts::GlobalShortcutAction::OpenSettings, QStringLiteral("Ctrl+Alt+C")},
+    };
+
+    {
+        auto backend = std::make_unique<FakeGlobalShortcutBackend>();
+        shortcuts::GlobalShortcutManager manager(std::move(backend), settings.organization,
+                                                 settings.application);
+        manager.initialize();
+        for (const auto& [action, shortcut] : actions) {
+            manager.setShortcuts(action, {shortcut});
+            const auto state = manager.state(action);
+            require(state.status == shortcuts::GlobalShortcutStatus::Registered &&
+                        state.shortcuts == QStringList{shortcut},
+                    "quick action shortcut did not register independently");
+        }
+    }
+
+    auto restoredBackend = std::make_unique<FakeGlobalShortcutBackend>();
+    auto* const restoredBackendPtr = restoredBackend.get();
+    shortcuts::GlobalShortcutManager restored(std::move(restoredBackend), settings.organization,
+                                              settings.application);
+    restored.initialize();
+    for (const auto& [action, shortcut] : actions) {
+        const auto state = restored.state(action);
+        require(state.status == shortcuts::GlobalShortcutStatus::Registered &&
+                    state.shortcuts == QStringList{shortcut},
+                "quick action shortcut did not survive manager restart");
+    }
+    int activationCount = 0;
+    shortcuts::GlobalShortcutAction activatedAction = shortcuts::GlobalShortcutAction::Screenshot;
+    QObject::connect(&restored, &shortcuts::GlobalShortcutManager::activated, &restored,
+                     [&activationCount, &activatedAction](shortcuts::GlobalShortcutAction action) {
+                         ++activationCount;
+                         activatedAction = action;
+                     });
+    restoredBackendPtr->activate(QStringLiteral("Ctrl+Alt+7"));
+    require(activationCount == 1 &&
+                activatedAction == shortcuts::GlobalShortcutAction::ScreenshotFocusedWindow,
+            "quick action activation did not dispatch its owning action");
+}
+
 #ifdef Q_OS_WIN
 void nativeWindowsBackendRegistersAndReleases() {
     IsolatedSettings settings;
@@ -268,6 +325,7 @@ int main(int argc, char** argv) {
     registrationStatesReflectActualAvailability();
     persistedDesiredBindingsAreRestored();
     releasedApplicationConflictIsReconciled();
+    everyQuickActionHasIndependentPersistenceAndRegistration();
 #ifdef Q_OS_WIN
     nativeWindowsBackendRegistersAndReleases();
 #endif

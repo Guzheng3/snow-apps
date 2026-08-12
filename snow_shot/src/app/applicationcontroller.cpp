@@ -4,6 +4,7 @@
 #include "snow_shot/presentation/mainwindow.h"
 #include "snow_shot/presentation/screenshotcontroller.h"
 #include "snow_shot/presentation/systemtraycontroller.h"
+#include "snow_shot/storage/settingsadapters.h"
 
 #include <QApplication>
 #include <QTimer>
@@ -29,17 +30,7 @@ class ApplicationController::Impl {
                          });
         QObject::connect(&globalShortcutManager, &presentation::GlobalShortcutManager::activated,
                          &q, [this](presentation::GlobalShortcutAction action) {
-                             switch (action) {
-                             case presentation::GlobalShortcutAction::Screenshot:
-                                 if (ScreenshotController* controller =
-                                         ensureScreenshotController()) {
-                                     controller->startCapture();
-                                 }
-                                 break;
-                             case presentation::GlobalShortcutAction::OpenSettings:
-                                 showInterfaceSettings();
-                                 break;
-                             }
+                             dispatchQuickAction(action);
                          });
         QObject::connect(&app, &QCoreApplication::aboutToQuit, &systemTray,
                          &presentation::SystemTrayController::hide);
@@ -72,8 +63,84 @@ class ApplicationController::Impl {
             ScreenshotController* controller = ensureScreenshotController();
             Q_ASSERT(controller != nullptr);
             mainWindow = std::make_unique<MainWindow>(*controller, globalShortcutManager);
+            QObject::connect(mainWindow.get(), &MainWindow::quickActionRequested, &q,
+                             [this](presentation::GlobalShortcutAction action) {
+                                 dispatchQuickAction(action);
+                             });
         }
         return *mainWindow;
+    }
+
+    void dispatchQuickAction(presentation::GlobalShortcutAction action) {
+        switch (action) {
+        case presentation::GlobalShortcutAction::Screenshot:
+            if (ScreenshotController* controller = ensureScreenshotController()) {
+                controller->startCapture();
+            }
+            break;
+        case presentation::GlobalShortcutAction::ScreenshotDelay:
+            if (ScreenshotController* controller = ensureScreenshotController()) {
+                controller->startDelayedCapture(
+                    storage::ScreenshotSettings().delaySeconds());
+            }
+            break;
+        case presentation::GlobalShortcutAction::ScreenshotFixed:
+            if (ScreenshotController* controller = ensureScreenshotController()) {
+                controller->captureAndPinSelection();
+            }
+            break;
+        case presentation::GlobalShortcutAction::ScreenshotOcr:
+            if (ScreenshotController* controller = ensureScreenshotController()) {
+                controller->captureAndRecognizeText();
+            }
+            break;
+        case presentation::GlobalShortcutAction::ScreenshotCopy:
+            if (ScreenshotController* controller = ensureScreenshotController()) {
+                controller->captureAndCopySelection();
+            }
+            break;
+        case presentation::GlobalShortcutAction::ScreenshotFullScreen:
+            if (ScreenshotController* controller = ensureScreenshotController()) {
+                controller->captureCurrentMonitor();
+            }
+            break;
+        case presentation::GlobalShortcutAction::ScreenshotFocusedWindow:
+            if (ScreenshotController* controller = ensureScreenshotController()) {
+                controller->captureFocusedWindow();
+            }
+            break;
+        case presentation::GlobalShortcutAction::VideoRecord:
+            if (ScreenshotController* controller = ensureScreenshotController()) {
+                controller->captureAndStartVideoRecording();
+            }
+            break;
+        case presentation::GlobalShortcutAction::VideoRecordCopy:
+            if (ScreenshotController* controller = ensureScreenshotController()) {
+                controller->startOrStopVideoRecordingAndCopy();
+            }
+            break;
+        case presentation::GlobalShortcutAction::ShowOrHideMainWindow:
+            toggleMainWindow();
+            break;
+        case presentation::GlobalShortcutAction::OpenCaptureHistory:
+            ensureMainWindow().showScreenshotHistory();
+            break;
+        case presentation::GlobalShortcutAction::OpenSettings:
+            showInterfaceSettings();
+            break;
+        }
+    }
+
+    void toggleMainWindow() {
+        if (mainWindow == nullptr) {
+            showMainWindow();
+            return;
+        }
+        // The quick action is intentionally one-way after construction: an
+        // existing window is closed regardless of whether it is currently
+        // visible, hidden, or minimized.  Showing an existing window belongs
+        // to the explicit Show Main Window/tray action.
+        mainWindow->close();
     }
 
     void showMainWindow() {

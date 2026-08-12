@@ -17,6 +17,9 @@ class VideoRecordingController final : public QObject {
 
     void open(const QRect& physicalRegion);
     bool isOpen() const;
+    bool isRecording() const;
+    void startRecording();
+    void stopRecordingAndCopyVideo();
 
   private:
     struct Impl;

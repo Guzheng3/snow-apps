@@ -13,7 +13,9 @@
 #include <QEvent>
 #include <QFontMetricsF>
 #include <QKeyEvent>
+#include <QLabel>
 #include <QString>
+#include <QWheelEvent>
 
 #include <algorithm>
 #include <cmath>
@@ -337,11 +339,94 @@ void recorderAcceptsOnlyBackendSupportedShortcuts() {
                 !keyButton->text().contains(QStringLiteral("Num++")),
             "a keypad plus should not be displayed as two shortcut separators");
 }
+
+void adjustableDelayUsesWheelAndClampsRange() {
+    const styles::ThemeColorScheme scheme = styles::ThemeManager::instance().themeColorScheme();
+    const auto mainWindowMetric = styles::buildMainWindowComponentMetricToken(scheme);
+
+    int persistedDelay = 3;
+    int setterCalls = 0;
+    int changeSignals = 0;
+    bool acceptWrites = true;
+    ShortcutKeyRowConfig config;
+    config.title = QStringLiteral("Delay %1s to Execute");
+    config.adjustableDelay = true;
+    config.delaySeconds = 3;
+    config.delaySetter = [&persistedDelay, &setterCalls, &acceptWrites](int seconds) {
+        ++setterCalls;
+        if (!acceptWrites) {
+            return false;
+        }
+        persistedDelay = seconds;
+        return true;
+    };
+
+    ShortcutKeyRow row(config, scheme.metricAlias, mainWindowMetric);
+    row.resize(720, row.height());
+    row.show();
+    QObject::connect(&row, &ShortcutKeyRow::delaySecondsChanged, &row,
+                     [&changeSignals](int) { ++changeSignals; });
+    QApplication::processEvents();
+
+    auto* shortcutButton =
+        row.findChild<adqt::widgets::AdButton*>(QStringLiteral("shortcutKeyButton"));
+    bool titleShowsDefaultDelay = false;
+    for (const QLabel* label : row.findChildren<QLabel*>()) {
+        if (label->text() == QStringLiteral("Delay 3s to Execute")) {
+            titleShowsDefaultDelay = true;
+            break;
+        }
+    }
+    require(shortcutButton != nullptr && row.delaySeconds() == 3 && titleShowsDefaultDelay &&
+                row.toolTip() == QStringLiteral("Delay: 3 seconds") &&
+                row.cursor().shape() == Qt::SplitVCursor &&
+                shortcutButton->cursor().shape() == Qt::SplitVCursor,
+            "adjustable delay rows must render the default value and advertise vertical scrolling");
+
+    const auto sendWheel = [](QWidget* target, int angleDelta) {
+        const QPoint localPoint = target->rect().center();
+        QWheelEvent event(QPointF(localPoint), QPointF(target->mapToGlobal(localPoint)), QPoint(),
+                          QPoint(0, angleDelta), Qt::NoButton, Qt::NoModifier,
+                          Qt::NoScrollPhase, false);
+        QCoreApplication::sendEvent(target, &event);
+        require(event.isAccepted(), "adjustable delay rows must consume handled wheel events");
+    };
+
+    sendWheel(&row, 120);
+    require(row.delaySeconds() == 4 && persistedDelay == 4 && setterCalls == 1 &&
+                changeSignals == 1,
+            "scrolling up on the delay row must persist and publish a one-second increment");
+
+    sendWheel(shortcutButton, 120);
+    require(row.delaySeconds() == 5 && persistedDelay == 5 && setterCalls == 2 &&
+                changeSignals == 2,
+            "scrolling over the nested shortcut button must adjust the same persisted delay");
+
+    acceptWrites = false;
+    sendWheel(&row, -120);
+    require(row.delaySeconds() == 5 && persistedDelay == 5 && setterCalls == 3 &&
+                changeSignals == 2,
+            "a rejected delay write must leave the displayed and persisted values unchanged");
+    acceptWrites = true;
+
+    row.setDelaySeconds(100);
+    const int callsAtUpperBound = setterCalls;
+    sendWheel(&row, 120);
+    require(row.delaySeconds() == 10 && setterCalls == callsAtUpperBound,
+            "delay values and upward wheel input must clamp at ten seconds");
+
+    row.setDelaySeconds(-100);
+    const int callsAtLowerBound = setterCalls;
+    sendWheel(&row, -120);
+    require(row.delaySeconds() == 1 && setterCalls == callsAtLowerBound,
+            "delay values and downward wheel input must clamp at one second");
+}
 } // namespace
 
 int main(int argc, char** argv) {
     QApplication application(argc, argv);
     statusPresentationUsesSemanticTokens();
     recorderAcceptsOnlyBackendSupportedShortcuts();
+    adjustableDelayUsesWheelAndClampsRange();
     return 0;
 }

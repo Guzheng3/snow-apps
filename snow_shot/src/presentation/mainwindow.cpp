@@ -205,6 +205,8 @@ void MainWindow::buildUi() {
             });
     connect(m_contentCard, &ContentCardWidget::screenshotRequested, m_screenshotController,
             &ScreenshotController::startCapture);
+    connect(m_contentCard, &ContentCardWidget::quickActionRequested, this,
+            &MainWindow::quickActionRequested);
     connect(m_contentCard, &ContentCardWidget::screenshotHistoryEditRequested,
             m_screenshotController, &ScreenshotController::editHistoryRecord);
     m_contentCard->setCurrentRoute(m_sidebar->currentRoute());
@@ -218,6 +220,13 @@ void MainWindow::showInterfaceSettings() {
     }
 
     showAndActivate();
+}
+
+void MainWindow::showScreenshotHistory() {
+    showAndActivate();
+    if (m_contentCard != nullptr) {
+        m_contentCard->navigateTo({QStringLiteral("screenshot-history"), {}, {}});
+    }
 }
 
 void MainWindow::showAndActivate() {

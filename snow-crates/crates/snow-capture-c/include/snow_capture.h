@@ -9,6 +9,7 @@ extern "C" {
 
 typedef struct SnowCaptureDesktopSessionImpl SnowCaptureDesktopSession;
 typedef struct SnowCaptureRegionSessionImpl SnowCaptureRegionSession;
+typedef struct SnowCaptureWindowSessionImpl SnowCaptureWindowSession;
 typedef struct SnowCaptureSnapshotImpl SnowCaptureSnapshot;
 typedef struct SnowCaptureFrameLeaseImpl SnowCaptureFrameLease;
 typedef struct SnowCaptureRecordingSessionImpl SnowCaptureRecordingSession;
@@ -59,6 +60,25 @@ typedef struct SnowCaptureRegionFrameInfo {
     size_t rgba_len;
 } SnowCaptureRegionFrameInfo;
 
+/* A native top-level window capture backed by Windows Graphics Capture when
+ * the platform supports it. The returned pixel pointer remains valid until
+ * the next capture or destroy. */
+typedef struct SnowCaptureWindowSessionConfig {
+    intptr_t hwnd;
+    size_t capture_retry_count;
+    uint8_t reserved[32];
+} SnowCaptureWindowSessionConfig;
+
+typedef struct SnowCaptureWindowFrameInfo {
+    int32_t x;
+    int32_t y;
+    uint32_t width;
+    uint32_t height;
+    uint32_t stride_bytes;
+    const uint8_t* rgba_bytes;
+    size_t rgba_len;
+} SnowCaptureWindowFrameInfo;
+
 typedef struct SnowCaptureRecordingConfig {
     int32_t x;
     int32_t y;
@@ -100,6 +120,14 @@ uint8_t snow_capture_region_session_prepare(SnowCaptureRegionSession* session);
 uint8_t snow_capture_region_session_capture(
     SnowCaptureRegionSession* session,
     SnowCaptureRegionFrameInfo* out_info);
+
+SnowCaptureWindowSession* snow_capture_window_session_create(
+    const SnowCaptureWindowSessionConfig* config);
+void snow_capture_window_session_destroy(SnowCaptureWindowSession* session);
+uint8_t snow_capture_window_session_prepare(SnowCaptureWindowSession* session);
+uint8_t snow_capture_window_session_capture(
+    SnowCaptureWindowSession* session,
+    SnowCaptureWindowFrameInfo* out_info);
 
 size_t snow_capture_snapshot_count(const SnowCaptureSnapshot* snapshot);
 uint8_t snow_capture_snapshot_frame_info(

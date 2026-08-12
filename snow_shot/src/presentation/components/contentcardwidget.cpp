@@ -185,6 +185,9 @@ void ContentCardWidget::handleCommand(
     case snow_shot::presentation::settings::SettingsCommandKind::CaptureScreenshot:
         emit screenshotRequested();
         break;
+    case snow_shot::presentation::settings::SettingsCommandKind::ExecuteQuickAction:
+        emit quickActionRequested(command.shortcutAction);
+        break;
     case snow_shot::presentation::settings::SettingsCommandKind::Navigate:
         navigateTo(command.location);
         break;

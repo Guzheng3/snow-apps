@@ -40,6 +40,7 @@
 #include <QTemporaryDir>
 #include <QTranslator>
 #include <QVBoxLayout>
+#include <QWheelEvent>
 #include <QUuid>
 
 #include <algorithm>
@@ -158,6 +159,8 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
             return m_maxEntries;
         case settings::SettingsIntegerBinding::HistoryMaxDiskMiB:
             return m_maxDiskMiB;
+        case settings::SettingsIntegerBinding::ScreenshotDelaySeconds:
+            return m_screenshotDelaySeconds;
         }
         return 0;
     }
@@ -175,6 +178,9 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
             break;
         case settings::SettingsIntegerBinding::HistoryMaxDiskMiB:
             m_maxDiskMiB = value;
+            break;
+        case settings::SettingsIntegerBinding::ScreenshotDelaySeconds:
+            m_screenshotDelaySeconds = value;
             break;
         }
         emit synchronized();
@@ -261,6 +267,7 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
     int m_retentionDays = 7;
     int m_maxEntries = 100;
     int m_maxDiskMiB = 1024;
+    int m_screenshotDelaySeconds = 3;
     snow_shot::storage::StorageStatus m_storageStatus;
     QHash<snow_shot::presentation::GlobalShortcutAction,
           snow_shot::presentation::GlobalShortcutRegistrationState>
@@ -547,7 +554,7 @@ void screenshotHistoryPageUsesRepositoryAndAntDesignComponents() {
                 title != nullptr && countLabel != nullptr && filters != nullptr,
             "history page must expose its filters, actions, labels, and pagination");
     require(page.totalCount() == 2 && page.filteredCount() == 2 &&
-                sourceFilter->options().size() == 2 && sourceFilter->currentValues().isEmpty() &&
+                sourceFilter->options().size() == 4 && sourceFilter->currentValues().isEmpty() &&
                 pagination->total() == 2 && deleteAll->isEnabled() &&
                 displayDescription == nullptr && historyContainer != nullptr &&
                 title->parentWidget()->layout() != nullptr &&
@@ -769,10 +776,12 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
     SettingsPageWidget functionPage(catalog, QStringLiteral("function-settings"), bindings);
     SettingsPageWidget systemPage(catalog, QStringLiteral("system-settings"), bindings);
     interfacePage.resize(720, 360);
+    quick.resize(720, 520);
     storagePage.resize(720, 480);
     functionPage.resize(720, 240);
     systemPage.resize(720, 240);
     interfacePage.show();
+    quick.show();
     storagePage.show();
     functionPage.show();
     systemPage.show();
@@ -976,8 +985,31 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
 
     auto* screenshot = quick.findChild<ShortcutKeyRow*>(
         QStringLiteral("settings-item-quick-screenshot"));
-    require(screenshot != nullptr,
-            "shortcut/action items must use the generated ShortcutKeyRow renderer");
+    auto* screenshotDelay = quick.findChild<ShortcutKeyRow*>(
+        QStringLiteral("settings-item-quick-screenshot-delay"));
+    bool delayTitleIsRendered = false;
+    if (screenshotDelay != nullptr) {
+        for (const QLabel* label : screenshotDelay->findChildren<QLabel*>()) {
+            if (label->text() == QStringLiteral("Delay 3s to Execute")) {
+                delayTitleIsRendered = true;
+                break;
+            }
+        }
+    }
+    require(screenshot != nullptr && screenshotDelay != nullptr &&
+                screenshotDelay->delaySeconds() == 3 && delayTitleIsRendered &&
+                screenshotDelay->cursor().shape() == Qt::SplitVCursor,
+            "shortcut/action items and the adjustable 3-second delay must render from the catalog");
+
+    QWheelEvent increaseDelay(
+        QPointF(screenshotDelay->rect().center()),
+        QPointF(screenshotDelay->mapToGlobal(screenshotDelay->rect().center())), QPoint(),
+        QPoint(0, 120), Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+    QCoreApplication::sendEvent(screenshotDelay, &increaseDelay);
+    require(screenshotDelay->delaySeconds() == 4 &&
+                bindings.integerValue(
+                    settings::SettingsIntegerBinding::ScreenshotDelaySeconds) == 4,
+            "delay-row wheel adjustments must persist through runtime bindings");
     settings::SettingsCommand command;
     bool commandEmitted = false;
     QObject::connect(&quick, &SettingsPageWidget::commandRequested, &quick,
@@ -1010,6 +1042,62 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
     QWidget* focused = QApplication::focusWidget();
     require(focused == language || (focused != nullptr && language->isAncestorOf(focused)),
             "structured item navigation must reveal and focus an appropriate generated control");
+}
+
+void quickActionCommandsDispatchThroughContentCard() {
+    using Action = snow_shot::presentation::GlobalShortcutAction;
+
+    const auto& catalog = settings::builtInSettingsCatalog();
+    snow_shot::presentation::GlobalShortcutManager shortcutManager;
+    ContentCardWidget content(catalog, shortcutManager);
+    content.setCurrentRoute(QStringLiteral("/"));
+
+    QVector<Action> requestedActions;
+    int screenshotRequests = 0;
+    QObject::connect(&content, &ContentCardWidget::quickActionRequested, &content,
+                     [&requestedActions](Action action) { requestedActions.push_back(action); });
+    QObject::connect(&content, &ContentCardWidget::screenshotRequested, &content,
+                     [&screenshotRequests]() { ++screenshotRequests; });
+
+    const QVector<QPair<QString, Action>> genericActions{
+        {QStringLiteral("quick-screenshot-delay"), Action::ScreenshotDelay},
+        {QStringLiteral("quick-screenshot-fixed"), Action::ScreenshotFixed},
+        {QStringLiteral("quick-screenshot-ocr"), Action::ScreenshotOcr},
+        {QStringLiteral("quick-screenshot-copy"), Action::ScreenshotCopy},
+        {QStringLiteral("quick-screenshot-full-screen"), Action::ScreenshotFullScreen},
+        {QStringLiteral("quick-screenshot-focused-window"), Action::ScreenshotFocusedWindow},
+        {QStringLiteral("quick-video-record"), Action::VideoRecord},
+        {QStringLiteral("quick-video-record-copy"), Action::VideoRecordCopy},
+        {QStringLiteral("quick-show-or-hide-main-window"), Action::ShowOrHideMainWindow},
+        {QStringLiteral("quick-open-capture-history"), Action::OpenCaptureHistory},
+    };
+    for (const auto& [objectId, action] : genericActions) {
+        auto* row = content.findChild<ShortcutKeyRow*>(
+            QStringLiteral("settings-item-") + objectId);
+        require(row != nullptr, "every generic quick action must render a shortcut row");
+        row->click();
+        require(!requestedActions.isEmpty() && requestedActions.constLast() == action,
+                "ContentCardWidget must emit the action encoded by each generic command");
+    }
+    require(requestedActions.size() == genericActions.size() && screenshotRequests == 0,
+            "generic quick actions must use only the typed quick-action signal");
+
+    auto* screenshot = content.findChild<ShortcutKeyRow*>(
+        QStringLiteral("settings-item-quick-screenshot"));
+    require(screenshot != nullptr, "the standard screenshot action must render");
+    screenshot->click();
+    require(screenshotRequests == 1 && requestedActions.size() == genericActions.size(),
+            "the standard screenshot command must preserve its dedicated signal");
+
+    auto* openSettings = content.findChild<ShortcutKeyRow*>(
+        QStringLiteral("settings-item-quick-open-interface-settings"));
+    require(openSettings != nullptr, "Open Interface Settings must render");
+    openSettings->click();
+    require(content.currentLocation() ==
+                settings::SettingsLocation{QStringLiteral("interface-settings"),
+                                           QStringLiteral("general"), {}} &&
+                requestedActions.size() == genericActions.size() && screenshotRequests == 1,
+            "navigation shortcut commands must navigate without emitting execution signals");
 }
 
 void actionsMayExecuteWithoutConfirmation() {
@@ -1178,6 +1266,7 @@ int main(int argc, char** argv) {
     snow_shot::presentation::styles::ThemeManager::instance().initialize(application);
 
     generatedPagesRenderEveryItemTypeAndResynchronize();
+    quickActionCommandsDispatchThroughContentCard();
     actionsMayExecuteWithoutConfirmation();
     screenshotHistoryPageUsesRepositoryAndAntDesignComponents();
     screenshotHistorySurvivesSidebarWidthTransitions();

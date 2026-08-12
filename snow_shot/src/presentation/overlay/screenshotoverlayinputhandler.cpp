@@ -430,6 +430,7 @@ void ScreenshotOverlayInputHandler::confirmSelection() {
     m_context.intelligentSelection.clearPress();
     m_context.actions.updateOverlayState();
     m_context.actions.showToolbar();
+    m_context.actions.selectionConfirmed();
 }
 
 QPointF

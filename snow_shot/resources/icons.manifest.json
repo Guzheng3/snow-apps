@@ -304,6 +304,38 @@
     },
     {
       "variant": "outlined",
+      "symbol": "ScreenshotCopy",
+      "name": "screenshot-copy",
+      "source": "../src/presentation/components/icons/resources/screenshot-copy.svg",
+      "colorModel": "monochrome",
+      "fit": "contain"
+    },
+    {
+      "variant": "outlined",
+      "symbol": "ScreenshotDelay",
+      "name": "screenshot-delay",
+      "source": "../src/presentation/components/icons/resources/screenshot-delay.svg",
+      "colorModel": "monochrome",
+      "fit": "contain"
+    },
+    {
+      "variant": "outlined",
+      "symbol": "ScreenshotFocusedWindow",
+      "name": "screenshot-focused-window",
+      "source": "../src/presentation/components/icons/resources/screenshot-focused-window.svg",
+      "colorModel": "monochrome",
+      "fit": "contain"
+    },
+    {
+      "variant": "outlined",
+      "symbol": "ScreenshotFullScreen",
+      "name": "screenshot-full-screen",
+      "source": "../src/presentation/components/icons/resources/screenshot-full-screen.svg",
+      "colorModel": "monochrome",
+      "fit": "contain"
+    },
+    {
+      "variant": "outlined",
       "symbol": "ScrollingHorizontal",
       "name": "scrolling-horizontal",
       "source": "../src/presentation/components/icons/resources/scrolling-horizontal.svg",

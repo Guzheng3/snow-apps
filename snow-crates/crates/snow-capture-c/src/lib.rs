@@ -10,7 +10,7 @@ use std::thread::{self, JoinHandle};
 use snow_capture::frame::Frame;
 use snow_capture::{
     CaptureOptions, CaptureRegion, CaptureSession, CaptureSystem, CaptureTarget, CaptureWorkload,
-    MonitorId, MonitorLayout,
+    MonitorId, MonitorLayout, WindowId, backend::CaptureBackendKind,
 };
 use snow_screen_recorder::{
     EditingSession, ExportFormat, ExportRequest, RecordingAudioConfig, RecordingAudioTrackConfig,
@@ -26,6 +26,11 @@ pub struct SnowCaptureDesktopSessionImpl {
 }
 
 pub struct SnowCaptureRegionSessionImpl {
+    session: CaptureSession,
+    frame: Frame,
+}
+
+pub struct SnowCaptureWindowSessionImpl {
     session: CaptureSession,
     frame: Frame,
 }
@@ -81,6 +86,24 @@ pub struct SnowCaptureRegionSessionConfig {
     pub height: u32,
     pub capture_retry_count: usize,
     pub reserved: [u8; 32],
+}
+
+#[repr(C)]
+pub struct SnowCaptureWindowSessionConfig {
+    hwnd: isize,
+    capture_retry_count: usize,
+    reserved: [u8; 32],
+}
+
+#[repr(C)]
+pub struct SnowCaptureWindowFrameInfo {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+    stride_bytes: u32,
+    rgba_bytes: *const u8,
+    rgba_len: usize,
 }
 
 #[repr(C)]
@@ -722,6 +745,128 @@ pub unsafe extern "C" fn snow_capture_region_session_capture(
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn snow_capture_window_session_create(
+    config: *const SnowCaptureWindowSessionConfig,
+) -> *mut SnowCaptureWindowSessionImpl {
+    if config.is_null() {
+        set_last_error("window session config is null");
+        return ptr::null_mut();
+    }
+    let config = unsafe { &*config };
+    if config.hwnd == 0 {
+        set_last_error("window handle is null");
+        return ptr::null_mut();
+    }
+
+    // Window captures must use WGC directly. The desktop session's automatic
+    // policy intentionally prefers DXGI for monitor snapshots, while WGC is
+    // the backend that can capture a top-level HWND independently of desktop
+    // occlusion.
+    let system = match CaptureSystem::builder()
+        .with_backend_kind(CaptureBackendKind::WindowsGraphicsCapture)
+        .build()
+    {
+        Ok(system) => system,
+        Err(error) => {
+            set_last_error(error);
+            return ptr::null_mut();
+        }
+    };
+    let target = CaptureTarget::Window(WindowId::from_raw_handle(config.hwnd));
+    let session = match system.open_session(target, snapshot_options(config.capture_retry_count)) {
+        Ok(session) => session,
+        Err(error) => {
+            set_last_error(error);
+            return ptr::null_mut();
+        }
+    };
+    clear_last_error();
+    Box::into_raw(Box::new(SnowCaptureWindowSessionImpl {
+        session,
+        frame: Frame::empty(),
+    }))
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn snow_capture_window_session_destroy(
+    session: *mut SnowCaptureWindowSessionImpl,
+) {
+    if !session.is_null() {
+        drop(unsafe { Box::from_raw(session) });
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn snow_capture_window_session_prepare(
+    session: *mut SnowCaptureWindowSessionImpl,
+) -> u8 {
+    if session.is_null() {
+        set_last_error("window session is null");
+        return 0;
+    }
+    let session = unsafe { &mut *session };
+    match session.session.prepare_target() {
+        Ok(_) => {
+            clear_last_error();
+            1
+        }
+        Err(error) => {
+            set_last_error(error);
+            0
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn snow_capture_window_session_capture(
+    session: *mut SnowCaptureWindowSessionImpl,
+    out_info: *mut SnowCaptureWindowFrameInfo,
+) -> u8 {
+    if out_info.is_null() {
+        set_last_error("window frame out_info is null");
+        return 0;
+    }
+    if session.is_null() {
+        set_last_error("window session is null");
+        return 0;
+    }
+    let session = unsafe { &mut *session };
+    if let Err(error) = session.session.capture_into(&mut session.frame) {
+        set_last_error(error);
+        return 0;
+    }
+
+    let stride_bytes = match session.frame.width().checked_mul(4) {
+        Some(stride) => stride,
+        None => {
+            set_last_error("window frame stride overflow");
+            return 0;
+        }
+    };
+    let rgba = session.frame.as_rgba_bytes();
+    let target_info = match session.session.target_info() {
+        Ok(info) => info,
+        Err(error) => {
+            set_last_error(error);
+            return 0;
+        }
+    };
+    unsafe {
+        *out_info = SnowCaptureWindowFrameInfo {
+            x: target_info.origin_x,
+            y: target_info.origin_y,
+            width: session.frame.width(),
+            height: session.frame.height(),
+            stride_bytes,
+            rgba_bytes: rgba.as_ptr(),
+            rgba_len: rgba.len(),
+        };
+    }
+    clear_last_error();
+    1
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn snow_capture_snapshot_count(snapshot: *const SnowCaptureSnapshotImpl) -> usize {
     snapshot_ref(snapshot).map_or(0, |snapshot| snapshot.frames.len())
 }
@@ -1270,6 +1415,39 @@ mod tests {
         );
         assert_eq!(
             unsafe { snow_capture_region_session_prepare(ptr::null_mut()) },
+            0
+        );
+    }
+
+    #[test]
+    fn window_session_rejects_null_and_empty_config() {
+        assert!(unsafe { snow_capture_window_session_create(ptr::null()) }.is_null());
+
+        let config = SnowCaptureWindowSessionConfig {
+            hwnd: 0,
+            capture_retry_count: 1,
+            reserved: [0; 32],
+        };
+        assert!(unsafe { snow_capture_window_session_create(&config) }.is_null());
+    }
+
+    #[test]
+    fn window_capture_rejects_null_handles() {
+        let mut info = SnowCaptureWindowFrameInfo {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+            stride_bytes: 0,
+            rgba_bytes: ptr::null(),
+            rgba_len: 0,
+        };
+        assert_eq!(
+            unsafe { snow_capture_window_session_capture(ptr::null_mut(), &mut info) },
+            0
+        );
+        assert_eq!(
+            unsafe { snow_capture_window_session_prepare(ptr::null_mut()) },
             0
         );
     }

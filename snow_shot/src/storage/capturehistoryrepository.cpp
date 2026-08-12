@@ -56,6 +56,43 @@ struct EncodedDraft {
     QByteArray manifestBytes;
 };
 
+QString sourceToManifest(CaptureHistorySource source) {
+    switch (source) {
+    case CaptureHistorySource::CopiedToClipboard:
+        return QStringLiteral("copied_to_clipboard");
+    case CaptureHistorySource::PinnedToScreen:
+        return QStringLiteral("pinned_to_screen");
+    case CaptureHistorySource::CurrentMonitor:
+        return QStringLiteral("current_monitor");
+    case CaptureHistorySource::FocusedWindow:
+        return QStringLiteral("focused_window");
+    }
+    return QStringLiteral("copied_to_clipboard");
+}
+
+bool sourceFromManifest(const QString& value, CaptureHistorySource* source) {
+    if (source == nullptr) {
+        return false;
+    }
+    if (value == QStringLiteral("copied_to_clipboard")) {
+        *source = CaptureHistorySource::CopiedToClipboard;
+        return true;
+    }
+    if (value == QStringLiteral("pinned_to_screen")) {
+        *source = CaptureHistorySource::PinnedToScreen;
+        return true;
+    }
+    if (value == QStringLiteral("current_monitor")) {
+        *source = CaptureHistorySource::CurrentMonitor;
+        return true;
+    }
+    if (value == QStringLiteral("focused_window")) {
+        *source = CaptureHistorySource::FocusedWindow;
+        return true;
+    }
+    return false;
+}
+
 QJsonObject rectangleToJson(const QRect& rectangle) {
     return {
         {QStringLiteral("x"), rectangle.x()},
@@ -228,9 +265,7 @@ QJsonObject buildManifest(const CaptureHistoryRecord& record, const QString& can
         {QStringLiteral("format_version"), kManifestFormatVersion},
         {QStringLiteral("id"), record.id},
         {QStringLiteral("created_utc"), record.createdUtc.toUTC().toString(Qt::ISODateWithMs)},
-        {QStringLiteral("source"), record.source == CaptureHistorySource::PinnedToScreen
-                                       ? QStringLiteral("pinned_to_screen")
-                                       : QStringLiteral("copied_to_clipboard")},
+        {QStringLiteral("source"), sourceToManifest(record.source)},
         {QStringLiteral("canvas_bounds"), rectangleToJson(record.canvasBounds)},
         {QStringLiteral("selection"), persistedSelectionToJson(record.selection)},
         {QStringLiteral("canvas_history_file"), canvasFileName},
@@ -371,11 +406,7 @@ bool parseManifest(const QJsonObject& object, const QString& directoryName,
         return false;
     }
     const QString source = sourceValue.toString(QStringLiteral("copied_to_clipboard"));
-    if (source == QStringLiteral("copied_to_clipboard")) {
-        result.record.source = CaptureHistorySource::CopiedToClipboard;
-    } else if (source == QStringLiteral("pinned_to_screen")) {
-        result.record.source = CaptureHistorySource::PinnedToScreen;
-    } else {
+    if (!sourceFromManifest(source, &result.record.source)) {
         if (error != nullptr) {
             *error = QStringLiteral("The record manifest source is invalid");
         }

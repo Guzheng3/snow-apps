@@ -596,10 +596,10 @@ void publicationCreatesSelfContainedRecord(const QString& root) {
     require(!QFileInfo::exists(QDir(root).filePath(QStringLiteral("config.json"))),
             "history publication unexpectedly wrote configuration state");
     history.drainPendingWrites();
-    require(!QFileInfo::exists(
-                QDir(root).filePath(QStringLiteral("capture_history_catalog.json"))) &&
-                !QFileInfo::exists(QDir(root).filePath(QStringLiteral("config.json"))),
-            "history drain unexpectedly created shared storage metadata");
+    require(
+        !QFileInfo::exists(QDir(root).filePath(QStringLiteral("capture_history_catalog.json"))) &&
+            !QFileInfo::exists(QDir(root).filePath(QStringLiteral("config.json"))),
+        "history drain unexpectedly created shared storage metadata");
 }
 
 void startupReconciliationQuarantinesBrokenAndOrphanedEntries(const QString& root) {
@@ -642,17 +642,14 @@ void startupReconciliationQuarantinesBrokenAndOrphanedEntries(const QString& roo
             "startup reconciliation retained invalid record directories");
     require(!QFileInfo::exists(managed.filePath(QStringLiteral(".tmp-interrupted"))),
             "startup reconciliation retained an interrupted temporary directory");
-    const QDir quarantine(
-        QDir(root).filePath(QStringLiteral("capture_history_quarantine")));
+    const QDir quarantine(QDir(root).filePath(QStringLiteral("capture_history_quarantine")));
     require(quarantine.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot).size() == 2,
             "startup reconciliation did not preserve invalid records in quarantine");
-    require(!QFileInfo::exists(
-                QDir(root).filePath(QStringLiteral("capture_history_catalog.json"))),
+    require(!QFileInfo::exists(QDir(root).filePath(QStringLiteral("capture_history_catalog.json"))),
             "startup reconciliation unexpectedly created a catalog");
 }
 
-void portableDirectoryCopyKeepsHistoryValid(const QString& sourceRoot,
-                                            const QString& copiedRoot) {
+void portableDirectoryCopyKeepsHistoryValid(const QString& sourceRoot, const QString& copiedRoot) {
     ScreenshotDisplaySession displays;
     displays.appendDisplay(display(QStringLiteral("only"), QStringLiteral("Only"),
                                    QRect(0, 0, 24, 24),
@@ -667,7 +664,8 @@ void portableDirectoryCopyKeepsHistoryValid(const QString& sourceRoot,
     {
         ScreenshotHistoryService writer(
             {displays, runtime, selection, interaction, intelligent, {}}, sourceRoot);
-        auto entry = takeSnapshot(writer.snapshotCurrent(true), "failed to snapshot portable entry");
+        auto entry =
+            takeSnapshot(writer.snapshotCurrent(true), "failed to snapshot portable entry");
         writer.commit(std::move(entry));
         writer.drainPendingWrites();
     }
@@ -675,8 +673,8 @@ void portableDirectoryCopyKeepsHistoryValid(const QString& sourceRoot,
             "failed to copy portable configuration directory");
 
     displays.displayAt(0).image = solidImage(QSize(24, 24), qRgba(1, 2, 3, 255));
-    ScreenshotHistoryService reader(
-        {displays, runtime, selection, interaction, intelligent, {}}, copiedRoot);
+    ScreenshotHistoryService reader({displays, runtime, selection, interaction, intelligent, {}},
+                                    copiedRoot);
     require(reader.navigatePrevious(), "copied portable history was not indexed");
     waitForNavigation(reader, "copied portable history navigation timed out");
     require(displays.displayAt(0).image.pixel(0, 0) == savedPixel,
@@ -721,6 +719,7 @@ void historyKeysOnlyWorkDuringSelectionStates() {
     int nextCount = 0;
     int pauseCount = 0;
     int showToolbarCount = 0;
+    int selectionConfirmedCount = 0;
     int returnToCurrentCount = 0;
     int returnToIntelligentCount = 0;
     bool hasCurrentScreenshot = false;
@@ -743,6 +742,7 @@ void historyKeysOnlyWorkDuringSelectionStates() {
     };
     actions.pauseIntelligentSelection = [&pauseCount]() { ++pauseCount; };
     actions.showToolbar = [&showToolbarCount]() { ++showToolbarCount; };
+    actions.selectionConfirmed = [&selectionConfirmedCount]() { ++selectionConfirmedCount; };
     ScreenshotOverlayInputHandler handler({
         captureState,
         interaction,
@@ -752,6 +752,12 @@ void historyKeysOnlyWorkDuringSelectionStates() {
         displays,
         std::move(actions),
     });
+
+    handler.confirmSelection();
+    require(selectionConfirmedCount == 0 &&
+                captureState.sessionState != ScreenshotSessionState::Editing &&
+                !interaction.movingSelection(),
+            "an empty selection must not trigger post-selection actions");
 
     require(handler.handleKeyPress(Qt::Key_Comma, {}),
             "comma key was not handled during smart selection");
@@ -771,6 +777,8 @@ void historyKeysOnlyWorkDuringSelectionStates() {
     require(captureState.sessionState == ScreenshotSessionState::Editing,
             "confirming manual selection did not enter the editing session state");
     require(showToolbarCount == 1, "confirming manual selection did not show the toolbar");
+    require(selectionConfirmedCount == 1,
+            "confirming manual selection did not notify post-selection actions");
 
     require(handler.handleRightClick(nullptr, QPointF(4, 4)),
             "right-click did not handle manual selection");

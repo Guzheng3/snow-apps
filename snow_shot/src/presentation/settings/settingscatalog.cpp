@@ -14,6 +14,7 @@
 namespace snow_shot::presentation::settings {
 namespace {
 namespace outlined_icons = adqt::icons::antd::outlined;
+namespace custom_outlined_icons = snow_shot::presentation::icons::custom::outlined;
 namespace custom_twotone_icons = snow_shot::presentation::icons::custom::twotone;
 
 constexpr TranslatableText settingsText(const char* source) {
@@ -41,6 +42,151 @@ SettingsItemDefinition screenshotItem() {
         QStringLiteral("global_shortcuts/screenshot"),
         payload,
     };
+}
+
+SettingsItemDefinition quickActionItem(
+    const QString& id, const char* title, const char* description,
+    QVector<TranslatableText> aliases, GlobalShortcutAction shortcutAction,
+    const QString& configurationKey, std::function<adqt::icons::IconRef()> iconFactory,
+    SettingsShortcutAdjustment adjustment = SettingsShortcutAdjustment::None) {
+    SettingsShortcutActionDefinition payload;
+    payload.shortcutAction = shortcutAction;
+    payload.command = {
+        SettingsCommandKind::ExecuteQuickAction,
+        {},
+        shortcutAction,
+    };
+    payload.iconFactory = std::move(iconFactory);
+    payload.adjustment = adjustment;
+    return {
+        id,
+        settingsText(title),
+        settingsText(description),
+        std::move(aliases),
+        configurationKey,
+        std::move(payload),
+    };
+}
+
+SettingsItemDefinition screenshotDelayItem() {
+    return quickActionItem(
+        QStringLiteral("quick.screenshot-delay"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Delay %1s to Execute"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Take a screenshot after the configured delay"),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Delayed screenshot")),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Delay capture"))},
+        GlobalShortcutAction::ScreenshotDelay,
+        QStringLiteral("global_shortcuts/screenshot_delay"),
+        []() { return custom_outlined_icons::ScreenshotDelay(); },
+        SettingsShortcutAdjustment::ScreenshotDelaySeconds);
+}
+
+SettingsItemDefinition screenshotFixedItem() {
+    return quickActionItem(
+        QStringLiteral("quick.screenshot-fixed"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Pin to Screen"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Pin the confirmed screenshot selection to the screen"),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Fixed screenshot")),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Pin selection"))},
+        GlobalShortcutAction::ScreenshotFixed,
+        QStringLiteral("global_shortcuts/screenshot_fixed"),
+        []() { return custom_outlined_icons::PinToScreen(); });
+}
+
+SettingsItemDefinition screenshotOcrItem() {
+    return quickActionItem(
+        QStringLiteral("quick.screenshot-ocr"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Text Recognition"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Recognize text in the confirmed screenshot selection"),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "OCR")),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Recognize text"))},
+        GlobalShortcutAction::ScreenshotOcr,
+        QStringLiteral("global_shortcuts/screenshot_ocr"),
+        []() { return custom_outlined_icons::ToolRecognizeText(); });
+}
+
+SettingsItemDefinition screenshotCopyItem() {
+    return quickActionItem(
+        QStringLiteral("quick.screenshot-copy"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Copy to Clipboard"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Copy the confirmed screenshot selection to the clipboard"),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Copy screenshot")),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Clipboard"))},
+        GlobalShortcutAction::ScreenshotCopy,
+        QStringLiteral("global_shortcuts/screenshot_copy"),
+        []() { return custom_outlined_icons::ScreenshotCopy(); });
+}
+
+SettingsItemDefinition screenshotFullScreenItem() {
+    return quickActionItem(
+        QStringLiteral("quick.screenshot-full-screen"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Current Monitor"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Capture every monitor and copy the monitor under the pointer"),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Full screen")),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Monitor capture"))},
+        GlobalShortcutAction::ScreenshotFullScreen,
+        QStringLiteral("global_shortcuts/screenshot_full_screen"),
+        []() { return custom_outlined_icons::ScreenshotFullScreen(); });
+}
+
+SettingsItemDefinition screenshotFocusedWindowItem() {
+    return quickActionItem(
+        QStringLiteral("quick.screenshot-focused-window"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Focused Window"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Capture and copy the currently focused window"),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Active window")),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Window capture"))},
+        GlobalShortcutAction::ScreenshotFocusedWindow,
+        QStringLiteral("global_shortcuts/screenshot_focused_window"),
+        []() { return custom_outlined_icons::ScreenshotFocusedWindow(); });
+}
+
+SettingsItemDefinition videoRecordItem() {
+    return quickActionItem(
+        QStringLiteral("quick.video-record"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Screen Recording"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Start a screen recording from a confirmed selection"),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Record video")),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Video recording"))},
+        GlobalShortcutAction::VideoRecord,
+        QStringLiteral("global_shortcuts/video_record"),
+        []() { return custom_outlined_icons::RecordVideo(); });
+}
+
+SettingsItemDefinition videoRecordCopyItem() {
+    return quickActionItem(
+        QStringLiteral("quick.video-record-copy"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Start Recording / Stop Recording and Copy Video"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Start recording, or stop and copy the current video"),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Copy video")),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Recording toggle"))},
+        GlobalShortcutAction::VideoRecordCopy,
+        QStringLiteral("global_shortcuts/video_record_copy"),
+        []() { return custom_outlined_icons::ScreenshotCopy(); });
+}
+
+SettingsItemDefinition showOrHideMainWindowItem() {
+    return quickActionItem(
+        QStringLiteral("quick.show-or-hide-main-window"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Show/Hide Main Window"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Show the main window, or close it when it is already open"),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Main window")),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Toggle window"))},
+        GlobalShortcutAction::ShowOrHideMainWindow,
+        QStringLiteral("global_shortcuts/show_or_hide_main_window"),
+        []() { return outlined_icons::Appstore(); });
+}
+
+SettingsItemDefinition openCaptureHistoryItem() {
+    return quickActionItem(
+        QStringLiteral("quick.open-capture-history"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Screenshot History"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Open the screenshot history page in the main window"),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Capture history")),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Saved screenshots"))},
+        GlobalShortcutAction::OpenCaptureHistory,
+        QStringLiteral("global_shortcuts/open_capture_history"),
+        []() { return outlined_icons::History(); });
 }
 
 SettingsItemDefinition openSettingsItem() {
@@ -233,7 +379,26 @@ QVector<SettingsPageDefinition> builtInPages() {
                     settingsText(QT_TRANSLATE_NOOP(
                         "SettingsCatalog", "Screenshot shortcuts and actions")),
                     SettingsSectionReset::ScreenshotShortcuts,
-                    {screenshotItem()},
+                    {
+                        screenshotItem(),
+                        screenshotDelayItem(),
+                        screenshotFixedItem(),
+                        screenshotOcrItem(),
+                        screenshotCopyItem(),
+                        screenshotFullScreenItem(),
+                        screenshotFocusedWindowItem(),
+                    },
+                },
+                {
+                    QStringLiteral("screen-recording"),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screen Recording")),
+                    settingsText(QT_TRANSLATE_NOOP(
+                        "SettingsCatalog", "Screen recording shortcuts and actions")),
+                    SettingsSectionReset::None,
+                    {
+                        videoRecordItem(),
+                        videoRecordCopyItem(),
+                    },
                 },
                 {
                     QStringLiteral("other"),
@@ -241,7 +406,11 @@ QVector<SettingsPageDefinition> builtInPages() {
                     settingsText(QT_TRANSLATE_NOOP(
                         "SettingsCatalog", "Other application shortcuts and actions")),
                     SettingsSectionReset::OpenSettingsShortcuts,
-                    {openSettingsItem()},
+                    {
+                        showOrHideMainWindowItem(),
+                        openCaptureHistoryItem(),
+                        openSettingsItem(),
+                    },
                 },
             },
         },
@@ -427,6 +596,36 @@ void addUnique(QStringList* errors, QSet<QString>* values, const QString& value,
     } else {
         values->insert(value);
     }
+}
+
+QString shortcutConfigurationKey(GlobalShortcutAction action) {
+    switch (action) {
+    case GlobalShortcutAction::Screenshot:
+        return QStringLiteral("global_shortcuts/screenshot");
+    case GlobalShortcutAction::ScreenshotDelay:
+        return QStringLiteral("global_shortcuts/screenshot_delay");
+    case GlobalShortcutAction::ScreenshotFixed:
+        return QStringLiteral("global_shortcuts/screenshot_fixed");
+    case GlobalShortcutAction::ScreenshotOcr:
+        return QStringLiteral("global_shortcuts/screenshot_ocr");
+    case GlobalShortcutAction::ScreenshotCopy:
+        return QStringLiteral("global_shortcuts/screenshot_copy");
+    case GlobalShortcutAction::ScreenshotFullScreen:
+        return QStringLiteral("global_shortcuts/screenshot_full_screen");
+    case GlobalShortcutAction::ScreenshotFocusedWindow:
+        return QStringLiteral("global_shortcuts/screenshot_focused_window");
+    case GlobalShortcutAction::VideoRecord:
+        return QStringLiteral("global_shortcuts/video_record");
+    case GlobalShortcutAction::VideoRecordCopy:
+        return QStringLiteral("global_shortcuts/video_record_copy");
+    case GlobalShortcutAction::ShowOrHideMainWindow:
+        return QStringLiteral("global_shortcuts/show_or_hide_main_window");
+    case GlobalShortcutAction::OpenCaptureHistory:
+        return QStringLiteral("global_shortcuts/open_capture_history");
+    case GlobalShortcutAction::OpenSettings:
+        return QStringLiteral("global_shortcuts/open_settings");
+    }
+    return {};
 }
 
 } // namespace
@@ -711,6 +910,9 @@ QStringList SettingsCatalog::validationErrors() const {
                     case SettingsIntegerBinding::HistoryMaxDiskMiB:
                         expectedKey = QStringLiteral("capture_history/max_disk_mib");
                         break;
+                    case SettingsIntegerBinding::ScreenshotDelaySeconds:
+                        expectedKey = QStringLiteral("screenshot/delay_seconds");
+                        break;
                     }
                     if (itemDefinition.configurationKey != expectedKey || schemaEntry == nullptr ||
                         schemaEntry->valueKind != storage::ConfigurationValueKind::Integer ||
@@ -721,10 +923,7 @@ QStringList SettingsCatalog::validationErrors() const {
                 }
                 if (const auto* shortcut =
                         std::get_if<SettingsShortcutActionDefinition>(&itemDefinition.payload)) {
-                    const QString expectedKey =
-                        shortcut->shortcutAction == GlobalShortcutAction::Screenshot
-                            ? QStringLiteral("global_shortcuts/screenshot")
-                            : QStringLiteral("global_shortcuts/open_settings");
+                    const QString expectedKey = shortcutConfigurationKey(shortcut->shortcutAction);
                     if (schemaEntry == nullptr ||
                         schemaEntry->valueKind != storage::ConfigurationValueKind::StringList ||
                         schemaEntry->maximumListItems != 2 || !shortcut->iconFactory ||
@@ -752,9 +951,33 @@ QStringList SettingsCatalog::validationErrors() const {
                     const SettingsCommandKind expectedCommand =
                         shortcut->shortcutAction == GlobalShortcutAction::Screenshot
                             ? SettingsCommandKind::CaptureScreenshot
-                            : SettingsCommandKind::Navigate;
+                            : shortcut->shortcutAction == GlobalShortcutAction::OpenSettings
+                                  ? SettingsCommandKind::Navigate
+                                  : SettingsCommandKind::ExecuteQuickAction;
                     if (shortcut->command.kind != expectedCommand) {
                         errors.push_back(QStringLiteral("shortcut command is incompatible: %1")
+                                             .arg(itemDefinition.id));
+                    }
+                    if (shortcut->command.kind == SettingsCommandKind::ExecuteQuickAction &&
+                        shortcut->command.shortcutAction != shortcut->shortcutAction) {
+                        errors.push_back(QStringLiteral("quick action command is incompatible: %1")
+                                             .arg(itemDefinition.id));
+                    }
+                    const bool isDelayAction =
+                        shortcut->shortcutAction == GlobalShortcutAction::ScreenshotDelay;
+                    if (shortcut->adjustment == SettingsShortcutAdjustment::ScreenshotDelaySeconds) {
+                        const auto* delaySchema = storage::ConfigurationSchema::entry(
+                            QStringLiteral("screenshot/delay_seconds"));
+                        if (!isDelayAction || delaySchema == nullptr ||
+                            delaySchema->valueKind != storage::ConfigurationValueKind::Integer ||
+                            !delaySchema->integerRange.has_value() ||
+                            delaySchema->integerRange->minimum != 1 ||
+                            delaySchema->integerRange->maximum != 10) {
+                            errors.push_back(QStringLiteral("shortcut adjustment is incompatible: %1")
+                                                 .arg(itemDefinition.id));
+                        }
+                    } else if (isDelayAction) {
+                        errors.push_back(QStringLiteral("delay shortcut adjustment is missing: %1")
                                              .arg(itemDefinition.id));
                     }
                 }
