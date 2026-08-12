@@ -62,7 +62,7 @@ const WGC_STALE_FRAME_TIMEOUT_AGGRESSIVE_DECREASE_STEP: Duration = Duration::fro
 const WGC_STALE_FRAME_TIMEOUT_AGGRESSIVE_INCREASE_STEP: Duration = Duration::from_micros(60);
 const WGC_FRAME_POOL_BUFFERS_SCREENSHOT: i32 = 2;
 const WGC_FRAME_POOL_BUFFERS_RECORDING: i32 = 3;
-const WGC_STAGING_SLOTS: usize = 3;
+const WGC_SYNCHRONIZED_STAGING_SLOTS: usize = 1;
 const WGC_DIRTY_COPY_MAX_RECTS: usize = 192;
 const WGC_DIRTY_COPY_MAX_AREA_PERCENT: u64 = 70;
 const WGC_DIRTY_GPU_COPY_MAX_RECTS: usize = 64;
@@ -190,6 +190,32 @@ fn duration_saturating_sub_clamped(base: Duration, delta: Duration, min: Duratio
 fn dirty_region_mode_supported(mode: GraphicsCaptureDirtyRegionMode) -> bool {
     mode == GraphicsCaptureDirtyRegionMode::ReportOnly
         || mode == GraphicsCaptureDirtyRegionMode::ReportAndRender
+}
+
+#[inline(always)]
+fn complete_surface_dirty_region_mode() -> GraphicsCaptureDirtyRegionMode {
+    GraphicsCaptureDirtyRegionMode::ReportOnly
+}
+
+#[inline(always)]
+fn can_reconstruct_from_dirty_regions(
+    capture_mode: CaptureMode,
+    destination_has_history: bool,
+) -> bool {
+    capture_mode != CaptureMode::Continuous && destination_has_history
+}
+
+#[inline(always)]
+fn frame_pixels_unchanged_for_mode(
+    capture_mode: CaptureMode,
+    source_is_duplicate: bool,
+    dirty_regions_unchanged: bool,
+) -> bool {
+    if capture_mode == CaptureMode::Continuous {
+        source_is_duplicate
+    } else {
+        source_is_duplicate || dirty_regions_unchanged
+    }
 }
 
 #[inline(always)]
@@ -869,12 +895,12 @@ struct WindowsGraphicsCaptureCapturer {
     pool_size: SizeInt32,
     pixel_format: DirectXPixelFormat,
     frame_pool_buffer_count: i32,
-    staging_slots: [WgcStagingSlot; WGC_STAGING_SLOTS],
+    staging_slots: [WgcStagingSlot; WGC_SYNCHRONIZED_STAGING_SLOTS],
     next_write_slot: usize,
-    /// Most recent submitted slot. In recording mode this is read on the
-    /// following capture call so GPU copy and CPU conversion overlap.
+    /// Most recent complete slot, retained so exact duplicate frames can be
+    /// materialized into any caller-provided output buffer.
     pending_slot: Option<usize>,
-    region: RegionPipelineState<WgcStagingSlot, WGC_STAGING_SLOTS>,
+    region: RegionPipelineState<WgcStagingSlot, WGC_SYNCHRONIZED_STAGING_SLOTS>,
     cached_src_desc: Option<D3D11_TEXTURE2D_DESC>,
     /// Last system-relative time, used for duplicate detection.
     last_present_time: i64,
@@ -951,7 +977,7 @@ impl WindowsGraphicsCaptureCapturer {
         // Single-shot screenshots should return the first frame promptly
         // without enabling recording-style reuse or extra buffering.
         let _ = session.SetIsBorderRequired(false);
-        let _ = session.SetDirtyRegionMode(GraphicsCaptureDirtyRegionMode::ReportAndRender);
+        let _ = session.SetDirtyRegionMode(complete_surface_dirty_region_mode());
 
         let signal = Arc::new(FrameSignal::default());
         let signal_for_frames = signal.clone();
@@ -1670,7 +1696,7 @@ impl WindowsGraphicsCaptureCapturer {
             })?;
 
             let use_dirty_copy = self.has_frame_history
-                && destination_has_history
+                && can_reconstruct_from_dirty_regions(self.capture_mode, destination_has_history)
                 && slot.dirty_cpu_copy_preferred
                 && !slot.dirty_rects.is_empty();
             let write_full_slot_direct = blit.dst_x == 0
@@ -1908,6 +1934,7 @@ impl WindowsGraphicsCaptureCapturer {
             })?;
             let use_dirty_copy = self.has_frame_history
                 && out_matches_source
+                && can_reconstruct_from_dirty_regions(self.capture_mode, destination_has_history)
                 && slot.dirty_cpu_copy_preferred
                 && !slot.dirty_rects.is_empty();
             let dirty_hints =
@@ -2149,7 +2176,14 @@ impl WindowsGraphicsCaptureCapturer {
                 self.region.next_write_slot = 0;
                 return Ok(sample);
             }
-            let region_dirty_extraction = if source_is_duplicate {
+            let region_dirty_extraction = if self.capture_mode == CaptureMode::Continuous {
+                region_dirty_rects.clear();
+                RegionDirtyRectExtraction {
+                    available: false,
+                    unchanged: source_is_duplicate,
+                    force_full_copy: true,
+                }
+            } else if source_is_duplicate {
                 region_dirty_rects.clear();
                 RegionDirtyRectExtraction {
                     available: true,
@@ -2199,7 +2233,7 @@ impl WindowsGraphicsCaptureCapturer {
                 )
             };
             let write_slot = if recording_mode {
-                self.region.next_write_slot % WGC_STAGING_SLOTS
+                self.region.next_write_slot % WGC_SYNCHRONIZED_STAGING_SLOTS
             } else {
                 0
             };
@@ -2212,9 +2246,10 @@ impl WindowsGraphicsCaptureCapturer {
             let skip_submit_copy = recording_mode
                 && destination_has_history
                 && self.region.pending_slot.is_some()
-                && (source_is_duplicate || region_unchanged);
+                && source_is_duplicate;
 
-            let reuse_pending_slot_for_dirty_gpu = recording_mode
+            let reuse_pending_slot_for_dirty_gpu = self.capture_mode != CaptureMode::Continuous
+                && recording_mode
                 && !skip_submit_copy
                 && destination_has_history
                 && region_dirty_available
@@ -2275,12 +2310,13 @@ impl WindowsGraphicsCaptureCapturer {
                 slot_idx
             } else {
                 self.ensure_region_slot(write_slot, &region_desc)?;
-                let can_use_dirty_gpu_copy = destination_has_history && {
-                    let slot = &self.region.slots[write_slot];
-                    slot.populated
-                        && slot.present_time_ticks != 0
-                        && slot.present_time_ticks == previous_present_time
-                };
+                let can_use_dirty_gpu_copy =
+                    self.capture_mode != CaptureMode::Continuous && destination_has_history && {
+                        let slot = &self.region.slots[write_slot];
+                        slot.populated
+                            && slot.present_time_ticks != 0
+                            && slot.present_time_ticks == previous_present_time
+                    };
                 {
                     let slot = &mut self.region.slots[write_slot];
                     slot.capture_time = Some(capture_time);
@@ -2329,7 +2365,7 @@ impl WindowsGraphicsCaptureCapturer {
                     self.region.next_write_slot = if reuse_pending_slot_for_dirty_gpu {
                         next_slot
                     } else {
-                        (write_slot + 1) % WGC_STAGING_SLOTS
+                        (write_slot + 1) % WGC_SYNCHRONIZED_STAGING_SLOTS
                     };
                 }
             } else {
@@ -2501,26 +2537,35 @@ impl WindowsGraphicsCaptureCapturer {
                 return Ok(());
             }
 
-            let (source_dirty_available, source_unchanged) = if source_is_duplicate {
-                source_dirty_rects.clear();
-                (true, true)
-            } else {
-                let source_dirty_mode = extract_dirty_rects(
-                    &capture_frame,
-                    effective_desc.Width,
-                    effective_desc.Height,
-                    &mut source_dirty_rects,
-                );
-                let source_dirty_available = source_dirty_mode.is_some();
-                if !source_dirty_available {
+            let (source_dirty_available, dirty_regions_unchanged) =
+                if self.capture_mode == CaptureMode::Continuous {
                     source_dirty_rects.clear();
-                }
-                (
-                    source_dirty_available,
-                    source_dirty_available && source_dirty_rects.is_empty(),
-                )
-            };
+                    (false, source_is_duplicate)
+                } else if source_is_duplicate {
+                    source_dirty_rects.clear();
+                    (true, true)
+                } else {
+                    let source_dirty_mode = extract_dirty_rects(
+                        &capture_frame,
+                        effective_desc.Width,
+                        effective_desc.Height,
+                        &mut source_dirty_rects,
+                    );
+                    let source_dirty_available = source_dirty_mode.is_some();
+                    if !source_dirty_available {
+                        source_dirty_rects.clear();
+                    }
+                    (
+                        source_dirty_available,
+                        source_dirty_available && source_dirty_rects.is_empty(),
+                    )
+                };
 
+            let source_unchanged = frame_pixels_unchanged_for_mode(
+                self.capture_mode,
+                source_is_duplicate,
+                dirty_regions_unchanged,
+            );
             let emitted_duplicate = time_ticks != 0 && time_ticks == self.last_emitted_present_time;
             if self.capture_mode != CaptureMode::Continuous
                 && (source_is_duplicate || source_unchanged)
@@ -2546,7 +2591,7 @@ impl WindowsGraphicsCaptureCapturer {
             }
 
             let write_slot = if pipeline_reuse_enabled {
-                self.next_write_slot % WGC_STAGING_SLOTS
+                self.next_write_slot % WGC_SYNCHRONIZED_STAGING_SLOTS
             } else {
                 0
             };
@@ -2558,9 +2603,11 @@ impl WindowsGraphicsCaptureCapturer {
 
             let skip_submit_copy = pipeline_reuse_enabled
                 && self.pending_slot.is_some()
-                && (source_is_duplicate || source_unchanged);
+                && (source_is_duplicate
+                    || (self.capture_mode != CaptureMode::Continuous && source_unchanged));
 
-            let reuse_pending_slot_for_dirty_gpu = !skip_submit_copy
+            let reuse_pending_slot_for_dirty_gpu = self.capture_mode != CaptureMode::Continuous
+                && !skip_submit_copy
                 && destination_has_history
                 && source_dirty_available
                 && self.pending_slot.is_some()
@@ -2618,7 +2665,7 @@ impl WindowsGraphicsCaptureCapturer {
                 slot_idx
             } else {
                 self.ensure_staging_slot(write_slot, &effective_desc)?;
-                let can_use_dirty_gpu_copy = {
+                let can_use_dirty_gpu_copy = self.capture_mode != CaptureMode::Continuous && {
                     let slot = &self.staging_slots[write_slot];
                     slot.populated
                         && slot.present_time_ticks != 0
@@ -2673,7 +2720,7 @@ impl WindowsGraphicsCaptureCapturer {
                     self.next_write_slot = if reuse_pending_slot_for_dirty_gpu {
                         next_slot
                     } else {
-                        (write_slot + 1) % WGC_STAGING_SLOTS
+                        (write_slot + 1) % WGC_SYNCHRONIZED_STAGING_SLOTS
                     };
                 }
             } else {
@@ -2726,17 +2773,17 @@ impl WindowsGraphicsCaptureCapturer {
                 let _ = self.session.SetIsBorderRequired(false);
                 let _ = self
                     .session
-                    .SetDirtyRegionMode(GraphicsCaptureDirtyRegionMode::ReportAndRender);
+                    .SetDirtyRegionMode(complete_surface_dirty_region_mode());
                 self.stale_timeout_config = active_stale_timeout_config();
             }
             CaptureMode::Snapshot => {
                 // Screenshot paths are independent one-shot captures. Keep the
-                // lighter timeout profile but prefer ReportAndRender so the
-                // first frame is produced promptly without recording reuse.
+                // lighter timeout profile while keeping every returned surface
+                // complete and safe for one-shot readback.
                 let _ = self.session.SetIsBorderRequired(false);
                 let _ = self
                     .session
-                    .SetDirtyRegionMode(GraphicsCaptureDirtyRegionMode::ReportAndRender);
+                    .SetDirtyRegionMode(complete_surface_dirty_region_mode());
                 self.stale_timeout_config = stale_timeout_config(false);
             }
         }
@@ -3382,6 +3429,38 @@ mod tests {
         ));
         assert!(dirty_region_mode_supported(
             GraphicsCaptureDirtyRegionMode::ReportAndRender
+        ));
+    }
+
+    #[test]
+    fn capture_uses_complete_wgc_surfaces() {
+        assert_eq!(
+            complete_surface_dirty_region_mode(),
+            GraphicsCaptureDirtyRegionMode::ReportOnly
+        );
+    }
+
+    #[test]
+    fn recording_uses_one_synchronized_staging_slot() {
+        assert_eq!(WGC_SYNCHRONIZED_STAGING_SLOTS, 1);
+    }
+
+    #[test]
+    fn recording_duplicate_requires_identical_present_timestamp() {
+        assert!(!frame_pixels_unchanged_for_mode(
+            CaptureMode::Continuous,
+            false,
+            true,
+        ));
+        assert!(frame_pixels_unchanged_for_mode(
+            CaptureMode::Continuous,
+            true,
+            false,
+        ));
+        assert!(frame_pixels_unchanged_for_mode(
+            CaptureMode::Snapshot,
+            false,
+            true,
         ));
     }
 
