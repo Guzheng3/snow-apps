@@ -2073,11 +2073,17 @@ if(SNOW_SHOT_BUILD_TESTS)
         add_executable(snow-shot-scrolling-thumbnail-uia-e2e-test
             tests/scrolling_thumbnail_uia_e2e_test.cpp
         )
+        target_include_directories(snow-shot-scrolling-thumbnail-uia-e2e-test PRIVATE
+            "${SNOW_SHOT_CAPTURE_CRATES_DIR}/crates/snow-stitch-images-c/include"
+        )
         target_link_libraries(snow-shot-scrolling-thumbnail-uia-e2e-test PRIVATE
+            snow_stitch_images_c
             Ole32
             Uiautomationcore
             Gdi32
             User32
+            Userenv
+            Ntdll
         )
         add_dependencies(snow-shot-scrolling-thumbnail-uia-e2e-test snow_shot)
         add_test(

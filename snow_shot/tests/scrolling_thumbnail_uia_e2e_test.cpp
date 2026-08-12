@@ -6,7 +6,10 @@
 #include <UIAutomation.h>
 #include <objbase.h>
 
+#include "snow_stitch_images.h"
+
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
@@ -35,18 +38,15 @@ constexpr LONG kSelectionLeft = 64;
 constexpr LONG kSelectionTop = 64;
 constexpr LONG kSelectionRight = 564;
 constexpr LONG kSelectionBottom = 564;
+constexpr int kScrollCount = 10;
+constexpr int kTextLineHeight = 36;
+constexpr int kScrollDistance = 96;
 
 constexpr wchar_t kArtifactsDirectory[] = L"e2e-artifacts";
 constexpr char kThumbnailBeforeClicksFile[] = "e2e-artifacts/scrolling-thumbnail-before-clicks.bmp";
 constexpr char kThumbnailAfterClicksFile[] = "e2e-artifacts/scrolling-thumbnail-after-clicks.bmp";
 constexpr char kThumbnailBeforeDragFile[] = "e2e-artifacts/scrolling-thumbnail-before-drag.bmp";
 constexpr char kThumbnailAfterDragFile[] = "e2e-artifacts/scrolling-thumbnail-after-drag.bmp";
-constexpr char kThumbnailBeforeSourceScrollFile[] =
-    "e2e-artifacts/scrolling-thumbnail-before-source-scroll.bmp";
-constexpr char kThumbnailAfterSourceScrollFile[] =
-    "e2e-artifacts/scrolling-thumbnail-after-source-scroll.bmp";
-constexpr char kSourceBeforeScrollFile[] = "e2e-artifacts/scrolling-source-before-scroll.bmp";
-constexpr char kSourceAfterScrollFile[] = "e2e-artifacts/scrolling-source-after-scroll.bmp";
 
 template <typename T> class ComPtr final {
   public:
@@ -178,7 +178,34 @@ struct ScrollingSourceState {
     int offset = 0;
 };
 
-std::uint32_t scrollingSourcePixel(int x, int documentY) {
+[[nodiscard]] std::uint32_t nextRandom(std::uint32_t& state) {
+    state ^= state << 13U;
+    state ^= state >> 17U;
+    state ^= state << 5U;
+    return state;
+}
+
+[[nodiscard]] std::wstring randomTextLine(int lineNumber) {
+    constexpr wchar_t alphabet[] = L"ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+    constexpr std::size_t alphabetLength = std::size(alphabet) - 1;
+    std::uint32_t randomState =
+        0x6d2b79f5U ^ (static_cast<std::uint32_t>(lineNumber) * 0x9e3779b9U);
+    std::wstring characters = L"L" + std::to_wstring(lineNumber);
+    while (characters.size() < 8) {
+        characters.push_back(alphabet[nextRandom(randomState) % alphabetLength]);
+    }
+
+    std::wstring line;
+    for (std::size_t index = 0; index < characters.size(); ++index) {
+        line.push_back(characters[index]);
+        if (index + 1 < characters.size()) {
+            line.append(1 + nextRandom(randomState) % 3, L' ');
+        }
+    }
+    return line;
+}
+
+[[nodiscard]] std::uint32_t scrollingSourcePixel(int x, int documentY) {
     const std::uint32_t cellX = static_cast<std::uint32_t>(x / 16);
     const std::uint32_t cellY = static_cast<std::uint32_t>(documentY / 16);
     std::uint32_t hash = cellX * 0x9e3779b9U ^ cellY * 0x85ebca6bU;
@@ -216,9 +243,12 @@ void presentScrollingSource(HWND window, const ScrollingSourceState& state) {
     bitmapInfo.bmiHeader.biBitCount = 32;
     bitmapInfo.bmiHeader.biCompression = BI_RGB;
     void* bitmapPixels = nullptr;
-    HBITMAP bitmap = CreateDIBSection(screen, &bitmapInfo, DIB_RGB_COLORS, &bitmapPixels, nullptr, 0);
+    HBITMAP bitmap =
+        CreateDIBSection(screen, &bitmapInfo, DIB_RGB_COLORS, &bitmapPixels, nullptr, 0);
     require(bitmap != nullptr && bitmapPixels != nullptr,
             "could not allocate the scrolling source surface");
+
+    HGDIOBJ previousBitmap = SelectObject(memory, bitmap);
     auto* pixels = static_cast<std::uint32_t*>(bitmapPixels);
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
@@ -227,7 +257,40 @@ void presentScrollingSource(HWND window, const ScrollingSourceState& state) {
         }
     }
 
-    HGDIOBJ previousBitmap = SelectObject(memory, bitmap);
+    HFONT font =
+        CreateFontW(26, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+                    CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, FIXED_PITCH | FF_MODERN, L"Consolas");
+    require(font != nullptr, "could not create the scrolling source font");
+    HGDIOBJ previousFont = SelectObject(memory, font);
+    SetBkMode(memory, TRANSPARENT);
+
+    constexpr std::array<COLORREF, 10> textColors{
+        RGB(255, 82, 82),   RGB(64, 196, 255),  RGB(105, 240, 174), RGB(225, 135, 255),
+        RGB(255, 183, 77),  RGB(72, 255, 245),  RGB(255, 241, 118), RGB(255, 128, 191),
+        RGB(238, 238, 238), RGB(179, 157, 219),
+    };
+    const int firstLine = state.offset / kTextLineHeight;
+    const int firstLineY = firstLine * kTextLineHeight - state.offset;
+    for (int lineNumber = firstLine, y = firstLineY; y < height;
+         ++lineNumber, y += kTextLineHeight) {
+        std::uint32_t colorState =
+            0xa511e9b3U ^ (static_cast<std::uint32_t>(lineNumber) * 0x85ebca6bU);
+        SetTextColor(memory, textColors[nextRandom(colorState) % textColors.size()]);
+        const std::wstring line = randomTextLine(lineNumber);
+        require(TextOutW(memory, 12, y + 2, line.c_str(), static_cast<int>(line.size())) != FALSE,
+                "could not render scrolling source text");
+
+        HPEN separator = CreatePen(PS_SOLID, 1, RGB(222, 226, 234));
+        require(separator != nullptr, "could not create the scrolling source separator");
+        HGDIOBJ previousPen = SelectObject(memory, separator);
+        MoveToEx(memory, 8, y + kTextLineHeight - 1, nullptr);
+        LineTo(memory, width - 8, y + kTextLineHeight - 1);
+        SelectObject(memory, previousPen);
+        DeleteObject(separator);
+    }
+
+    SelectObject(memory, previousFont);
+    DeleteObject(font);
     POINT destination{kSelectionLeft, kSelectionTop};
     SIZE size{width, height};
     POINT source{};
@@ -276,7 +339,7 @@ class ScrollingSourceWindow final {
     }
 
     void scrollDown() {
-        m_state.offset += 96;
+        m_state.offset += kScrollDistance;
         render();
     }
 
@@ -301,8 +364,7 @@ struct TestConfiguration {
             "expected the snow_shot executable path and optional --capture-excluded argument");
     const std::string scenarioArgument = argc == 3 ? std::string(argv[2]) : std::string();
     const bool captureExcluded = scenarioArgument == kCaptureExcludedArgument;
-    require(argc == 2 || captureExcluded,
-            "unknown scrolling thumbnail E2E test argument");
+    require(argc == 2 || captureExcluded, "unknown scrolling thumbnail E2E test argument");
 
     const int requiredLength =
         MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, argv[1], -1, nullptr, 0);
@@ -622,6 +684,62 @@ void dragThumbnailHeadHandle(LONG x, LONG startY, LONG endY) {
     return image;
 }
 
+void verifyScrollingSourceOffsets() {
+    constexpr LONG sourceWidth = kSelectionRight - kSelectionLeft;
+    constexpr LONG sourceHeight = kSelectionBottom - kSelectionTop;
+    const RECT sourceBounds{kSelectionLeft, kSelectionTop, kSelectionRight, kSelectionBottom};
+    ScrollingSourceWindow source;
+
+    SnowStitchFramePool* const pool = snow_stitch_frame_pool_create(sourceWidth, sourceHeight, 2);
+    require(pool != nullptr, "could not create the scrolling offset preflight frame pool");
+
+    SnowStitchConfig config{};
+    require(snow_stitch_config_default(&config) != 0,
+            "could not create the scrolling offset preflight configuration");
+    SnowStitchSession* const session = snow_stitch_session_create(&config);
+    require(session != nullptr, "could not create the scrolling offset preflight session");
+
+    for (int frameIndex = 0; frameIndex <= kScrollCount; ++frameIndex) {
+        if (frameIndex > 0) {
+            source.scrollDown();
+        }
+        const std::vector<COLORREF> sourceImage = captureScreenRegion(sourceBounds);
+        SnowStitchFrameBuffer* frame = snow_stitch_frame_pool_acquire(pool);
+        require(frame != nullptr, "could not acquire a scrolling offset preflight frame");
+
+        SnowStitchMutableImageInfo frameInfo{};
+        require(snow_stitch_frame_buffer_info(frame, &frameInfo) != 0 &&
+                    frameInfo.width == sourceWidth && frameInfo.height == sourceHeight &&
+                    frameInfo.rgba_bytes != nullptr,
+                "could not access a scrolling offset preflight frame");
+        for (std::size_t pixelIndex = 0; pixelIndex < sourceImage.size(); ++pixelIndex) {
+            const COLORREF pixel = sourceImage[pixelIndex];
+            const std::size_t outputOffset = pixelIndex * 4;
+            frameInfo.rgba_bytes[outputOffset] = GetBValue(pixel);
+            frameInfo.rgba_bytes[outputOffset + 1] = GetGValue(pixel);
+            frameInfo.rgba_bytes[outputOffset + 2] = GetRValue(pixel);
+            frameInfo.rgba_bytes[outputOffset + 3] = 255;
+        }
+
+        SnowStitchFrameOutcome outcome{};
+        require(snow_stitch_session_push_owned(session, &frame, &outcome) != 0 && frame == nullptr,
+                "could not run the scrolling offset preflight stitcher");
+        if (frameIndex == 0) {
+            require(outcome.event == SNOW_STITCH_FRAME_EVENT_INITIAL,
+                    "the scrolling offset preflight did not accept its initial frame");
+        } else {
+            require(outcome.event == SNOW_STITCH_FRAME_EVENT_EXTENDED_BOTTOM &&
+                        outcome.added_rows == kScrollDistance,
+                    "the scrolling stitcher did not recover a scripted 96-pixel offset");
+        }
+    }
+
+    snow_stitch_session_destroy(session);
+    snow_stitch_frame_pool_destroy(pool);
+    std::cout << "verified " << kScrollCount << " scrolling stitch offsets of " << kScrollDistance
+              << " pixels\n";
+}
+
 [[nodiscard]] std::size_t differentPixelCount(const std::vector<COLORREF>& first,
                                               const std::vector<COLORREF>& second) {
     require(first.size() == second.size(), "screen captures must have matching dimensions");
@@ -629,6 +747,58 @@ void dragThumbnailHeadHandle(LONG x, LONG startY, LONG endY) {
     for (std::size_t index = 0; index < first.size(); ++index) {
         if ((first[index] & 0x00ffffffU) != (second[index] & 0x00ffffffU)) {
             ++different;
+        }
+    }
+    return different;
+}
+
+[[nodiscard]] std::size_t differentPixelCount(const std::vector<COLORREF>& first, LONG firstWidth,
+                                              LONG firstHeight, const std::vector<COLORREF>& second,
+                                              LONG secondWidth, LONG secondHeight) {
+    require(first.size() ==
+                    static_cast<std::size_t>(firstWidth) * static_cast<std::size_t>(firstHeight) &&
+                second.size() ==
+                    static_cast<std::size_t>(secondWidth) * static_cast<std::size_t>(secondHeight),
+            "thumbnail captures must match their declared dimensions");
+
+    const LONG commonWidth = std::min(firstWidth, secondWidth);
+    const LONG commonHeight = std::min(firstHeight, secondHeight);
+    std::size_t different = 0;
+    for (LONG y = 0; y < commonHeight; ++y) {
+        for (LONG x = 0; x < commonWidth; ++x) {
+            const COLORREF firstPixel =
+                first[static_cast<std::size_t>(y) * static_cast<std::size_t>(firstWidth) +
+                      static_cast<std::size_t>(x)];
+            const COLORREF secondPixel =
+                second[static_cast<std::size_t>(y) * static_cast<std::size_t>(secondWidth) +
+                       static_cast<std::size_t>(x)];
+            if ((firstPixel & 0x00ffffffU) != (secondPixel & 0x00ffffffU)) {
+                ++different;
+            }
+        }
+    }
+    for (LONG y = 0; y < firstHeight; ++y) {
+        for (LONG x = 0; x < firstWidth; ++x) {
+            if (x >= commonWidth || y >= commonHeight) {
+                const COLORREF pixel =
+                    first[static_cast<std::size_t>(y) * static_cast<std::size_t>(firstWidth) +
+                          static_cast<std::size_t>(x)];
+                if ((pixel & 0x00ffffffU) != 0) {
+                    ++different;
+                }
+            }
+        }
+    }
+    for (LONG y = 0; y < secondHeight; ++y) {
+        for (LONG x = 0; x < secondWidth; ++x) {
+            if (x >= commonWidth || y >= commonHeight) {
+                const COLORREF pixel =
+                    second[static_cast<std::size_t>(y) * static_cast<std::size_t>(secondWidth) +
+                           static_cast<std::size_t>(x)];
+                if ((pixel & 0x00ffffffU) != 0) {
+                    ++different;
+                }
+            }
         }
     }
     return different;
@@ -714,6 +884,11 @@ void saveCaptureAsBmp(const char* fileName, const std::vector<COLORREF>& image, 
     require(static_cast<bool>(output), "could not write the screenshot artifact");
 }
 
+[[nodiscard]] std::string scrollingArtifactFile(const char* surface, int scrollIndex) {
+    return "e2e-artifacts/scrolling-" + std::string(surface) + "-scroll-" +
+           (scrollIndex < 10 ? "0" : "") + std::to_string(scrollIndex) + ".bmp";
+}
+
 [[nodiscard]] bool thumbnailTrimControlVisible(const char* artifactFileName,
                                                const RECT& thumbnailBounds) {
     const LONG cropTop = std::max<LONG>(0, thumbnailBounds.top - 3);
@@ -743,8 +918,7 @@ void saveCaptureAsBmp(const char* fileName, const std::vector<COLORREF>& image, 
     const LONG height = headCrop.bottom - headCrop.top;
     saveCaptureAsBmp(artifactFileName, image, width, height);
     const std::optional<LONG> localRow = scrollingThumbnailTrimControlRow(image, width, height);
-    return localRow.has_value() ? std::optional<LONG>(*localRow + headCrop.top)
-                                : std::nullopt;
+    return localRow.has_value() ? std::optional<LONG>(*localRow + headCrop.top) : std::nullopt;
 }
 
 void requireDesktopCanRunScenario() {
@@ -764,6 +938,7 @@ int main(int argc, char* argv[]) {
         require(artifactsDirectoryCreated != FALSE || GetLastError() == ERROR_ALREADY_EXISTS,
                 "could not create the screenshot artifact directory");
         const TestConfiguration configuration = configurationFromArguments(argc, argv);
+        verifyScrollingSourceOffsets();
         ScrollingSourceWindow scrollingSource;
 
         const ScopedCom com;
@@ -839,94 +1014,128 @@ int main(int argc, char* argv[]) {
                     thumbnailBounds.bottom > thumbnailBounds.top,
                 "could not determine the scrolling thumbnail bounds through UIA");
 
-        moveCursor((kSelectionLeft + kSelectionRight) / 2,
-                   (kSelectionTop + kSelectionBottom) / 2);
+        moveCursor((kSelectionLeft + kSelectionRight) / 2, (kSelectionTop + kSelectionBottom) / 2);
         std::this_thread::sleep_for(250ms);
         const LONG thumbnailWidth = thumbnailBounds.right - thumbnailBounds.left;
         const LONG thumbnailHeight = thumbnailBounds.bottom - thumbnailBounds.top;
-        std::vector<COLORREF> beforeSourceScroll;
+        LONG previousThumbnailWidth = thumbnailWidth;
+        std::vector<COLORREF> previousThumbnail;
         if (!configuration.captureExcluded) {
-            beforeSourceScroll = captureScreenRegion(thumbnailBounds);
-            saveCaptureAsBmp(kThumbnailBeforeSourceScrollFile, beforeSourceScroll, thumbnailWidth,
+            previousThumbnail = captureScreenRegion(thumbnailBounds);
+            const std::string initialThumbnailFile = scrollingArtifactFile("thumbnail", 0);
+            saveCaptureAsBmp(initialThumbnailFile.c_str(), previousThumbnail, thumbnailWidth,
                              thumbnailHeight);
         }
         constexpr LONG sourceProbeExtent = 128;
-        const LONG sourceProbeLeft =
-            (kSelectionLeft + kSelectionRight - sourceProbeExtent) / 2;
+        const LONG sourceProbeLeft = (kSelectionLeft + kSelectionRight - sourceProbeExtent) / 2;
         const LONG sourceProbeTop = (kSelectionTop + kSelectionBottom - sourceProbeExtent) / 2;
-        const RECT sourceProbe{sourceProbeLeft, sourceProbeTop,
-                               sourceProbeLeft + sourceProbeExtent,
+        const RECT sourceProbe{sourceProbeLeft, sourceProbeTop, sourceProbeLeft + sourceProbeExtent,
                                sourceProbeTop + sourceProbeExtent};
-        const std::vector<COLORREF> sourceBeforeScroll = captureScreenRegion(sourceProbe);
-        saveCaptureAsBmp(kSourceBeforeScrollFile, sourceBeforeScroll, sourceProbeExtent,
+        std::vector<COLORREF> previousSource = captureScreenRegion(sourceProbe);
+        const std::string initialSourceFile = scrollingArtifactFile("source", 0);
+        saveCaptureAsBmp(initialSourceFile.c_str(), previousSource, sourceProbeExtent,
                          sourceProbeExtent);
 
-        scrollingSource.scrollDown();
-        std::this_thread::sleep_for(2s);
-        const std::vector<COLORREF> sourceAfterScroll = captureScreenRegion(sourceProbe);
-        saveCaptureAsBmp(kSourceAfterScrollFile, sourceAfterScroll, sourceProbeExtent,
-                         sourceProbeExtent);
-        const std::size_t changedSourcePixels =
-            differentPixelCount(sourceBeforeScroll, sourceAfterScroll);
+        const int scrollCount = configuration.captureExcluded ? 1 : kScrollCount;
+        std::vector<int> staleThumbnailScrolls;
+        for (int scrollIndex = 1; scrollIndex <= scrollCount; ++scrollIndex) {
+            const RECT previousThumbnailBounds = thumbnailBounds;
+            const LONG previousThumbnailHeight =
+                previousThumbnailBounds.bottom - previousThumbnailBounds.top;
 
-        RECT thumbnailBoundsAfterScroll{};
-        std::size_t changedWithoutOverlayInput = 0;
-        bool geometryAdvanced = false;
-        bool pixelsPresented = configuration.captureExcluded;
-        constexpr auto presentationPollInterval = 100ms;
-        constexpr auto presentationPollTimeout = 5s;
-        const auto presentationDeadline =
-            std::chrono::steady_clock::now() + presentationPollTimeout;
-        do {
-            RECT candidateBounds{};
-            if (SUCCEEDED(thumbnail.get()->get_CurrentBoundingRectangle(&candidateBounds)) &&
-                candidateBounds.right > candidateBounds.left &&
-                candidateBounds.bottom > candidateBounds.top) {
-                geometryAdvanced =
-                    candidateBounds.bottom - candidateBounds.top > thumbnailHeight;
-                thumbnailBoundsAfterScroll = candidateBounds;
-            }
+            scrollingSource.scrollDown();
+            std::this_thread::sleep_for(2s);
+
+            RECT updatedThumbnailBounds = previousThumbnailBounds;
+            std::vector<COLORREF> updatedSource;
+            std::vector<COLORREF> updatedThumbnailComparison;
+            LONG updatedThumbnailWidth =
+                previousThumbnailBounds.right - previousThumbnailBounds.left;
+            LONG updatedThumbnailHeight = previousThumbnailHeight;
+            std::size_t changedSourcePixels = 0;
+            std::size_t changedThumbnailPixels = 0;
+            std::size_t comparedThumbnailPixels = 0;
+            bool sourceAdvanced = false;
+            bool pixelsPresented = configuration.captureExcluded;
+            constexpr auto presentationPollInterval = 100ms;
+            constexpr auto presentationPollTimeout = 5s;
+            const auto presentationDeadline =
+                std::chrono::steady_clock::now() + presentationPollTimeout;
+            do {
+                updatedSource = captureScreenRegion(sourceProbe);
+                changedSourcePixels = differentPixelCount(previousSource, updatedSource);
+                sourceAdvanced = changedSourcePixels >= previousSource.size() / 20;
+
+                RECT candidateBounds{};
+                if (SUCCEEDED(thumbnail.get()->get_CurrentBoundingRectangle(&candidateBounds)) &&
+                    candidateBounds.right > candidateBounds.left &&
+                    candidateBounds.bottom > candidateBounds.top) {
+                    updatedThumbnailBounds = candidateBounds;
+                }
+                if (!configuration.captureExcluded) {
+                    updatedThumbnailWidth =
+                        updatedThumbnailBounds.right - updatedThumbnailBounds.left;
+                    updatedThumbnailHeight =
+                        updatedThumbnailBounds.bottom - updatedThumbnailBounds.top;
+                    updatedThumbnailComparison = captureScreenRegion(updatedThumbnailBounds);
+                    changedThumbnailPixels = differentPixelCount(
+                        previousThumbnail, previousThumbnailWidth, previousThumbnailHeight,
+                        updatedThumbnailComparison, updatedThumbnailWidth, updatedThumbnailHeight);
+                    comparedThumbnailPixels =
+                        std::max(previousThumbnail.size(), updatedThumbnailComparison.size());
+                    pixelsPresented = changedThumbnailPixels >= comparedThumbnailPixels / 100;
+                }
+                if (sourceAdvanced) {
+                    break;
+                }
+                std::this_thread::sleep_for(presentationPollInterval);
+            } while (std::chrono::steady_clock::now() < presentationDeadline);
+
+            require(sourceAdvanced,
+                    "the colored-text source did not repaint after a scripted scroll");
             if (!configuration.captureExcluded) {
-                const std::vector<COLORREF> afterSourceScroll =
-                    captureScreenRegion(thumbnailBounds);
-                changedWithoutOverlayInput =
-                    differentPixelCount(beforeSourceScroll, afterSourceScroll);
-                pixelsPresented =
-                    changedWithoutOverlayInput >= beforeSourceScroll.size() / 20;
+                if (!pixelsPresented) {
+                    staleThumbnailScrolls.push_back(scrollIndex);
+                }
             }
-            if (geometryAdvanced && pixelsPresented) {
-                break;
+
+            const std::string sourceFile = scrollingArtifactFile("source", scrollIndex);
+            saveCaptureAsBmp(sourceFile.c_str(), updatedSource, sourceProbeExtent,
+                             sourceProbeExtent);
+            if (!configuration.captureExcluded) {
+                const std::string thumbnailFile = scrollingArtifactFile("thumbnail", scrollIndex);
+                saveCaptureAsBmp(thumbnailFile.c_str(), updatedThumbnailComparison,
+                                 updatedThumbnailWidth, updatedThumbnailHeight);
+                previousThumbnail = updatedThumbnailComparison;
+                previousThumbnailWidth = updatedThumbnailWidth;
+                std::cout << "scroll " << scrollIndex << ": source pixels changed "
+                          << changedSourcePixels << '/' << previousSource.size()
+                          << ", thumbnail pixels changed " << changedThumbnailPixels << '/'
+                          << comparedThumbnailPixels << ", thumbnail height "
+                          << previousThumbnailHeight << " -> " << updatedThumbnailHeight << '\n';
             }
-            std::this_thread::sleep_for(presentationPollInterval);
-        } while (std::chrono::steady_clock::now() < presentationDeadline);
 
-        if (!configuration.captureExcluded) {
-            const std::vector<COLORREF> afterSourceScroll = captureScreenRegion(thumbnailBounds);
-            saveCaptureAsBmp(kThumbnailAfterSourceScrollFile, afterSourceScroll, thumbnailWidth,
-                             thumbnailHeight);
+            previousSource = std::move(updatedSource);
+            thumbnailBounds = updatedThumbnailBounds;
+            std::this_thread::sleep_for(2s);
         }
-        if (!configuration.captureExcluded) {
-            std::cout << "thumbnail pixels changed while cursor stayed in hole: "
-                      << changedWithoutOverlayInput << '/' << beforeSourceScroll.size() << '\n';
-        }
-        std::cout << "source pixels changed inside hole: " << changedSourcePixels << '/'
-                  << sourceBeforeScroll.size() << '\n';
-        std::cout << "thumbnail height before/after source scroll: " << thumbnailHeight << '/'
-                  << (thumbnailBoundsAfterScroll.bottom - thumbnailBoundsAfterScroll.top) << '\n';
 
-        require(changedSourcePixels >= sourceBeforeScroll.size() / 2,
-                "the deterministic source did not repaint inside the hollow region");
-        if (!configuration.captureExcluded) {
-            require(pixelsPresented,
-                    "the scrolling thumbnail did not present the stitched frame without mouse "
-                    "input");
+        if (!staleThumbnailScrolls.empty()) {
+            std::string failedScrolls;
+            for (const int scrollIndex : staleThumbnailScrolls) {
+                if (!failedScrolls.empty()) {
+                    failedScrolls += ", ";
+                }
+                failedScrolls += std::to_string(scrollIndex);
+            }
+            throw std::runtime_error("the scrolling thumbnail did not present newly stitched "
+                                     "content without mouse input after scroll(s): " +
+                                     failedScrolls);
         }
-        require(geometryAdvanced,
-                "the deterministic source scroll was not stitched into the thumbnail");
+
         if (configuration.captureExcluded) {
             return 0;
         }
-        thumbnailBounds = thumbnailBoundsAfterScroll;
 
         const bool thumbnailVisibleBeforeClicks =
             thumbnailTrimControlVisible(kThumbnailBeforeClicksFile, thumbnailBounds);
@@ -948,12 +1157,11 @@ int main(int argc, char* argv[]) {
         const std::optional<LONG> thumbnailRowBeforeDrag =
             thumbnailTrimControlRow(kThumbnailBeforeDragFile, thumbnailBounds);
         if (thumbnailRowBeforeDrag.has_value()) {
-            const LONG dragStartY =
-                std::clamp(*thumbnailRowBeforeDrag, thumbnailBounds.top + 2,
-                           thumbnailBounds.bottom - 3);
+            const LONG dragStartY = std::clamp(*thumbnailRowBeforeDrag, thumbnailBounds.top + 2,
+                                               thumbnailBounds.bottom - 3);
             const LONG targetY = std::min(thumbnailBounds.bottom - 1, thumbnailBounds.top + 100);
-            dragThumbnailHeadHandle((thumbnailBounds.left + thumbnailBounds.right) / 2,
-                                    dragStartY, targetY);
+            dragThumbnailHeadHandle((thumbnailBounds.left + thumbnailBounds.right) / 2, dragStartY,
+                                    targetY);
         }
         std::this_thread::sleep_for(1s);
         const std::optional<LONG> thumbnailRowAfterDrag =
