@@ -205,7 +205,7 @@ void ScreenshotToolbarWindow::connectToolCommands(ScreenshotToolPalette& toolPal
     connect(&toolPalette, &ScreenshotToolPalette::textEditRequested, this,
             [this]() { m_commands.toggleTextEditing(); });
     connect(&toolPalette, &ScreenshotToolPalette::textTranslateRequested, this,
-            [this]() { m_commands.beginTextTranslation(); });
+            [this]() { m_commands.toggleTextTranslation(); });
     connect(&toolPalette, &ScreenshotToolPalette::textResetRequested, this,
             [this]() { m_commands.resetTextEditing(); });
     connect(&toolPalette, &ScreenshotToolPalette::textSettingsRequested, this,

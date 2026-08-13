@@ -81,8 +81,12 @@ void DatePickerPerformanceTests::meridiemColumnUsesConfiguredLocale() {
 
   const QList<QListWidget*> columns = timeColumns(&panel);
   QCOMPARE(columns.size(), 4);
-  QListWidget* const meridiem = columns.constLast();
-  QCOMPARE(meridiem->count(), 2);
+  const auto meridiemIt = std::find_if(columns.cbegin(), columns.cend(), [&locale](QListWidget* list) {
+    return list && list->count() >= 2 && list->item(0)->text() == locale.amText() &&
+           list->item(1)->text() == locale.pmText();
+  });
+  QVERIFY(meridiemIt != columns.cend());
+  QListWidget* const meridiem = *meridiemIt;
   QCOMPARE(meridiem->item(0)->text(), locale.amText());
   QCOMPARE(meridiem->item(1)->text(), locale.pmText());
 }

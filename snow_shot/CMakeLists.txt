@@ -2052,7 +2052,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
     )
     target_link_libraries(snow-shot-qr-recognition-service-tests PRIVATE
-        opencv_wechat_qrcode
+        opencv_objdetect
         Qt6::Core
         Qt6::Gui
     )
@@ -2062,7 +2062,7 @@ if(SNOW_SHOT_BUILD_TESTS)
     )
     set_tests_properties(snow-shot-qr-recognition-service-tests PROPERTIES
         ENVIRONMENT_MODIFICATION
-            "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>;PATH=path_list_prepend:$<TARGET_FILE_DIR:opencv_wechat_qrcode>"
+            "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>;PATH=path_list_prepend:$<TARGET_FILE_DIR:opencv_objdetect>"
     )
 
     add_executable(snow-shot-api-client-tests
@@ -2276,7 +2276,7 @@ target_link_libraries(
         snow_ui_selector_c
         snow_stitch_images_c
         snow_ocr_c
-        opencv_wechat_qrcode
+        opencv_objdetect
         Qt6::Widgets
         Qt6::Svg
         Qt6::Network

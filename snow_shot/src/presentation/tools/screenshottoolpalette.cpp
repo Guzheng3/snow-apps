@@ -1403,7 +1403,7 @@ void ScreenshotToolPalette::setTextTranslationState(bool available, bool transla
     }
     m_textCanReset = canReset;
     if (m_textTranslateButton != nullptr) {
-        m_textTranslateButton->setEnabled(available && !translating);
+        m_textTranslateButton->setEnabled(available);
         applyMainToolbarToolActiveStyle(m_textTranslateButton, translating);
     }
     if (m_textEditButton != nullptr) {

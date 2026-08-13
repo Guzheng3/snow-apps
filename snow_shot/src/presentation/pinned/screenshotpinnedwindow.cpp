@@ -2296,7 +2296,11 @@ void ScreenshotPinnedWindow::handleTextEditingRequested() {
 
 void ScreenshotPinnedWindow::handleTextTranslationRequested() {
     if (m_recognitionSession != nullptr) {
-        m_recognitionSession->beginTextTranslation();
+        if (m_recognitionSession->translating()) {
+            m_recognitionSession->endTextEditing();
+        } else {
+            m_recognitionSession->beginTextTranslation();
+        }
     }
 }
 

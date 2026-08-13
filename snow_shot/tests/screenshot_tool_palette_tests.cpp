@@ -1071,11 +1071,11 @@ void ocrToolReplacesSelectionActionToolbarContents() {
             "OCR editing should expose the text document's undo state on the toolbar");
     palette.setTextEditingState(true, false);
     palette.setTextTranslationState(true, true, true, false, false, false);
-    require(!translate->isEnabled() &&
+    require(translate->isEnabled() &&
                 translate->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Solid &&
                 !reset->isEnabled() && !textSelects.at(0)->isEnabled() &&
                 !textSelects.at(1)->isEnabled() && settings->isEnabled(),
-            "streaming translation should be active, immutable, and keep Settings available");
+            "streaming translation should remain dismissible while edits stay locked");
     palette.setTextTranslationState(true, true, false, true, false, true);
     require(reset->isEnabled() && undo->isEnabled() && !redo->isEnabled(),
             "completed translation should expose its own Reset and history state");

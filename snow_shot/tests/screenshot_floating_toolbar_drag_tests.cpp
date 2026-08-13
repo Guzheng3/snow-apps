@@ -4,6 +4,7 @@
 #include "snow_shot/presentation/screenshottoolpalettehost.h"
 #include "widgets/dpi_stable_window_controller.h"
 
+#include <QAbstractButton>
 #include <QApplication>
 #include <QCoreApplication>
 #include <QCursor>
@@ -138,6 +139,9 @@ class NoOpToolbarCommands final : public ScreenshotToolbarCommandSink {
     void setTextTool() override {}
     void setSerialNumberTool() override {}
     void setOcrTool() override {}
+    void toggleTextTranslation() override {
+        ++textTranslationToggleCount;
+    }
     void startScrollingScreenshot() override {}
     void pinSelectionToScreen() override {}
     void cancelCapture() override {}
@@ -156,6 +160,7 @@ class NoOpToolbarCommands final : public ScreenshotToolbarCommandSink {
     void hideColorPickersForScreenshotUi() override {}
 
     int repositionCount = 0;
+    int textTranslationToggleCount = 0;
 };
 
 #if defined(Q_OS_WIN) || defined(_WIN32)
@@ -763,11 +768,38 @@ void screenshotToolbarSizeMultiplierSurvivesCaptureReset() {
     require(qFuzzyCompare(window.paletteHost()->physicalScale() + 1.0, 2.0),
             "normal screenshot toolbar should restore the unmodified DPI scale");
 }
+
+void translateButtonRoutesEveryClickThroughTheToggleCommand() {
+    NoOpToolbarCommands commands;
+    ScreenshotToolbarWindow window(commands);
+    window.setActiveTool(ScreenshotToolPalette::Tool::Ocr);
+    window.setTextEditingState(true, false);
+    window.setTextTranslationState(true, false, false);
+
+    auto* translate = window.findChild<QAbstractButton*>(
+        QStringLiteral("screenshotOcrTextTranslateButton"));
+    require(translate != nullptr && translate->isEnabled(),
+            "Translate should be available for a completed OCR result");
+    translate->click();
+    require(commands.textTranslationToggleCount == 1,
+            "the first Translate click should enter through the toggle command");
+
+    window.setTextTranslationState(true, true, true);
+    require(translate->isEnabled(),
+            "active Translate should stay clickable while translation is streaming");
+    translate->click();
+    require(commands.textTranslationToggleCount == 2,
+            "clicking active Translate should exit through the same toggle command");
+}
 } // namespace
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
     try {
+        if (app.arguments().contains(QStringLiteral("--ocr-translation-toggle-only"))) {
+            translateButtonRoutesEveryClickThroughTheToggleCommand();
+            return 0;
+        }
         if (app.arguments().contains(QStringLiteral("--toolbar-size-only"))) {
             screenshotToolbarSizeMultiplierSurvivesCaptureReset();
             return 0;
@@ -782,6 +814,7 @@ int main(int argc, char* argv[]) {
         toolChangesRepositionOnlyBeforeManualDrag();
         unchangedShadowMarginsAreNoOps();
         screenshotToolbarSizeMultiplierSurvivesCaptureReset();
+        translateButtonRoutesEveryClickThroughTheToggleCommand();
         return 0;
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

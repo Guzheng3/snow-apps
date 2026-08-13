@@ -3,6 +3,7 @@
 
 #include <QHash>
 #include <QImage>
+#include <QMetaObject>
 #include <QObject>
 #include <QPointer>
 #include <QString>
@@ -51,6 +52,7 @@ class ScreenshotQrRecognitionService final : public ScreenshotQrRecognitionPort 
     QThread* m_workerThread = nullptr;
     Worker* m_worker = nullptr;
     QHash<RequestToken, CancellationFlag> m_requests;
+    QHash<RequestToken, QMetaObject::Connection> m_receiverDestroyedConnections;
     RequestToken m_nextToken = 0;
 };
 

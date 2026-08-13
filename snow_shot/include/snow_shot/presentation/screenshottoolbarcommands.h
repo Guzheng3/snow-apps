@@ -45,6 +45,7 @@ class ScreenshotToolbarCommandSink {
     virtual void beginTextEditing() {}
     virtual void toggleTextEditing() { beginTextEditing(); }
     virtual void beginTextTranslation() {}
+    virtual void toggleTextTranslation() { beginTextTranslation(); }
     virtual void resetTextEditing() {}
     virtual void openTextTranslationSettings() {}
     virtual void applyTextFormatting(const QString&) {}

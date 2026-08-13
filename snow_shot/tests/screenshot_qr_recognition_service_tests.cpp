@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <utility>
 
 namespace {
@@ -62,8 +63,24 @@ QImage qrFixture() {
     return image;
 }
 
-void defaultWechatDetectorDecodesTheSelectedImage() {
-    ScreenshotQrRecognitionService service;
+QImage largeQrFixture() {
+    constexpr QSize kLargeScreenshotSize(7680, 4320);
+    QImage image(kLargeScreenshotSize, QImage::Format_Grayscale8);
+    image.fill(255);
+
+    const QImage enlargedQr =
+        qrFixture().scaled(1480, 1480, Qt::IgnoreAspectRatio, Qt::FastTransformation);
+    const QPoint destination((image.width() - enlargedQr.width()) / 2,
+                             (image.height() - enlargedQr.height()) / 2);
+    for (int row = 0; row < enlargedQr.height(); ++row) {
+        std::memcpy(image.scanLine(destination.y() + row) + destination.x(),
+                    enlargedQr.constScanLine(row), static_cast<std::size_t>(enlargedQr.width()));
+    }
+    return image;
+}
+
+ScreenshotQrRecognitionResult recognize(ScreenshotQrRecognitionService& service,
+                                        const QImage& image, const char* timeoutMessage) {
     QEventLoop loop;
     ScreenshotQrRecognitionResult output;
     bool completed = false;
@@ -76,7 +93,7 @@ void defaultWechatDetectorDecodesTheSelectedImage() {
     });
 
     const ScreenshotQrRecognitionPort::RequestToken token =
-        service.recognize(qrFixture(), &loop, [&](ScreenshotQrRecognitionResult result) {
+        service.recognize(image, &loop, [&](ScreenshotQrRecognitionResult result) {
             output = std::move(result);
             completed = true;
             loop.quit();
@@ -85,15 +102,48 @@ void defaultWechatDetectorDecodesTheSelectedImage() {
     timeout.start(10000);
     loop.exec();
 
-    require(!timedOut && completed, "QR recognition should complete within the test timeout");
-    require(output.error.isEmpty(), "the default WeChat QR detector should not report an error");
+    require(!timedOut && completed, timeoutMessage);
+    return output;
+}
+
+void defaultDetectorDecodesTheSelectedImage() {
+    ScreenshotQrRecognitionService service;
+    const ScreenshotQrRecognitionResult output =
+        recognize(service, qrFixture(), "QR recognition should complete within the test timeout");
+    require(output.error.isEmpty(), "the default QR detector should not report an error");
     require(output.contents == QStringList{QString::fromLatin1(kPayload)},
-            "the default WeChat QR detector should decode the embedded payload");
+            "the default QR detector should decode the embedded payload");
+}
+
+void oversizedScreenshotIsBoundedAndStillDecoded() {
+    ScreenshotQrRecognitionService service;
+    const ScreenshotQrRecognitionResult output = recognize(
+        service, largeQrFixture(), "large QR recognition should complete within the test timeout");
+    require(output.error.isEmpty(), "large QR recognition should not report an error");
+    require(output.contents == QStringList{QString::fromLatin1(kPayload)},
+            "the QR detector should decode a QR code from an oversized screenshot");
+}
+
+void destroyingReceiverCancelsQueuedCompletion() {
+    ScreenshotQrRecognitionService service;
+    bool completed = false;
+    auto receiver = std::make_unique<QObject>();
+    const ScreenshotQrRecognitionPort::RequestToken token = service.recognize(
+        qrFixture(), receiver.get(), [&](ScreenshotQrRecognitionResult) { completed = true; });
+    require(token != 0, "a cancellable QR request should be accepted");
+
+    receiver.reset();
+    QEventLoop loop;
+    QTimer::singleShot(250, &loop, &QEventLoop::quit);
+    loop.exec();
+    require(!completed, "destroying the receiver must cancel QR result delivery");
 }
 } // namespace
 
 int main(int argc, char** argv) {
     QCoreApplication application(argc, argv);
-    defaultWechatDetectorDecodesTheSelectedImage();
+    defaultDetectorDecodesTheSelectedImage();
+    oversizedScreenshotIsBoundedAndStillDecoded();
+    destroyingReceiverCancelsQueuedCompletion();
     return 0;
 }
