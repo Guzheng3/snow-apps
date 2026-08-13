@@ -72,6 +72,7 @@ void ScreenshotOverlayCoordinator::resetForNewCapture(ScreenshotDisplaySession& 
     flushDeferredOverlayMaintenance(displaySession);
     m_overlayPool.resetForNewCapture(displaySession);
     m_uiHost.resetColorPickerForNewCapture();
+    m_uiHost.hideShortcutHints();
 
     resetToolbarForNewCapture();
 }
@@ -154,6 +155,7 @@ void ScreenshotOverlayCoordinator::hideOverlayWindowsImmediately(
     // asynchronously after this immediate hide.
     m_uiHost.resetToolbarForNewCapture();
     m_uiHost.hideToolbar();
+    m_uiHost.hideShortcutHints();
     SNOW_SHOT_PIN_PERF_MILESTONE("overlay.toolbar_hidden");
     displaySession.forEachOverlay(
         [](qsizetype, ScreenshotOverlayWindow* overlay) {
@@ -181,6 +183,7 @@ void ScreenshotOverlayCoordinator::hideOverlayWindows(
 
     m_uiHost.resetToolbarForNewCapture();
     m_uiHost.hideToolbar();
+    m_uiHost.hideShortcutHints();
     displaySession.forEachOverlay([this](qsizetype, ScreenshotOverlayWindow* overlay) {
         if (overlay == nullptr) {
             return;
@@ -256,6 +259,26 @@ void ScreenshotOverlayCoordinator::setScrollingCaptureMode(
 void ScreenshotOverlayCoordinator::updateOverlayCursors(
     const ScreenshotDisplaySession& displaySession, bool selecting, bool dragging) const {
     m_canvasPresenter.updateOverlayCursors(displaySession, selecting, dragging);
+}
+
+void ScreenshotOverlayCoordinator::setSelectionMaskColor(
+    const ScreenshotDisplaySession& displaySession, const QColor& color) const {
+    displaySession.forEachOverlay([&color](qsizetype, ScreenshotOverlayWindow* overlay) {
+        overlay->setScreenshotMaskColor(color);
+    });
+}
+
+void ScreenshotOverlayCoordinator::updateGuideLines(
+    const ScreenshotDisplaySession& displaySession, ScreenshotOverlayWindow* owner,
+    const QPointF& localPosition, bool selecting, const QColor& cursorColor,
+    const QColor& monitorCenterColor) const {
+    m_canvasPresenter.updateGuideLines(displaySession, owner, localPosition, selecting,
+                                       cursorColor, monitorCenterColor);
+}
+
+void ScreenshotOverlayCoordinator::clearGuideLines(
+    const ScreenshotDisplaySession& displaySession) const {
+    m_canvasPresenter.clearGuideLines(displaySession);
 }
 
 void ScreenshotOverlayCoordinator::setOverlayCursor(ScreenshotOverlayWindow* overlay,
@@ -406,6 +429,20 @@ void ScreenshotOverlayCoordinator::updateColorPicker(ScreenshotOverlayWindow* ov
 
 void ScreenshotOverlayCoordinator::hideColorPicker() {
     m_uiHost.hideColorPicker();
+}
+
+void ScreenshotOverlayCoordinator::setColorPickerCenterGuideLineColor(const QColor& color) {
+    m_uiHost.setColorPickerCenterGuideLineColor(color);
+}
+
+void ScreenshotOverlayCoordinator::updateShortcutHints(ScreenshotOverlayWindow* overlay,
+                                                       ScreenshotShortcutHintMode mode,
+                                                       qreal opacity) {
+    m_uiHost.updateShortcutHints(overlay, mode, opacity);
+}
+
+void ScreenshotOverlayCoordinator::hideShortcutHints() {
+    m_uiHost.hideShortcutHints();
 }
 
 bool ScreenshotOverlayCoordinator::screenshotUiContainsGlobalCursor() const {

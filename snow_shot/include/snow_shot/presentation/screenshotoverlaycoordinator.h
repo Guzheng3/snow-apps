@@ -57,6 +57,13 @@ class ScreenshotOverlayCoordinator final : public ScreenshotOverlayExclusionPort
                                  const QRectF& selection, bool enabled);
     void updateOverlayCursors(const ScreenshotDisplaySession& displaySession, bool selecting,
                               bool dragging) const;
+    void setSelectionMaskColor(const ScreenshotDisplaySession& displaySession,
+                               const QColor& color) const;
+    void updateGuideLines(const ScreenshotDisplaySession& displaySession,
+                          ScreenshotOverlayWindow* owner, const QPointF& localPosition,
+                          bool selecting, const QColor& cursorColor,
+                          const QColor& monitorCenterColor) const;
+    void clearGuideLines(const ScreenshotDisplaySession& displaySession) const;
     void setOverlayCursor(ScreenshotOverlayWindow* overlay,
                           ScreenshotSelectionDragMode dragMode) const;
     void setCanvasInteractionEnabled(const ScreenshotDisplaySession& displaySession,
@@ -109,6 +116,10 @@ class ScreenshotOverlayCoordinator final : public ScreenshotOverlayExclusionPort
                            const QRect& physicalRect, const QPoint& physicalPoint,
                            const QPointF& localPosition, qreal opacity);
     void hideColorPicker();
+    void setColorPickerCenterGuideLineColor(const QColor& color);
+    void updateShortcutHints(ScreenshotOverlayWindow* overlay,
+                             ScreenshotShortcutHintMode mode, qreal opacity);
+    void hideShortcutHints();
     [[nodiscard]] bool screenshotUiContainsGlobalCursor() const;
     [[nodiscard]] bool stepToolbarStrokeWidth(int direction);
     [[nodiscard]] bool stepToolbarSelectionOpacity(int direction);

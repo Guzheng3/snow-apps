@@ -10,7 +10,7 @@ use std::thread::{self, JoinHandle};
 use snow_capture::frame::Frame;
 use snow_capture::{
     CaptureOptions, CaptureRegion, CaptureSession, CaptureSystem, CaptureTarget, CaptureWorkload,
-    MonitorId, MonitorLayout, WindowId, backend::CaptureBackendKind,
+    MonitorId, MonitorLayout, WgcUpdateMode, WindowId, backend::CaptureBackendKind,
 };
 use snow_screen_recorder::{
     EditingSession, ExportFormat, ExportRequest, RecordingAudioConfig, RecordingAudioTrackConfig,
@@ -51,7 +51,8 @@ pub struct SnowCaptureRecordingSessionImpl {
 #[repr(C)]
 pub struct SnowCaptureDesktopSessionConfig {
     capture_retry_count: usize,
-    reserved: [u8; 32],
+    wgc_update_mode: u8,
+    reserved: [u8; 31],
 }
 
 #[repr(C)]
@@ -85,14 +86,16 @@ pub struct SnowCaptureRegionSessionConfig {
     pub width: u32,
     pub height: u32,
     pub capture_retry_count: usize,
-    pub reserved: [u8; 32],
+    pub wgc_update_mode: u8,
+    pub reserved: [u8; 31],
 }
 
 #[repr(C)]
 pub struct SnowCaptureWindowSessionConfig {
     hwnd: isize,
     capture_retry_count: usize,
-    reserved: [u8; 32],
+    wgc_update_mode: u8,
+    reserved: [u8; 31],
 }
 
 #[repr(C)]
@@ -195,29 +198,48 @@ fn clear_last_error() {
     });
 }
 
-fn default_options(config: *const SnowCaptureDesktopSessionConfig) -> CaptureOptions {
-    let capture_retry_count = if config.is_null() {
-        1
+fn parse_wgc_update_mode(value: u8) -> Result<WgcUpdateMode, String> {
+    match value {
+        0 => Ok(WgcUpdateMode::Auto),
+        1 => Ok(WgcUpdateMode::CompleteOnly),
+        2 => Ok(WgcUpdateMode::OrderedIncremental),
+        _ => Err(format!("invalid WGC update mode: {value}")),
+    }
+}
+
+fn default_options(
+    config: *const SnowCaptureDesktopSessionConfig,
+) -> Result<CaptureOptions, String> {
+    let (capture_retry_count, wgc_update_mode) = if config.is_null() {
+        (1, WgcUpdateMode::Auto)
     } else {
-        let requested = unsafe { (*config).capture_retry_count };
-        if requested == 0 { 1 } else { requested }
+        let config = unsafe { &*config };
+        (
+            config.capture_retry_count.max(1),
+            parse_wgc_update_mode(config.wgc_update_mode)?,
+        )
     };
 
-    CaptureOptions {
+    Ok(CaptureOptions {
         capture_retry_count,
         workload: CaptureWorkload::Snapshot,
         gpu_hdr_conversion: true,
         hdr_tonemap_lut: true,
-    }
+        wgc_update_mode,
+    })
 }
 
-fn snapshot_options(capture_retry_count: usize) -> CaptureOptions {
-    CaptureOptions {
+fn snapshot_options(
+    capture_retry_count: usize,
+    wgc_update_mode: u8,
+) -> Result<CaptureOptions, String> {
+    Ok(CaptureOptions {
         capture_retry_count: capture_retry_count.max(1),
         workload: CaptureWorkload::Snapshot,
         gpu_hdr_conversion: true,
         hdr_tonemap_lut: true,
-    }
+        wgc_update_mode: parse_wgc_update_mode(wgc_update_mode)?,
+    })
 }
 
 fn build_monitor_entries(system: &CaptureSystem) -> Result<Vec<MonitorEntry>, String> {
@@ -438,7 +460,13 @@ fn backend_kind_ptr(session: &SnowCaptureDesktopSessionImpl) -> *const c_char {
 pub extern "C" fn snow_capture_desktop_session_create(
     config: *const SnowCaptureDesktopSessionConfig,
 ) -> *mut SnowCaptureDesktopSessionImpl {
-    let options = default_options(config);
+    let options = match default_options(config) {
+        Ok(options) => options,
+        Err(error) => {
+            set_last_error(error);
+            return ptr::null_mut();
+        }
+    };
     match CaptureSystem::builder().build() {
         Ok(system) => {
             let mut session = SnowCaptureDesktopSessionImpl {
@@ -649,6 +677,13 @@ pub unsafe extern "C" fn snow_capture_region_session_create(
             return ptr::null_mut();
         }
     };
+    let options = match snapshot_options(config.capture_retry_count, config.wgc_update_mode) {
+        Ok(options) => options,
+        Err(error) => {
+            set_last_error(error);
+            return ptr::null_mut();
+        }
+    };
     let system = match CaptureSystem::builder().build() {
         Ok(system) => system,
         Err(error) => {
@@ -656,10 +691,7 @@ pub unsafe extern "C" fn snow_capture_region_session_create(
             return ptr::null_mut();
         }
     };
-    let session = match system.open_session(
-        CaptureTarget::Region(region),
-        snapshot_options(config.capture_retry_count),
-    ) {
+    let session = match system.open_session(CaptureTarget::Region(region), options) {
         Ok(session) => session,
         Err(error) => {
             set_last_error(error);
@@ -757,6 +789,13 @@ pub unsafe extern "C" fn snow_capture_window_session_create(
         set_last_error("window handle is null");
         return ptr::null_mut();
     }
+    let options = match snapshot_options(config.capture_retry_count, config.wgc_update_mode) {
+        Ok(options) => options,
+        Err(error) => {
+            set_last_error(error);
+            return ptr::null_mut();
+        }
+    };
 
     // Window captures must use WGC directly. The desktop session's automatic
     // policy intentionally prefers DXGI for monitor snapshots, while WGC is
@@ -773,7 +812,7 @@ pub unsafe extern "C" fn snow_capture_window_session_create(
         }
     };
     let target = CaptureTarget::Window(WindowId::from_raw_handle(config.hwnd));
-    let session = match system.open_session(target, snapshot_options(config.capture_retry_count)) {
+    let session = match system.open_session(target, options) {
         Ok(session) => session,
         Err(error) => {
             set_last_error(error);
@@ -1393,7 +1432,8 @@ mod tests {
             width: 0,
             height: 100,
             capture_retry_count: 1,
-            reserved: [0; 32],
+            wgc_update_mode: 0,
+            reserved: [0; 31],
         };
         assert!(unsafe { snow_capture_region_session_create(&config) }.is_null());
     }
@@ -1426,7 +1466,8 @@ mod tests {
         let config = SnowCaptureWindowSessionConfig {
             hwnd: 0,
             capture_retry_count: 1,
-            reserved: [0; 32],
+            wgc_update_mode: 0,
+            reserved: [0; 31],
         };
         assert!(unsafe { snow_capture_window_session_create(&config) }.is_null());
     }
@@ -1517,5 +1558,34 @@ mod tests {
         assert_eq!(state.prepared, 1);
         assert_eq!(state.retained_resource_bytes, 0);
         assert!(!state.backend_kind.is_null());
+    }
+
+    #[test]
+    fn wgc_update_mode_parser_is_strict() {
+        assert_eq!(parse_wgc_update_mode(0), Ok(WgcUpdateMode::Auto));
+        assert_eq!(parse_wgc_update_mode(1), Ok(WgcUpdateMode::CompleteOnly));
+        assert_eq!(
+            parse_wgc_update_mode(2),
+            Ok(WgcUpdateMode::OrderedIncremental)
+        );
+        assert!(parse_wgc_update_mode(3).is_err());
+        assert!(parse_wgc_update_mode(u8::MAX).is_err());
+    }
+
+    #[test]
+    fn wgc_mode_reuses_reserved_bytes_without_growing_configs() {
+        let pointer_sized_prefix = std::mem::size_of::<usize>();
+        assert_eq!(
+            std::mem::size_of::<SnowCaptureDesktopSessionConfig>(),
+            pointer_sized_prefix + 32
+        );
+        assert_eq!(
+            std::mem::size_of::<SnowCaptureWindowSessionConfig>(),
+            pointer_sized_prefix * 2 + 32
+        );
+        assert_eq!(
+            std::mem::size_of::<SnowCaptureRegionSessionConfig>(),
+            16 + pointer_sized_prefix + 32
+        );
     }
 }

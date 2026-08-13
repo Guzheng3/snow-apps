@@ -16,6 +16,8 @@ class ScreenshotSmartSelectionTransition final {
 
     explicit ScreenshotSmartSelectionTransition(UpdateCallback update);
 
+    void setEnabled(bool enabled);
+    [[nodiscard]] bool enabled() const;
     [[nodiscard]] bool update(const QRectF& selection, bool smartFraming);
     void reset();
 
@@ -31,6 +33,7 @@ class ScreenshotSmartSelectionTransition final {
     QRectF m_displayedSelection;
     QRectF m_targetSelection;
     bool m_hasPresentedSmartSelection = false;
+    bool m_enabled = true;
 };
 
 #endif // SNOW_SHOT_PRESENTATION_SCREENSHOTSMARTSELECTIONTRANSITION_H

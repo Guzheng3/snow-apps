@@ -2,6 +2,7 @@
 #define SNOW_SHOT_PRESENTATION_SCREENSHOTCOLORPICKERCONTROLLER_H
 
 #include "snow_shot/presentation/screenshotselectiongeometry.h"
+#include "snow_shot/presentation/screenshotuipreferences.h"
 
 #include <QPoint>
 #include <QPointer>
@@ -36,6 +37,8 @@ class ScreenshotColorPickerController final {
     void reset();
     void hide() const;
     void setSuppressed(bool suppressed);
+    void setDisplayMode(ScreenshotColorPickerDisplayMode mode);
+    [[nodiscard]] ScreenshotColorPickerDisplayMode displayMode() const;
     void updateForOverlay(ScreenshotOverlayWindow* overlay, const QPointF& localPosition,
                           const ScreenshotColorPickerContext& context);
     void updateAtPhysicalPoint(const QPoint& physicalPoint,
@@ -68,6 +71,8 @@ class ScreenshotColorPickerController final {
     QPoint m_physicalPoint;
     bool m_hasPhysicalPoint = false;
     bool m_suppressed = false;
+    ScreenshotColorPickerDisplayMode m_displayMode =
+        ScreenshotColorPickerDisplayMode::HideOutsideSelection;
 };
 
 #endif // SNOW_SHOT_PRESENTATION_SCREENSHOTCOLORPICKERCONTROLLER_H

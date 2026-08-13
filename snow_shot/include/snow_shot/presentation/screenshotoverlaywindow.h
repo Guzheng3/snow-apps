@@ -35,6 +35,10 @@ class ScreenshotOverlayWindow final : public QWidget {
     void setScreenshotImage(QImage image, const QRectF& canvasRect);
     void clearScreenshotImage();
     void setScreenshotMaskVisible(bool visible);
+    void setScreenshotMaskColor(const QColor& color);
+    void setScreenshotGuideLines(const QPointF& cursorPosition, const QColor& cursorColor,
+                                 const QColor& monitorCenterColor);
+    void clearScreenshotGuideLines();
     void setScreenshotSelection(const QRectF& selection, bool handlesVisible, int cornerRadius,
                                 int shadowWidth = 0,
                                 const QColor& shadowColor = QColor(0x33, 0x33, 0x33),
@@ -63,6 +67,7 @@ class ScreenshotOverlayWindow final : public QWidget {
     [[nodiscard]] ScreenshotScrollingTrimRange scrollingThumbnailTrim() const;
 #if defined(SNOW_SHOT_BENCH_INTERNALS)
     [[nodiscard]] quint64 windowMaskApplicationCountForTesting() const;
+    [[nodiscard]] ScreenshotCanvasRenderer* screenshotRendererForTesting() const;
 #endif
     void clearPresentationFrame();
     void restorePresentationCanvas();

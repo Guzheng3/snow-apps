@@ -92,8 +92,8 @@ void builtInCatalogIsCompleteAndValid() {
             }
         }
     }
-    require(sectionCount == 9 && itemCount == 23,
-            "catalog must contain the expected nine sections and twenty-three items");
+    require(sectionCount == 13 && itemCount == 36,
+            "catalog must contain the expected thirteen sections and thirty-six items");
     const auto* functionPage = catalog.page(QStringLiteral("function-settings"));
     const auto* smartSelection = catalog.item(
         {QStringLiteral("function-settings"), QStringLiteral("screenshot-settings"),
@@ -116,6 +116,29 @@ void builtInCatalogIsCompleteAndValid() {
                 settingsGroup->pages.size() == 4 &&
                 settingsGroup->pages.constLast().pageId == QStringLiteral("system-settings"),
             "Settings navigation group must expose System Settings");
+
+    const auto* interfacePage = catalog.page(QStringLiteral("interface-settings"));
+    require(interfacePage != nullptr && interfacePage->sections.size() == 5 &&
+                interfacePage->sections.at(1).id == QStringLiteral("interface-screenshot") &&
+                interfacePage->sections.at(2).id == QStringLiteral("toolbar") &&
+                interfacePage->sections.at(3).id == QStringLiteral("pin-to-screen") &&
+                interfacePage->sections.at(4).id == QStringLiteral("tray"),
+            "Interface Settings must expose Screenshot, Toolbar, Pin to Screen, and Tray");
+    const auto* toolbarSize = catalog.item(
+        {QStringLiteral("interface-settings"), QStringLiteral("interface-screenshot"),
+         QStringLiteral("interface.screenshot.toolbar-size")});
+    const auto* toolbarEditor = catalog.item(
+        {QStringLiteral("interface-settings"), QStringLiteral("toolbar"),
+         QStringLiteral("interface.toolbar.drawing-toolbar-editor")});
+    const auto* trayIcon = catalog.item(
+        {QStringLiteral("interface-settings"), QStringLiteral("tray"),
+         QStringLiteral("interface.tray.icon")});
+    require(toolbarSize != nullptr && toolbarEditor != nullptr && trayIcon != nullptr &&
+                toolbarSize->configurationKey == QStringLiteral("screenshot_ui/toolbar_size") &&
+                toolbarEditor->configurationKey == QStringLiteral("screenshot_toolbar/layout") &&
+                trayIcon->configurationKey == QStringLiteral("tray/icon") &&
+                std::get<settings::SettingsRadioDefinition>(trayIcon->payload).options.size() == 6,
+            "new Interface Settings controls must retain their schema contracts");
 
     const auto* retention =
         storage::ConfigurationSchema::entry(QStringLiteral("capture_history/retention_days"));
@@ -365,8 +388,8 @@ void invalidCatalogReportsAllConformanceErrors() {
 
 void searchIndexIsGeneratedAndRanked() {
     settings::SettingsSearchIndex index(settings::builtInSettingsCatalog());
-    require(index.entries().size() == 38 && index.search(QString()).size() == 38,
-            "search must generate all thirty-eight catalog nodes in catalog order");
+    require(index.entries().size() == 55 && index.search(QString()).size() == 55,
+            "search must generate all fifty-five catalog nodes in catalog order");
 
     int pages = 0;
     int sections = 0;
@@ -389,7 +412,7 @@ void searchIndexIsGeneratedAndRanked() {
             break;
         }
     }
-    require(pages == 6 && sections == 9 && items == 23,
+    require(pages == 6 && sections == 13 && items == 36,
             "search node counts must match catalog page, section, and item counts");
 
     const auto theme = index.search(QStringLiteral("theme"));
@@ -466,7 +489,7 @@ void addingCatalogNodesAutomaticallyExpandsSearch() {
     require(expanded.validationErrors().isEmpty(),
             "a normal additional catalog page must validate without consumer changes");
     settings::SettingsSearchIndex index(expanded);
-    require(index.entries().size() == 41 &&
+    require(index.entries().size() == 58 &&
                 index.search(QStringLiteral("extra item")).constFirst().location ==
                     settings::SettingsLocation{QStringLiteral("extra-page"),
                                                QStringLiteral("extra-section"),

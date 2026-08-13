@@ -3,15 +3,25 @@
 #include "snow_shot/presentation/globalshortcutmanager.h"
 #include "snow_shot/presentation/mainwindow.h"
 #include "snow_shot/presentation/screenshotcontroller.h"
+#include "snow_shot/presentation/screenshotpinnedwindow.h"
 #include "snow_shot/presentation/systemtraycontroller.h"
+#include "snow_shot/storage/applicationstorage.h"
 #include "snow_shot/storage/settingsadapters.h"
 
 #include <QApplication>
+#include <QJsonValue>
 #include <QTimer>
 
 #include <memory>
 
 namespace snow_shot::app {
+namespace {
+const QString kPinBorderColorKey = QStringLiteral("pin_to_screen/border_color");
+const QString kTrayEnabledKey = QStringLiteral("tray/enabled");
+const QString kTrayIconKey = QStringLiteral("tray/icon");
+const QString kTrayCustomIconKey = QStringLiteral("tray/custom_icon");
+} // namespace
+
 class ApplicationController::Impl {
   public:
     Impl(ApplicationController& owner, QApplication& application) : q(owner), app(application) {
@@ -34,6 +44,19 @@ class ApplicationController::Impl {
                          });
         QObject::connect(&app, &QCoreApplication::aboutToQuit, &systemTray,
                          &presentation::SystemTrayController::hide);
+        auto& applicationStorage = storage::ApplicationStorage::instance();
+        if (!applicationStorage.isInitialized()) {
+            static_cast<void>(applicationStorage.initialize());
+        }
+        auto& configuration = applicationStorage.configuration();
+        applyRuntimeConfiguration(configuration.value(kPinBorderColorKey), kPinBorderColorKey);
+        applyRuntimeConfiguration(configuration.value(kTrayEnabledKey), kTrayEnabledKey);
+        applyRuntimeConfiguration(configuration.value(kTrayIconKey), kTrayIconKey);
+        applyRuntimeConfiguration(configuration.value(kTrayCustomIconKey), kTrayCustomIconKey);
+        QObject::connect(&configuration, &storage::ConfigurationStore::valueChanged, &q,
+                         [this](const QString& key, const QJsonValue& value) {
+                             applyRuntimeConfiguration(value, key);
+                         });
     }
 
     void start() {
@@ -54,8 +77,29 @@ class ApplicationController::Impl {
     ScreenshotController* ensureScreenshotController() {
         if (screenshotController == nullptr) {
             screenshotController = std::make_unique<ScreenshotController>();
+            QObject::connect(screenshotController.get(),
+                             &ScreenshotController::showMainWindowRequested, &q,
+                             [this]() { showMainWindow(); });
         }
         return screenshotController.get();
+    }
+
+    void applyRuntimeConfiguration(const QJsonValue& value, const QString& key) {
+        if (key == kPinBorderColorKey) {
+            QColor color = storage::colorFromRgbaString(value.toString());
+            if (!color.isValid()) {
+                color = QColor(219, 219, 219, 255);
+            }
+            ScreenshotPinnedWindow::setRuntimeBorderColor(color);
+        } else if (key == kTrayEnabledKey) {
+            const bool enabled = value.isBool() ? value.toBool() : true;
+            systemTray.setEnabled(enabled);
+            ScreenshotPinnedWindow::setRuntimeTrayEnabled(enabled);
+        } else if (key == kTrayIconKey) {
+            systemTray.setIconSelection(value.toString(QStringLiteral("default")));
+        } else if (key == kTrayCustomIconKey) {
+            systemTray.setCustomIconPath(value.toString());
+        }
     }
 
     MainWindow& ensureMainWindow() {

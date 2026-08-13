@@ -18,6 +18,9 @@ use windows::Win32::Graphics::Gdi::{
     BeginPaint, CreateSolidBrush, DeleteObject, EndPaint, FillRect, PAINTSTRUCT,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::UI::HiDpi::{
+    DPI_AWARENESS_CONTEXT, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetThreadDpiAwarenessContext,
+};
 use windows::Win32::UI::WindowsAndMessaging::{
     CREATESTRUCTW, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GWLP_USERDATA,
     GetCursorPos, GetMessageW, KillTimer, MSG, PostMessageW, PostQuitMessage, RegisterClassW,
@@ -59,6 +62,22 @@ const LARGE_BLOCK_X: [i32; 3] = [64, 592, 1120];
 const COLOR_CHANNEL_TOLERANCE: u8 = 64;
 const MIN_SOLID_COLOR_RATIO: f64 = 0.9;
 static NEXT_WINDOW_CLASS_ID: AtomicU64 = AtomicU64::new(1);
+
+struct ThreadDpiAwareness(DPI_AWARENESS_CONTEXT);
+
+impl ThreadDpiAwareness {
+    fn per_monitor_v2() -> Self {
+        Self(unsafe { SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2) })
+    }
+}
+
+impl Drop for ThreadDpiAwareness {
+    fn drop(&mut self) {
+        unsafe {
+            SetThreadDpiAwarenessContext(self.0);
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 enum WindowPattern {
@@ -135,6 +154,7 @@ impl ColorWindow {
     fn spawn_with_spec(spec: TestWindowSpec) -> Self {
         let (handle_tx, handle_rx) = mpsc::sync_channel(1);
         let thread = thread::spawn(move || {
+            let _dpi_awareness = ThreadDpiAwareness::per_monitor_v2();
             let instance = unsafe { GetModuleHandleW(None).expect("module handle should resolve") };
             let class_id = NEXT_WINDOW_CLASS_ID.fetch_add(1, Ordering::Relaxed);
             let class_name: Vec<u16> = format!(
@@ -549,6 +569,7 @@ fn dxgi_region_recording_produces_complete_visually_changing_frames() {
 }
 
 fn assert_sparse_region_recording(backend: CaptureBackendKind, backend_label: &str) {
+    let _dpi_awareness = ThreadDpiAwareness::per_monitor_v2();
     let temp = tempdir().expect("temporary output directory should be created");
     let _window = ColorWindow::spawn_sparse();
     let mut audio_track = RecordingAudioTrackConfig::system_default("system");

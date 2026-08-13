@@ -14,6 +14,7 @@
 #include "snow_shot/presentation/screenshothistoryservice.h"
 #include "snow_shot/storage/applicationstorage.h"
 #include "snow_shot/storage/capturehistorytypes.h"
+#include "snow_shot/storage/settingsadapters.h"
 #include "snow_shot/presentation/screenshotintelligentselectionmodel.h"
 #include "snow_shot/presentation/screenshotinteractionstate.h"
 #include "snow_shot/presentation/screenshotmessageservice.h"
@@ -104,6 +105,8 @@ struct ScreenshotController::Impl final : public ScreenshotToolbarCommandSink,
     void createOverlayInputPipeline();
     void createToolbarCommands();
     void connectSelectorSignals();
+    void reloadUiPreferences();
+    void applyUiPreferences(const ScreenshotUiPreferences& preferences);
     void shutdown();
     void startHistoryEdit(const QString& recordId);
     void handleCapturePresented();
@@ -236,6 +239,7 @@ struct ScreenshotController::Impl final : public ScreenshotToolbarCommandSink,
     ScreenshotInteractionState m_interaction;
     ScreenshotSelectionModel m_selection;
     ScreenshotIntelligentSelectionModel m_intelligentSelection;
+    ScreenshotUiPreferences m_uiPreferences;
     std::unique_ptr<VideoRecordingController> m_videoRecordingController;
 };
 
@@ -243,6 +247,17 @@ ScreenshotController::Impl::Impl(ScreenshotController& controller)
     : owner(controller), m_canvasRuntime(SnowCanvasRuntimeConfig{
                              snow_shot::presentation::screenshotCanvasStyleDefaults()}) {
     createPresentationInfrastructure();
+    reloadUiPreferences();
+    auto& storage = snow_shot::storage::ApplicationStorage::instance();
+    if (storage.isInitialized()) {
+        QObject::connect(
+            &storage.configuration(), &snow_shot::storage::ConfigurationStore::valueChanged,
+            &owner, [this](const QString& key, const QJsonValue&) {
+                if (key.startsWith(QStringLiteral("screenshot_ui/"))) {
+                    reloadUiPreferences();
+                }
+            });
+    }
     createSelectionWorkflows();
     createSelectorWorkflow();
     createToolCommandWorkflow();
@@ -253,6 +268,54 @@ ScreenshotController::Impl::Impl(ScreenshotController& controller)
     createOverlayInputPipeline();
     createToolbarCommands();
     connectSelectorSignals();
+}
+
+void ScreenshotController::Impl::reloadUiPreferences() {
+    ScreenshotUiPreferences preferences;
+    auto& storage = snow_shot::storage::ApplicationStorage::instance();
+    if (storage.isInitialized()) {
+        const snow_shot::storage::ScreenshotUiSettings settings;
+        preferences.selectionTransitionAnimationEnabled =
+            settings.selectionTransitionAnimationEnabled();
+        preferences.colorPickerDisplayMode =
+            screenshotColorPickerDisplayModeFromString(settings.colorPickerDisplayMode());
+        preferences.selectionMaskColor = settings.selectionMaskColor();
+        preferences.shortcutHintOpacity =
+            static_cast<qreal>(settings.shortcutHintOpacity()) / 100.0;
+        preferences.cursorGuideLineColor = settings.cursorGuideLineColor();
+        preferences.monitorCenterGuideLineColor = settings.monitorCenterGuideLineColor();
+        preferences.colorPickerCenterGuideLineColor =
+            settings.colorPickerCenterGuideLineColor();
+    }
+    applyUiPreferences(preferences);
+}
+
+void ScreenshotController::Impl::applyUiPreferences(
+    const ScreenshotUiPreferences& preferences) {
+    m_uiPreferences = preferences.normalized();
+    if (m_colorPickerController != nullptr) {
+        m_colorPickerController->setDisplayMode(m_uiPreferences.colorPickerDisplayMode);
+    }
+    if (m_overlayCoordinator != nullptr) {
+        m_overlayCoordinator->setColorPickerCenterGuideLineColor(
+            m_uiPreferences.colorPickerCenterGuideLineColor);
+        m_overlayCoordinator->clearGuideLines(m_displaySession);
+        if (m_interaction.selecting()) {
+            if (ScreenshotOverlayWindow* overlay = overlayUnderCursor()) {
+                m_overlayCoordinator->updateGuideLines(
+                    m_displaySession, overlay, overlay->mapFromGlobal(QCursor::pos()), true,
+                    m_uiPreferences.cursorGuideLineColor,
+                    m_uiPreferences.monitorCenterGuideLineColor);
+            }
+        }
+    }
+    if (m_presentationServices != nullptr) {
+        m_presentationServices->setUiPreferences(m_uiPreferences);
+        if (!m_interaction.inactive() && m_colorPickerController != nullptr) {
+            m_colorPickerController->updateAtCurrentCursor(
+                m_presentationServices->colorPickerContext());
+        }
+    }
 }
 
 void ScreenshotController::Impl::createHistoryService() {
@@ -420,7 +483,11 @@ void ScreenshotController::Impl::createSelectionWorkflows() {
     });
     m_selectionExportUiServices = std::make_unique<ScreenshotSelectionExportUiServices>(
         m_canvasRuntime, m_ocrRecognition.get(), m_qrRecognition.get(),
-        m_tableRecognition.get());
+        m_tableRecognition.get(), [controller = QPointer<ScreenshotController>(&owner)]() {
+            if (controller != nullptr) {
+                emit controller->showMainWindowRequested();
+            }
+        });
     m_selectionExportWorkflow = std::make_unique<ScreenshotSelectionExportWorkflow>(
         ScreenshotSelectionExportWorkflowContext{
             m_captureState,
@@ -680,6 +747,12 @@ void ScreenshotController::Impl::createOverlayInputPipeline() {
             [this](ScreenshotOverlayWindow* overlay, const QPointF& localPosition) {
                 m_colorPickerController->updateForOverlay(
                     overlay, localPosition, m_presentationServices->colorPickerContext());
+            },
+            [this](ScreenshotOverlayWindow* overlay, const QPointF& localPosition) {
+                m_overlayCoordinator->updateGuideLines(
+                    m_displaySession, overlay, localPosition, m_interaction.selecting(),
+                    m_uiPreferences.cursorGuideLineColor,
+                    m_uiPreferences.monitorCenterGuideLineColor);
             },
             [this](const QPointF& virtualPosition) {
                 m_colorPickerController->updateForSelectionDrag(
@@ -1619,6 +1692,10 @@ ScreenshotController::ScreenshotController(QObject* parent)
     : QObject(parent), m_impl(std::make_unique<Impl>(*this)) {}
 
 ScreenshotController::~ScreenshotController() = default;
+
+void ScreenshotController::setUiPreferences(const ScreenshotUiPreferences& preferences) {
+    m_impl->applyUiPreferences(preferences);
+}
 
 void ScreenshotController::prewarmResources() {
     QTimer::singleShot(0, this, [this]() { m_impl->m_captureWorkflow->prewarmResources(); });

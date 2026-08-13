@@ -19,8 +19,6 @@
 #endif
 
 namespace {
-constexpr qreal kSelectionDragPickerOpacity = 0.83;
-constexpr qreal kManualDragPickerOpacity = 0.5;
 constexpr int kSelectionOpacityTolerance = 4;
 } // namespace
 
@@ -50,6 +48,20 @@ void ScreenshotColorPickerController::setSuppressed(bool suppressed) {
     if (m_suppressed) {
         hide();
     }
+}
+
+void ScreenshotColorPickerController::setDisplayMode(ScreenshotColorPickerDisplayMode mode) {
+    if (m_displayMode == mode) {
+        return;
+    }
+    m_displayMode = mode;
+    if (m_displayMode == ScreenshotColorPickerDisplayMode::AlwaysHide) {
+        hide();
+    }
+}
+
+ScreenshotColorPickerDisplayMode ScreenshotColorPickerController::displayMode() const {
+    return m_displayMode;
 }
 
 void ScreenshotColorPickerController::updateForOverlay(
@@ -115,7 +127,18 @@ void ScreenshotColorPickerController::updateForSelectionDrag(
     }
 
     updateAtPhysicalPoint(physicalPositionForCanvasPoint(anchor.value()), context,
-                          kSelectionDragPickerOpacity);
+                          screenshotColorPickerOpacity(
+                              m_displayMode,
+                              ScreenshotColorPickerVisibilityState{
+                                  context.intelligentSelecting,
+                                  context.manualSelecting,
+                                  context.movingSelection,
+                                  context.dragging,
+                                  true,
+                                  context.selectionPixels.width() >= 1 &&
+                                      context.selectionPixels.height() >= 1,
+                                  true,
+                              }));
 }
 
 bool ScreenshotColorPickerController::copyColorToClipboard(
@@ -198,29 +221,23 @@ bool ScreenshotColorPickerController::screenshotUiContainsGlobalCursor() const {
 qreal ScreenshotColorPickerController::opacityForPoint(
     const QPoint& physicalPoint, bool selectionDrag,
     const ScreenshotColorPickerContext& context) const {
-    if (selectionDrag) {
-        return kSelectionDragPickerOpacity;
-    }
-
-    if (context.manualSelecting && context.dragging) {
-        return kManualDragPickerOpacity;
-    }
-
-    if (context.selectionPixels.width() < 1 || context.selectionPixels.height() < 1) {
-        return context.intelligentSelecting || context.manualSelecting ? 1.0 : 0.0;
-    }
-
+    const bool hasSelection =
+        context.selectionPixels.width() >= 1 && context.selectionPixels.height() >= 1;
     const QRect toleratedSelection =
         context.selectionPixels.adjusted(-kSelectionOpacityTolerance, -kSelectionOpacityTolerance,
                                          kSelectionOpacityTolerance, kSelectionOpacityTolerance);
-    if (!QRectF(toleratedSelection).contains(canvasPositionForPhysicalPoint(physicalPoint))) {
-        return 0.0;
-    }
-
-    if (context.manualSelecting || context.movingSelection) {
-        return context.dragging ? kManualDragPickerOpacity : 1.0;
-    }
-    return 1.0;
+    return screenshotColorPickerOpacity(
+        m_displayMode,
+        ScreenshotColorPickerVisibilityState{
+            context.intelligentSelecting,
+            context.manualSelecting,
+            context.movingSelection,
+            context.dragging,
+            selectionDrag,
+            hasSelection,
+            hasSelection && QRectF(toleratedSelection)
+                                .contains(canvasPositionForPhysicalPoint(physicalPoint)),
+        });
 }
 
 bool ScreenshotColorPickerController::setPhysicalCursorPosition(const QPoint& physicalPoint) const {

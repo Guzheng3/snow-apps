@@ -325,6 +325,7 @@ target_link_libraries(snow_shot_settings_search PUBLIC
 
 set(SNOW_SHOT_SETTINGS_SOURCES
     include/snow_shot/presentation/globalshortcutmanager.h
+    include/snow_shot/presentation/components/drawingtoolbareditorsettingswidget.h
     include/snow_shot/presentation/components/infotooltipicon.h
     include/snow_shot/presentation/components/pagecontainerwidget.h
     include/snow_shot/presentation/components/sectionheaderwidget.h
@@ -333,6 +334,7 @@ set(SNOW_SHOT_SETTINGS_SOURCES
     include/snow_shot/presentation/components/settingspagewidget.h
     include/snow_shot/presentation/components/shortcutkeyrow.h
     include/snow_shot/presentation/components/storagestatussettingswidget.h
+    include/snow_shot/presentation/screenshottoolbarlayoutmodel.h
     include/snow_shot/presentation/settings/settingsruntimebindings.h
     include/snow_shot/presentation/settings/applicationpriority.h
     include/snow_shot/presentation/settings/textrecognitionacceleration.h
@@ -405,6 +407,7 @@ set(PROJECT_HEADERS
     include/snow_shot/presentation/screenshotexportservice.h
     include/snow_shot/presentation/screenshotfloatingtoolpalettewindow.h
     include/snow_shot/presentation/screenshotgeometry.h
+    include/snow_shot/presentation/screenshotguidelinerendering.h
     include/snow_shot/presentation/screenshothistoryservice.h
     include/snow_shot/presentation/screenshothistorytypes.h
     include/snow_shot/presentation/screenshotintelligentselectionmodel.h
@@ -422,6 +425,7 @@ set(PROJECT_HEADERS
     include/snow_shot/presentation/screenshotpinnedcopyservice.h
     include/snow_shot/presentation/screenshotpinnedwindow.h
     include/snow_shot/presentation/screenshotpresentationservices.h
+    include/snow_shot/presentation/screenshotshortcuthints.h
     include/snow_shot/presentation/screenshotsmartselectiontransition.h
     include/snow_shot/presentation/screenshotselectioneditworkflow.h
     include/snow_shot/presentation/screenshotselectioneditworkflowports.h
@@ -462,6 +466,7 @@ set(PROJECT_HEADERS
     include/snow_shot/presentation/screenshottoolpalettehost.h
     include/snow_shot/presentation/screenshottoolbarwindow.h
     include/snow_shot/presentation/screenshottypes.h
+    include/snow_shot/presentation/screenshotuipreferences.h
     include/snow_shot/presentation/screenshotwindowcapture.h
     include/snow_shot/presentation/videorecordingareawindow.h
     include/snow_shot/presentation/videorecordingcontroller.h
@@ -612,6 +617,11 @@ qt_add_resources(snow_shot "snow_shot_app_assets"
     BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources"
     FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/resources/snow-shot-tray-default.png"
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/snow-shot-tray-light.png"
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/snow-shot-tray-dark.png"
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/snow-shot-tray-snow-default.png"
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/snow-shot-tray-snow-light.png"
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/snow-shot-tray-snow-dark.png"
 )
 
 if(SNOW_SHOT_BUILD_TESTS)
@@ -834,6 +844,11 @@ if(SNOW_SHOT_BUILD_TESTS)
         BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources"
         FILES
             "${CMAKE_CURRENT_SOURCE_DIR}/resources/snow-shot-tray-default.png"
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources/snow-shot-tray-light.png"
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources/snow-shot-tray-dark.png"
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources/snow-shot-tray-snow-default.png"
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources/snow-shot-tray-snow-light.png"
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources/snow-shot-tray-snow-dark.png"
     )
     snow_shot_add_translations(snow-shot-system-tray-controller-tests)
     add_test(

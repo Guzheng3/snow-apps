@@ -16,10 +16,30 @@ ScreenshotSmartSelectionTransition::ScreenshotSmartSelectionTransition(UpdateCal
                      });
 }
 
+void ScreenshotSmartSelectionTransition::setEnabled(bool enabled) {
+    if (m_enabled == enabled) {
+        return;
+    }
+    m_enabled = enabled;
+    if (!m_enabled && m_animation.state() == QAbstractAnimation::Running) {
+        presentDirectly(m_targetSelection);
+    }
+}
+
+bool ScreenshotSmartSelectionTransition::enabled() const {
+    return m_enabled;
+}
+
 bool ScreenshotSmartSelectionTransition::update(const QRectF& selection, bool smartFraming) {
     const bool hasSelection = selection.isValid() && !selection.isEmpty();
     if (!smartFraming || !hasSelection) {
         m_hasPresentedSmartSelection = false;
+        presentDirectly(selection);
+        return true;
+    }
+
+    if (!m_enabled) {
+        m_hasPresentedSmartSelection = true;
         presentDirectly(selection);
         return true;
     }

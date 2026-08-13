@@ -1,6 +1,9 @@
 #ifndef SNOW_SHOT_PRESENTATION_SCREENSHOTOVERLAYUIHOST_H
 #define SNOW_SHOT_PRESENTATION_SCREENSHOTOVERLAYUIHOST_H
 
+#include "snow_shot/presentation/screenshotshortcuthints.h"
+
+#include <QColor>
 #include <QImage>
 #include <QMetaObject>
 #include <QObjectCleanupHandler>
@@ -40,10 +43,14 @@ class ScreenshotOverlayUiHost final {
                            const QRect& physicalRect, const QPoint& physicalPoint,
                            const QPointF& localPosition, qreal opacity);
     void hideColorPicker();
+    void setColorPickerCenterGuideLineColor(const QColor& color);
     void resetColorPickerForNewCapture();
     void hideColorPickerForOverlay(ScreenshotOverlayWindow* overlay) const;
     [[nodiscard]] bool colorPickerBelongsToOverlay(const ScreenshotOverlayWindow* overlay) const;
     [[nodiscard]] bool screenshotUiContainsGlobalCursor() const;
+    void updateShortcutHints(ScreenshotOverlayWindow* overlay,
+                             ScreenshotShortcutHintMode mode, qreal opacity);
+    void hideShortcutHints();
     [[nodiscard]] bool stepToolbarStrokeWidth(int direction);
     [[nodiscard]] bool stepToolbarSelectionOpacity(int direction);
     [[nodiscard]] bool stepToolbarSpotlightOpacity(int direction);
@@ -72,6 +79,8 @@ class ScreenshotOverlayUiHost final {
     QMetaObject::Connection m_toolbarStylePopupEndConnection;
     QPointer<ScreenshotSelectionToolbarWindow> m_selectionToolbar;
     QPointer<ScreenshotColorPickerWidget> m_colorPicker;
+    QPointer<QWidget> m_shortcutHints;
+    QColor m_colorPickerCenterGuideLineColor = QColor(0, 0, 0, 0);
 };
 
 #endif // SNOW_SHOT_PRESENTATION_SCREENSHOTOVERLAYUIHOST_H

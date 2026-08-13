@@ -3,12 +3,30 @@
 
 #include "snow_shot/storage/capturehistorytypes.h"
 
+#include <QColor>
 #include <QString>
 #include <QStringList>
 
 #include <future>
 
 namespace snow_shot::storage {
+struct ScreenshotToolbarLayout {
+    QStringList order;
+    QStringList hidden;
+
+    friend bool operator==(const ScreenshotToolbarLayout& first,
+                           const ScreenshotToolbarLayout& second) {
+        return first.order == second.order && first.hidden == second.hidden;
+    }
+    friend bool operator!=(const ScreenshotToolbarLayout& first,
+                           const ScreenshotToolbarLayout& second) {
+        return !(first == second);
+    }
+};
+
+[[nodiscard]] QColor colorFromRgbaString(const QString& value);
+[[nodiscard]] QString colorToRgbaString(const QColor& color);
+
 class InterfaceSettings final {
   public:
     [[nodiscard]] QString themeMode() const;
@@ -53,6 +71,26 @@ class ScreenshotSettings final {
     bool setDelaySeconds(int seconds) const;
 };
 
+class ScreenshotUiSettings final {
+  public:
+    [[nodiscard]] QString toolbarSize() const;
+    bool setToolbarSize(const QString& size) const;
+    [[nodiscard]] bool selectionTransitionAnimationEnabled() const;
+    bool setSelectionTransitionAnimationEnabled(bool enabled) const;
+    [[nodiscard]] QString colorPickerDisplayMode() const;
+    bool setColorPickerDisplayMode(const QString& mode) const;
+    [[nodiscard]] QColor selectionMaskColor() const;
+    bool setSelectionMaskColor(const QColor& color) const;
+    [[nodiscard]] int shortcutHintOpacity() const;
+    bool setShortcutHintOpacity(int opacity) const;
+    [[nodiscard]] QColor cursorGuideLineColor() const;
+    bool setCursorGuideLineColor(const QColor& color) const;
+    [[nodiscard]] QColor monitorCenterGuideLineColor() const;
+    bool setMonitorCenterGuideLineColor(const QColor& color) const;
+    [[nodiscard]] QColor colorPickerCenterGuideLineColor() const;
+    bool setColorPickerCenterGuideLineColor(const QColor& color) const;
+};
+
 class RecordingSettings final {
   public:
     [[nodiscard]] bool microphoneEnabled() const;
@@ -69,6 +107,24 @@ class ScreenshotToolbarSettings final {
     bool setHighlightTool(const QString& tool) const;
     [[nodiscard]] QString tableQrTool() const;
     bool setTableQrTool(const QString& tool) const;
+    [[nodiscard]] ScreenshotToolbarLayout layout() const;
+    bool setLayout(const ScreenshotToolbarLayout& layout) const;
+};
+
+class PinToScreenSettings final {
+  public:
+    [[nodiscard]] QColor borderColor() const;
+    bool setBorderColor(const QColor& color) const;
+};
+
+class TraySettings final {
+  public:
+    [[nodiscard]] bool enabled() const;
+    bool setEnabled(bool enabled) const;
+    [[nodiscard]] QString icon() const;
+    bool setIcon(const QString& icon) const;
+    [[nodiscard]] QString customIcon() const;
+    bool setCustomIcon(const QString& path) const;
 };
 
 class HistorySettings final {

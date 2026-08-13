@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::CaptureTarget;
 use crate::backend::{
-    self, AutoBackendPolicy, CaptureBackend, CaptureBackendKind, CaptureWorkload,
+    self, AutoBackendPolicy, CaptureBackend, CaptureBackendKind, CaptureWorkload, WgcUpdateMode,
 };
 use crate::capture_session::{CaptureSession, CaptureTargetInfo, inspect_target_from_backend};
 use crate::error::CaptureResult;
@@ -15,6 +15,12 @@ pub struct CaptureOptions {
     pub workload: CaptureWorkload,
     pub gpu_hdr_conversion: bool,
     pub hdr_tonemap_lut: bool,
+    /// Controls how Windows Graphics Capture updates its canonical GPU frame.
+    ///
+    /// This is independent from [`CaptureWorkload`]: workload selects latency
+    /// and backpressure behavior, while this option selects the WGC surface
+    /// correctness contract.
+    pub wgc_update_mode: WgcUpdateMode,
 }
 
 impl Default for CaptureOptions {
@@ -24,6 +30,7 @@ impl Default for CaptureOptions {
             workload: CaptureWorkload::Snapshot,
             gpu_hdr_conversion: true,
             hdr_tonemap_lut: true,
+            wgc_update_mode: WgcUpdateMode::Auto,
         }
     }
 }

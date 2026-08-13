@@ -2,6 +2,7 @@
 #define SNOW_SHOT_PRESENTATION_SCREENSHOTPRESENTATIONSERVICES_H
 
 #include "snow_shot/presentation/screenshotsmartselectiontransition.h"
+#include "snow_shot/presentation/screenshotuipreferences.h"
 
 #include <QPoint>
 #include <QPointF>
@@ -40,6 +41,7 @@ class ScreenshotPresentationServices final {
     void repositionToolbarForContentChange();
     void raiseToolbarForCanvasInteraction();
     void setSelectionToolbarHovered(bool hovered);
+    void setUiPreferences(const ScreenshotUiPreferences& preferences);
 
     void updateOverlayState();
     void updateOverlayCursors() const;
@@ -55,6 +57,7 @@ class ScreenshotPresentationServices final {
 
     ScreenshotPresentationServicesContext m_context;
     ScreenshotSmartSelectionTransition m_smartSelectionTransition;
+    ScreenshotUiPreferences m_uiPreferences;
     bool m_selectionToolbarHovered = false;
 };
 

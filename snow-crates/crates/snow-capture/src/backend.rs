@@ -4,10 +4,11 @@ use std::time::Instant;
 use crate::capture_session::CaptureTargetInfo;
 use crate::error::CaptureError;
 use crate::error::CaptureResult;
-use crate::frame::Frame;
+use crate::frame::{DirtyRect, Frame};
 use crate::monitor::MonitorId;
 use crate::region::MonitorLayout;
 use crate::window::WindowId;
+use snow_core::timestamp::TickFormat;
 use snow_cursor::CursorSnapshot;
 
 /// Capture workload used to tune backend behavior for latency/throughput.
@@ -21,6 +22,26 @@ pub enum CaptureWorkload {
 }
 
 pub(crate) type CaptureMode = CaptureWorkload;
+
+/// WGC surface update strategy.
+///
+/// WGC's `ReportOnly` mode supplies complete surfaces and therefore permits
+/// frame coalescing. `ReportAndRender` supplies ordered deltas and therefore
+/// requires a retained complete baseline and lossless in-order processing.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum WgcUpdateMode {
+    /// Select the production-safe complete-surface path. Future platform
+    /// capability probes may select a faster proven contract without
+    /// changing callers.
+    #[default]
+    Auto,
+    /// Always request complete WGC surfaces. This is the deterministic
+    /// compatibility and diagnostic mode.
+    CompleteOnly,
+    /// Prefer ordered WGC deltas and automatically resynchronize from a
+    /// complete surface whenever continuity is uncertain.
+    OrderedIncremental,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum CaptureBackendKind {
@@ -93,11 +114,26 @@ pub(crate) struct CaptureBlitRegion {
 }
 
 /// Timing and duplicate metadata produced by a capture operation.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Debug)]
 pub(crate) struct CaptureSampleMetadata {
     pub capture_time: Option<Instant>,
-    pub present_time_qpc: Option<i64>,
+    pub raw_os_ticks: Option<i64>,
+    pub tick_format: TickFormat,
     pub is_duplicate: bool,
+    /// Changed rectangles in coordinates local to the captured target.
+    pub dirty_rects: Vec<DirtyRect>,
+}
+
+impl Default for CaptureSampleMetadata {
+    fn default() -> Self {
+        Self {
+            capture_time: None,
+            raw_os_ticks: None,
+            tick_format: TickFormat::RawQpc,
+            is_duplicate: false,
+            dirty_rects: Vec::new(),
+        }
+    }
 }
 
 pub(crate) trait MonitorCapturer: Send {
@@ -149,7 +185,9 @@ pub(crate) trait MonitorCapturer: Send {
     }
 
     /// Set capture mode so backends can tune buffering/conversion policy.
-    fn set_capture_mode(&mut self, _mode: CaptureMode) {}
+    fn set_capture_mode(&mut self, _mode: CaptureMode) -> CaptureResult<()> {
+        Ok(())
+    }
 
     /// Sample cursor state associated with the most recently captured frame.
     ///
@@ -164,12 +202,21 @@ pub(crate) trait MonitorCapturer: Send {
     ///
     /// When disabled, backends should prefer CPU conversion for HDR/F16
     /// surfaces when possible.
-    fn set_gpu_hdr_conversion(&mut self, _enabled: bool) {}
+    fn set_gpu_hdr_conversion(&mut self, _enabled: bool) -> CaptureResult<()> {
+        Ok(())
+    }
 
     /// Enable/disable LUT-approximated HDR tone mapping.
     ///
     /// When disabled, backends should prefer precise HDR->SDR mapping.
-    fn set_hdr_tonemap_lut(&mut self, _enabled: bool) {}
+    fn set_hdr_tonemap_lut(&mut self, _enabled: bool) -> CaptureResult<()> {
+        Ok(())
+    }
+
+    /// Select the WGC source update contract. Other backends ignore this.
+    fn set_wgc_update_mode(&mut self, _mode: WgcUpdateMode) -> CaptureResult<()> {
+        Ok(())
+    }
 }
 
 pub(crate) trait CaptureBackend: Send + Sync {

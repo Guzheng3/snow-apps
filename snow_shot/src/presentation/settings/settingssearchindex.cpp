@@ -94,6 +94,15 @@ QStringList selectOptionLabels(const SettingsSelectDefinition& select) {
     }
     return result;
 }
+
+QStringList radioOptionLabels(const SettingsRadioDefinition& radio) {
+    QStringList result;
+    result.reserve(radio.options.size());
+    for (const SettingsRadioOptionDefinition& option : radio.options) {
+        result.push_back(option.label.translated());
+    }
+    return result;
+}
 } // namespace
 
 SettingsSearchIndex::SettingsSearchIndex(const SettingsCatalog& catalog) : m_catalog(catalog) {
@@ -138,6 +147,9 @@ void SettingsSearchIndex::rebuild() {
                 QStringList optionLabels;
                 if (const auto* select = std::get_if<SettingsSelectDefinition>(&item.payload)) {
                     optionLabels = selectOptionLabels(*select);
+                } else if (const auto* radio =
+                               std::get_if<SettingsRadioDefinition>(&item.payload)) {
+                    optionLabels = radioOptionLabels(*radio);
                 }
                 m_entries.push_back({
                     QStringLiteral("item:%1").arg(item.id),

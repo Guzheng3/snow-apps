@@ -85,6 +85,8 @@ class ScreenshotFloatingToolPaletteWindow : public QWidget {
     QPointF constrainedContentPosition(const QPointF& position) const;
     void beginKeyboardFocusInteraction(QWidget* editor);
     void endKeyboardFocusInteraction(QWidget* editor = nullptr);
+    void setPaletteScaleMultiplier(qreal multiplier);
+    [[nodiscard]] qreal paletteScaleMultiplier() const;
 
   private:
     class GeometryUpdateTransaction final {
@@ -161,6 +163,7 @@ class ScreenshotFloatingToolPaletteWindow : public QWidget {
     QPointer<QWidget> m_watermarkTextEditor;
     QSize m_stablePhysicalWindowSize;
     qreal m_referenceDevicePixelRatio = 0.0;
+    qreal m_paletteScaleMultiplier = 1.0;
     qreal m_lastAppliedWindowDevicePixelRatio = 0.0;
     QSize m_lastAppliedHostSize;
     QPoint m_lastAppliedContentOffset;

@@ -6,13 +6,15 @@ use rustc_hash::FxHashMap;
 use crate::CaptureTarget;
 use crate::backend::{
     self, CaptureBackend, CaptureBlitRegion, CaptureMode, CaptureSampleMetadata, MonitorCapturer,
+    WgcUpdateMode,
 };
 use crate::error::{CaptureError, CaptureResult};
-use crate::frame::Frame;
+use crate::frame::{DirtyRect, Frame};
 use crate::monitor::{MonitorId, MonitorKey};
 use crate::region::{CaptureRegion, MonitorLayout};
 use crate::system::CaptureOptions;
 use crate::window::{WindowId, WindowKey};
+use snow_core::timestamp::TickFormat;
 use snow_cursor::{
     CursorProjector, CursorSampler, CursorShapeState, CursorSnapshot, CursorTargetInfo,
 };
@@ -129,6 +131,8 @@ pub(crate) struct CaptureSessionConfig {
     /// When `true`, HDR tone mapping may use LUT-approximated BT.2390.
     /// When `false`, backends should use the precise curve implementation.
     pub(crate) hdr_tonemap_lut: bool,
+    /// WGC complete-surface versus ordered-delta policy.
+    pub(crate) wgc_update_mode: WgcUpdateMode,
 }
 
 impl Default for CaptureSessionConfig {
@@ -138,6 +142,7 @@ impl Default for CaptureSessionConfig {
             mode: CaptureMode::Snapshot,
             gpu_hdr_conversion: true,
             hdr_tonemap_lut: true,
+            wgc_update_mode: WgcUpdateMode::Auto,
         }
     }
 }
@@ -149,6 +154,7 @@ impl From<CaptureOptions> for CaptureSessionConfig {
             mode: value.workload,
             gpu_hdr_conversion: value.gpu_hdr_conversion,
             hdr_tonemap_lut: value.hdr_tonemap_lut,
+            wgc_update_mode: value.wgc_update_mode,
         }
     }
 }
@@ -425,9 +431,10 @@ where
             std::collections::hash_map::Entry::Occupied(entry) => Ok(entry.into_mut()),
             std::collections::hash_map::Entry::Vacant(entry) => {
                 let mut capturer = create_capturer()?;
-                capturer.set_capture_mode(config.mode);
-                capturer.set_gpu_hdr_conversion(config.gpu_hdr_conversion);
-                capturer.set_hdr_tonemap_lut(config.hdr_tonemap_lut);
+                capturer.set_wgc_update_mode(config.wgc_update_mode)?;
+                capturer.set_gpu_hdr_conversion(config.gpu_hdr_conversion)?;
+                capturer.set_hdr_tonemap_lut(config.hdr_tonemap_lut)?;
+                capturer.set_capture_mode(config.mode)?;
                 Ok(entry.insert(capturer))
             }
         }
@@ -1190,11 +1197,14 @@ impl CaptureSession {
                             .desktop_direct_support
                             .insert(first_entry.monitor_key, true);
                         out_frame.metadata.sequence = seq;
-                        out_frame
-                            .metadata
-                            .set_timing(sample.capture_time, sample.present_time_qpc);
+                        out_frame.metadata.set_timing_with_format(
+                            sample.capture_time,
+                            sample.raw_os_ticks,
+                            sample.tick_format,
+                        );
                         out_frame.metadata.is_duplicate =
                             destination_has_history && sample.is_duplicate;
+                        out_frame.metadata.dirty_rects = sample.dirty_rects;
                         self.region_runtime_mut().output_history_seq = Some(seq);
                         if cache_output_frame {
                             self.region_runtime_mut().output_frame = Some(out_frame.clone());
@@ -1212,8 +1222,12 @@ impl CaptureSession {
         }
 
         let mut latest_capture_time = None;
-        let mut latest_present_qpc = None;
+        let mut latest_raw_os_ticks = None;
+        let mut common_tick_format = None;
+        let mut mixed_tick_formats = false;
         let mut all_duplicate = destination_has_history;
+        let mut output_dirty_rects = Vec::new();
+        let mut exact_damage = true;
 
         for entry in entries.iter() {
             let sample = {
@@ -1253,12 +1267,18 @@ impl CaptureSession {
                         .stream_timestamp
                         .as_ref()
                         .map(|st| st.instant),
-                    present_time_qpc: monitor_frame
+                    raw_os_ticks: monitor_frame
                         .metadata
                         .stream_timestamp
                         .as_ref()
                         .and_then(|st| st.raw_os_ticks),
+                    tick_format: monitor_frame
+                        .metadata
+                        .stream_timestamp
+                        .as_ref()
+                        .map_or(TickFormat::RawQpc, |st| st.tick_format),
                     is_duplicate: monitor_frame.metadata.is_duplicate,
+                    dirty_rects: Vec::new(),
                 };
                 self.region_runtime_mut()
                     .fallback_frames
@@ -1271,18 +1291,40 @@ impl CaptureSession {
                     latest_capture_time.map_or(t, |current: std::time::Instant| current.max(t)),
                 );
             }
-            if let Some(q) = sample.present_time_qpc {
-                latest_present_qpc =
-                    Some(latest_present_qpc.map_or(q, |current: i64| current.max(q)));
+            if let Some(raw_ticks) = sample.raw_os_ticks {
+                match common_tick_format {
+                    None => common_tick_format = Some(sample.tick_format),
+                    Some(format) if format != sample.tick_format => mixed_tick_formats = true,
+                    Some(_) => {}
+                }
+                if !mixed_tick_formats {
+                    latest_raw_os_ticks = Some(
+                        latest_raw_os_ticks
+                            .map_or(raw_ticks, |current: i64| current.max(raw_ticks)),
+                    );
+                }
             }
+            append_exact_sample_damage(
+                &mut output_dirty_rects,
+                &mut exact_damage,
+                &sample,
+                entry.blit.dst_x,
+                entry.blit.dst_y,
+            )?;
             all_duplicate &= sample.is_duplicate;
         }
 
         out_frame.metadata.sequence = seq;
-        out_frame
-            .metadata
-            .set_timing(latest_capture_time, latest_present_qpc);
+        if mixed_tick_formats {
+            latest_raw_os_ticks = None;
+        }
+        out_frame.metadata.set_timing_with_format(
+            latest_capture_time,
+            latest_raw_os_ticks,
+            common_tick_format.unwrap_or(TickFormat::RawQpc),
+        );
         out_frame.metadata.is_duplicate = all_duplicate;
+        out_frame.metadata.dirty_rects = output_dirty_rects;
         self.region_runtime_mut().output_history_seq = Some(seq);
         if cache_output_frame {
             self.region_runtime_mut().output_frame = Some(out_frame.clone());
@@ -1291,11 +1333,78 @@ impl CaptureSession {
     }
 }
 
+fn append_exact_sample_damage(
+    aggregate: &mut Vec<DirtyRect>,
+    exact_damage: &mut bool,
+    sample: &CaptureSampleMetadata,
+    dst_x: u32,
+    dst_y: u32,
+) -> CaptureResult<()> {
+    if !sample.is_duplicate && sample.dirty_rects.is_empty() {
+        *exact_damage = false;
+        aggregate.clear();
+        return Ok(());
+    }
+    if !*exact_damage {
+        return Ok(());
+    }
+    for mut rect in sample.dirty_rects.iter().copied() {
+        rect.x = rect
+            .x
+            .checked_add(dst_x)
+            .ok_or(CaptureError::BufferOverflow)?;
+        rect.y = rect
+            .y
+            .checked_add(dst_y)
+            .ok_or(CaptureError::BufferOverflow)?;
+        aggregate.push(rect);
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::sync::{Arc, Mutex};
     use std::time::Instant;
+
+    #[test]
+    fn aggregate_damage_is_cleared_when_any_changed_source_is_inexact() {
+        let mut aggregate = Vec::new();
+        let mut exact_damage = true;
+        let exact = CaptureSampleMetadata {
+            is_duplicate: false,
+            dirty_rects: vec![DirtyRect {
+                x: 2,
+                y: 3,
+                width: 4,
+                height: 5,
+            }],
+            ..CaptureSampleMetadata::default()
+        };
+        append_exact_sample_damage(&mut aggregate, &mut exact_damage, &exact, 10, 20).unwrap();
+        assert_eq!(
+            aggregate,
+            vec![DirtyRect {
+                x: 12,
+                y: 23,
+                width: 4,
+                height: 5,
+            }]
+        );
+
+        let inexact = CaptureSampleMetadata {
+            is_duplicate: false,
+            dirty_rects: Vec::new(),
+            ..CaptureSampleMetadata::default()
+        };
+        append_exact_sample_damage(&mut aggregate, &mut exact_damage, &inexact, 0, 0).unwrap();
+        assert!(!exact_damage);
+        assert!(aggregate.is_empty());
+
+        append_exact_sample_damage(&mut aggregate, &mut exact_damage, &exact, 0, 0).unwrap();
+        assert!(aggregate.is_empty());
+    }
 
     struct MockBackend {
         monitor: MonitorId,
@@ -1447,8 +1556,10 @@ mod tests {
             *self.region_calls.lock().unwrap() += 1;
             Ok(Some(CaptureSampleMetadata {
                 capture_time: Some(Instant::now()),
-                present_time_qpc: Some(0),
+                raw_os_ticks: Some(0),
+                tick_format: TickFormat::RawQpc,
                 is_duplicate: false,
+                dirty_rects: Vec::new(),
             }))
         }
 
@@ -1472,8 +1583,10 @@ mod tests {
             }
             Ok(Some(CaptureSampleMetadata {
                 capture_time: Some(Instant::now()),
-                present_time_qpc: Some(0),
+                raw_os_ticks: Some(0),
+                tick_format: TickFormat::RawQpc,
                 is_duplicate: true,
+                dirty_rects: Vec::new(),
             }))
         }
     }
@@ -1517,8 +1630,10 @@ mod tests {
             destination.reset_metadata();
             Ok(Some(CaptureSampleMetadata {
                 capture_time: Some(Instant::now()),
-                present_time_qpc: Some(0),
+                raw_os_ticks: Some(0),
+                tick_format: TickFormat::RawQpc,
                 is_duplicate: destination_has_history,
+                dirty_rects: Vec::new(),
             }))
         }
     }
@@ -1605,8 +1720,10 @@ mod tests {
 
             Ok(Some(CaptureSampleMetadata {
                 capture_time: Some(Instant::now()),
-                present_time_qpc: Some(0),
+                raw_os_ticks: Some(0),
+                tick_format: TickFormat::RawQpc,
                 is_duplicate: false,
+                dirty_rects: Vec::new(),
             }))
         }
     }

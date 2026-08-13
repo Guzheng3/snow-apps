@@ -61,7 +61,8 @@ pub struct FrameMetadata {
     /// `Srgb` for standard dynamic range captures. HDR pipelines can
     /// check this to decide whether tonemapping or passthrough is needed.
     pub(crate) color_space: ColorSpace,
-    /// Unified timestamp. `tick_format` is `RawQpc`.
+    /// Unified timestamp. GPU backends use either raw QPC ticks (DXGI) or
+    /// 100-nanosecond system-relative ticks (WGC).
     pub(crate) stream_timestamp: Option<StreamTimestamp>,
     /// Cursor state sampled for this frame on the capture thread.
     pub(crate) cursor: Option<AttachedCursorSample>,
@@ -95,15 +96,20 @@ impl FrameMetadata {
     /// Set timing fields from a capture operation.
     ///
     /// Populates `stream_timestamp` from the capture time and QPC value.
-    pub(crate) fn set_timing(
+    pub(crate) fn set_timing(&mut self, capture_time: Option<Instant>, raw_os_ticks: Option<i64>) {
+        self.set_timing_with_format(capture_time, raw_os_ticks, TickFormat::RawQpc);
+    }
+
+    pub(crate) fn set_timing_with_format(
         &mut self,
         capture_time: Option<Instant>,
-        present_time_qpc: Option<i64>,
+        raw_os_ticks: Option<i64>,
+        tick_format: TickFormat,
     ) {
         self.stream_timestamp = Some(StreamTimestamp {
             instant: capture_time.unwrap_or_else(Instant::now),
-            raw_os_ticks: present_time_qpc,
-            tick_format: TickFormat::RawQpc,
+            raw_os_ticks,
+            tick_format,
         });
     }
 }
@@ -686,6 +692,20 @@ mod tests {
             prop_assert_eq!(ts.tick_format, TickFormat::RawQpc,
                 "FrameMetadata tick_format must always be RawQpc, got {:?}", ts.tick_format);
         }
+    }
+
+    #[test]
+    fn hns_timing_preserves_tick_format_and_raw_value() {
+        let capture_time = Instant::now();
+        let mut metadata = FrameMetadata::default();
+        metadata.set_timing_with_format(Some(capture_time), Some(123_456_789), TickFormat::Hns100);
+
+        let timestamp = metadata
+            .stream_timestamp()
+            .expect("set_timing_with_format should populate a timestamp");
+        assert_eq!(timestamp.instant, capture_time);
+        assert_eq!(timestamp.raw_os_ticks, Some(123_456_789));
+        assert_eq!(timestamp.tick_format, TickFormat::Hns100);
     }
 
     // **Validates: Requirements 1.6, 1.7, 7.2**

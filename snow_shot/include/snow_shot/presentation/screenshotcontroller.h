@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "snow_draw_engine_qt/snow_canvas_types.h"
+#include "snow_shot/presentation/screenshotuipreferences.h"
 
 class ScreenshotController : public QObject {
     Q_OBJECT
@@ -14,6 +15,8 @@ class ScreenshotController : public QObject {
   public:
     explicit ScreenshotController(QObject* parent = nullptr);
     ~ScreenshotController() override;
+
+    void setUiPreferences(const ScreenshotUiPreferences& preferences);
 
   public slots:
     void prewarmResources();
@@ -64,6 +67,9 @@ class ScreenshotController : public QObject {
     void openSelectionResizeModalFromToolbar();
     void repositionToolbarForContentChange();
     void hideColorPickersForScreenshotUi();
+
+  signals:
+    void showMainWindowRequested();
 
   private:
     struct Impl;

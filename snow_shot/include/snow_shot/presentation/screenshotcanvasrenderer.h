@@ -82,6 +82,10 @@ class ScreenshotCanvasRenderer final : public SnowCanvasCustomRenderer {
                                 const ScreenshotResultStyle& style);
     void clearImage();
     void setMaskVisible(bool visible);
+    void setMaskColor(const QColor& color);
+    void setGuideLines(const QPointF& cursorPosition, const QColor& cursorColor,
+                       const QColor& monitorCenterColor);
+    void clearGuideLines();
     void setSelection(const QRectF& selection, bool handlesVisible = true, int cornerRadius = 0,
                       int shadowWidth = 0, const QColor& shadowColor = QColor(0x33, 0x33, 0x33));
     void applySelectionState(const ScreenshotSelectionVisualState& state);
@@ -100,6 +104,8 @@ class ScreenshotCanvasRenderer final : public SnowCanvasCustomRenderer {
     [[nodiscard]] std::uint64_t contentRevision() const override;
     [[nodiscard]] RenderMode renderMode() const;
     [[nodiscard]] bool maskVisible() const;
+    [[nodiscard]] QColor maskColor() const;
+    [[nodiscard]] bool guideLinesVisible() const;
     [[nodiscard]] bool hasSelection() const;
     [[nodiscard]] bool selectionHandlesVisible() const;
     [[nodiscard]] int selectionCornerRadius() const;
@@ -128,6 +134,11 @@ class ScreenshotCanvasRenderer final : public SnowCanvasCustomRenderer {
     ScreenshotSelectionVisualState m_selectionState;
     RenderMode m_renderMode = RenderMode::Standard;
     bool m_maskVisible = false;
+    QColor m_maskColor = QColor(0, 0, 0, 128);
+    QPointF m_guideLineCursorPosition;
+    QColor m_cursorGuideLineColor = QColor(0, 0, 0, 0);
+    QColor m_monitorCenterGuideLineColor = QColor(0, 0, 0, 0);
+    bool m_guideLinesVisible = false;
     std::shared_ptr<ScreenshotOcrPresentation> m_ocrPresentation;
     OcrPresentationMode m_ocrPresentationMode = OcrPresentationMode::BackgroundAndText;
     // The canvas owns this widget through QObject parenting.

@@ -3,10 +3,14 @@
 #include "snow_shot/presentation/screenshottoolbarcommands.h"
 #include "snow_shot/presentation/screenshottoolpalette.h"
 #include "snow_shot/presentation/screenshottoolpalettehost.h"
+#include "snow_shot/storage/applicationstorage.h"
+#include "snow_shot/storage/configurationstore.h"
+#include "snow_shot/storage/settingsadapters.h"
 #include "theme/theme_manager.h"
 
 #include <QCursor>
 #include <QGuiApplication>
+#include <QJsonValue>
 #include <QLayout>
 #include <QPixmap>
 #include <QScreen>
@@ -49,7 +53,33 @@ ScreenshotToolbarWindow::ScreenshotToolbarWindow(ScreenshotToolbarCommandSink& c
                                                  QWidget* parent)
     : ScreenshotFloatingToolPaletteWindow(screenshotToolbarOptions(), parent),
       m_commands(commands) {
+    setToolbarSize(snow_shot::storage::ScreenshotUiSettings().toolbarSize());
+    setToolbarLayout(snow_shot::storage::ScreenshotToolbarSettings().layout());
     initializePalette();
+
+    auto& configuration =
+        snow_shot::storage::ApplicationStorage::instance().configuration();
+    connect(&configuration, &snow_shot::storage::ConfigurationStore::valueChanged, this,
+            [this](const QString& key, const QJsonValue&) {
+                if (key == QStringLiteral("screenshot_ui/toolbar_size")) {
+                    setToolbarSize(snow_shot::storage::ScreenshotUiSettings().toolbarSize());
+                } else if (key == QStringLiteral("screenshot_toolbar/layout")) {
+                    setToolbarLayout(snow_shot::storage::ScreenshotToolbarSettings().layout());
+                }
+            });
+}
+
+void ScreenshotToolbarWindow::setToolbarSize(const QString& size) {
+    m_prewarmKey.clear();
+    setPaletteScaleMultiplier(size == QStringLiteral("small") ? 0.8 : 1.0);
+}
+
+void ScreenshotToolbarWindow::setToolbarLayout(
+    const snow_shot::storage::ScreenshotToolbarLayout& layout) {
+    m_prewarmKey.clear();
+    if (ScreenshotToolPalette* toolPalette = palette()) {
+        toolPalette->setToolbarLayout(layout);
+    }
 }
 
 void ScreenshotToolbarWindow::prewarmForScreen(QScreen* screen) {
@@ -331,7 +361,7 @@ void ScreenshotToolbarWindow::resetForNewCapture() {
     resetPhysicalSizeInvariant();
     if (ScreenshotToolPaletteHost* host = paletteHost()) {
         const QSignalBlocker blocker(host);
-        host->setPhysicalScale(1.0);
+        host->setPhysicalScale(paletteScaleMultiplier());
         host->setShadowMargins(ScreenshotToolPaletteHost::defaultShadowMargins());
         host->setStyleToolbarAboveMain(false);
         host->setStyleToolbarVisible(false);

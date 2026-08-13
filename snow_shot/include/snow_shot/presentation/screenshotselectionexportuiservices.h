@@ -3,6 +3,7 @@
 
 #include "snow_shot/presentation/screenshotselectionexportworkflowports.h"
 
+#include <functional>
 #include <memory>
 
 class SnowCanvasRuntime;
@@ -17,7 +18,8 @@ class ScreenshotSelectionExportUiServices final : public ScreenshotSelectionExpo
     explicit ScreenshotSelectionExportUiServices(
         SnowCanvasRuntime& runtime, ScreenshotOcrRecognitionPort* recognition = nullptr,
         ScreenshotQrRecognitionPort* qrRecognition = nullptr,
-        SnowShotApiClient* tableRecognition = nullptr);
+        SnowShotApiClient* tableRecognition = nullptr,
+        std::function<void()> showMainWindowRequested = {});
     ~ScreenshotSelectionExportUiServices() override;
 
     [[nodiscard]] bool publishClipboard(ScreenshotClipboardPayload payload) override;
@@ -33,6 +35,7 @@ class ScreenshotSelectionExportUiServices final : public ScreenshotSelectionExpo
     ScreenshotOcrRecognitionPort* m_recognition = nullptr;
     ScreenshotQrRecognitionPort* m_qrRecognition = nullptr;
     SnowShotApiClient* m_tableRecognition = nullptr;
+    std::function<void()> m_showMainWindowRequested;
     std::unique_ptr<ScreenshotPinnedWindowPool> m_windowPool;
 };
 

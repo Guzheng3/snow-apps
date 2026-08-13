@@ -93,6 +93,8 @@ BuiltInSettingsRuntimeBindings::BuiltInSettingsRuntimeBindings(
             [this](bool, const QString&) { emit synchronized(); });
     connect(&applicationStorage, &storage::ApplicationStorage::smartSelectionChanged, this,
             [this](bool) { emit synchronized(); });
+    connect(&applicationStorage.configuration(), &storage::ConfigurationStore::valueChanged,
+            this, [this](const QString&, const QJsonValue&) { emit synchronized(); });
 }
 
 QVariant BuiltInSettingsRuntimeBindings::selectValue(SettingsSelectBinding binding) const {
@@ -109,6 +111,10 @@ QVariant BuiltInSettingsRuntimeBindings::selectValue(SettingsSelectBinding bindi
         return storage.configuration().value(QStringLiteral("system/application_priority"))
             .toString();
     }
+    case SettingsSelectBinding::ScreenshotToolbarSize:
+        return storage::ScreenshotUiSettings().toolbarSize();
+    case SettingsSelectBinding::ColorPickerDisplayMode:
+        return storage::ScreenshotUiSettings().colorPickerDisplayMode();
     }
     return {};
 }
@@ -161,6 +167,10 @@ bool BuiltInSettingsRuntimeBindings::applySelectValue(SettingsSelectBinding bind
         }
         return persisted;
     }
+    case SettingsSelectBinding::ScreenshotToolbarSize:
+        return storage::ScreenshotUiSettings().setToolbarSize(value.toString());
+    case SettingsSelectBinding::ColorPickerDisplayMode:
+        return storage::ScreenshotUiSettings().setColorPickerDisplayMode(value.toString());
     }
     return false;
 }
@@ -177,6 +187,10 @@ bool BuiltInSettingsRuntimeBindings::switchValue(SettingsSwitchBinding binding) 
                    .configuration()
                    .value(QStringLiteral("text_recognition/direct_ml_acceleration"))
                    .toBool();
+    case SettingsSwitchBinding::SelectionTransitionAnimation:
+        return storage::ScreenshotUiSettings().selectionTransitionAnimationEnabled();
+    case SettingsSwitchBinding::TrayEnabled:
+        return storage::TraySettings().enabled();
     }
     return false;
 }
@@ -203,6 +217,13 @@ bool BuiltInSettingsRuntimeBindings::applySwitchValue(SettingsSwitchBinding bind
         return accepted;
     }
 
+    if (binding == SettingsSwitchBinding::SelectionTransitionAnimation) {
+        return storage::ScreenshotUiSettings().setSelectionTransitionAnimationEnabled(value);
+    }
+    if (binding == SettingsSwitchBinding::TrayEnabled) {
+        return storage::TraySettings().setEnabled(value);
+    }
+
     auto policy = storage::ApplicationStorage::instance().captureHistoryPolicy();
     switch (binding) {
     case SettingsSwitchBinding::HistoryEnabled:
@@ -211,6 +232,9 @@ bool BuiltInSettingsRuntimeBindings::applySwitchValue(SettingsSwitchBinding bind
     case SettingsSwitchBinding::SmartSelection:
         return false;
     case SettingsSwitchBinding::DirectMlAcceleration:
+        return false;
+    case SettingsSwitchBinding::SelectionTransitionAnimation:
+    case SettingsSwitchBinding::TrayEnabled:
         return false;
     }
     return storage::ApplicationStorage::instance().requestCaptureHistoryPolicy(policy);
@@ -259,6 +283,100 @@ bool BuiltInSettingsRuntimeBindings::applyIntegerValue(SettingsIntegerBinding bi
     }
     }
     return storage::ApplicationStorage::instance().requestCaptureHistoryPolicy(policy);
+}
+
+int BuiltInSettingsRuntimeBindings::sliderValue(SettingsSliderBinding binding) const {
+    switch (binding) {
+    case SettingsSliderBinding::ShortcutHintOpacity:
+        return storage::ScreenshotUiSettings().shortcutHintOpacity();
+    }
+    return 0;
+}
+
+bool BuiltInSettingsRuntimeBindings::applySliderValue(SettingsSliderBinding binding, int value) {
+    switch (binding) {
+    case SettingsSliderBinding::ShortcutHintOpacity:
+        return storage::ScreenshotUiSettings().setShortcutHintOpacity(value);
+    }
+    return false;
+}
+
+QColor BuiltInSettingsRuntimeBindings::colorValue(SettingsColorBinding binding) const {
+    const storage::ScreenshotUiSettings screenshot;
+    switch (binding) {
+    case SettingsColorBinding::SelectionMaskColor:
+        return screenshot.selectionMaskColor();
+    case SettingsColorBinding::CursorGuideLineColor:
+        return screenshot.cursorGuideLineColor();
+    case SettingsColorBinding::MonitorCenterGuideLineColor:
+        return screenshot.monitorCenterGuideLineColor();
+    case SettingsColorBinding::ColorPickerCenterGuideLineColor:
+        return screenshot.colorPickerCenterGuideLineColor();
+    case SettingsColorBinding::PinBorderColor:
+        return storage::PinToScreenSettings().borderColor();
+    }
+    return {};
+}
+
+bool BuiltInSettingsRuntimeBindings::applyColorValue(SettingsColorBinding binding,
+                                                      const QColor& value) {
+    const storage::ScreenshotUiSettings screenshot;
+    switch (binding) {
+    case SettingsColorBinding::SelectionMaskColor:
+        return screenshot.setSelectionMaskColor(value);
+    case SettingsColorBinding::CursorGuideLineColor:
+        return screenshot.setCursorGuideLineColor(value);
+    case SettingsColorBinding::MonitorCenterGuideLineColor:
+        return screenshot.setMonitorCenterGuideLineColor(value);
+    case SettingsColorBinding::ColorPickerCenterGuideLineColor:
+        return screenshot.setColorPickerCenterGuideLineColor(value);
+    case SettingsColorBinding::PinBorderColor:
+        return storage::PinToScreenSettings().setBorderColor(value);
+    }
+    return false;
+}
+
+QVariant BuiltInSettingsRuntimeBindings::radioValue(SettingsRadioBinding binding) const {
+    switch (binding) {
+    case SettingsRadioBinding::TrayIcon:
+        return storage::TraySettings().icon();
+    }
+    return {};
+}
+
+bool BuiltInSettingsRuntimeBindings::applyRadioValue(SettingsRadioBinding binding,
+                                                      const QVariant& value) {
+    switch (binding) {
+    case SettingsRadioBinding::TrayIcon:
+        return storage::TraySettings().setIcon(value.toString());
+    }
+    return false;
+}
+
+QString BuiltInSettingsRuntimeBindings::filePathValue(SettingsFilePathBinding binding) const {
+    switch (binding) {
+    case SettingsFilePathBinding::TrayCustomIcon:
+        return storage::TraySettings().customIcon();
+    }
+    return {};
+}
+
+bool BuiltInSettingsRuntimeBindings::applyFilePathValue(SettingsFilePathBinding binding,
+                                                         const QString& value) {
+    switch (binding) {
+    case SettingsFilePathBinding::TrayCustomIcon:
+        return storage::TraySettings().setCustomIcon(value);
+    }
+    return false;
+}
+
+storage::ScreenshotToolbarLayout BuiltInSettingsRuntimeBindings::toolbarLayout() const {
+    return storage::ScreenshotToolbarSettings().layout();
+}
+
+bool BuiltInSettingsRuntimeBindings::applyToolbarLayout(
+    const storage::ScreenshotToolbarLayout& layout) {
+    return storage::ScreenshotToolbarSettings().setLayout(layout);
 }
 
 GlobalShortcutRegistrationState
@@ -364,6 +482,52 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
             storage::ConfigurationSchema::defaultValue(
                 QStringLiteral("screenshot_selection/smart_selection"))
                 .toBool());
+    case SettingsSectionReset::ScreenshotInterfaceSettings:
+        return storage::ApplicationStorage::instance().configuration().setValues({
+            {QStringLiteral("screenshot_ui/toolbar_size"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("screenshot_ui/toolbar_size"))},
+            {QStringLiteral("screenshot_ui/selection_transition_animation"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("screenshot_ui/selection_transition_animation"))},
+            {QStringLiteral("screenshot_ui/color_picker_display_mode"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("screenshot_ui/color_picker_display_mode"))},
+            {QStringLiteral("screenshot_ui/selection_mask_color"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("screenshot_ui/selection_mask_color"))},
+            {QStringLiteral("screenshot_ui/shortcut_hint_opacity"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("screenshot_ui/shortcut_hint_opacity"))},
+            {QStringLiteral("screenshot_ui/cursor_guide_line_color"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("screenshot_ui/cursor_guide_line_color"))},
+            {QStringLiteral("screenshot_ui/monitor_center_guide_line_color"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("screenshot_ui/monitor_center_guide_line_color"))},
+            {QStringLiteral("screenshot_ui/color_picker_center_guide_line_color"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("screenshot_ui/color_picker_center_guide_line_color"))},
+        });
+    case SettingsSectionReset::DrawingToolbar:
+        return storage::ApplicationStorage::instance().configuration().setValue(
+            QStringLiteral("screenshot_toolbar/layout"),
+            storage::ConfigurationSchema::defaultValue(
+                QStringLiteral("screenshot_toolbar/layout")));
+    case SettingsSectionReset::PinToScreen:
+        return storage::ApplicationStorage::instance().configuration().setValue(
+            QStringLiteral("pin_to_screen/border_color"),
+            storage::ConfigurationSchema::defaultValue(
+                QStringLiteral("pin_to_screen/border_color")));
+    case SettingsSectionReset::Tray:
+        return storage::ApplicationStorage::instance().configuration().setValues({
+            {QStringLiteral("tray/enabled"),
+             storage::ConfigurationSchema::defaultValue(QStringLiteral("tray/enabled"))},
+            {QStringLiteral("tray/icon"),
+             storage::ConfigurationSchema::defaultValue(QStringLiteral("tray/icon"))},
+            {QStringLiteral("tray/custom_icon"),
+             storage::ConfigurationSchema::defaultValue(QStringLiteral("tray/custom_icon"))},
+        });
     case SettingsSectionReset::SystemSettings: {
         auto& storage = storage::ApplicationStorage::instance();
         if (!storage.isInitialized()) {

@@ -3,6 +3,7 @@
 
 #include "snow_shot/presentation/screenshotfloatingtoolpalettewindow.h"
 #include "snow_shot/presentation/screenshottoolpalette.h"
+#include "snow_shot/storage/settingsadapters.h"
 
 #include <QRect>
 
@@ -18,6 +19,8 @@ class ScreenshotToolbarWindow final : public ScreenshotFloatingToolPaletteWindow
                                      QWidget* parent = nullptr);
     void prewarmForScreen(QScreen* screen);
     void resetForNewCapture();
+    void setToolbarSize(const QString& size);
+    void setToolbarLayout(const snow_shot::storage::ScreenshotToolbarLayout& layout);
     void setScrollingScreenshotMode(bool enabled);
     void setActiveTool(ScreenshotToolPalette::Tool tool);
     void setHistoryState(const SnowCanvasHistoryState& state);

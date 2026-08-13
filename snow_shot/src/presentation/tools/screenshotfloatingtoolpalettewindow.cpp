@@ -144,7 +144,8 @@ ScreenshotFloatingToolPaletteWindow::ScreenshotFloatingToolPaletteWindow(
                const QSize& logicalClientExtent) {
             m_processingNativeDpiChange = true;
             if (m_paletteHost != nullptr) {
-                m_paletteHost->commitDpiScale(context.logicalScale, logicalClientExtent,
+                m_paletteHost->commitDpiScale(context.logicalScale * m_paletteScaleMultiplier,
+                                              logicalClientExtent,
                                               ScreenshotToolPaletteHost::defaultShadowMargins());
             }
             updatePaletteGeometryForVisibleContent();
@@ -174,6 +175,23 @@ ScreenshotFloatingToolPaletteWindow::ScreenshotFloatingToolPaletteWindow(
 }
 
 ScreenshotFloatingToolPaletteWindow::~ScreenshotFloatingToolPaletteWindow() {}
+
+void ScreenshotFloatingToolPaletteWindow::setPaletteScaleMultiplier(qreal multiplier) {
+    if (!std::isfinite(multiplier) || multiplier <= 0.0) {
+        multiplier = 1.0;
+    }
+    multiplier = std::clamp<qreal>(multiplier, 0.25, 4.0);
+    if (qFuzzyCompare(m_paletteScaleMultiplier + 1.0, multiplier + 1.0)) {
+        return;
+    }
+    m_paletteScaleMultiplier = multiplier;
+    resetPhysicalSizeInvariant();
+    refreshGeometryForVisibleContent(m_lastRequestedContentPositionValid || isVisible(), true);
+}
+
+qreal ScreenshotFloatingToolPaletteWindow::paletteScaleMultiplier() const {
+    return m_paletteScaleMultiplier;
+}
 
 ScreenshotToolPalette* ScreenshotFloatingToolPaletteWindow::palette() const {
     return m_paletteHost != nullptr ? m_paletteHost->palette() : nullptr;
@@ -841,7 +859,8 @@ void ScreenshotFloatingToolPaletteWindow::syncPalettePhysicalScale() {
 
     ensureReferenceDevicePixelRatio();
     const qreal currentDpr = currentWindowDevicePixelRatio();
-    const qreal scale = currentDpr > 0.0 ? m_referenceDevicePixelRatio / currentDpr : 1.0;
+    const qreal dpiScale = currentDpr > 0.0 ? m_referenceDevicePixelRatio / currentDpr : 1.0;
+    const qreal scale = dpiScale * m_paletteScaleMultiplier;
     m_paletteHost->setPhysicalScale(scale);
     m_paletteHost->setShadowMargins(ScreenshotToolPaletteHost::defaultShadowMargins());
 }

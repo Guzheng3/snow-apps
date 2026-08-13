@@ -44,6 +44,8 @@ struct ScreenshotOverlayInputActions {
 
     std::function<void(ScreenshotOverlayWindow* overlay, const QPointF& localPosition)>
         updateColorPickerForOverlay = [](ScreenshotOverlayWindow*, const QPointF&) {};
+    std::function<void(ScreenshotOverlayWindow* overlay, const QPointF& localPosition)>
+        updateGuideLinesForOverlay = [](ScreenshotOverlayWindow*, const QPointF&) {};
     std::function<void(const QPointF& virtualPosition)> updateColorPickerForSelectionDrag =
         [](const QPointF&) {};
     std::function<bool()> copyColorPickerColorToClipboard = []() { return false; };
@@ -93,6 +95,7 @@ class ScreenshotOverlayInputHandler final {
                                         const QPointF& localPosition,
                                         const QPointF& virtualPosition);
     void handleHoverMove(ScreenshotOverlayWindow* overlay, const QPointF& localPosition);
+    void updateGuideLines(ScreenshotOverlayWindow* overlay, const QPointF& localPosition) const;
     void handleMovingSelectionDragMove(const QPointF& virtualPosition);
     void handleManualSelectionDragMove(ScreenshotOverlayWindow* overlay,
                                        const QPointF& localPosition,

@@ -248,6 +248,144 @@ SettingsItemDefinition languageItem() {
     };
 }
 
+SettingsItemDefinition screenshotToolbarSizeItem() {
+    SettingsSelectDefinition payload;
+    payload.binding = SettingsSelectBinding::ScreenshotToolbarSize;
+    payload.options = {
+        {QStringLiteral("small"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Small"))},
+        {QStringLiteral("normal"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Normal"))},
+    };
+    return {QStringLiteral("interface.screenshot.toolbar-size"),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Toolbar size")),
+            settingsText(QT_TRANSLATE_NOOP(
+                "SettingsCatalog", "Choose the size of the screenshot drawing toolbar")),
+            {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screenshot toolbar"))},
+            QStringLiteral("screenshot_ui/toolbar_size"), payload};
+}
+
+SettingsItemDefinition selectionTransitionAnimationItem() {
+    return {QStringLiteral("interface.screenshot.selection-transition-animation"),
+            settingsText(QT_TRANSLATE_NOOP(
+                "SettingsCatalog", "Screenshot selection transition animation")),
+            settingsText(QT_TRANSLATE_NOOP(
+                "SettingsCatalog", "Animate transitions between smart screenshot selections")),
+            {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Selection animation"))},
+            QStringLiteral("screenshot_ui/selection_transition_animation"),
+            SettingsSwitchDefinition{SettingsSwitchBinding::SelectionTransitionAnimation}};
+}
+
+SettingsItemDefinition colorPickerDisplayModeItem() {
+    SettingsSelectDefinition payload;
+    payload.binding = SettingsSelectBinding::ColorPickerDisplayMode;
+    payload.options = {
+        {QStringLiteral("hide_outside_selection"),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Hide when outside selection"))},
+        {QStringLiteral("always_show"),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Always show"))},
+        {QStringLiteral("always_hide"),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Always hide"))},
+    };
+    return {QStringLiteral("interface.screenshot.color-picker-display-mode"),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Color picker display mode")),
+            settingsText(QT_TRANSLATE_NOOP(
+                "SettingsCatalog", "Control when the screenshot color picker is visible")),
+            {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Magnifier visibility"))},
+            QStringLiteral("screenshot_ui/color_picker_display_mode"), payload};
+}
+
+SettingsItemDefinition screenshotColorItem(const QString& id, const char* title,
+                                           const char* description, const QString& key,
+                                           SettingsColorBinding binding,
+                                           QVector<TranslatableText> aliases = {}) {
+    return {id, settingsText(title), settingsText(description), std::move(aliases), key,
+            SettingsColorDefinition{binding, true}};
+}
+
+SettingsItemDefinition shortcutHintOpacityItem() {
+    return {QStringLiteral("interface.screenshot.shortcut-hint-opacity"),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Shortcut hint opacity")),
+            settingsText(QT_TRANSLATE_NOOP(
+                "SettingsCatalog", "Set the overall opacity of screenshot shortcut hints")),
+            {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Hotkey hint opacity"))},
+            QStringLiteral("screenshot_ui/shortcut_hint_opacity"),
+            SettingsSliderDefinition{
+                SettingsSliderBinding::ShortcutHintOpacity,
+                settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "%"))}};
+}
+
+SettingsItemDefinition drawingToolbarEditorItem() {
+    return {QStringLiteral("interface.toolbar.drawing-toolbar-editor"),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Drawing toolbar editor")),
+            settingsText(QT_TRANSLATE_NOOP(
+                "SettingsCatalog", "Drag drawing tools to reorder them or move them into the hidden area")),
+            {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Toolbar order")),
+             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Hidden tools"))},
+            QStringLiteral("screenshot_toolbar/layout"),
+            SettingsCustomDefinition{SettingsCustomRenderer::DrawingToolbarEditor}};
+}
+
+SettingsItemDefinition pinBorderColorItem() {
+    return screenshotColorItem(
+        QStringLiteral("interface.pin-to-screen.border-color"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Border color"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Set the border color of pinned screenshots"),
+        QStringLiteral("pin_to_screen/border_color"), SettingsColorBinding::PinBorderColor,
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Pinned window border"))});
+}
+
+SettingsItemDefinition trayEnabledItem() {
+    return {QStringLiteral("interface.tray.enabled"),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Enable tray")),
+            settingsText(QT_TRANSLATE_NOOP(
+                "SettingsCatalog", "Show the application icon and menu in the system tray")),
+            {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "System tray"))},
+            QStringLiteral("tray/enabled"),
+            SettingsSwitchDefinition{SettingsSwitchBinding::TrayEnabled}};
+}
+
+SettingsItemDefinition trayIconItem() {
+    SettingsRadioDefinition payload;
+    payload.options = {
+        {QStringLiteral("default"),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Default")),
+         QStringLiteral(":/snow-shot/app-icons/snow-shot-tray-default.png")},
+        {QStringLiteral("light"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Light")),
+         QStringLiteral(":/snow-shot/app-icons/snow-shot-tray-light.png")},
+        {QStringLiteral("dark"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Dark")),
+         QStringLiteral(":/snow-shot/app-icons/snow-shot-tray-dark.png")},
+        {QStringLiteral("snow-default"),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Snowflake")),
+         QStringLiteral(":/snow-shot/app-icons/snow-shot-tray-snow-default.png")},
+        {QStringLiteral("snow-light"),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Snowflake Light")),
+         QStringLiteral(":/snow-shot/app-icons/snow-shot-tray-snow-light.png")},
+        {QStringLiteral("snow-dark"),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Snowflake Dark")),
+         QStringLiteral(":/snow-shot/app-icons/snow-shot-tray-snow-dark.png")},
+    };
+    return {QStringLiteral("interface.tray.icon"),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Icon")),
+            settingsText(QT_TRANSLATE_NOOP(
+                "SettingsCatalog", "Choose the bundled icon used in the system tray")),
+            {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Tray appearance"))},
+            QStringLiteral("tray/icon"), payload};
+}
+
+SettingsItemDefinition trayCustomIconItem() {
+    return {QStringLiteral("interface.tray.custom-icon"),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Custom icon")),
+            settingsText(QT_TRANSLATE_NOOP(
+                "SettingsCatalog", "Enter or browse to a PNG or ICO file; invalid files use the selected bundled icon")),
+            {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Tray icon path"))},
+            QStringLiteral("tray/custom_icon"),
+            SettingsFilePathDefinition{
+                SettingsFilePathBinding::TrayCustomIcon,
+                settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Browse")),
+                settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Select tray icon")),
+                settingsText(QT_TRANSLATE_NOOP(
+                    "SettingsCatalog", "Image files (*.png *.ico);;PNG images (*.png);;Icon files (*.ico)"))}};
+}
+
 SettingsItemDefinition applicationPriorityItem() {
     SettingsSelectDefinition payload;
     payload.options = {
@@ -452,6 +590,71 @@ QVector<SettingsPageDefinition> builtInPages() {
                                                    "Appearance and language settings")),
                     SettingsSectionReset::GeneralSettings,
                     {themeItem(), languageItem()},
+                },
+                {
+                    QStringLiteral("interface-screenshot"),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screenshot")),
+                    settingsText(QT_TRANSLATE_NOOP(
+                        "SettingsCatalog", "Screenshot interface and visual guidance settings")),
+                    SettingsSectionReset::ScreenshotInterfaceSettings,
+                    {
+                        screenshotToolbarSizeItem(),
+                        selectionTransitionAnimationItem(),
+                        colorPickerDisplayModeItem(),
+                        screenshotColorItem(
+                            QStringLiteral("interface.screenshot.selection-mask-color"),
+                            QT_TRANSLATE_NOOP("SettingsCatalog", "Selection mask color"),
+                            QT_TRANSLATE_NOOP(
+                                "SettingsCatalog", "Set the color and opacity outside the screenshot selection"),
+                            QStringLiteral("screenshot_ui/selection_mask_color"),
+                            SettingsColorBinding::SelectionMaskColor),
+                        shortcutHintOpacityItem(),
+                        screenshotColorItem(
+                            QStringLiteral("interface.screenshot.cursor-guide-line-color"),
+                            QT_TRANSLATE_NOOP("SettingsCatalog", "Cursor guide line color"),
+                            QT_TRANSLATE_NOOP(
+                                "SettingsCatalog", "Draw a dashed crosshair at the pointer while selecting"),
+                            QStringLiteral("screenshot_ui/cursor_guide_line_color"),
+                            SettingsColorBinding::CursorGuideLineColor),
+                        screenshotColorItem(
+                            QStringLiteral("interface.screenshot.monitor-center-guide-line-color"),
+                            QT_TRANSLATE_NOOP("SettingsCatalog", "Monitor center guide line color"),
+                            QT_TRANSLATE_NOOP(
+                                "SettingsCatalog", "Draw a solid crosshair at the active monitor center while selecting"),
+                            QStringLiteral("screenshot_ui/monitor_center_guide_line_color"),
+                            SettingsColorBinding::MonitorCenterGuideLineColor),
+                        screenshotColorItem(
+                            QStringLiteral("interface.screenshot.color-picker-center-guide-line-color"),
+                            QT_TRANSLATE_NOOP("SettingsCatalog", "Color picker center guide line color"),
+                            QT_TRANSLATE_NOOP(
+                                "SettingsCatalog", "Draw four guide segments around the sampled center pixel"),
+                            QStringLiteral("screenshot_ui/color_picker_center_guide_line_color"),
+                            SettingsColorBinding::ColorPickerCenterGuideLineColor),
+                    },
+                },
+                {
+                    QStringLiteral("toolbar"),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Toolbar")),
+                    settingsText(QT_TRANSLATE_NOOP(
+                        "SettingsCatalog", "Drawing toolbar order and visibility settings")),
+                    SettingsSectionReset::DrawingToolbar,
+                    {drawingToolbarEditorItem()},
+                },
+                {
+                    QStringLiteral("pin-to-screen"),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Pin to Screen")),
+                    settingsText(QT_TRANSLATE_NOOP(
+                        "SettingsCatalog", "Pinned screenshot window appearance settings")),
+                    SettingsSectionReset::PinToScreen,
+                    {pinBorderColorItem()},
+                },
+                {
+                    QStringLiteral("tray"),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Tray")),
+                    settingsText(QT_TRANSLATE_NOOP(
+                        "SettingsCatalog", "System tray availability and icon settings")),
+                    SettingsSectionReset::Tray,
+                    {trayEnabledItem(), trayIconItem(), trayCustomIconItem()},
                 },
             },
         },
@@ -846,6 +1049,12 @@ QStringList SettingsCatalog::validationErrors() const {
                     case SettingsSelectBinding::ApplicationPriority:
                         expectedKey = QStringLiteral("system/application_priority");
                         break;
+                    case SettingsSelectBinding::ScreenshotToolbarSize:
+                        expectedKey = QStringLiteral("screenshot_ui/toolbar_size");
+                        break;
+                    case SettingsSelectBinding::ColorPickerDisplayMode:
+                        expectedKey = QStringLiteral("screenshot_ui/color_picker_display_mode");
+                        break;
                     }
                     if (schemaEntry == nullptr ||
                         schemaEntry->valueKind != storage::ConfigurationValueKind::String ||
@@ -889,6 +1098,13 @@ QStringList SettingsCatalog::validationErrors() const {
                         break;
                     case SettingsSwitchBinding::DirectMlAcceleration:
                         expectedKey = QStringLiteral("text_recognition/direct_ml_acceleration");
+                        break;
+                    case SettingsSwitchBinding::SelectionTransitionAnimation:
+                        expectedKey =
+                            QStringLiteral("screenshot_ui/selection_transition_animation");
+                        break;
+                    case SettingsSwitchBinding::TrayEnabled:
+                        expectedKey = QStringLiteral("tray/enabled");
                         break;
                     }
                     if (itemDefinition.configurationKey != expectedKey || schemaEntry == nullptr ||
@@ -981,6 +1197,96 @@ QStringList SettingsCatalog::validationErrors() const {
                                              .arg(itemDefinition.id));
                     }
                 }
+                if (const auto* slider =
+                        std::get_if<SettingsSliderDefinition>(&itemDefinition.payload)) {
+                    QString expectedKey;
+                    switch (slider->binding) {
+                    case SettingsSliderBinding::ShortcutHintOpacity:
+                        expectedKey = QStringLiteral("screenshot_ui/shortcut_hint_opacity");
+                        break;
+                    }
+                    if (itemDefinition.configurationKey != expectedKey || schemaEntry == nullptr ||
+                        schemaEntry->valueKind != storage::ConfigurationValueKind::Integer ||
+                        !schemaEntry->integerRange.has_value() ||
+                        !slider->suffix.isValid()) {
+                        errors.push_back(QStringLiteral("slider binding is incompatible: %1")
+                                             .arg(itemDefinition.id));
+                    }
+                }
+                if (const auto* color =
+                        std::get_if<SettingsColorDefinition>(&itemDefinition.payload)) {
+                    QString expectedKey;
+                    switch (color->binding) {
+                    case SettingsColorBinding::SelectionMaskColor:
+                        expectedKey = QStringLiteral("screenshot_ui/selection_mask_color");
+                        break;
+                    case SettingsColorBinding::CursorGuideLineColor:
+                        expectedKey = QStringLiteral("screenshot_ui/cursor_guide_line_color");
+                        break;
+                    case SettingsColorBinding::MonitorCenterGuideLineColor:
+                        expectedKey =
+                            QStringLiteral("screenshot_ui/monitor_center_guide_line_color");
+                        break;
+                    case SettingsColorBinding::ColorPickerCenterGuideLineColor:
+                        expectedKey =
+                            QStringLiteral("screenshot_ui/color_picker_center_guide_line_color");
+                        break;
+                    case SettingsColorBinding::PinBorderColor:
+                        expectedKey = QStringLiteral("pin_to_screen/border_color");
+                        break;
+                    }
+                    if (itemDefinition.configurationKey != expectedKey || schemaEntry == nullptr ||
+                        schemaEntry->valueKind != storage::ConfigurationValueKind::String ||
+                        !color->alphaChannelEnabled) {
+                        errors.push_back(QStringLiteral("color binding is incompatible: %1")
+                                             .arg(itemDefinition.id));
+                    }
+                }
+                if (const auto* radio =
+                        std::get_if<SettingsRadioDefinition>(&itemDefinition.payload)) {
+                    QString expectedKey;
+                    switch (radio->binding) {
+                    case SettingsRadioBinding::TrayIcon:
+                        expectedKey = QStringLiteral("tray/icon");
+                        break;
+                    }
+                    QSet<QString> configuredValues;
+                    for (const SettingsRadioOptionDefinition& option : radio->options) {
+                        configuredValues.insert(option.value.toString());
+                        if (!option.label.isValid() || option.iconResource.isEmpty()) {
+                            errors.push_back(QStringLiteral("radio option is incomplete: %1")
+                                                 .arg(itemDefinition.id));
+                        }
+                    }
+                    QSet<QString> allowed;
+                    if (schemaEntry != nullptr) {
+                        for (const QString& value : schemaEntry->allowedStringValues) {
+                            allowed.insert(value);
+                        }
+                    }
+                    if (itemDefinition.configurationKey != expectedKey || schemaEntry == nullptr ||
+                        schemaEntry->valueKind != storage::ConfigurationValueKind::String ||
+                        radio->options.isEmpty() || configuredValues != allowed) {
+                        errors.push_back(QStringLiteral("radio binding is incompatible: %1")
+                                             .arg(itemDefinition.id));
+                    }
+                }
+                if (const auto* filePath =
+                        std::get_if<SettingsFilePathDefinition>(&itemDefinition.payload)) {
+                    QString expectedKey;
+                    switch (filePath->binding) {
+                    case SettingsFilePathBinding::TrayCustomIcon:
+                        expectedKey = QStringLiteral("tray/custom_icon");
+                        break;
+                    }
+                    if (itemDefinition.configurationKey != expectedKey || schemaEntry == nullptr ||
+                        schemaEntry->valueKind != storage::ConfigurationValueKind::String ||
+                        !filePath->buttonText.isValid() || !filePath->dialogTitle.isValid() ||
+                        !filePath->fileFilter.isValid()) {
+                        errors.push_back(QStringLiteral("file path binding is incompatible: %1")
+                                             .arg(itemDefinition.id));
+                    }
+                }
                 if (const auto* action =
                         std::get_if<SettingsActionDefinition>(&itemDefinition.payload)) {
                     if (!itemDefinition.configurationKey.isEmpty() ||
@@ -1000,8 +1306,16 @@ QStringList SettingsCatalog::validationErrors() const {
                 if (const auto* custom =
                         std::get_if<SettingsCustomDefinition>(&itemDefinition.payload)) {
                     const bool rendererSupported =
-                        custom->renderer == SettingsCustomRenderer::StorageStatus;
-                    if (!itemDefinition.configurationKey.isEmpty() || !rendererSupported) {
+                        custom->renderer == SettingsCustomRenderer::StorageStatus ||
+                        custom->renderer == SettingsCustomRenderer::DrawingToolbarEditor;
+                    const QString expectedKey =
+                        custom->renderer == SettingsCustomRenderer::DrawingToolbarEditor
+                            ? QStringLiteral("screenshot_toolbar/layout")
+                            : QString();
+                    if (itemDefinition.configurationKey != expectedKey || !rendererSupported ||
+                        (custom->renderer == SettingsCustomRenderer::DrawingToolbarEditor &&
+                         (schemaEntry == nullptr ||
+                          schemaEntry->valueKind != storage::ConfigurationValueKind::Structured))) {
                         errors.push_back(QStringLiteral("custom item is incomplete: %1")
                                              .arg(itemDefinition.id));
                     }

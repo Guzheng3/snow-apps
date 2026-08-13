@@ -30,6 +30,11 @@ class ScreenshotOverlayCanvasPresenter final {
                             bool manualSelecting, bool dragging) const;
     void updateOverlayCursors(const ScreenshotDisplaySession& displaySession, bool selecting,
                               bool dragging) const;
+    void updateGuideLines(const ScreenshotDisplaySession& displaySession,
+                          ScreenshotOverlayWindow* owner, const QPointF& localPosition,
+                          bool selecting, const QColor& cursorColor,
+                          const QColor& monitorCenterColor) const;
+    void clearGuideLines(const ScreenshotDisplaySession& displaySession) const;
     void setOverlayCursor(ScreenshotOverlayWindow* overlay,
                           ScreenshotSelectionDragMode dragMode) const;
     void setCanvasInteractionEnabled(const ScreenshotDisplaySession& displaySession,

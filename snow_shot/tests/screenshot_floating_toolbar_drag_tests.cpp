@@ -747,11 +747,31 @@ void unchangedShadowMarginsAreNoOps() {
     require(!palette->setShadowMargins(ScreenshotToolPaletteHost::defaultShadowMargins()),
             "setting the current shadow margins should be a no-op");
 }
+
+void screenshotToolbarSizeMultiplierSurvivesCaptureReset() {
+    NoOpToolbarCommands commands;
+    ScreenshotToolbarWindow window(commands);
+    window.setToolbarSize(QStringLiteral("small"));
+    window.prepareForDisplay();
+    require(qFuzzyCompare(window.paletteHost()->physicalScale() + 1.0, 1.8),
+            "small screenshot toolbar should apply the 0.8 palette multiplier");
+    window.resetForNewCapture();
+    require(qFuzzyCompare(window.paletteHost()->physicalScale() + 1.0, 1.8),
+            "capture reset should preserve the configured small toolbar multiplier");
+    window.setToolbarSize(QStringLiteral("normal"));
+    window.prepareForDisplay();
+    require(qFuzzyCompare(window.paletteHost()->physicalScale() + 1.0, 2.0),
+            "normal screenshot toolbar should restore the unmodified DPI scale");
+}
 } // namespace
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
     try {
+        if (app.arguments().contains(QStringLiteral("--toolbar-size-only"))) {
+            screenshotToolbarSizeMultiplierSurvivesCaptureReset();
+            return 0;
+        }
         logicalDragMovesWithoutRefreshingGeometry();
         physicalDragMovesWithoutRefreshingGeometry();
         physicalDragAcrossHardwareMonitorsKeepsPhysicalGeometryStable();
@@ -761,6 +781,7 @@ int main(int argc, char* argv[]) {
         placementRectsTrackTheDisplayedStyleToolbar();
         toolChangesRepositionOnlyBeforeManualDrag();
         unchangedShadowMarginsAreNoOps();
+        screenshotToolbarSizeMultiplierSurvivesCaptureReset();
         return 0;
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

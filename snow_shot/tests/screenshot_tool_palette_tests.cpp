@@ -479,6 +479,56 @@ void screenshotToolbarUsesCanonicalOrderAndSectionSeparators() {
             "Arrow and Line grouping should not introduce an internal separator");
 }
 
+void configurableToolbarLayoutReordersAndHidesAtomicGroups() {
+    ScreenshotToolPalette::Options options;
+    options.showSelectTool = true;
+    options.showShapeTool = true;
+    options.showArrowTool = true;
+    options.showLineTool = true;
+    options.showFreeDrawTool = true;
+    options.showHistoryActions = true;
+    options.enableStyleToolbar = false;
+    options.actions = ScreenshotToolPalette::CancelAction | ScreenshotToolPalette::CopyAction |
+                      ScreenshotToolPalette::ConfirmAction;
+    options.toolbarLayout = snow_shot::storage::ScreenshotToolbarLayout{
+        {QStringLiteral("history"), QStringLiteral("arrow-line"), QStringLiteral("shape"),
+         QStringLiteral("select"), QStringLiteral("free-draw")},
+        {QStringLiteral("shape")}};
+
+    ScreenshotToolPalette palette(options);
+    const QList<adqt::widgets::AdButton*> buttons = mainToolbarButtons(palette);
+    const QStringList expectedIds{
+        QStringLiteral("history"), QStringLiteral("history"), QStringLiteral("arrow-line"),
+        QStringLiteral("select"),  QStringLiteral("free-draw"), QString(),
+        QString(),                  QString(),
+    };
+    require(buttons.size() == expectedIds.size(),
+            "custom toolbar layout should keep visible groups and mandatory actions");
+    for (int index = 0; index < expectedIds.size(); ++index) {
+        require(buttons.at(index)->property("screenshotToolbarItemId").toString() ==
+                    expectedIds.at(index),
+                "custom toolbar ordering should follow stable group identifiers");
+    }
+    require(palette.findChild<adqt::widgets::AdButton*>(QStringLiteral("screenshotArrowLineButton"))
+                    ->isVisibleTo(palette.mainPanel()) &&
+                !controlWithTooltip(palette, "Shape")->isVisibleTo(palette.mainPanel()),
+            "grouped controls should remain atomic and hidden entries should leave the layout");
+
+    snow_shot::storage::ScreenshotToolbarLayout updated = *options.toolbarLayout;
+    updated.hidden = {QStringLiteral("arrow-line")};
+    updated.order = {QStringLiteral("free-draw"), QStringLiteral("select"),
+                     QStringLiteral("history"), QStringLiteral("arrow-line"),
+                     QStringLiteral("shape")};
+    palette.setToolbarLayout(updated);
+    const QList<adqt::widgets::AdButton*> updatedButtons = mainToolbarButtons(palette);
+    require(updatedButtons.at(0)->property("screenshotToolbarItemId").toString() ==
+                    QStringLiteral("free-draw") &&
+                updatedButtons.at(1)->property("screenshotToolbarItemId").toString() ==
+                    QStringLiteral("select") &&
+                updatedButtons.constLast()->property("screenshotToolbarItemId").toString().isEmpty(),
+            "runtime toolbar layout changes should update order without replacing result actions");
+}
+
 void arrowLinePopoverReplacesItsEntryWithoutToolbarGeometryChurn() {
     ScreenshotToolPalette::Options options;
     options.showShapeTool = false;
@@ -5124,12 +5174,17 @@ int main(int argc, char** argv) {
                 .initialize({executableDirectory, storageDirectory.path(), 60000})
                 .success,
             "failed to initialize isolated toolbar test storage");
+    if (application.arguments().contains(QStringLiteral("--toolbar-layout-only"))) {
+        configurableToolbarLayoutReordersAndHidesAtomicGroups();
+        return 0;
+    }
     numericStrokeWidthPreviewUsesLineWithinPreviewBounds();
     textAndHighlightStrokeWidthTriggersUseSharedPreviewButton();
     scrollingScreenshotDisablesUnavailableTools();
     recognitionToolsDisableDrawingTools();
     scrollingScreenshotExposesAxisRecognitionModes();
     screenshotToolbarUsesCanonicalOrderAndSectionSeparators();
+    configurableToolbarLayoutReordersAndHidesAtomicGroups();
     ocrControlReflectsLoadingState();
     ocrToolReplacesSelectionActionToolbarContents();
     tableToolExposesStructureActionsAndOwnHistoryState();

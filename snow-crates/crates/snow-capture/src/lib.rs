@@ -35,7 +35,7 @@ pub enum CaptureTarget {
     Region(region::CaptureRegion),
 }
 
-pub use backend::CaptureWorkload;
+pub use backend::{CaptureWorkload, WgcUpdateMode};
 pub use capture_session::{CaptureSession, CaptureTargetInfo};
 pub use frame::{CaptureEvent, CapturedFrame, ColorSpace, DirtyRect, FrameMetadata};
 pub use monitor::MonitorId;

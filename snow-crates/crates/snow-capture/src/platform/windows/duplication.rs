@@ -2184,12 +2184,14 @@ impl OutputCapturer {
         })?;
         let sample = CaptureSampleMetadata {
             capture_time: Some(slot.capture_time.unwrap_or_else(Instant::now)),
-            present_time_qpc: if slot.present_time_qpc != 0 {
+            raw_os_ticks: if slot.present_time_qpc != 0 {
                 Some(slot.present_time_qpc)
             } else {
                 None
             },
+            tick_format: snow_core::timestamp::TickFormat::RawQpc,
             is_duplicate: slot.is_duplicate,
+            dirty_rects: Vec::new(),
         };
 
         let moves_only = {
@@ -2336,12 +2338,14 @@ impl OutputCapturer {
         })?;
         let sample = CaptureSampleMetadata {
             capture_time: Some(slot.capture_time.unwrap_or_else(Instant::now)),
-            present_time_qpc: if slot.present_time_qpc != 0 {
+            raw_os_ticks: if slot.present_time_qpc != 0 {
                 Some(slot.present_time_qpc)
             } else {
                 None
             },
+            tick_format: snow_core::timestamp::TickFormat::RawQpc,
             is_duplicate: slot.is_duplicate,
+            dirty_rects: Vec::new(),
         };
         let staging = slot.staging.as_ref().ok_or_else(|| {
             CaptureError::platform(anyhow::anyhow!(
@@ -2443,8 +2447,10 @@ impl OutputCapturer {
                     TryAcquireResult::Retry => {
                         return Ok(CaptureSampleMetadata {
                             capture_time: Some(capture_time),
-                            present_time_qpc: None,
+                            raw_os_ticks: None,
+                            tick_format: snow_core::timestamp::TickFormat::RawQpc,
                             is_duplicate: true,
+                            dirty_rects: Vec::new(),
                         });
                     }
                 }
@@ -2616,12 +2622,14 @@ impl OutputCapturer {
             {
                 return Ok(CaptureSampleMetadata {
                     capture_time: Some(capture_time),
-                    present_time_qpc: if source_present_time_qpc != 0 {
+                    raw_os_ticks: if source_present_time_qpc != 0 {
                         Some(source_present_time_qpc)
                     } else {
                         None
                     },
+                    tick_format: snow_core::timestamp::TickFormat::RawQpc,
                     is_duplicate: true,
+                    dirty_rects: Vec::new(),
                 });
             }
 
@@ -3388,19 +3396,22 @@ impl crate::backend::MonitorCapturer for WindowsMonitorCapturer {
         }
     }
 
-    fn set_capture_mode(&mut self, mode: CaptureMode) {
+    fn set_capture_mode(&mut self, mode: CaptureMode) -> CaptureResult<()> {
         self.capture_mode = mode;
         self.output_mut().set_capture_mode(mode);
+        Ok(())
     }
 
-    fn set_gpu_hdr_conversion(&mut self, enabled: bool) {
+    fn set_gpu_hdr_conversion(&mut self, enabled: bool) -> CaptureResult<()> {
         self.gpu_hdr_conversion_enabled = enabled;
         self.output_mut().set_gpu_hdr_conversion(enabled);
+        Ok(())
     }
 
-    fn set_hdr_tonemap_lut(&mut self, enabled: bool) {
+    fn set_hdr_tonemap_lut(&mut self, enabled: bool) -> CaptureResult<()> {
         self.hdr_tonemap_lut_enabled = enabled;
         self.output_mut().set_hdr_tonemap_lut(enabled);
+        Ok(())
     }
 
     fn sample_cursor(&mut self) -> CaptureResult<Option<CursorSnapshot>> {
@@ -3695,7 +3706,7 @@ impl WindowsDxgiWindowCapturer {
 
         frame
             .metadata
-            .set_timing(sample.capture_time, sample.present_time_qpc);
+            .set_timing(sample.capture_time, sample.raw_os_ticks);
         frame.metadata.is_duplicate = sample.is_duplicate;
         Ok(frame)
     }
@@ -3714,19 +3725,22 @@ impl crate::backend::MonitorCapturer for WindowsDxgiWindowCapturer {
         self.capture_internal(reuse, Some(destination_has_history))
     }
 
-    fn set_capture_mode(&mut self, mode: CaptureMode) {
+    fn set_capture_mode(&mut self, mode: CaptureMode) -> CaptureResult<()> {
         self.capture_mode = mode;
         self.output_mut().set_capture_mode(mode);
+        Ok(())
     }
 
-    fn set_gpu_hdr_conversion(&mut self, enabled: bool) {
+    fn set_gpu_hdr_conversion(&mut self, enabled: bool) -> CaptureResult<()> {
         self.gpu_hdr_conversion_enabled = enabled;
         self.output_mut().set_gpu_hdr_conversion(enabled);
+        Ok(())
     }
 
-    fn set_hdr_tonemap_lut(&mut self, enabled: bool) {
+    fn set_hdr_tonemap_lut(&mut self, enabled: bool) -> CaptureResult<()> {
         self.hdr_tonemap_lut_enabled = enabled;
         self.output_mut().set_hdr_tonemap_lut(enabled);
+        Ok(())
     }
 
     fn sample_cursor(&mut self) -> CaptureResult<Option<CursorSnapshot>> {

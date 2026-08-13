@@ -68,6 +68,8 @@ enum class SettingsSelectBinding {
     Theme,
     Language,
     ApplicationPriority,
+    ScreenshotToolbarSize,
+    ColorPickerDisplayMode,
 };
 
 struct SettingsSelectDefinition {
@@ -80,6 +82,8 @@ enum class SettingsSwitchBinding {
     HistoryEnabled,
     SmartSelection,
     DirectMlAcceleration,
+    SelectionTransitionAnimation,
+    TrayEnabled,
 };
 
 struct SettingsSwitchDefinition {
@@ -96,6 +100,54 @@ enum class SettingsIntegerBinding {
 struct SettingsIntegerDefinition {
     SettingsIntegerBinding binding = SettingsIntegerBinding::HistoryRetentionDays;
     TranslatableText suffix;
+};
+
+enum class SettingsSliderBinding {
+    ShortcutHintOpacity,
+};
+
+struct SettingsSliderDefinition {
+    SettingsSliderBinding binding = SettingsSliderBinding::ShortcutHintOpacity;
+    TranslatableText suffix;
+};
+
+enum class SettingsColorBinding {
+    SelectionMaskColor,
+    CursorGuideLineColor,
+    MonitorCenterGuideLineColor,
+    ColorPickerCenterGuideLineColor,
+    PinBorderColor,
+};
+
+struct SettingsColorDefinition {
+    SettingsColorBinding binding = SettingsColorBinding::SelectionMaskColor;
+    bool alphaChannelEnabled = true;
+};
+
+enum class SettingsRadioBinding {
+    TrayIcon,
+};
+
+struct SettingsRadioOptionDefinition {
+    QVariant value;
+    TranslatableText label;
+    QString iconResource;
+};
+
+struct SettingsRadioDefinition {
+    SettingsRadioBinding binding = SettingsRadioBinding::TrayIcon;
+    QVector<SettingsRadioOptionDefinition> options;
+};
+
+enum class SettingsFilePathBinding {
+    TrayCustomIcon,
+};
+
+struct SettingsFilePathDefinition {
+    SettingsFilePathBinding binding = SettingsFilePathBinding::TrayCustomIcon;
+    TranslatableText buttonText;
+    TranslatableText dialogTitle;
+    TranslatableText fileFilter;
 };
 
 enum class SettingsShortcutAdjustment {
@@ -136,6 +188,7 @@ struct SettingsActionDefinition {
 
 enum class SettingsCustomRenderer {
     StorageStatus,
+    DrawingToolbarEditor,
 };
 
 struct SettingsCustomDefinition {
@@ -144,6 +197,8 @@ struct SettingsCustomDefinition {
 
 using SettingsItemPayload =
     std::variant<SettingsSelectDefinition, SettingsSwitchDefinition, SettingsIntegerDefinition,
+                 SettingsSliderDefinition, SettingsColorDefinition, SettingsRadioDefinition,
+                 SettingsFilePathDefinition,
                  SettingsShortcutActionDefinition, SettingsActionDefinition,
                  SettingsCustomDefinition>;
 
@@ -163,6 +218,10 @@ enum class SettingsSectionReset {
     GeneralSettings,
     HistoryPolicy,
     ScreenshotSettings,
+    ScreenshotInterfaceSettings,
+    DrawingToolbar,
+    PinToScreen,
+    Tray,
     SystemSettings,
     TextRecognition,
 };

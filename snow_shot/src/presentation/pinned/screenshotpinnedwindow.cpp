@@ -99,6 +99,7 @@ constexpr int kWheelScaleStep = 10;
 constexpr int kMinimumOpacityPercent = 25;
 constexpr int kMaximumOpacityPercent = 100;
 constexpr int kWheelOpacityStep = 5;
+const QColor kDefaultPinnedBorderColor(219, 219, 219, 255);
 constexpr auto kTranslationSourceProperty = "screenshotPinnedTranslationSource";
 constexpr auto kOcrTooLargeDescription =
     "IImage size is too large.";
@@ -267,6 +268,16 @@ QSize physicalSizeAtScale(const QSize& baseline, int percent) {
 QList<QPointer<ScreenshotPinnedWindow>>& livePinnedWindows() {
     static QList<QPointer<ScreenshotPinnedWindow>> windows;
     return windows;
+}
+
+QColor& configuredPinnedBorderColor() {
+    static QColor color = kDefaultPinnedBorderColor;
+    return color;
+}
+
+bool& configuredTrayEnabled() {
+    static bool enabled = true;
+    return enabled;
 }
 
 QTransform normalizedImageTransform(const QTransform& transform, const QSize& sourceSize) {
@@ -950,6 +961,8 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
         return false;
     }
     invalidatePendingCopy();
+    applyRuntimeBorderColor();
+    updateShowMainInterfaceAction();
 
 #if defined(Q_OS_WIN) || defined(_WIN32)
     const qreal screenScale = std::max<qreal>(1.0, config.screen->devicePixelRatio());
@@ -1628,9 +1641,7 @@ void ScreenshotPinnedWindow::createUi() {
     m_borderFrame = new QFrame(this);
     m_borderFrame->setObjectName(QStringLiteral("screenshotPinnedBorder"));
     m_borderFrame->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-    m_borderFrame->setStyleSheet(QStringLiteral("QFrame#screenshotPinnedBorder { "
-                                                "border: 2px solid #DADADA; "
-                                                "background: transparent; }"));
+    applyRuntimeBorderColor();
     updatePinnedBorderGeometry(*m_borderFrame, rect());
     m_borderFrame->raise();
 
@@ -1840,15 +1851,54 @@ void ScreenshotPinnedWindow::createContextMenu() {
     connect(closeAll, &QAction::triggered, this, &ScreenshotPinnedWindow::closeAllPinnedWindows);
 
     m_contextMenu->addSeparator();
-    QAction* closeAction = m_contextMenu->addItem(tr("Close"), outlined_icons::Close());
-    setActionTranslationSource(closeAction, "Close");
-    closeAction->setObjectName(QStringLiteral("screenshotPinnedCloseAction"));
-    m_contextMenu->setActionDanger(closeAction);
-    connect(closeAction, &QAction::triggered, this, &QWidget::close);
+    m_showMainInterfaceAction =
+        m_contextMenu->addItem(tr("Show Main Interface"), outlined_icons::Appstore());
+    setActionTranslationSource(m_showMainInterfaceAction, "Show Main Interface");
+    m_showMainInterfaceAction->setObjectName(
+        QStringLiteral("screenshotPinnedShowMainInterfaceAction"));
+    connect(m_showMainInterfaceAction, &QAction::triggered, this,
+            &ScreenshotPinnedWindow::showMainWindowRequested);
+    m_closeAction = m_contextMenu->addItem(tr("Close"), outlined_icons::Close());
+    setActionTranslationSource(m_closeAction, "Close");
+    m_closeAction->setObjectName(QStringLiteral("screenshotPinnedCloseAction"));
+    m_contextMenu->setActionDanger(m_closeAction);
+    connect(m_closeAction, &QAction::triggered, this, &QWidget::close);
+    updateShowMainInterfaceAction();
     connect(m_contextMenu, &QMenu::aboutToShow, this, &ScreenshotPinnedWindow::refreshContextMenu);
 }
 
+void ScreenshotPinnedWindow::applyRuntimeBorderColor() {
+    if (m_borderFrame == nullptr) {
+        return;
+    }
+    const QColor color = configuredPinnedBorderColor();
+    m_borderFrame->setProperty("borderColor", color);
+    m_borderFrame->setStyleSheet(
+        QStringLiteral("QFrame#screenshotPinnedBorder { "
+                       "border: 2px solid rgba(%1, %2, %3, %4); "
+                       "background: transparent; }")
+            .arg(color.red())
+            .arg(color.green())
+            .arg(color.blue())
+            .arg(color.alpha()));
+    m_borderFrame->update();
+}
+
+void ScreenshotPinnedWindow::updateShowMainInterfaceAction() {
+    if (m_contextMenu == nullptr || m_showMainInterfaceAction == nullptr ||
+        m_closeAction == nullptr) {
+        return;
+    }
+    const bool containsAction = m_contextMenu->actions().contains(m_showMainInterfaceAction);
+    if (!configuredTrayEnabled() && !containsAction) {
+        m_contextMenu->insertAction(m_closeAction, m_showMainInterfaceAction);
+    } else if (configuredTrayEnabled() && containsAction) {
+        m_contextMenu->removeAction(m_showMainInterfaceAction);
+    }
+}
+
 void ScreenshotPinnedWindow::refreshContextMenu() {
+    updateShowMainInterfaceAction();
     if (m_ocrAction != nullptr) {
         const bool activeText = m_recognitionSession != nullptr &&
                                 m_recognitionSession->active() &&
@@ -1890,6 +1940,34 @@ void ScreenshotPinnedWindow::refreshContextMenu() {
     if (m_scaleReadoutAction != nullptr) {
         m_scaleReadoutAction->setText(tr("Current: %1%").arg(qRound(m_scalePercent)));
     }
+}
+
+void ScreenshotPinnedWindow::setRuntimeBorderColor(const QColor& color) {
+    configuredPinnedBorderColor() = color.isValid() ? color : kDefaultPinnedBorderColor;
+    const auto windows = livePinnedWindows();
+    for (const QPointer<ScreenshotPinnedWindow>& window : windows) {
+        if (window != nullptr) {
+            window->applyRuntimeBorderColor();
+        }
+    }
+}
+
+QColor ScreenshotPinnedWindow::runtimeBorderColor() {
+    return configuredPinnedBorderColor();
+}
+
+void ScreenshotPinnedWindow::setRuntimeTrayEnabled(bool enabled) {
+    configuredTrayEnabled() = enabled;
+    const auto windows = livePinnedWindows();
+    for (const QPointer<ScreenshotPinnedWindow>& window : windows) {
+        if (window != nullptr) {
+            window->updateShowMainInterfaceAction();
+        }
+    }
+}
+
+bool ScreenshotPinnedWindow::runtimeTrayEnabled() {
+    return configuredTrayEnabled();
 }
 
 void ScreenshotPinnedWindow::showContextMenu(const QPoint& globalPosition) {

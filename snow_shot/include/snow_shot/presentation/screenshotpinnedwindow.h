@@ -6,6 +6,7 @@
 #include "snow_shot/presentation/screenshotresultcompositor.h"
 
 #include <QByteArray>
+#include <QColor>
 #include <QImage>
 #include <QPoint>
 #include <QPointer>
@@ -85,6 +86,13 @@ class ScreenshotPinnedWindow final : public QWidget {
     bool prepareDocument(SnowCanvasRuntime& sourceRuntime);
     bool prewarm(QScreen* screen = nullptr);
     QRect currentNativeGeometry() const;
+    static void setRuntimeBorderColor(const QColor& color);
+    [[nodiscard]] static QColor runtimeBorderColor();
+    static void setRuntimeTrayEnabled(bool enabled);
+    [[nodiscard]] static bool runtimeTrayEnabled();
+
+  signals:
+    void showMainWindowRequested();
 
   private:
     ScreenshotPinnedWindow(SnowCanvasRuntime* sourceRuntime, RuntimeMode mode,
@@ -112,6 +120,8 @@ class ScreenshotPinnedWindow final : public QWidget {
 
     void createUi();
     void createContextMenu();
+    void applyRuntimeBorderColor();
+    void updateShowMainInterfaceAction();
     void retranslateUi();
     void refreshContextMenu();
     void showContextMenu(const QPoint& globalPosition);
@@ -195,6 +205,8 @@ class ScreenshotPinnedWindow final : public QWidget {
     QAction* m_ocrAction = nullptr;
     QAction* m_drawingAction = nullptr;
     QAction* m_thumbnailAction = nullptr;
+    QAction* m_showMainInterfaceAction = nullptr;
+    QAction* m_closeAction = nullptr;
     QActionGroup* m_opacityActions = nullptr;
     QActionGroup* m_scaleActions = nullptr;
     QAction* m_opacityReadoutAction = nullptr;

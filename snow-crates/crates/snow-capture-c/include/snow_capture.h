@@ -14,9 +14,16 @@ typedef struct SnowCaptureSnapshotImpl SnowCaptureSnapshot;
 typedef struct SnowCaptureFrameLeaseImpl SnowCaptureFrameLease;
 typedef struct SnowCaptureRecordingSessionImpl SnowCaptureRecordingSession;
 
+typedef enum SnowCaptureWgcUpdateMode {
+    SNOW_CAPTURE_WGC_UPDATE_MODE_AUTO = 0,
+    SNOW_CAPTURE_WGC_UPDATE_MODE_COMPLETE_ONLY = 1,
+    SNOW_CAPTURE_WGC_UPDATE_MODE_ORDERED_INCREMENTAL = 2,
+} SnowCaptureWgcUpdateMode;
+
 typedef struct SnowCaptureDesktopSessionConfig {
     size_t capture_retry_count;
-    uint8_t reserved[32];
+    uint8_t wgc_update_mode;
+    uint8_t reserved[31];
 } SnowCaptureDesktopSessionConfig;
 
 typedef struct SnowCaptureDesktopSessionState {
@@ -47,7 +54,8 @@ typedef struct SnowCaptureRegionSessionConfig {
     uint32_t width;
     uint32_t height;
     size_t capture_retry_count;
-    uint8_t reserved[32];
+    uint8_t wgc_update_mode;
+    uint8_t reserved[31];
 } SnowCaptureRegionSessionConfig;
 
 typedef struct SnowCaptureRegionFrameInfo {
@@ -66,7 +74,8 @@ typedef struct SnowCaptureRegionFrameInfo {
 typedef struct SnowCaptureWindowSessionConfig {
     intptr_t hwnd;
     size_t capture_retry_count;
-    uint8_t reserved[32];
+    uint8_t wgc_update_mode;
+    uint8_t reserved[31];
 } SnowCaptureWindowSessionConfig;
 
 typedef struct SnowCaptureWindowFrameInfo {

@@ -1,5 +1,6 @@
 #include "snow_shot/presentation/screenshotcanvasrenderer.h"
 
+#include "snow_shot/presentation/screenshotguidelinerendering.h"
 #include "snow_shot/presentation/screenshotocrpresentation.h"
 #include "snow_shot/presentation/screenshotocrtextlayer.h"
 #include "snow_shot/presentation/screenshotselectionshadowrenderer.h"
@@ -1261,6 +1262,50 @@ void ScreenshotCanvasRenderer::setMaskVisible(bool visible) {
     m_canvas.update();
 }
 
+void ScreenshotCanvasRenderer::setMaskColor(const QColor& color) {
+    const QColor next = color.isValid() ? color : QColor(0, 0, 0, 128);
+    if (m_maskColor == next) {
+        return;
+    }
+    m_maskColor = next;
+    if (m_maskVisible) {
+        m_canvas.update();
+    }
+}
+
+void ScreenshotCanvasRenderer::setGuideLines(const QPointF& cursorPosition,
+                                             const QColor& cursorColor,
+                                             const QColor& monitorCenterColor) {
+    const QColor nextCursorColor =
+        cursorColor.isValid() ? cursorColor : QColor(0, 0, 0, 0);
+    const QColor nextMonitorColor =
+        monitorCenterColor.isValid() ? monitorCenterColor : QColor(0, 0, 0, 0);
+    const bool nextVisible = nextCursorColor.alpha() > 0 || nextMonitorColor.alpha() > 0;
+    if (m_guideLineCursorPosition == cursorPosition &&
+        m_cursorGuideLineColor == nextCursorColor &&
+        m_monitorCenterGuideLineColor == nextMonitorColor &&
+        m_guideLinesVisible == nextVisible) {
+        return;
+    }
+    m_guideLineCursorPosition = cursorPosition;
+    m_cursorGuideLineColor = nextCursorColor;
+    m_monitorCenterGuideLineColor = nextMonitorColor;
+    m_guideLinesVisible = nextVisible;
+    m_canvas.update();
+}
+
+void ScreenshotCanvasRenderer::clearGuideLines() {
+    if (!m_guideLinesVisible && m_cursorGuideLineColor.alpha() == 0 &&
+        m_monitorCenterGuideLineColor.alpha() == 0) {
+        return;
+    }
+    m_guideLineCursorPosition = {};
+    m_cursorGuideLineColor = QColor(0, 0, 0, 0);
+    m_monitorCenterGuideLineColor = QColor(0, 0, 0, 0);
+    m_guideLinesVisible = false;
+    m_canvas.update();
+}
+
 void ScreenshotCanvasRenderer::setSelection(const QRectF& selection, bool handlesVisible,
                                             int cornerRadius, int shadowWidth,
                                             const QColor& shadowColor) {
@@ -1395,7 +1440,7 @@ void ScreenshotCanvasRenderer::reset() {
                           m_renderMode != RenderMode::Standard || m_maskVisible ||
                           m_selectionState.present || m_selectionState.shadowWidth > 0 ||
                           m_selectionState.toolbarHovered || !m_selectionState.borderVisible ||
-                          m_ocrPresentation != nullptr;
+                          m_ocrPresentation != nullptr || m_guideLinesVisible;
     m_imageSource = {};
     m_imageViewportPhysicalSize = QSize();
     m_pinnedContentCanvasRect = {};
@@ -1404,6 +1449,10 @@ void ScreenshotCanvasRenderer::reset() {
     m_selectionState = ScreenshotSelectionVisualState{};
     m_renderMode = RenderMode::Standard;
     m_maskVisible = false;
+    m_guideLineCursorPosition = {};
+    m_cursorGuideLineColor = QColor(0, 0, 0, 0);
+    m_monitorCenterGuideLineColor = QColor(0, 0, 0, 0);
+    m_guideLinesVisible = false;
     m_ocrPresentation.reset();
     m_ocrPresentationMode = OcrPresentationMode::BackgroundAndText;
     if (m_ocrTextLayer != nullptr) {
@@ -1427,6 +1476,14 @@ ScreenshotCanvasRenderer::RenderMode ScreenshotCanvasRenderer::renderMode() cons
 
 bool ScreenshotCanvasRenderer::maskVisible() const {
     return m_maskVisible;
+}
+
+QColor ScreenshotCanvasRenderer::maskColor() const {
+    return m_maskColor;
+}
+
+bool ScreenshotCanvasRenderer::guideLinesVisible() const {
+    return m_guideLinesVisible;
 }
 
 bool ScreenshotCanvasRenderer::hasSelection() const {
@@ -1555,7 +1612,8 @@ void ScreenshotCanvasRenderer::renderAfterCanvas(QPainter& painter,
         }
         return;
     }
-    if (!m_maskVisible && !m_selectionState.present && m_ocrPresentation == nullptr) {
+    if (!m_maskVisible && !m_selectionState.present && m_ocrPresentation == nullptr &&
+        !m_guideLinesVisible) {
         return;
     }
 
@@ -1575,7 +1633,14 @@ void ScreenshotCanvasRenderer::renderAfterCanvas(QPainter& painter,
             dimPath.addPath(selectionShapePath(m_selectionState.bounds, visibleCornerRadius,
                                                context.canvasToViewTransform));
         }
-        painter.fillPath(dimPath, QColor(0, 0, 0, 128));
+        painter.fillPath(dimPath, m_maskColor);
+    }
+    if (m_renderMode == RenderMode::Standard && m_guideLinesVisible) {
+        const QRectF viewport(context.viewportRect);
+        paintScreenshotGuideLineCrosshair(painter, viewport, m_guideLineCursorPosition,
+                                          m_cursorGuideLineColor, true);
+        paintScreenshotGuideLineCrosshair(painter, viewport, viewport.center(),
+                                          m_monitorCenterGuideLineColor, false);
     }
     if (m_renderMode == RenderMode::Standard && m_selectionState.present) {
         const QRectF selectionView = context.canvasToViewTransform.mapRect(m_selectionState.bounds);

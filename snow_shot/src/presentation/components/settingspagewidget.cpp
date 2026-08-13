@@ -11,15 +11,23 @@
 #include "snow_shot/storage/configurationschema.h"
 
 #include "widgets/button.h"
+#include "widgets/color_picker.h"
 #include "widgets/input_number.h"
+#include "widgets/input_search_edit.h"
 #include "widgets/modal.h"
+#include "widgets/radio.h"
+#include "widgets/radio_button_group.h"
 #include "widgets/scroll_area.h"
 #include "widgets/select.h"
+#include "widgets/slider.h"
 #include "widgets/switch.h"
 
 #include <QAbstractButton>
 #include <QEvent>
+#include <QFileDialog>
 #include <QFrame>
+#include <QHBoxLayout>
+#include <QIcon>
 #include <QLabel>
 #include <QPointer>
 #include <QScrollBar>
@@ -29,6 +37,7 @@
 #include <QTimer>
 #include <QVBoxLayout>
 
+#include <algorithm>
 #include <type_traits>
 #include <utility>
 
@@ -56,6 +65,15 @@ class SettingsPageWidget::Impl {
         adqt::widgets::AdSelect* select = nullptr;
         adqt::widgets::AdSwitch* switchControl = nullptr;
         adqt::widgets::AdInputNumber* integerControl = nullptr;
+        QWidget* sliderContainer = nullptr;
+        adqt::widgets::AdSlider* sliderControl = nullptr;
+        QLabel* sliderValue = nullptr;
+        adqt::widgets::AdColorPicker* colorControl = nullptr;
+        QWidget* radioContainer = nullptr;
+        adqt::widgets::AdRadioButtonGroup* radioGroup = nullptr;
+        QVector<adqt::widgets::AdRadio*> radioButtons;
+        QVector<QVariant> radioValues;
+        adqt::widgets::AdSearchEdit* filePathControl = nullptr;
         ShortcutKeyRow* shortcutControl = nullptr;
         adqt::widgets::AdButton* actionControl = nullptr;
         SettingsCustomWidget* customControl = nullptr;
@@ -207,7 +225,7 @@ class SettingsPageWidget::Impl {
                                 applySwitchValue(binding, checked);
                             });
                 } else if constexpr (std::is_same_v<Payload,
-                                                    settings::SettingsIntegerDefinition>) {
+                                                     settings::SettingsIntegerDefinition>) {
                     auto* control = new adqt::widgets::AdInputNumber(list);
                     control->setControlSize(adqt::widgets::AdInputNumber::ControlSize::Medium);
                     control->setVariant(adqt::widgets::AdInputNumber::Variant::Outlined);
@@ -230,6 +248,169 @@ class SettingsPageWidget::Impl {
                     connect(control, &adqt::widgets::AdInputNumber::valueChanged, &q,
                             [this, binding = payload.binding](double value) {
                                 applyIntegerValue(binding, static_cast<int>(value));
+                            });
+                } else if constexpr (std::is_same_v<Payload,
+                                                     settings::SettingsSliderDefinition>) {
+                    auto* container = new QWidget(list);
+                    auto* layout = new QHBoxLayout(container);
+                    layout->setContentsMargins(0, 0, 0, 0);
+                    layout->setSpacing(colorScheme.metricAlias.marginSM);
+                    auto* control = new adqt::widgets::AdSlider(container);
+                    const auto* schemaEntry = snow_shot::storage::ConfigurationSchema::entry(
+                        definition.configurationKey);
+                    Q_ASSERT(schemaEntry != nullptr && schemaEntry->integerRange.has_value());
+                    control->setRange(schemaEntry->integerRange->minimum,
+                                      schemaEntry->integerRange->maximum);
+                    control->setSingleStep(schemaEntry->integerRange->step);
+                    control->setPageStep(std::max(schemaEntry->integerRange->step, 10));
+                    control->setTooltipEnabled(true);
+                    auto* valueLabel = new QLabel(container);
+                    valueLabel->setMinimumWidth(colorScheme.metricAlias.controlHeightLG);
+                    valueLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+                    layout->addWidget(control, 1);
+                    layout->addWidget(valueLabel);
+                    container->setFixedWidth(
+                        settings_ui::settingsControlWidth(colorScheme.metricAlias));
+                    runtime.sliderContainer = container;
+                    runtime.sliderControl = control;
+                    runtime.sliderValue = valueLabel;
+                    runtime.focusTarget = control;
+                    runtime.anchor = settings_ui::createSettingItemRow(
+                        list, colorScheme.metricAlias, &runtime.title, &runtime.description,
+                        container,
+                        settings::generatedObjectName(QStringLiteral("settings-item"),
+                                                      definition.id));
+                    listLayout->addWidget(runtime.anchor);
+                    connect(control, &adqt::widgets::AdSlider::valueChanged, &q,
+                            [this, binding = payload.binding, valueLabel,
+                             suffix = payload.suffix](double value) {
+                                const int integerValue = qRound(value);
+                                valueLabel->setText(
+                                    QStringLiteral("%1%2")
+                                        .arg(integerValue)
+                                        .arg(suffix.translated()));
+                                if (!synchronizingValues &&
+                                    !runtimeBindings.applySliderValue(binding, integerValue)) {
+                                    syncValues();
+                                }
+                            });
+                } else if constexpr (std::is_same_v<Payload,
+                                                     settings::SettingsColorDefinition>) {
+                    auto* control = new adqt::widgets::AdColorPicker(list);
+                    control->setSize(adqt::widgets::AdColorPicker::Size::Middle);
+                    control->setModeOptions({adqt::widgets::AdColorPicker::Mode::Solid});
+                    control->setMode(adqt::widgets::AdColorPicker::Mode::Solid);
+                    control->setFormat(adqt::widgets::AdColorPicker::Format::Hex);
+                    control->setAlphaChannelEnabled(payload.alphaChannelEnabled);
+                    control->setAllowClear(false);
+                    control->setTriggerTextVisible(true);
+                    control->setFixedWidth(
+                        settings_ui::settingsControlWidth(colorScheme.metricAlias));
+                    runtime.colorControl = control;
+                    runtime.focusTarget = control;
+                    runtime.anchor = settings_ui::createSettingItemRow(
+                        list, colorScheme.metricAlias, &runtime.title, &runtime.description,
+                        control,
+                        settings::generatedObjectName(QStringLiteral("settings-item"),
+                                                      definition.id));
+                    listLayout->addWidget(runtime.anchor);
+                    connect(control, &adqt::widgets::AdColorPicker::valueChanged, &q,
+                            [this, binding = payload.binding](
+                                const adqt::widgets::AdColorValue& value) {
+                                if (!synchronizingValues && value.isSolid() &&
+                                    !runtimeBindings.applyColorValue(binding,
+                                                                    value.solidColor)) {
+                                    syncValues();
+                                }
+                            });
+                } else if constexpr (std::is_same_v<Payload,
+                                                     settings::SettingsRadioDefinition>) {
+                    auto* container = new QWidget(list);
+                    auto* layout = new QVBoxLayout(container);
+                    layout->setContentsMargins(0, 0, 0, 0);
+                    layout->setSpacing(colorScheme.metricAlias.marginXS);
+                    auto* group = new adqt::widgets::AdRadioButtonGroup(container);
+                    group->setManagedLayout(layout);
+                    group->setControlSize(adqt::widgets::AdRadio::ControlSize::Small);
+                    for (int index = 0; index < payload.options.size(); ++index) {
+                        const settings::SettingsRadioOptionDefinition& option =
+                            payload.options.at(index);
+                        auto* radio = new adqt::widgets::AdRadio(container);
+                        radio->setIcon(QIcon(option.iconResource));
+                        radio->setIconSize(QSize(24, 24));
+                        group->addButton(radio, index);
+                        layout->addWidget(radio);
+                        runtime.radioButtons.push_back(radio);
+                        runtime.radioValues.push_back(option.value);
+                    }
+                    container->setFixedWidth(
+                        settings_ui::settingsControlWidth(colorScheme.metricAlias));
+                    runtime.radioContainer = container;
+                    runtime.radioGroup = group;
+                    runtime.focusTarget = runtime.radioButtons.isEmpty()
+                                              ? static_cast<QWidget*>(container)
+                                              : runtime.radioButtons.constFirst();
+                    runtime.anchor = settings_ui::createSettingItemRow(
+                        list, colorScheme.metricAlias, &runtime.title, &runtime.description,
+                        container,
+                        settings::generatedObjectName(QStringLiteral("settings-item"),
+                                                      definition.id));
+                    listLayout->addWidget(runtime.anchor);
+                    connect(group, &adqt::widgets::AdRadioButtonGroup::checkedIdChanged, &q,
+                            [this, binding = payload.binding,
+                             values = runtime.radioValues](int id) {
+                                if (!synchronizingValues && id >= 0 && id < values.size() &&
+                                    !runtimeBindings.applyRadioValue(binding,
+                                                                    values.at(id))) {
+                                    syncValues();
+                                }
+                            });
+                } else if constexpr (std::is_same_v<Payload,
+                                                     settings::SettingsFilePathDefinition>) {
+                    auto* control = new adqt::widgets::AdSearchEdit(list);
+                    control->setControlSize(adqt::widgets::AdSearchEdit::ControlSize::Medium);
+                    control->setAllowClear(true);
+                    control->setFixedWidth(
+                        settings_ui::settingsControlWidth(colorScheme.metricAlias));
+                    runtime.filePathControl = control;
+                    runtime.focusTarget = control;
+                    runtime.anchor = settings_ui::createSettingItemRow(
+                        list, colorScheme.metricAlias, &runtime.title, &runtime.description,
+                        control,
+                        settings::generatedObjectName(QStringLiteral("settings-item"),
+                                                      definition.id));
+                    listLayout->addWidget(runtime.anchor);
+                    connect(control, &adqt::widgets::AdSearchEdit::editingFinished, &q,
+                            [this, control, binding = payload.binding]() {
+                                if (!synchronizingValues &&
+                                    !runtimeBindings.applyFilePathValue(binding,
+                                                                        control->text())) {
+                                    syncValues();
+                                }
+                            });
+                    connect(control, &adqt::widgets::AdSearchEdit::searchRequested, &q,
+                            [this, control, binding = payload.binding,
+                             dialogTitle = payload.dialogTitle,
+                             fileFilter = payload.fileFilter](
+                                const QString& text,
+                                adqt::widgets::AdSearchEdit::SearchReason reason) {
+                                if (reason ==
+                                    adqt::widgets::AdSearchEdit::SearchReason::ButtonClick) {
+                                    const QString path = QFileDialog::getOpenFileName(
+                                        &q, dialogTitle.translated(), text,
+                                        fileFilter.translated());
+                                    if (!path.isEmpty()) {
+                                        control->setText(path);
+                                        if (!runtimeBindings.applyFilePathValue(binding, path)) {
+                                            syncValues();
+                                        }
+                                    }
+                                } else if (reason ==
+                                           adqt::widgets::AdSearchEdit::SearchReason::ClearAction) {
+                                    if (!runtimeBindings.applyFilePathValue(binding, QString())) {
+                                        syncValues();
+                                    }
+                                }
                             });
                 } else if constexpr (std::is_same_v<
                                          Payload, settings::SettingsShortcutActionDefinition>) {
@@ -472,6 +653,7 @@ class SettingsPageWidget::Impl {
                 if (definition != nullptr) {
                     runtime.select->setCurrentValue(runtimeBindings.selectValue(definition->binding));
                 }
+                runtime.select->setEnabled(storageStatus.writeAvailable);
             }
             if (runtime.switchControl != nullptr) {
                 // AdSwitch refreshes its rendered thumb from toggled; the sync guard prevents
@@ -497,6 +679,50 @@ class SettingsPageWidget::Impl {
                 runtime.integerControl->setEnabled(storageStatus.writeAvailable &&
                                                    !storageStatus.historyPolicyUpdating);
             }
+            if (runtime.sliderControl != nullptr) {
+                const QSignalBlocker blocker(runtime.sliderControl);
+                const auto* definition = std::get_if<settings::SettingsSliderDefinition>(
+                    &runtime.definition->payload);
+                if (definition != nullptr) {
+                    const int value = runtimeBindings.sliderValue(definition->binding);
+                    runtime.sliderControl->setValue(value);
+                    runtime.sliderValue->setText(
+                        QStringLiteral("%1%2").arg(value).arg(definition->suffix.translated()));
+                }
+                runtime.sliderControl->setEnabled(storageStatus.writeAvailable);
+            }
+            if (runtime.colorControl != nullptr) {
+                const QSignalBlocker blocker(runtime.colorControl);
+                const auto* definition = std::get_if<settings::SettingsColorDefinition>(
+                    &runtime.definition->payload);
+                if (definition != nullptr) {
+                    runtime.colorControl->setValue(adqt::widgets::AdColorValue::solid(
+                        runtimeBindings.colorValue(definition->binding)));
+                }
+                runtime.colorControl->setDisabled(!storageStatus.writeAvailable);
+            }
+            if (runtime.radioGroup != nullptr) {
+                const QSignalBlocker blocker(runtime.radioGroup);
+                const auto* definition = std::get_if<settings::SettingsRadioDefinition>(
+                    &runtime.definition->payload);
+                if (definition != nullptr) {
+                    const QVariant current = runtimeBindings.radioValue(definition->binding);
+                    runtime.radioGroup->setCheckedId(runtime.radioValues.indexOf(current));
+                }
+                for (adqt::widgets::AdRadio* button : std::as_const(runtime.radioButtons)) {
+                    button->setEnabled(storageStatus.writeAvailable);
+                }
+            }
+            if (runtime.filePathControl != nullptr) {
+                const QSignalBlocker blocker(runtime.filePathControl);
+                const auto* definition = std::get_if<settings::SettingsFilePathDefinition>(
+                    &runtime.definition->payload);
+                if (definition != nullptr) {
+                    runtime.filePathControl->setText(
+                        runtimeBindings.filePathValue(definition->binding));
+                }
+                runtime.filePathControl->setEnabled(storageStatus.writeAvailable);
+            }
             if (runtime.shortcutControl != nullptr) {
                 const auto* definition = std::get_if<settings::SettingsShortcutActionDefinition>(
                     &runtime.definition->payload);
@@ -520,7 +746,7 @@ class SettingsPageWidget::Impl {
             }
         }
         for (RuntimeSection& runtime : sections) {
-            if (runtime.definition->reset == settings::SettingsSectionReset::HistoryPolicy) {
+            if (runtime.definition->reset != settings::SettingsSectionReset::None) {
                 runtime.header->setResetEnabled(storageStatus.writeAvailable);
             }
         }
@@ -556,6 +782,41 @@ class SettingsPageWidget::Impl {
                     std::get_if<settings::SettingsIntegerDefinition>(&definition.payload);
                 Q_ASSERT(integer != nullptr);
                 runtime.integerControl->setSuffixText(integer->suffix.translated());
+            }
+            if (runtime.sliderControl != nullptr) {
+                const auto* slider =
+                    std::get_if<settings::SettingsSliderDefinition>(&definition.payload);
+                Q_ASSERT(slider != nullptr);
+                const int value = qRound(runtime.sliderControl->value());
+                runtime.sliderValue->setText(
+                    QStringLiteral("%1%2").arg(value).arg(slider->suffix.translated()));
+                runtime.sliderControl->setTooltipFormatter(
+                    [suffix = slider->suffix](double current) {
+                        return QStringLiteral("%1%2")
+                            .arg(qRound(current))
+                            .arg(suffix.translated());
+                    });
+            }
+            if (runtime.radioGroup != nullptr) {
+                const auto* radio =
+                    std::get_if<settings::SettingsRadioDefinition>(&definition.payload);
+                Q_ASSERT(radio != nullptr);
+                for (int index = 0;
+                     index < radio->options.size() && index < runtime.radioButtons.size();
+                     ++index) {
+                    const QString label = radio->options.at(index).label.translated();
+                    runtime.radioButtons.at(index)->setText(label);
+                    runtime.radioButtons.at(index)->setAccessibleName(label);
+                    runtime.radioButtons.at(index)->setAccessibleDescription(description);
+                }
+            }
+            if (runtime.filePathControl != nullptr) {
+                const auto* filePath =
+                    std::get_if<settings::SettingsFilePathDefinition>(&definition.payload);
+                Q_ASSERT(filePath != nullptr);
+                runtime.filePathControl->setSearchButtonText(filePath->buttonText.translated());
+                runtime.filePathControl->setPlaceholderText(
+                    filePath->fileFilter.translated().section(QStringLiteral(";;"), 0, 0));
             }
             if (runtime.shortcutControl != nullptr) {
                 runtime.shortcutControl->setTitle(title);

@@ -1,5 +1,6 @@
 #include "snow_shot/presentation/components/applicationsearchwidget.h"
 #include "snow_shot/presentation/components/contentcardwidget.h"
+#include "snow_shot/presentation/components/drawingtoolbareditorsettingswidget.h"
 #include "snow_shot/presentation/components/maincontentheaderwidget.h"
 #include "snow_shot/presentation/components/pagecontainerwidget.h"
 #include "snow_shot/presentation/components/sectionheaderwidget.h"
@@ -9,6 +10,7 @@
 #include "snow_shot/presentation/components/sidebarwidget.h"
 #include "snow_shot/presentation/components/storagestatussettingswidget.h"
 #include "snow_shot/presentation/settings/settingsruntimebindings.h"
+#include "snow_shot/presentation/screenshottoolbarlayoutmodel.h"
 #include "snow_shot/presentation/styles/thememanager.h"
 #include "snow_shot/storage/applicationstorage.h"
 #include "snow_shot/storage/capturehistoryrepository.h"
@@ -30,10 +32,13 @@
 
 #include <QApplication>
 #include <QCoreApplication>
+#include <QDragEnterEvent>
+#include <QDropEvent>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLayout>
 #include <QImage>
+#include <QMimeData>
 #include <QScrollBar>
 #include <QStackedWidget>
 #include <QStandardItemModel>
@@ -90,6 +95,10 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
             return m_language;
         case settings::SettingsSelectBinding::ApplicationPriority:
             return m_applicationPriority;
+        case settings::SettingsSelectBinding::ScreenshotToolbarSize:
+            return m_toolbarSize;
+        case settings::SettingsSelectBinding::ColorPickerDisplayMode:
+            return m_colorPickerDisplayMode;
         }
         return {};
     }
@@ -111,8 +120,12 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
             m_theme = value.toString();
         } else if (binding == settings::SettingsSelectBinding::Language) {
             m_language = value.toString();
-        } else {
+        } else if (binding == settings::SettingsSelectBinding::ApplicationPriority) {
             m_applicationPriority = value.toString();
+        } else if (binding == settings::SettingsSelectBinding::ScreenshotToolbarSize) {
+            m_toolbarSize = value.toString();
+        } else {
+            m_colorPickerDisplayMode = value.toString();
         }
         emit synchronized();
         return true;
@@ -126,6 +139,10 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
             return m_smartSelection;
         case settings::SettingsSwitchBinding::DirectMlAcceleration:
             return m_directMlAcceleration;
+        case settings::SettingsSwitchBinding::SelectionTransitionAnimation:
+            return m_selectionTransitionAnimation;
+        case settings::SettingsSwitchBinding::TrayEnabled:
+            return m_trayEnabled;
         }
         return false;
     }
@@ -144,6 +161,10 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
             m_smartSelection = value;
         } else if (binding == settings::SettingsSwitchBinding::DirectMlAcceleration) {
             m_directMlAcceleration = value;
+        } else if (binding == settings::SettingsSwitchBinding::SelectionTransitionAnimation) {
+            m_selectionTransitionAnimation = value;
+        } else if (binding == settings::SettingsSwitchBinding::TrayEnabled) {
+            m_trayEnabled = value;
         } else {
             m_historyEnabled = value;
         }
@@ -183,6 +204,76 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
             m_screenshotDelaySeconds = value;
             break;
         }
+        emit synchronized();
+        return true;
+    }
+
+    int sliderValue(settings::SettingsSliderBinding) const override {
+        return m_shortcutHintOpacity;
+    }
+
+    bool applySliderValue(settings::SettingsSliderBinding, int value) override {
+        if (!acceptWrites) {
+            return false;
+        }
+        m_shortcutHintOpacity = value;
+        emit synchronized();
+        return true;
+    }
+
+    QColor colorValue(settings::SettingsColorBinding binding) const override {
+        return m_colors.value(binding, QColor(QStringLiteral("#1677FFFF")));
+    }
+
+    bool applyColorValue(settings::SettingsColorBinding binding,
+                         const QColor& value) override {
+        if (!acceptWrites) {
+            return false;
+        }
+        m_colors.insert(binding, value);
+        emit synchronized();
+        return true;
+    }
+
+    QVariant radioValue(settings::SettingsRadioBinding) const override {
+        return m_trayIcon;
+    }
+
+    bool applyRadioValue(settings::SettingsRadioBinding, const QVariant& value) override {
+        if (!acceptWrites) {
+            return false;
+        }
+        m_trayIcon = value.toString();
+        emit synchronized();
+        return true;
+    }
+
+    QString filePathValue(settings::SettingsFilePathBinding) const override {
+        return m_trayCustomIcon;
+    }
+
+    bool applyFilePathValue(settings::SettingsFilePathBinding,
+                            const QString& value) override {
+        if (!acceptWrites) {
+            return false;
+        }
+        m_trayCustomIcon = value;
+        emit synchronized();
+        return true;
+    }
+
+    snow_shot::storage::ScreenshotToolbarLayout toolbarLayout() const override {
+        return m_toolbarLayout;
+    }
+
+    bool applyToolbarLayout(
+        const snow_shot::storage::ScreenshotToolbarLayout& layout) override {
+        if (!acceptWrites) {
+            return false;
+        }
+        m_toolbarLayout =
+            snow_shot::presentation::toolbar_layout::normalizedLayout(layout);
+        ++toolbarLayoutApplyCount;
         emit synchronized();
         return true;
     }
@@ -252,6 +343,7 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
     bool acceptWrites = true;
     bool directMlSupported = true;
     int switchApplyCount = 0;
+    int toolbarLayoutApplyCount = 0;
     bool actionTriggered = false;
     settings::SettingsActionBinding triggeredAction =
         settings::SettingsActionBinding::ClearCaptureHistory;
@@ -261,13 +353,23 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
     QString m_theme = QStringLiteral("system");
     QString m_language = QStringLiteral("en_US");
     QString m_applicationPriority = QStringLiteral("above_normal");
+    QString m_toolbarSize = QStringLiteral("normal");
+    QString m_colorPickerDisplayMode = QStringLiteral("hex");
     bool m_historyEnabled = true;
     bool m_smartSelection = true;
     bool m_directMlAcceleration = true;
+    bool m_selectionTransitionAnimation = true;
+    bool m_trayEnabled = true;
     int m_retentionDays = 7;
     int m_maxEntries = 100;
     int m_maxDiskMiB = 1024;
     int m_screenshotDelaySeconds = 3;
+    int m_shortcutHintOpacity = 80;
+    QHash<settings::SettingsColorBinding, QColor> m_colors;
+    QString m_trayIcon = QStringLiteral("default");
+    QString m_trayCustomIcon;
+    snow_shot::storage::ScreenshotToolbarLayout m_toolbarLayout{
+        snow_shot::presentation::toolbar_layout::defaultOrder(), {}};
     snow_shot::storage::StorageStatus m_storageStatus;
     QHash<snow_shot::presentation::GlobalShortcutAction,
           snow_shot::presentation::GlobalShortcutRegistrationState>
@@ -1250,10 +1352,78 @@ void sectionTabsAndScrollingStaySynchronized() {
                 content.currentLocation().sectionId == QStringLiteral("storage-status"),
             "scrolling to a later section must select its tab automatically");
 }
+
+void drawingToolbarEditorPersistsDropsAndRestoresRejectedChanges() {
+    FakeRuntimeBindings runtime;
+    DrawingToolbarEditorSettingsWidget editor(runtime);
+    editor.resize(960, 240);
+    editor.show();
+    flushEvents();
+
+    QWidget* hiddenZone = editor.findChild<QWidget*>(
+        QStringLiteral("settings-drawing-toolbar-hidden-zone"));
+    QWidget* visibleZone = editor.findChild<QWidget*>(
+        QStringLiteral("settings-drawing-toolbar-visible-zone"));
+    require(hiddenZone != nullptr && visibleZone != nullptr,
+            "drawing toolbar editor should expose visible and hidden drop zones");
+
+    const auto drop = [](QWidget* zone, const QString& itemId, const QPointF& position) {
+        QMimeData mimeData;
+        mimeData.setData("application/x-snow-shot-toolbar-item", itemId.toUtf8());
+        QDragEnterEvent enter(position.toPoint(), Qt::MoveAction, &mimeData, Qt::LeftButton,
+                              Qt::NoModifier);
+        QApplication::sendEvent(zone, &enter);
+        QDropEvent event(position, Qt::MoveAction, &mimeData, Qt::LeftButton, Qt::NoModifier);
+        QApplication::sendEvent(zone, &event);
+        return event.isAccepted();
+    };
+
+    require(drop(hiddenZone, QStringLiteral("shape"), QPointF(8, 20)) &&
+                runtime.toolbarLayout().hidden.contains(QStringLiteral("shape")),
+            "dropping a visible tool into the hidden zone should persist it");
+    require(drop(visibleZone, QStringLiteral("shape"), QPointF(1, 20)) &&
+                !runtime.toolbarLayout().hidden.contains(QStringLiteral("shape")) &&
+                runtime.toolbarLayout().order.constFirst() == QStringLiteral("shape"),
+            "dropping a hidden tool at the visible start should show and reorder it");
+
+    const snow_shot::storage::ScreenshotToolbarLayout accepted = runtime.toolbarLayout();
+    runtime.acceptWrites = false;
+    require(drop(hiddenZone, QStringLiteral("shape"), QPointF(8, 20)) &&
+                runtime.toolbarLayout() == accepted,
+            "rejected toolbar persistence should leave the prior layout intact");
+
+    auto* arrowLine = editor.findChild<QWidget*>(
+        QStringLiteral("settings-drawing-toolbar-item-arrow-line"));
+    auto* popover = arrowLine != nullptr
+                        ? arrowLine->findChild<adqt::widgets::AdPopover*>(
+                              QStringLiteral("settings-drawing-toolbar-popover-arrow-line"))
+                        : nullptr;
+    require(popover != nullptr &&
+                popover->placement() == adqt::widgets::AdPopover::Placement::Top &&
+                popover->popupLayerMode() ==
+                    adqt::widgets::AdPopover::PopupLayerMode::QtTool,
+            "collapsed toolbar groups should open above the editor in a tool popup");
+}
 } // namespace
 
 int main(int argc, char** argv) {
+    bool drawingToolbarEditorOnly = false;
+    for (int argumentIndex = 1; argumentIndex < argc; ++argumentIndex) {
+        if (QString::fromLocal8Bit(argv[argumentIndex]) ==
+            QStringLiteral("--drawing-toolbar-editor-only")) {
+            drawingToolbarEditorOnly = true;
+            break;
+        }
+    }
+#if defined(Q_OS_WIN)
+    if (drawingToolbarEditorOnly) {
+        qunsetenv("QT_QPA_PLATFORM");
+    } else {
+        qputenv("QT_QPA_PLATFORM", "offscreen");
+    }
+#else
     qputenv("QT_QPA_PLATFORM", "offscreen");
+#endif
     QApplication application(argc, argv);
     QCoreApplication::setOrganizationName(QStringLiteral("SnowShotTests"));
     QCoreApplication::setApplicationName(QStringLiteral("settings_page_tests"));
@@ -1265,6 +1435,12 @@ int main(int argc, char** argv) {
             "application storage must initialize for generated page integration tests");
     snow_shot::presentation::styles::ThemeManager::instance().initialize(application);
 
+    if (drawingToolbarEditorOnly) {
+        drawingToolbarEditorPersistsDropsAndRestoresRejectedChanges();
+        snow_shot::storage::ApplicationStorage::instance().shutdown();
+        return 0;
+    }
+
     generatedPagesRenderEveryItemTypeAndResynchronize();
     quickActionCommandsDispatchThroughContentCard();
     actionsMayExecuteWithoutConfirmation();
@@ -1274,6 +1450,7 @@ int main(int argc, char** argv) {
     screenshotHistoryEmptyToPopulatedGeometryIsStable();
     catalogExpansionUpdatesAllConsumers();
     sectionTabsAndScrollingStaySynchronized();
+    drawingToolbarEditorPersistsDropsAndRestoresRejectedChanges();
 
     snow_shot::storage::ApplicationStorage::instance().shutdown();
     return 0;

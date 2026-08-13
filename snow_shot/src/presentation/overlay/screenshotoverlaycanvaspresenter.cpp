@@ -315,6 +315,27 @@ void ScreenshotOverlayCanvasPresenter::updateOverlayCursors(
     updateOverlayCursorsForDisplaySession(displaySession, selecting, dragging);
 }
 
+void ScreenshotOverlayCanvasPresenter::updateGuideLines(
+    const ScreenshotDisplaySession& displaySession, ScreenshotOverlayWindow* owner,
+    const QPointF& localPosition, bool selecting, const QColor& cursorColor,
+    const QColor& monitorCenterColor) const {
+    displaySession.forEachActiveOverlay(
+        [&](qsizetype, const CapturedDisplayModel&, ScreenshotOverlayWindow* overlay) {
+            if (selecting && overlay == owner) {
+                overlay->setScreenshotGuideLines(localPosition, cursorColor, monitorCenterColor);
+            } else {
+                overlay->clearScreenshotGuideLines();
+            }
+        });
+}
+
+void ScreenshotOverlayCanvasPresenter::clearGuideLines(
+    const ScreenshotDisplaySession& displaySession) const {
+    displaySession.forEachOverlay([](qsizetype, ScreenshotOverlayWindow* overlay) {
+        overlay->clearScreenshotGuideLines();
+    });
+}
+
 void ScreenshotOverlayCanvasPresenter::setOverlayCursor(
     ScreenshotOverlayWindow* overlay, ScreenshotSelectionDragMode dragMode) const {
     if (overlay == nullptr) {

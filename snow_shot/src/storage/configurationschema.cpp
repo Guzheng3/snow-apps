@@ -4,6 +4,7 @@
 #include "snow_shot/storage/persistedselectioncodec.h"
 
 #include <QJsonArray>
+#include <QJsonObject>
 #include <QKeySequence>
 #include <QLocale>
 #include <QRegularExpression>
@@ -14,6 +15,41 @@
 
 namespace snow_shot::storage {
 namespace {
+const QStringList kScreenshotToolbarItemIds = {
+    QStringLiteral("move"),
+    QStringLiteral("select"),
+    QStringLiteral("shape"),
+    QStringLiteral("arrow-line"),
+    QStringLiteral("free-draw"),
+    QStringLiteral("highlight"),
+    QStringLiteral("text"),
+    QStringLiteral("serial-number"),
+    QStringLiteral("filter"),
+    QStringLiteral("eraser"),
+    QStringLiteral("watermark"),
+    QStringLiteral("history"),
+    QStringLiteral("table-qr"),
+    QStringLiteral("video-record"),
+    QStringLiteral("pin"),
+    QStringLiteral("ocr"),
+    QStringLiteral("scrolling-screenshot"),
+};
+
+QJsonArray jsonArray(const QStringList& values) {
+    QJsonArray result;
+    for (const QString& value : values) {
+        result.push_back(value);
+    }
+    return result;
+}
+
+QJsonObject defaultScreenshotToolbarLayout() {
+    return {
+        {QStringLiteral("order"), jsonArray(kScreenshotToolbarItemIds)},
+        {QStringLiteral("hidden"), QJsonArray()},
+    };
+}
+
 const QVector<ConfigurationSchemaEntry> kEntries = {
     {QStringLiteral("storage/schema_version"), 1, ConfigurationValueKind::Integer,
      ConfigurationIntegerRange{1, 1, 1}},
@@ -122,6 +158,42 @@ const QVector<ConfigurationSchemaEntry> kEntries = {
      ConfigurationValueKind::String,
      std::nullopt,
      {QStringLiteral("table"), QStringLiteral("qr")}},
+    {QStringLiteral("screenshot_toolbar/layout"), defaultScreenshotToolbarLayout(),
+     ConfigurationValueKind::Structured},
+    {QStringLiteral("screenshot_ui/toolbar_size"),
+     QStringLiteral("normal"),
+     ConfigurationValueKind::String,
+     std::nullopt,
+     {QStringLiteral("small"), QStringLiteral("normal")}},
+    {QStringLiteral("screenshot_ui/selection_transition_animation"), true,
+     ConfigurationValueKind::Boolean},
+    {QStringLiteral("screenshot_ui/color_picker_display_mode"),
+     QStringLiteral("hide_outside_selection"),
+     ConfigurationValueKind::String,
+     std::nullopt,
+     {QStringLiteral("hide_outside_selection"), QStringLiteral("always_show"),
+      QStringLiteral("always_hide")}},
+    {QStringLiteral("screenshot_ui/selection_mask_color"),
+     QStringLiteral("#00000080"), ConfigurationValueKind::String},
+    {QStringLiteral("screenshot_ui/shortcut_hint_opacity"), 100,
+     ConfigurationValueKind::Integer, ConfigurationIntegerRange{0, 100, 1}},
+    {QStringLiteral("screenshot_ui/cursor_guide_line_color"),
+     QStringLiteral("#00000000"), ConfigurationValueKind::String},
+    {QStringLiteral("screenshot_ui/monitor_center_guide_line_color"),
+     QStringLiteral("#00000000"), ConfigurationValueKind::String},
+    {QStringLiteral("screenshot_ui/color_picker_center_guide_line_color"),
+     QStringLiteral("#00000000"), ConfigurationValueKind::String},
+    {QStringLiteral("pin_to_screen/border_color"),
+     QStringLiteral("#DBDBDBFF"), ConfigurationValueKind::String},
+    {QStringLiteral("tray/enabled"), true, ConfigurationValueKind::Boolean},
+    {QStringLiteral("tray/icon"),
+     QStringLiteral("default"),
+     ConfigurationValueKind::String,
+     std::nullopt,
+     {QStringLiteral("default"), QStringLiteral("light"), QStringLiteral("dark"),
+      QStringLiteral("snow-default"), QStringLiteral("snow-light"),
+      QStringLiteral("snow-dark")}},
+    {QStringLiteral("tray/custom_icon"), QString(), ConfigurationValueKind::String},
     {QStringLiteral("screenshot_selection/previous_selection"), QJsonValue::Null,
      ConfigurationValueKind::Structured},
     {QStringLiteral("screenshot_selection/smart_selection"), true, ConfigurationValueKind::Boolean},
@@ -293,6 +365,78 @@ ConfigurationNormalization normalizePresets(const QJsonValue& value) {
     return {result, true, changed};
 }
 
+bool isRgbaColorKey(const QString& key) {
+    return key == QStringLiteral("screenshot_ui/selection_mask_color") ||
+           key == QStringLiteral("screenshot_ui/cursor_guide_line_color") ||
+           key == QStringLiteral("screenshot_ui/monitor_center_guide_line_color") ||
+           key == QStringLiteral("screenshot_ui/color_picker_center_guide_line_color") ||
+           key == QStringLiteral("pin_to_screen/border_color");
+}
+
+ConfigurationNormalization normalizeRgbaColor(const QJsonValue& value) {
+    if (!value.isString()) {
+        return {};
+    }
+    const QString original = value.toString();
+    const QString normalized = original.trimmed().toUpper();
+    static const QRegularExpression pattern(QStringLiteral("^#[0-9A-F]{8}$"));
+    if (!pattern.match(normalized).hasMatch()) {
+        return {};
+    }
+    return {normalized, true, normalized != original};
+}
+
+ConfigurationNormalization normalizeToolbarLayout(const QJsonValue& value) {
+    if (!value.isObject()) {
+        return {};
+    }
+    const QJsonObject object = value.toObject();
+    if (!object.value(QStringLiteral("order")).isArray() ||
+        !object.value(QStringLiteral("hidden")).isArray()) {
+        return {};
+    }
+
+    const QSet<QString> known(kScreenshotToolbarItemIds.cbegin(),
+                              kScreenshotToolbarItemIds.cend());
+    QStringList order;
+    QSet<QString> ordered;
+    for (const QJsonValue& item : object.value(QStringLiteral("order")).toArray()) {
+        if (!item.isString()) {
+            continue;
+        }
+        const QString id = item.toString();
+        if (known.contains(id) && !ordered.contains(id)) {
+            order.push_back(id);
+            ordered.insert(id);
+        }
+    }
+    for (const QString& id : kScreenshotToolbarItemIds) {
+        if (!ordered.contains(id)) {
+            order.push_back(id);
+            ordered.insert(id);
+        }
+    }
+
+    QSet<QString> hiddenSet;
+    for (const QJsonValue& item : object.value(QStringLiteral("hidden")).toArray()) {
+        if (item.isString() && known.contains(item.toString())) {
+            hiddenSet.insert(item.toString());
+        }
+    }
+    QStringList hidden;
+    for (const QString& id : order) {
+        if (hiddenSet.contains(id)) {
+            hidden.push_back(id);
+        }
+    }
+
+    const QJsonObject normalized{
+        {QStringLiteral("order"), jsonArray(order)},
+        {QStringLiteral("hidden"), jsonArray(hidden)},
+    };
+    return {normalized, true, normalized != object};
+}
+
 void insertPath(QJsonObject* root, const QString& path, const QJsonValue& value) {
     const QStringList parts = path.split(u'/');
     if (root == nullptr || parts.size() != 2) {
@@ -340,6 +484,12 @@ ConfigurationNormalization ConfigurationSchema::normalize(const QString& key,
     }
     if (key == QStringLiteral("screenshot_selection/selection_rect_presets")) {
         return normalizePresets(value);
+    }
+    if (key == QStringLiteral("screenshot_toolbar/layout")) {
+        return normalizeToolbarLayout(value);
+    }
+    if (isRgbaColorKey(key)) {
+        return normalizeRgbaColor(value);
     }
     switch (schemaEntry->valueKind) {
     case ConfigurationValueKind::Boolean:

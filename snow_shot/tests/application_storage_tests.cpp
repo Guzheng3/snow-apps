@@ -1,4 +1,5 @@
 #include "snow_shot/storage/applicationstorage.h"
+#include "snow_shot/storage/configurationschema.h"
 #include "snow_shot/storage/configurationstore.h"
 #include "snow_shot/storage/persistedselectioncodec.h"
 #include "snow_shot/storage/settingsadapters.h"
@@ -95,6 +96,8 @@ void defaultsAndTypedRoundTrip() {
             "default configuration was not materialized");
     const QJsonObject root = readObject(config);
     const QJsonObject history = root.value(QStringLiteral("capture_history")).toObject();
+    const QJsonObject screenshotUi = root.value(QStringLiteral("screenshot_ui")).toObject();
+    const QJsonObject tray = root.value(QStringLiteral("tray")).toObject();
     require(root.value(QStringLiteral("storage"))
                         .toObject()
                         .value(QStringLiteral("schema_version"))
@@ -107,6 +110,15 @@ void defaultsAndTypedRoundTrip() {
                 history.value(QStringLiteral("retention_days")).toInt() == 7 &&
                 history.value(QStringLiteral("max_entries")).toInt() == 100 &&
                 history.value(QStringLiteral("max_disk_mib")).toInt() == 1024 &&
+                screenshotUi.value(QStringLiteral("toolbar_size")).toString() ==
+                    QStringLiteral("normal") &&
+                screenshotUi.value(QStringLiteral("selection_transition_animation")).toBool() &&
+                screenshotUi.value(QStringLiteral("selection_mask_color")).toString() ==
+                    QStringLiteral("#00000080") &&
+                screenshotUi.value(QStringLiteral("shortcut_hint_opacity")).toInt() == 100 &&
+                tray.value(QStringLiteral("enabled")).toBool() &&
+                tray.value(QStringLiteral("icon")).toString() == QStringLiteral("default") &&
+                tray.value(QStringLiteral("custom_icon")).toString().isEmpty() &&
                 !history.contains(QStringLiteral("records")),
             "schema-v1 defaults are incomplete");
     require(readBytes(config).endsWith('\n'), "configuration has no final newline");
@@ -118,6 +130,10 @@ void defaultsAndTypedRoundTrip() {
                 {QStringLiteral("capture_history/max_entries"), 250},
                 {QStringLiteral("capture_history/max_disk_mib"), 2048},
                 {QStringLiteral("screenshot_selection/smart_selection"), false},
+                {QStringLiteral("screenshot_ui/selection_mask_color"),
+                 QStringLiteral(" #12ab34cd ")},
+                {QStringLiteral("screenshot_ui/shortcut_hint_opacity"), 42},
+                {QStringLiteral("tray/icon"), QStringLiteral("snow-dark")},
             }) &&
                 store.flushNow().success,
             "typed configuration mutation failed");
@@ -127,8 +143,73 @@ void defaultsAndTypedRoundTrip() {
                 reloaded.value(QStringLiteral("interface/language")).toString() ==
                     QStringLiteral("zh_CN") &&
                 reloaded.value(QStringLiteral("capture_history/retention_days")).toInt() == 30 &&
-                !reloaded.value(QStringLiteral("screenshot_selection/smart_selection")).toBool(),
+                !reloaded.value(QStringLiteral("screenshot_selection/smart_selection")).toBool() &&
+                reloaded.value(QStringLiteral("screenshot_ui/selection_mask_color")).toString() ==
+                    QStringLiteral("#12AB34CD") &&
+                reloaded.value(QStringLiteral("screenshot_ui/shortcut_hint_opacity")).toInt() == 42 &&
+                reloaded.value(QStringLiteral("tray/icon")).toString() ==
+                    QStringLiteral("snow-dark"),
             "typed values did not normalize and round-trip");
+}
+
+void screenshotUiSchemaRepairsStructuredValues() {
+    const auto validColor = storage::ConfigurationSchema::normalize(
+        QStringLiteral("screenshot_ui/cursor_guide_line_color"),
+        QStringLiteral("#abcdef80"));
+    require(validColor.valid && validColor.changed &&
+                validColor.value.toString() == QStringLiteral("#ABCDEF80"),
+            "RGBA colors were not normalized canonically");
+    require(!storage::ConfigurationSchema::normalize(
+                     QStringLiteral("screenshot_ui/cursor_guide_line_color"),
+                     QStringLiteral("#ABCDEF"))
+                     .valid,
+            "RGBA color schema accepted an incomplete value");
+
+    const QJsonObject malformedLayout{
+        {QStringLiteral("order"),
+         QJsonArray{QStringLiteral("shape"), QStringLiteral("move"),
+                    QStringLiteral("shape"), QStringLiteral("unknown")}},
+        {QStringLiteral("hidden"),
+         QJsonArray{QStringLiteral("move"), QStringLiteral("unknown"),
+                    QStringLiteral("shape")}},
+    };
+    const auto normalized = storage::ConfigurationSchema::normalize(
+        QStringLiteral("screenshot_toolbar/layout"), malformedLayout);
+    const QJsonObject layout = normalized.value.toObject();
+    const QJsonArray order = layout.value(QStringLiteral("order")).toArray();
+    const QJsonArray hidden = layout.value(QStringLiteral("hidden")).toArray();
+    require(normalized.valid && normalized.changed && order.size() == 17 &&
+                order.at(0).toString() == QStringLiteral("shape") &&
+                order.at(1).toString() == QStringLiteral("move") &&
+                order.at(2).toString() == QStringLiteral("select") &&
+                hidden == QJsonArray{QStringLiteral("shape"), QStringLiteral("move")},
+            "toolbar layout normalization did not repair order and hidden membership");
+}
+
+void screenshotUiAdaptersRoundTripTypedValues() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "failed to create screenshot UI adapter directory");
+    const QString executable = QDir(temporary.path()).filePath(QStringLiteral("bin"));
+    require(QDir().mkpath(executable), "failed to create screenshot UI executable directory");
+    static_cast<void>(initialize(executable, temporary.path()));
+
+    const storage::ScreenshotUiSettings screenshot;
+    require(screenshot.setSelectionMaskColor(QColor(18, 52, 86, 120)) &&
+                screenshot.selectionMaskColor() == QColor(18, 52, 86, 120) &&
+                storage::colorToRgbaString(screenshot.selectionMaskColor()) ==
+                    QStringLiteral("#12345678") &&
+                storage::colorFromRgbaString(QStringLiteral("#ABCDEF01")) ==
+                    QColor(171, 205, 239, 1),
+            "typed RGBA settings did not round-trip");
+
+    storage::ScreenshotToolbarLayout layout;
+    layout.order = {QStringLiteral("shape"), QStringLiteral("move")};
+    layout.hidden = {QStringLiteral("move")};
+    const storage::ScreenshotToolbarSettings toolbar;
+    require(toolbar.setLayout(layout) && toolbar.layout().order.size() == 17 &&
+                toolbar.layout().order.constFirst() == QStringLiteral("shape") &&
+                toolbar.layout().hidden == QStringList{QStringLiteral("move")},
+            "typed toolbar layout did not pass through schema repair");
 }
 
 void smartSelectionAccessorAndSignal() {
@@ -360,6 +441,8 @@ int main(int argc, char** argv) {
     QCoreApplication::setApplicationName(QStringLiteral("storage-tests"));
     markerResolutionAndStatus();
     defaultsAndTypedRoundTrip();
+    screenshotUiSchemaRepairsStructuredValues();
+    screenshotUiAdaptersRoundTripTypedValues();
     smartSelectionAccessorAndSignal();
     unknownFieldsArePreserved();
     malformedConfigurationIsCopiedAndReplaced();

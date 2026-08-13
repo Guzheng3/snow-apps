@@ -62,6 +62,64 @@ void subsequentSmartSelectionUsesConfiguredTransition() {
     require(presented == second, "smart selection transition must end at its target");
 }
 
+void disabledTransitionPresentsSmartSelectionsDirectly() {
+    QRectF presented;
+    int updateCount = 0;
+    ScreenshotSmartSelectionTransition transition([&](const QRectF& selection) {
+        presented = selection;
+        ++updateCount;
+    });
+    const QRectF first(10.0, 20.0, 300.0, 200.0);
+    const QRectF second(110.0, 70.0, 500.0, 400.0);
+
+    transition.setEnabled(false);
+    static_cast<void>(transition.update(first, true));
+    static_cast<void>(transition.update(second, true));
+
+    require(!transition.enabled(), "disabled smart selection transition must remain disabled");
+    require(!transition.isRunning(), "disabled smart selection transition must not animate");
+    require(transition.displayedSelection() == second,
+            "disabled smart selection transition must display the latest target directly");
+    require(presented == second,
+            "disabled smart selection transition must present the latest target directly");
+    require(updateCount == 2,
+            "disabled smart selection transition must emit each changed selection directly");
+}
+
+void disablingRunningTransitionPresentsItsTargetDirectly() {
+    QRectF presented;
+    int updateCount = 0;
+    ScreenshotSmartSelectionTransition transition([&](const QRectF& selection) {
+        presented = selection;
+        ++updateCount;
+    });
+    const QRectF first(10.0, 20.0, 300.0, 200.0);
+    const QRectF second(110.0, 70.0, 500.0, 400.0);
+
+    static_cast<void>(transition.update(first, true));
+    static_cast<void>(transition.update(second, true));
+
+    require(transition.isRunning(), "smart selection transition must be running before disable");
+    require(transition.displayedSelection() != second,
+            "running smart selection transition must not already display its target");
+
+    transition.setEnabled(false);
+    const int updateCountAfterDisable = updateCount;
+
+    require(!transition.enabled(), "running smart selection transition must become disabled");
+    require(!transition.isRunning(), "disabling a running transition must stop its animation");
+    require(transition.displayedSelection() == second,
+            "disabling a running transition must display its target immediately");
+    require(presented == second,
+            "disabling a running transition must present its target immediately");
+
+    waitForAnimation();
+
+    require(updateCount == updateCountAfterDisable,
+            "disabled transition must not emit stale animation updates");
+    require(presented == second, "disabled transition must keep presenting its target");
+}
+
 void leavingSmartFramingResetsTheFirstResultRule() {
     QRectF presented;
     ScreenshotSmartSelectionTransition transition(
@@ -96,6 +154,8 @@ int main(int argc, char* argv[]) {
     QCoreApplication application(argc, argv);
     firstSmartSelectionIsPresentedDirectly();
     subsequentSmartSelectionUsesConfiguredTransition();
+    disabledTransitionPresentsSmartSelectionsDirectly();
+    disablingRunningTransitionPresentsItsTargetDirectly();
     leavingSmartFramingResetsTheFirstResultRule();
     unchangedSmartSelectionDoesNotEmitAnAnimationUpdate();
     return 0;

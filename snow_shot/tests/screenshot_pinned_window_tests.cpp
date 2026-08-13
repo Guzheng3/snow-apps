@@ -892,6 +892,11 @@ void pinnedContextMenuAndModes(SnowCanvasRuntime& sourceRuntime) {
             "pinned context menu should have a fixed width of 300");
     const QList<QAction*> actions = menu->actions();
     require(actions.size() == 13, "pinned menu should have the exact top-level item count");
+    require(menu->findChild<QAction*>(QStringLiteral("screenshotPinnedShowMainInterfaceAction")) !=
+                    nullptr &&
+                !actions.contains(menu->findChild<QAction*>(
+                    QStringLiteral("screenshotPinnedShowMainInterfaceAction"))),
+            "the show-main-interface fallback should be absent while the tray is enabled");
     const QStringList expected{
         QStringLiteral("Copy to Clipboard"),
         QStringLiteral("Copy Original Content"),
@@ -915,6 +920,23 @@ void pinnedContextMenuAndModes(SnowCanvasRuntime& sourceRuntime) {
                     "pinned menu item order or label is incorrect");
         }
     }
+    int showMainWindowRequests = 0;
+    QObject::connect(pinnedWindow, &ScreenshotPinnedWindow::showMainWindowRequested,
+                     [&showMainWindowRequests]() { ++showMainWindowRequests; });
+    ScreenshotPinnedWindow::setRuntimeTrayEnabled(false);
+    const QList<QAction*> noTrayActions = menu->actions();
+    require(noTrayActions.size() == 14 &&
+                noTrayActions.at(noTrayActions.size() - 2)->objectName() ==
+                    QStringLiteral("screenshotPinnedShowMainInterfaceAction") &&
+                noTrayActions.constLast()->objectName() ==
+                    QStringLiteral("screenshotPinnedCloseAction"),
+            "the show-main-interface fallback should appear immediately before Close");
+    noTrayActions.at(noTrayActions.size() - 2)->trigger();
+    require(showMainWindowRequests == 1,
+            "the show-main-interface fallback should emit its activation request");
+    ScreenshotPinnedWindow::setRuntimeTrayEnabled(true);
+    require(menu->actions().size() == 13,
+            "the show-main-interface fallback should disappear when the tray is enabled");
     require(actions.at(2)->isEnabled() && actions.at(2)->isCheckable(),
             "OCR action should remain available while automatic recognition is pending");
     const auto ocrIconMetadata = adqt::icons::describeIcon(menu->actionIcon(actions.at(2)));
@@ -1215,13 +1237,22 @@ void pinnedControlsMatchReferenceStyle(SnowCanvasRuntime& sourceRuntime) {
 
     const QImage pinnedWindowImage = renderWidget(*pinnedWindow);
     const int middleY = pinnedWindowImage.height() / 2;
-    const QColor borderColor(QStringLiteral("#DADADA"));
+    const QColor borderColor(QStringLiteral("#DBDBDB"));
     requireColorNear(pinnedWindowImage.pixelColor(0, middleY), borderColor, 0,
                      "pinned window should draw the requested border color");
     requireColorNear(pinnedWindowImage.pixelColor(1, middleY), borderColor, 0,
                      "pinned window border should be two pixels wide");
     requireColorNear(pinnedWindowImage.pixelColor(2, middleY), background.pixelColor(0, middleY), 0,
                      "pinned window border should not extend beyond two pixels");
+    const QColor liveBorderColor(QStringLiteral("#276EF1"));
+    ScreenshotPinnedWindow::setRuntimeBorderColor(liveBorderColor);
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    require(border->property("borderColor").value<QColor>() == liveBorderColor,
+            "a live border-color update should reach an existing pinned window");
+    const QImage recoloredPinnedWindow = renderWidget(*pinnedWindow);
+    requireColorNear(recoloredPinnedWindow.pixelColor(0, middleY), liveBorderColor, 0,
+                     "a live border-color update should repaint the pinned border");
+    ScreenshotPinnedWindow::setRuntimeBorderColor(borderColor);
 
     const QColor mask = adqt::theme::ThemeManager::instance().resolveTheme(editButton).colorBgMask;
     const QImage editNormal = renderWidget(*editButton);
@@ -2183,6 +2214,11 @@ int main(int argc, char* argv[]) {
         }
         if (app.arguments().contains(QStringLiteral("--close-after-recognized-text"))) {
             pinnedCloseAfterRecognizedText(sourceRuntime);
+            return 0;
+        }
+        if (app.arguments().contains(QStringLiteral("--tray-pin-runtime-only"))) {
+            pinnedContextMenuAndModes(sourceRuntime);
+            pinnedControlsMatchReferenceStyle(sourceRuntime);
             return 0;
         }
         pinnedContextMenuPreservesNativeGeometry(sourceRuntime);

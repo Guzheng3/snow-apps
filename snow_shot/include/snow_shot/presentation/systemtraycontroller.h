@@ -2,6 +2,7 @@
 #define SNOW_SHOT_PRESENTATION_SYSTEMTRAYCONTROLLER_H
 
 #include <QObject>
+#include <QString>
 
 #include <memory>
 
@@ -15,6 +16,12 @@ class SystemTrayController final : public QObject {
 
     void show();
     void hide();
+    void setEnabled(bool enabled);
+    [[nodiscard]] bool isEnabled() const;
+    void setIconSelection(const QString& selection);
+    [[nodiscard]] QString iconSelection() const;
+    void setCustomIconPath(const QString& path);
+    [[nodiscard]] QString customIconPath() const;
 
   signals:
     void screenshotRequested();

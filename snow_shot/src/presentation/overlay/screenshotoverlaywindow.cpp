@@ -99,6 +99,26 @@ void ScreenshotOverlayWindow::setScreenshotMaskVisible(bool visible) {
     }
 }
 
+void ScreenshotOverlayWindow::setScreenshotMaskColor(const QColor& color) {
+    if (m_screenshotRenderer != nullptr) {
+        m_screenshotRenderer->setMaskColor(color);
+    }
+}
+
+void ScreenshotOverlayWindow::setScreenshotGuideLines(const QPointF& cursorPosition,
+                                                      const QColor& cursorColor,
+                                                      const QColor& monitorCenterColor) {
+    if (m_screenshotRenderer != nullptr) {
+        m_screenshotRenderer->setGuideLines(cursorPosition, cursorColor, monitorCenterColor);
+    }
+}
+
+void ScreenshotOverlayWindow::clearScreenshotGuideLines() {
+    if (m_screenshotRenderer != nullptr) {
+        m_screenshotRenderer->clearGuideLines();
+    }
+}
+
 void ScreenshotOverlayWindow::setScreenshotSelection(const QRectF& selection, bool handlesVisible,
                                                      int cornerRadius, int shadowWidth,
                                                      const QColor& shadowColor,
@@ -323,6 +343,10 @@ ScreenshotScrollingTrimRange ScreenshotOverlayWindow::scrollingThumbnailTrim() c
 #if defined(SNOW_SHOT_BENCH_INTERNALS)
 quint64 ScreenshotOverlayWindow::windowMaskApplicationCountForTesting() const {
     return m_windowMaskApplicationCount;
+}
+
+ScreenshotCanvasRenderer* ScreenshotOverlayWindow::screenshotRendererForTesting() const {
+    return m_screenshotRenderer.get();
 }
 #endif
 

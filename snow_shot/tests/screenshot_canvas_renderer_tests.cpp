@@ -1,6 +1,7 @@
 #include "snow_shot/presentation/screenshotcanvasrenderer.h"
 #include "snow_shot/presentation/screenshotdisplaysession.h"
 #include "snow_shot/presentation/screenshotgeometry.h"
+#include "snow_shot/presentation/screenshotguidelinerendering.h"
 #include "snow_shot/presentation/screenshotmessageservice.h"
 #include "snow_shot/presentation/screenshotocrpresentation.h"
 #include "snow_shot/presentation/screenshotselectionmodel.h"
@@ -9,6 +10,8 @@
 #include "snow_shot/presentation/screenshotoverlayeventsink.h"
 #include "snow_shot/presentation/screenshotoverlaywindow.h"
 #include "snow_shot/presentation/screenshotscrollingthumbnailwidget.h"
+#include "snow_shot/presentation/screenshotshortcuthints.h"
+#include "snow_shot/presentation/screenshotuipreferences.h"
 
 #include "snow_draw_engine_qt/snow_canvas_widget.h"
 #include "snow_draw_engine_qt/snow_canvas_runtime.h"
@@ -335,6 +338,240 @@ QColor sourceOverOpaqueBackground(const QColor& source, const QColor& background
     return QColor(qRound(source.red() * alpha + background.red() * (1.0 - alpha)),
                   qRound(source.green() * alpha + background.green() * (1.0 - alpha)),
                   qRound(source.blue() * alpha + background.blue() * (1.0 - alpha)), 255);
+}
+
+void screenshotUiPreferencesNormalizeAndApplyPickerVisibilityPolicies() {
+    ScreenshotUiPreferences preferences;
+    preferences.selectionMaskColor = QColor();
+    preferences.shortcutHintOpacity = 1.5;
+    preferences.cursorGuideLineColor = QColor();
+    preferences.monitorCenterGuideLineColor = QColor();
+    preferences.colorPickerCenterGuideLineColor = QColor();
+    const ScreenshotUiPreferences normalized = preferences.normalized();
+
+    require(normalized.selectionMaskColor == QColor(0, 0, 0, 128),
+            "invalid screenshot mask colors must normalize to the default mask");
+    require(normalized.shortcutHintOpacity == 1.0,
+            "shortcut hint opacity must normalize to its maximum");
+    require(normalized.cursorGuideLineColor == QColor(0, 0, 0, 0) &&
+                normalized.monitorCenterGuideLineColor == QColor(0, 0, 0, 0) &&
+                normalized.colorPickerCenterGuideLineColor == QColor(0, 0, 0, 0),
+            "invalid screenshot guide colors must normalize to transparent");
+    preferences.shortcutHintOpacity = -0.25;
+    require(preferences.normalized().shortcutHintOpacity == 0.0,
+            "shortcut hint opacity must normalize to its minimum");
+    require(screenshotColorPickerDisplayModeFromString(QStringLiteral("always_show")) ==
+                ScreenshotColorPickerDisplayMode::AlwaysShow &&
+                screenshotColorPickerDisplayModeFromString(QStringLiteral("always_hide")) ==
+                    ScreenshotColorPickerDisplayMode::AlwaysHide &&
+                screenshotColorPickerDisplayModeFromString(QStringLiteral("unknown")) ==
+                    ScreenshotColorPickerDisplayMode::HideOutsideSelection,
+            "color picker display-mode strings must use the documented values and fallback");
+
+    ScreenshotColorPickerVisibilityState state;
+    state.manualSelecting = true;
+    state.hasSelection = true;
+    state.pointInsideSelection = false;
+    require(screenshotColorPickerOpacity(
+                ScreenshotColorPickerDisplayMode::HideOutsideSelection, state) == 0.0,
+            "hide-outside-selection mode must hide the picker outside the selection");
+    require(screenshotColorPickerOpacity(ScreenshotColorPickerDisplayMode::AlwaysShow, state) ==
+                1.0,
+            "always-show mode must keep the picker visible outside the selection");
+
+    state.dragging = true;
+    state.selectionDrag = true;
+    require(screenshotColorPickerOpacity(ScreenshotColorPickerDisplayMode::AlwaysHide, state) ==
+                0.0,
+            "always-hide mode must override selection-drag picker visibility without changing "
+            "the underlying color-sampling feature");
+}
+
+void shortcutHintStagesUseTheExactRequiredLines() {
+    const QStringList selectionLines{
+        QStringLiteral("Copy color: C"),
+        QStringLiteral("Switch color format: Shift"),
+        QStringLiteral("Switch screenshot history: [ , ] [ . ]"),
+    };
+    QStringList smartLines{QStringLiteral("Switch element level: mouse wheel")};
+    smartLines.append(selectionLines);
+
+    const ScreenshotShortcutHintMode smartMode =
+        screenshotShortcutHintModeForState(true, false, false, true);
+    const ScreenshotShortcutHintMode manualMode =
+        screenshotShortcutHintModeForState(false, true, false, true);
+    const ScreenshotShortcutHintMode confirmedMoveMode =
+        screenshotShortcutHintModeForState(false, false, true, true);
+
+    require(smartMode == ScreenshotShortcutHintMode::SmartSelection &&
+                screenshotShortcutHintLines(smartMode) == smartLines,
+            "smart selection must show the exact four shortcut hint lines");
+    require(manualMode == ScreenshotShortcutHintMode::Selection &&
+                screenshotShortcutHintLines(manualMode) == selectionLines,
+            "manual selection must show the exact three shortcut hint lines");
+    require(confirmedMoveMode == ScreenshotShortcutHintMode::Selection &&
+                screenshotShortcutHintLines(confirmedMoveMode) == selectionLines,
+            "a confirmed selection with Move active must show the manual hint lines");
+    require(screenshotShortcutHintModeForState(false, false, true, false) ==
+                    ScreenshotShortcutHintMode::Hidden &&
+                screenshotShortcutHintLines(ScreenshotShortcutHintMode::Hidden).isEmpty(),
+            "shortcut hints must be hidden outside the three required stages");
+}
+
+void configurableSelectionMaskUsesRequestedPixels() {
+    SnowCanvasWidget canvas;
+    canvas.resize(40, 30);
+    canvas.setClearBackgroundEnabled(false);
+    require(canvas.setViewportCamera(0.0, 0.0, 1.0),
+            "the custom mask test should initialize the camera");
+
+    ScreenshotCanvasRenderer renderer(canvas);
+    canvas.setCustomRenderer(&renderer);
+    const QColor maskColor(17, 93, 201, 181);
+    renderer.setMaskColor(maskColor);
+    renderer.setMaskVisible(true);
+
+    require(renderer.maskColor() == maskColor,
+            "the screenshot renderer must retain a custom mask color");
+    require(renderCanvas(canvas).pixelColor(4, 5) == maskColor,
+            "the screenshot renderer must paint the exact custom mask pixels");
+
+    renderer.setMaskColor(QColor());
+    require(renderer.maskColor() == QColor(0, 0, 0, 128),
+            "an invalid custom mask color must restore the safe default");
+    canvas.setCustomRenderer(nullptr);
+}
+
+int maximumPixelsOfColorInAnyColumn(const QImage& image, const QColor& color) {
+    int maximum = 0;
+    for (int x = 0; x < image.width(); ++x) {
+        int count = 0;
+        for (int y = 0; y < image.height(); ++y) {
+            count += image.pixelColor(x, y) == color ? 1 : 0;
+        }
+        maximum = std::max(maximum, count);
+    }
+    return maximum;
+}
+
+bool imageRectContainsColor(const QImage& image, const QRect& rect, const QColor& color) {
+    const QRect bounded = rect.intersected(image.rect());
+    for (int y = bounded.top(); y <= bounded.bottom(); ++y) {
+        for (int x = bounded.left(); x <= bounded.right(); ++x) {
+            if (image.pixelColor(x, y) == color) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void cursorAndMonitorGuideLinesUseDashedAndSolidPixels() {
+    constexpr int kGuideSize = 48;
+    const QRectF bounds(0.0, 0.0, kGuideSize, kGuideSize);
+    const QColor cursorColor(220, 30, 40);
+    const QColor monitorColor(30, 80, 220);
+
+    QImage cursorGuide(kGuideSize, kGuideSize, QImage::Format_RGBA8888);
+    cursorGuide.fill(Qt::transparent);
+    {
+        QPainter painter(&cursorGuide);
+        paintScreenshotGuideLineCrosshair(painter, bounds, QPointF(13.0, 19.0), cursorColor,
+                                          true);
+    }
+    const int dashedColumnPixels = maximumPixelsOfColorInAnyColumn(cursorGuide, cursorColor);
+    require(dashedColumnPixels > 0 && dashedColumnPixels < kGuideSize - 2,
+            "the cursor guide line must contain visible dash gaps");
+
+    QImage monitorGuide(kGuideSize, kGuideSize, QImage::Format_RGBA8888);
+    monitorGuide.fill(Qt::transparent);
+    {
+        QPainter painter(&monitorGuide);
+        paintScreenshotGuideLineCrosshair(painter, bounds, bounds.center(), monitorColor, false);
+    }
+    require(maximumPixelsOfColorInAnyColumn(monitorGuide, monitorColor) >= kGuideSize - 1,
+            "the monitor-center guide line must be solid across the viewport");
+
+    QImage disabledGuide(kGuideSize, kGuideSize, QImage::Format_RGBA8888);
+    disabledGuide.fill(Qt::transparent);
+    {
+        QPainter painter(&disabledGuide);
+        paintScreenshotGuideLineCrosshair(painter, bounds, bounds.center(),
+                                          QColor(10, 20, 30, 0), true);
+    }
+    for (int y = 0; y < disabledGuide.height(); ++y) {
+        for (int x = 0; x < disabledGuide.width(); ++x) {
+            require(disabledGuide.pixelColor(x, y).alpha() == 0,
+                    "transparent guide colors must disable guide rendering");
+        }
+    }
+}
+
+void colorPickerCenterGuidesLeaveTheSampleUntouched() {
+    QImage image(25, 25, QImage::Format_RGBA8888);
+    image.fill(Qt::transparent);
+    const QRectF preview(0.0, 0.0, 25.0, 25.0);
+    const QRect samplePixels(10, 10, 5, 5);
+    const QColor guideColor(35, 190, 90);
+    {
+        QPainter painter(&image);
+        paintScreenshotColorPickerCenterGuideLines(painter, preview, QRectF(samplePixels),
+                                                   guideColor);
+    }
+
+    require(imageRectContainsColor(image, QRect(0, 0, 25, 10), guideColor) &&
+                imageRectContainsColor(image, QRect(0, 15, 25, 10), guideColor) &&
+                imageRectContainsColor(image, QRect(0, 0, 10, 25), guideColor) &&
+                imageRectContainsColor(image, QRect(15, 0, 10, 25), guideColor),
+            "the picker center guide must paint all four surrounding segments");
+    for (int y = samplePixels.top(); y <= samplePixels.bottom(); ++y) {
+        for (int x = samplePixels.left(); x <= samplePixels.right(); ++x) {
+            require(image.pixelColor(x, y).alpha() == 0,
+                    "picker center guides must not cover the sampled pixels");
+        }
+    }
+}
+
+void onlyTheInputOverlayOwnsGuideLines() {
+    NoopOverlayEventSink eventSink;
+    auto* firstCanvas = new SnowCanvasWidget;
+    auto* secondCanvas = new SnowCanvasWidget;
+    ScreenshotOverlayWindow firstOverlay(eventSink, firstCanvas);
+    ScreenshotOverlayWindow secondOverlay(eventSink, secondCanvas);
+
+    CapturedDisplayModel firstDisplay;
+    firstDisplay.active = true;
+    CapturedDisplayModel secondDisplay;
+    secondDisplay.active = true;
+    ScreenshotDisplaySession displays;
+    displays.appendDisplay(firstDisplay, &firstOverlay);
+    displays.appendDisplay(secondDisplay, &secondOverlay);
+
+    ScreenshotOverlayCanvasPresenter presenter({});
+    auto* firstRenderer = firstOverlay.screenshotRendererForTesting();
+    auto* secondRenderer = secondOverlay.screenshotRendererForTesting();
+    require(firstRenderer != nullptr && secondRenderer != nullptr,
+            "the guide ownership test requires both overlay renderers");
+
+    presenter.updateGuideLines(displays, &firstOverlay, QPointF(12.0, 14.0), true,
+                               QColor(220, 30, 40), QColor(30, 80, 220));
+    require(firstRenderer->guideLinesVisible() && !secondRenderer->guideLinesVisible(),
+            "only the overlay receiving selection input may own guide lines");
+
+    presenter.updateGuideLines(displays, &secondOverlay, QPointF(4.0, 6.0), true,
+                               QColor(220, 30, 40), QColor(30, 80, 220));
+    require(!firstRenderer->guideLinesVisible() && secondRenderer->guideLinesVisible(),
+            "guide ownership must move with the input overlay");
+
+    presenter.updateGuideLines(displays, &secondOverlay, QPointF(4.0, 6.0), false,
+                               QColor(220, 30, 40), QColor(30, 80, 220));
+    require(!firstRenderer->guideLinesVisible() && !secondRenderer->guideLinesVisible(),
+            "guide lines must clear outside smart and manual selection");
+
+    presenter.updateGuideLines(displays, &firstOverlay, QPointF(12.0, 14.0), true,
+                               Qt::transparent, Qt::transparent);
+    require(!firstRenderer->guideLinesVisible() && !secondRenderer->guideLinesVisible(),
+            "transparent configured colors must keep every overlay guide-free");
 }
 
 void screenshotImageMaskAndSelectionRenderInTheirOwnedPasses() {
@@ -2295,6 +2532,15 @@ void resettingDisplaySessionEditingStateResetsEveryCanvas() {
 
 int main(int argc, char** argv) {
     QApplication application(argc, argv);
+    if (application.arguments().contains(QStringLiteral("--screenshot-ui-preferences"))) {
+        screenshotUiPreferencesNormalizeAndApplyPickerVisibilityPolicies();
+        shortcutHintStagesUseTheExactRequiredLines();
+        configurableSelectionMaskUsesRequestedPixels();
+        cursorAndMonitorGuideLinesUseDashedAndSolidPixels();
+        colorPickerCenterGuidesLeaveTheSampleUntouched();
+        onlyTheInputOverlayOwnsGuideLines();
+        return 0;
+    }
 #if defined(Q_OS_WIN)
     require(QFontDatabase::addApplicationFont(QStringLiteral("C:/Windows/Fonts/segoeui.ttf")) >= 0,
             "the renderer test requires a system TrueType font");
@@ -2361,5 +2607,11 @@ int main(int argc, char** argv) {
     disabledCanvasBlocksWidgetLevelToolInput();
     overlayCanvasesAreDisabledUntilCanvasInteractionIsEnabled();
     resettingDisplaySessionEditingStateResetsEveryCanvas();
+    screenshotUiPreferencesNormalizeAndApplyPickerVisibilityPolicies();
+    shortcutHintStagesUseTheExactRequiredLines();
+    configurableSelectionMaskUsesRequestedPixels();
+    cursorAndMonitorGuideLinesUseDashedAndSolidPixels();
+    colorPickerCenterGuidesLeaveTheSampleUntouched();
+    onlyTheInputOverlayOwnsGuideLines();
     return 0;
 }

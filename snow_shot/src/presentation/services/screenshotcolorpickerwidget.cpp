@@ -1,4 +1,5 @@
 #include "snow_shot/presentation/screenshotcolorpickerwidget.h"
+#include "snow_shot/presentation/screenshotguidelinerendering.h"
 #include "snow_shot/presentation/styles/thememanager.h"
 
 #include <QFont>
@@ -238,6 +239,19 @@ void ScreenshotColorPickerWidget::hidePicker() {
     hide();
 }
 
+void ScreenshotColorPickerWidget::setCenterGuideLineColor(const QColor& color) {
+    const QColor next = color.isValid() ? color : QColor(0, 0, 0, 0);
+    if (m_centerGuideLineColor == next) {
+        return;
+    }
+    m_centerGuideLineColor = next;
+    update();
+}
+
+QColor ScreenshotColorPickerWidget::centerGuideLineColor() const {
+    return m_centerGuideLineColor;
+}
+
 void ScreenshotColorPickerWidget::cycleColorFormat() {
     switch (m_colorFormat) {
     case ColorFormat::Hex:
@@ -312,6 +326,8 @@ void ScreenshotColorPickerWidget::paintEvent(QPaintEvent* event) {
     const qreal previewCenterOffset = static_cast<qreal>(kPreviewCenterOffset);
     const QRectF centerRect(preview.left() + previewCenterOffset,
                             preview.top() + previewCenterOffset, kPreviewScale, kPreviewScale);
+    paintScreenshotColorPickerCenterGuideLines(painter, preview, centerRect,
+                                               m_centerGuideLineColor);
     const QColor markerColor = readableTextColor(m_currentColor);
     painter.setPen(QPen(markerColor, kCenterPixelBorderWidth));
     painter.setBrush(Qt::NoBrush);

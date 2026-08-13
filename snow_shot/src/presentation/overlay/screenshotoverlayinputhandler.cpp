@@ -45,6 +45,7 @@ void ScreenshotOverlayInputHandler::handleMousePress(ScreenshotOverlayWindow* ov
     if (recognitionTool(m_context.interaction.activeTool())) {
         return;
     }
+    updateGuideLines(overlay, localPosition);
     m_context.actions.updateColorPickerForOverlay(overlay, localPosition);
     const QPointF virtualPosition = virtualPositionForOverlay(overlay, localPosition);
     if (m_context.interaction.movingSelection()) {
@@ -118,6 +119,7 @@ void ScreenshotOverlayInputHandler::handleMouseMove(ScreenshotOverlayWindow* ove
     if (recognitionTool(m_context.interaction.activeTool())) {
         return;
     }
+    updateGuideLines(overlay, localPosition);
     if (m_context.interaction.intelligentSelecting()) {
         const QPointF virtualPosition = virtualPositionForOverlay(overlay, localPosition);
         handleIntelligentSelectionMove(overlay, localPosition, virtualPosition);
@@ -431,6 +433,11 @@ void ScreenshotOverlayInputHandler::confirmSelection() {
     m_context.actions.updateOverlayState();
     m_context.actions.showToolbar();
     m_context.actions.selectionConfirmed();
+}
+
+void ScreenshotOverlayInputHandler::updateGuideLines(ScreenshotOverlayWindow* overlay,
+                                                     const QPointF& localPosition) const {
+    m_context.actions.updateGuideLinesForOverlay(overlay, localPosition);
 }
 
 QPointF

@@ -4,6 +4,7 @@
 #include "snow_shot/presentation/globalshortcutmanager.h"
 #include "snow_shot/presentation/settings/settingscatalog.h"
 #include "snow_shot/storage/applicationstorage.h"
+#include "snow_shot/storage/settingsadapters.h"
 
 #include <QObject>
 #include <QVariant>
@@ -44,6 +45,25 @@ class SettingsRuntimeBindings : public QObject {
     [[nodiscard]] virtual int integerValue(SettingsIntegerBinding binding) const = 0;
     [[nodiscard]] virtual bool applyIntegerValue(SettingsIntegerBinding binding, int value) = 0;
 
+    [[nodiscard]] virtual int sliderValue(SettingsSliderBinding binding) const = 0;
+    [[nodiscard]] virtual bool applySliderValue(SettingsSliderBinding binding, int value) = 0;
+
+    [[nodiscard]] virtual QColor colorValue(SettingsColorBinding binding) const = 0;
+    [[nodiscard]] virtual bool applyColorValue(SettingsColorBinding binding,
+                                               const QColor& value) = 0;
+
+    [[nodiscard]] virtual QVariant radioValue(SettingsRadioBinding binding) const = 0;
+    [[nodiscard]] virtual bool applyRadioValue(SettingsRadioBinding binding,
+                                               const QVariant& value) = 0;
+
+    [[nodiscard]] virtual QString filePathValue(SettingsFilePathBinding binding) const = 0;
+    [[nodiscard]] virtual bool applyFilePathValue(SettingsFilePathBinding binding,
+                                                  const QString& value) = 0;
+
+    [[nodiscard]] virtual storage::ScreenshotToolbarLayout toolbarLayout() const = 0;
+    [[nodiscard]] virtual bool
+    applyToolbarLayout(const storage::ScreenshotToolbarLayout& layout) = 0;
+
     [[nodiscard]] virtual GlobalShortcutRegistrationState
     shortcutState(GlobalShortcutAction action) const = 0;
     [[nodiscard]] virtual GlobalShortcutValidationResult
@@ -80,6 +100,20 @@ class BuiltInSettingsRuntimeBindings final : public SettingsRuntimeBindings {
     [[nodiscard]] bool applySwitchValue(SettingsSwitchBinding binding, bool value) override;
     [[nodiscard]] int integerValue(SettingsIntegerBinding binding) const override;
     [[nodiscard]] bool applyIntegerValue(SettingsIntegerBinding binding, int value) override;
+    [[nodiscard]] int sliderValue(SettingsSliderBinding binding) const override;
+    [[nodiscard]] bool applySliderValue(SettingsSliderBinding binding, int value) override;
+    [[nodiscard]] QColor colorValue(SettingsColorBinding binding) const override;
+    [[nodiscard]] bool applyColorValue(SettingsColorBinding binding,
+                                       const QColor& value) override;
+    [[nodiscard]] QVariant radioValue(SettingsRadioBinding binding) const override;
+    [[nodiscard]] bool applyRadioValue(SettingsRadioBinding binding,
+                                       const QVariant& value) override;
+    [[nodiscard]] QString filePathValue(SettingsFilePathBinding binding) const override;
+    [[nodiscard]] bool applyFilePathValue(SettingsFilePathBinding binding,
+                                          const QString& value) override;
+    [[nodiscard]] storage::ScreenshotToolbarLayout toolbarLayout() const override;
+    [[nodiscard]] bool
+    applyToolbarLayout(const storage::ScreenshotToolbarLayout& layout) override;
     [[nodiscard]] GlobalShortcutRegistrationState
     shortcutState(GlobalShortcutAction action) const override;
     [[nodiscard]] GlobalShortcutValidationResult

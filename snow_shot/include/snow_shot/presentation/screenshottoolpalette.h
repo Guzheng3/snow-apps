@@ -5,6 +5,7 @@
 #include "snow_draw_engine_qt/snow_canvas_types.h"
 #include "snow_shot/presentation/screenshotdefaultstyles.h"
 #include "snow_shot/presentation/screenshotscrollingtypes.h"
+#include "snow_shot/storage/settingsadapters.h"
 
 #include <QColor>
 #include <QMargins>
@@ -113,6 +114,7 @@ class ScreenshotToolPalette final : public QWidget {
         bool separatorAfterArrow = false;
         bool separatorBeforeConfirm = false;
         Actions actions = NoActions;
+        std::optional<snow_shot::storage::ScreenshotToolbarLayout> toolbarLayout;
         SnowCanvasStyleDefaults styleDefaults =
             snow_shot::presentation::screenshotCanvasStyleDefaults();
     };
@@ -140,6 +142,7 @@ class ScreenshotToolPalette final : public QWidget {
     bool setShadowMargins(const QMargins& margins);
     bool setPhysicalScale(qreal scale);
     qreal physicalScale() const;
+    void setToolbarLayout(const snow_shot::storage::ScreenshotToolbarLayout& layout);
     bool setLogicalClientExtent(const QSize& extent);
     bool stepStrokeWidth(int direction);
     bool stepSelectionOpacity(int direction);
@@ -279,6 +282,8 @@ class ScreenshotToolPalette final : public QWidget {
     bool addMainHistoryButtons(const Options& options, QBoxLayout* layout);
     bool addMainSecondaryButtons(const Options& options, QBoxLayout* layout);
     void addMainActionButtons(const Options& options, QBoxLayout* layout);
+    void applyMainToolbarLayout(bool notify);
+    QVector<QWidget*> mainToolbarWidgetsForItem(const QString& itemId) const;
     void addRecordingControls(QBoxLayout* layout);
     void activateArrowLineTool(Tool tool);
     void setArrowLineEntryTool(Tool tool);
@@ -519,6 +524,8 @@ class ScreenshotToolPalette final : public QWidget {
     bool m_textCanRedo = false;
     SnowCanvasHistoryState m_canvasHistoryState;
     const SnowCanvasStyleDefaults m_styleDefaults;
+    const Options m_options;
+    std::optional<snow_shot::storage::ScreenshotToolbarLayout> m_toolbarLayout;
     FilterEditor m_filterEditor;
     FilterEditor m_penFilterEditor;
     QLabel* m_spotlightOpacityIcon = nullptr;

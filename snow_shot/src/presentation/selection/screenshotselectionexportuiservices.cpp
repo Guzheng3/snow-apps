@@ -95,9 +95,16 @@ class ScreenshotPinnedWindowPool final : public QObject {
 
 namespace {
 bool presentPinnedWindowAndSynchronize(ScreenshotPinnedWindow* window,
-                                       const ScreenshotPinnedWindow::Config& config) {
+                                       const ScreenshotPinnedWindow::Config& config,
+                                       const std::function<void()>& showMainWindowRequested) {
     if (window == nullptr) {
         return false;
+    }
+    QObject::disconnect(window, &ScreenshotPinnedWindow::showMainWindowRequested, window,
+                        nullptr);
+    if (showMainWindowRequested) {
+        QObject::connect(window, &ScreenshotPinnedWindow::showMainWindowRequested, window,
+                         showMainWindowRequested);
     }
     SNOW_SHOT_PIN_PERF_MILESTONE("ui.pinned_window_constructed");
     if (!window->present(config)) {
@@ -118,11 +125,13 @@ bool presentPinnedWindowAndSynchronize(ScreenshotPinnedWindow* window,
 
 ScreenshotSelectionExportUiServices::ScreenshotSelectionExportUiServices(
     SnowCanvasRuntime& runtime, ScreenshotOcrRecognitionPort* recognition,
-    ScreenshotQrRecognitionPort* qrRecognition, SnowShotApiClient* tableRecognition)
+    ScreenshotQrRecognitionPort* qrRecognition, SnowShotApiClient* tableRecognition,
+    std::function<void()> showMainWindowRequested)
     : m_runtime(runtime),
       m_recognition(recognition),
       m_qrRecognition(qrRecognition),
       m_tableRecognition(tableRecognition),
+      m_showMainWindowRequested(std::move(showMainWindowRequested)),
       m_windowPool(std::make_unique<ScreenshotPinnedWindowPool>()) {}
 
 ScreenshotSelectionExportUiServices::~ScreenshotSelectionExportUiServices() = default;
@@ -161,7 +170,7 @@ bool ScreenshotSelectionExportUiServices::presentPinnedSelection(
     config.recognition = m_recognition;
     config.qrRecognition = m_qrRecognition;
     config.tableRecognition = m_tableRecognition;
-    return presentPinnedWindowAndSynchronize(pinnedWindow, config);
+    return presentPinnedWindowAndSynchronize(pinnedWindow, config, m_showMainWindowRequested);
 }
 
 bool ScreenshotSelectionExportUiServices::presentPinnedImage(const QImage& image, QScreen* screen,
@@ -199,5 +208,5 @@ bool ScreenshotSelectionExportUiServices::presentPinnedImage(const QImage& image
     config.recognition = m_recognition;
     config.qrRecognition = m_qrRecognition;
     config.tableRecognition = m_tableRecognition;
-    return presentPinnedWindowAndSynchronize(pinnedWindow, config);
+    return presentPinnedWindowAndSynchronize(pinnedWindow, config, m_showMainWindowRequested);
 }

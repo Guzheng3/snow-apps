@@ -2583,8 +2583,10 @@ impl crate::backend::MonitorCapturer for WindowsMonitorCapturer {
         )?;
         Ok(Some(CaptureSampleMetadata {
             capture_time: Some(capture_time),
-            present_time_qpc: crate::frame::query_qpc_now(),
+            raw_os_ticks: crate::frame::query_qpc_now(),
+            tick_format: snow_core::timestamp::TickFormat::RawQpc,
             is_duplicate,
+            dirty_rects: Vec::new(),
         }))
     }
 
@@ -2600,8 +2602,10 @@ impl crate::backend::MonitorCapturer for WindowsMonitorCapturer {
         if width == 0 || height == 0 {
             return Ok(Some(CaptureSampleMetadata {
                 capture_time: Some(Instant::now()),
-                present_time_qpc: crate::frame::query_qpc_now(),
+                raw_os_ticks: crate::frame::query_qpc_now(),
+                tick_format: snow_core::timestamp::TickFormat::RawQpc,
                 is_duplicate: true,
+                dirty_rects: Vec::new(),
             }));
         }
 
@@ -2628,13 +2632,16 @@ impl crate::backend::MonitorCapturer for WindowsMonitorCapturer {
         )?;
         Ok(Some(CaptureSampleMetadata {
             capture_time: Some(capture_time),
-            present_time_qpc: crate::frame::query_qpc_now(),
+            raw_os_ticks: crate::frame::query_qpc_now(),
+            tick_format: snow_core::timestamp::TickFormat::RawQpc,
             is_duplicate,
+            dirty_rects: Vec::new(),
         }))
     }
 
-    fn set_capture_mode(&mut self, mode: CaptureMode) {
+    fn set_capture_mode(&mut self, mode: CaptureMode) -> CaptureResult<()> {
         self.capture_mode = mode;
+        Ok(())
     }
 }
 
@@ -2801,12 +2808,13 @@ impl MonitorCapturer for WindowsWindowCapturer {
         Ok(frame)
     }
 
-    fn set_capture_mode(&mut self, mode: CaptureMode) {
+    fn set_capture_mode(&mut self, mode: CaptureMode) -> CaptureResult<()> {
         if self.capture_mode != mode {
             self.preferred_path = None;
             self.invalidate_window_state_cache();
         }
         self.capture_mode = mode;
+        Ok(())
     }
 }
 

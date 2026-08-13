@@ -7,6 +7,7 @@
 #include "screenshottoolpalettestylecontrols.h"
 #include "snow_shot/presentation/components/icons/iconrenderutils.h"
 #include "snow_shot/presentation/components/icons/snowshoticons.h"
+#include "snow_shot/presentation/screenshottoolbarlayoutmodel.h"
 #include "snow_shot/presentation/styles/themecolorscheme.h"
 #include "snow_shot/presentation/styles/thememanager.h"
 #include "snow_shot/storage/settingsadapters.h"
@@ -34,6 +35,7 @@
 #include <QSpacerItem>
 #include <QStandardItem>
 #include <QStandardItemModel>
+#include <QSet>
 #include <QStringList>
 #include <QVBoxLayout>
 #include <QWheelEvent>
@@ -63,6 +65,7 @@ namespace {
 
 namespace outlined_icons = adqt::icons::antd::outlined;
 namespace custom_outlined_icons = snow_shot::presentation::icons::custom::outlined;
+namespace toolbar_layout = snow_shot::presentation::toolbar_layout;
 
 constexpr int TOOLBAR_ITEM_SPACING = 8;
 [[maybe_unused]] constexpr const char* TOOLTIP_TRANSLATIONS[] = {
@@ -361,7 +364,10 @@ QString tableQrToolSetting(ScreenshotToolPalette::Tool tool) {
 } // namespace
 
 ScreenshotToolPalette::ScreenshotToolPalette(const Options& options, QWidget* parent)
-    : QWidget(parent), m_styleDefaults(options.styleDefaults) {
+    : QWidget(parent), m_styleDefaults(options.styleDefaults), m_options(options),
+      m_toolbarLayout(options.toolbarLayout.has_value()
+                          ? std::optional(toolbar_layout::normalizedLayout(*options.toolbarLayout))
+                          : std::nullopt) {
     const toolbar_settings::ScreenshotToolbarSettings settings;
     m_arrowLineEntryTool = arrowLineToolFromSetting(settings.arrowLineTool());
     m_highlightEntryTool = highlightToolFromSetting(settings.highlightTool());
@@ -604,6 +610,17 @@ bool ScreenshotToolPalette::setPhysicalScale(qreal scale) {
 
 qreal ScreenshotToolPalette::physicalScale() const {
     return m_physicalScale;
+}
+
+void ScreenshotToolPalette::setToolbarLayout(
+    const snow_shot::storage::ScreenshotToolbarLayout& layout) {
+    const snow_shot::storage::ScreenshotToolbarLayout normalized =
+        toolbar_layout::normalizedLayout(layout);
+    if (m_toolbarLayout.has_value() && *m_toolbarLayout == normalized) {
+        return;
+    }
+    m_toolbarLayout = normalized;
+    applyMainToolbarLayout(true);
 }
 
 void ScreenshotToolPalette::resetStyleState() {
@@ -2400,6 +2417,120 @@ void ScreenshotToolPalette::createMainToolbar(const Options& options) {
 
     if (m_rootLayout != nullptr) {
         m_rootLayout->addWidget(m_mainPanel, 0, Qt::AlignRight);
+    }
+    if (m_toolbarLayout.has_value()) {
+        applyMainToolbarLayout(false);
+    }
+}
+
+QVector<QWidget*> ScreenshotToolPalette::mainToolbarWidgetsForItem(const QString& itemId) const {
+    const toolbar_layout::Descriptor* descriptor = toolbar_layout::descriptor(itemId);
+    if (descriptor == nullptr) {
+        return {};
+    }
+    switch (descriptor->item) {
+    case toolbar_layout::Item::Move:
+        return {m_moveButton};
+    case toolbar_layout::Item::Select:
+        return {m_selectButton};
+    case toolbar_layout::Item::Shape:
+        return {m_shapeButton};
+    case toolbar_layout::Item::ArrowLine:
+        return {m_arrowLineButton != nullptr ? m_arrowLineButton
+                                             : m_arrowButton != nullptr ? m_arrowButton
+                                                                        : m_lineButton};
+    case toolbar_layout::Item::FreeDraw:
+        return {m_freeDrawButton};
+    case toolbar_layout::Item::Highlight:
+        return {m_highlightButton};
+    case toolbar_layout::Item::Text:
+        return {m_textButton};
+    case toolbar_layout::Item::SerialNumber:
+        return {m_serialNumberButton};
+    case toolbar_layout::Item::Filter:
+        return {m_filterButton};
+    case toolbar_layout::Item::Eraser:
+        return {m_eraserButton};
+    case toolbar_layout::Item::Watermark:
+        return {m_watermarkButton};
+    case toolbar_layout::Item::History:
+        return {m_undoButton, m_redoButton};
+    case toolbar_layout::Item::TableQr:
+        return {m_tableButton};
+    case toolbar_layout::Item::VideoRecord:
+        return {m_videoRecordButton};
+    case toolbar_layout::Item::Pin:
+        return {m_pinButton};
+    case toolbar_layout::Item::Ocr:
+        return {m_ocrButton};
+    case toolbar_layout::Item::ScrollingScreenshot:
+        return {m_scrollingScreenshotButton};
+    }
+    return {};
+}
+
+void ScreenshotToolPalette::applyMainToolbarLayout(bool notify) {
+    if (m_mainPanel == nullptr || !m_toolbarLayout.has_value()) {
+        return;
+    }
+
+    const snow_shot::storage::ScreenshotToolbarLayout normalized =
+        toolbar_layout::normalizedLayout(*m_toolbarLayout);
+    m_toolbarLayout = normalized;
+    m_mainPanel->resetContentLayout();
+    QBoxLayout* layout = m_mainPanel->contentLayout();
+    if (layout == nullptr) {
+        return;
+    }
+
+    const QSet<QString> hidden(normalized.hidden.cbegin(), normalized.hidden.cend());
+    bool hasCustomizableWidget = false;
+    for (const QString& itemId : normalized.order) {
+        QVector<QWidget*> widgets = mainToolbarWidgetsForItem(itemId);
+        widgets.erase(std::remove(widgets.begin(), widgets.end(), nullptr), widgets.end());
+        for (QWidget* widget : widgets) {
+            widget->setProperty("screenshotToolbarItemId", itemId);
+        }
+        if (hidden.contains(itemId) || widgets.isEmpty()) {
+            continue;
+        }
+        if (hasCustomizableWidget) {
+            addMainToolbarSpacing(TOOLBAR_ITEM_SPACING);
+        }
+        for (int index = 0; index < widgets.size(); ++index) {
+            if (index > 0) {
+                addMainToolbarSpacing(TOOLBAR_ITEM_SPACING);
+            }
+            widgets.at(index)->show();
+            layout->addWidget(widgets.at(index));
+        }
+        hasCustomizableWidget = true;
+    }
+
+    QVector<QWidget*> resultActions{m_cancelButton, m_copyButton, m_confirmButton};
+    resultActions.erase(std::remove(resultActions.begin(), resultActions.end(), nullptr),
+                        resultActions.end());
+    if (hasCustomizableWidget && !resultActions.isEmpty()) {
+        addMainToolbarSeparator();
+    }
+    for (int index = 0; index < resultActions.size(); ++index) {
+        if (index > 0) {
+            if (resultActions.at(index) == m_confirmButton && m_options.separatorBeforeConfirm) {
+                addMainToolbarSeparator();
+            } else {
+                addMainToolbarSpacing(TOOLBAR_ITEM_SPACING);
+            }
+        }
+        resultActions.at(index)->show();
+        layout->addWidget(resultActions.at(index));
+    }
+    if (m_options.showTrailingDragHandle) {
+        m_mainPanel->addTrailingDragHandle();
+    }
+
+    updateToolbarGeometry();
+    if (notify) {
+        emit visibleContentChanged();
     }
 }
 
