@@ -35,13 +35,15 @@ constexpr int kShortcutHintsRadius = 6;
 constexpr int kShortcutHintsFontSize = 14;
 constexpr int kShortcutHintsLineHeight = 22;
 constexpr int kShortcutHintsRowSpacing = 16;
-constexpr int kShortcutHintsLabelChipGap = 16;
+constexpr int kShortcutHintsColonMarginLeft = 2;
+constexpr int kShortcutHintsColonMarginRight = 8;
 constexpr int kShortcutHintsChipHorizontalPadding = 16;
 constexpr int kShortcutHintsChipVerticalPadding = 2;
 constexpr int kShortcutHintsChipRadius = 6;
 constexpr int kShortcutHintsIconSize = 14;
 constexpr int kShortcutHintsIconTextGap = 8;
-constexpr int kShortcutHintsChipGap = 8;
+constexpr int kShortcutHintsChipGap = 16;
+constexpr int kShortcutHintsChipTrailingSpace = 8;
 
 namespace custom_outlined_icons = snow_shot::presentation::icons::custom::outlined;
 
@@ -54,6 +56,7 @@ struct ShortcutHintRow {
     QString label;
     QStringList shortcuts;
     ShortcutHintIcon icon = ShortcutHintIcon::Keyboard;
+    bool hasSeparator = false;
 };
 
 class ScreenshotShortcutHintsWidget final : public QWidget {
@@ -65,7 +68,9 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
         setAttribute(Qt::WA_TransparentForMouseEvents, true);
         setFocusPolicy(Qt::NoFocus);
         QFont hintFont = font();
+        hintFont.setFamily(QStringLiteral("Open Sans"));
         hintFont.setPixelSize(kShortcutHintsFontSize);
+        hintFont.setWeight(QFont::Normal);
         setFont(hintFont);
         m_opacityEffect = new QGraphicsOpacityEffect(this);
         m_opacityEffect->setOpacity(1.0);
@@ -111,18 +116,23 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
         for (const ShortcutHintRow& row : m_rows) {
             const int labelWidth = metrics.horizontalAdvance(row.label);
             painter.setPen(QColor(255, 255, 255, 184));
-            painter.drawText(QRect(kShortcutHintsPadding,
-                                   rowTop + kShortcutHintsChipVerticalPadding, labelWidth,
+            painter.drawText(QRect(kShortcutHintsPadding, rowTop, labelWidth,
                                    kShortcutHintsLineHeight),
                              Qt::AlignLeft | Qt::AlignVCenter, row.label);
 
             int chipLeft = kShortcutHintsPadding + labelWidth;
-            if (!row.shortcuts.isEmpty()) {
-                chipLeft += kShortcutHintsLabelChipGap;
+            if (row.hasSeparator) {
+                const int colonLeft = chipLeft + kShortcutHintsColonMarginLeft;
+                const int colonWidth = metrics.horizontalAdvance(QLatin1Char(':'));
+                painter.drawText(QRect(colonLeft, rowTop, colonWidth,
+                                       kShortcutHintsLineHeight),
+                                 Qt::AlignLeft | Qt::AlignVCenter, QStringLiteral(":"));
+                chipLeft = colonLeft + colonWidth + kShortcutHintsColonMarginRight;
             }
             for (const QString& shortcut : row.shortcuts) {
                 const int chipWidth = shortcutChipWidth(shortcut, metrics);
-                const QRectF chipRect(chipLeft, rowTop, chipWidth, shortcutChipHeight());
+                const QRectF chipRect(chipLeft, rowTop - kShortcutHintsChipVerticalPadding,
+                                      chipWidth, shortcutChipHeight());
                 painter.setRenderHint(QPainter::Antialiasing, true);
                 painter.setPen(QPen(contentColor, 1.0));
                 painter.setBrush(Qt::NoBrush);
@@ -130,7 +140,7 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
                                         kShortcutHintsChipRadius, kShortcutHintsChipRadius);
 
                 const int iconLeft = chipLeft + kShortcutHintsChipHorizontalPadding;
-                const int iconTop = rowTop + (shortcutChipHeight() - kShortcutHintsIconSize) / 2;
+                const int iconTop = rowTop + (kShortcutHintsLineHeight - kShortcutHintsIconSize) / 2;
                 const auto icon = row.icon == ShortcutHintIcon::Mouse
                                       ? custom_outlined_icons::WheelMouse()
                                       : custom_outlined_icons::Keyboard();
@@ -147,12 +157,12 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
                 const int textWidth = metrics.horizontalAdvance(shortcut);
                 painter.setRenderHint(QPainter::Antialiasing, false);
                 painter.setPen(contentColor);
-                painter.drawText(QRect(textLeft, rowTop + kShortcutHintsChipVerticalPadding,
-                                       textWidth, kShortcutHintsLineHeight),
-                                 Qt::AlignLeft | Qt::AlignVCenter, shortcut);
+                painter.drawText(QRect(textLeft, rowTop, textWidth,
+                                       kShortcutHintsLineHeight),
+                                  Qt::AlignLeft | Qt::AlignVCenter, shortcut);
                 chipLeft += chipWidth + kShortcutHintsChipGap;
             }
-            rowTop += shortcutChipHeight() + kShortcutHintsRowSpacing;
+            rowTop += kShortcutHintsLineHeight + kShortcutHintsRowSpacing;
         }
     }
 
@@ -186,7 +196,8 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
             const QString& line = m_lines.at(index);
             const int separator = separatorIndex(line);
             ShortcutHintRow row;
-            row.label = separator >= 0 ? line.left(separator + 1) : line;
+            row.label = separator >= 0 ? line.left(separator) : line;
+            row.hasSeparator = separator >= 0;
             row.icon = m_mode == ScreenshotShortcutHintMode::SmartSelection && index == 0
                            ? ShortcutHintIcon::Mouse
                            : ShortcutHintIcon::Keyboard;
@@ -216,8 +227,10 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
         int width = 0;
         for (const ShortcutHintRow& row : m_rows) {
             int rowWidth = metrics.horizontalAdvance(row.label);
-            if (!row.shortcuts.isEmpty()) {
-                rowWidth += kShortcutHintsLabelChipGap;
+            if (row.hasSeparator) {
+                rowWidth += kShortcutHintsColonMarginLeft +
+                            metrics.horizontalAdvance(QLatin1Char(':')) +
+                            kShortcutHintsColonMarginRight;
             }
             for (const QString& shortcut : row.shortcuts) {
                 rowWidth += shortcutChipWidth(shortcut, metrics);
@@ -226,11 +239,14 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
                 rowWidth += kShortcutHintsChipGap *
                             (static_cast<int>(row.shortcuts.size()) - 1);
             }
+            if (!row.shortcuts.isEmpty()) {
+                rowWidth += kShortcutHintsChipTrailingSpace;
+            }
             width = std::max(width, rowWidth);
         }
         const int rowCount = static_cast<int>(m_rows.size());
         const int contentHeight =
-            rowCount > 0 ? shortcutChipHeight() * rowCount +
+            rowCount > 0 ? kShortcutHintsLineHeight * rowCount +
                                kShortcutHintsRowSpacing * (rowCount - 1)
                          : 0;
         setFixedSize(width + kShortcutHintsPadding * 2,

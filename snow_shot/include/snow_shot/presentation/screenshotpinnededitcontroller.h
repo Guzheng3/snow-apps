@@ -26,6 +26,7 @@ class ScreenshotPinnedEditController final : public QObject {
     ScreenshotFloatingToolPaletteWindow* toolbarWindow() const;
     ScreenshotToolPaletteHost* toolbarHost() const;
     void setEditMode(bool enabled);
+    void restoreDrawingToolState();
     void updatePlacement();
     void updateAfterPinnedWindowMove(const QPoint& logicalDelta);
     void raiseToolbar();

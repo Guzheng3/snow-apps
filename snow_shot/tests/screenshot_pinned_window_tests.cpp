@@ -972,10 +972,32 @@ void pinnedContextMenuAndModes(SnowCanvasRuntime& sourceRuntime) {
                 recognitionContent->parentWidget() == pinnedWindow &&
                 !recognitionContent->isWindow() && !canvas->canvasContentVisible(),
             "OCR mode should use embedded recognition content and hide engine-owned drawing content");
+    auto recognizedPresentation = std::make_shared<ScreenshotOcrPresentation>();
+    recognizedPresentation->selection = config.canvasSourceRect.toAlignedRect();
+    recognizedPresentation->filledImage =
+        QImage(background.size(), QImage::Format_ARGB32_Premultiplied);
+    recognizedPresentation->filledImage.fill(Qt::transparent);
+    recognition.complete({std::move(recognizedPresentation), {}});
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
     actions.at(4)->setChecked(true);
     require(!actions.at(2)->isChecked() && canvas->canvasContentVisible() &&
                 canvas->interactionEnabled(),
             "drawing mode should exit OCR mode and restore canvas interaction");
+    auto* editController = pinnedWindow->findChild<ScreenshotPinnedEditController*>();
+    ScreenshotToolPalette* editToolbar =
+        editController != nullptr && editController->toolbarWindow() != nullptr
+            ? editController->toolbarWindow()->palette()
+            : nullptr;
+    auto* shapeButton = editToolbar != nullptr
+                            ? qobject_cast<adqt::widgets::AdButton*>(
+                                  buttonNamed(*editToolbar, QStringLiteral("Shape")))
+                            : nullptr;
+    require(shapeButton != nullptr, "drawing mode should expose the shape tool button");
+    shapeButton->click();
+    require(canvas->canvasTool() == SnowCanvasTool::Shape &&
+                shapeButton->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Solid &&
+                shapeButton->accentRole() == adqt::widgets::AdButton::AccentRole::Primary,
+            "a drawing tool selected after recognition should retain its highlighted state");
     actions.at(4)->setChecked(false);
 
     actions.at(0)->trigger();
@@ -1116,7 +1138,8 @@ void pinnedRecognitionPromotesAutomaticPrefetch(SnowCanvasRuntime& sourceRuntime
     ScreenshotPinnedWindow::Config config;
     config.nativeGeometry = physicalPinGeometry(*screen, QPoint(60, 60), background.size());
     config.canvasSourceRect = QRectF(QPointF(), QSizeF(background.size()));
-    config.backgroundImage = background;
+    config.imageSource = ScreenshotImageSource::fromLayers({ScreenshotImageLayer{
+        background, config.canvasSourceRect, config.canvasSourceRect}});
     config.screen = screen;
     config.recognition = &recognition;
     require(pinnedWindow->present(config), "priority pin presentation failed");

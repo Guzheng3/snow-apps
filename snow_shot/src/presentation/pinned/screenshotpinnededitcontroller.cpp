@@ -258,6 +258,10 @@ void ScreenshotPinnedEditController::setEditMode(bool enabled) {
     emit editModeChanged(false);
 }
 
+void ScreenshotPinnedEditController::restoreDrawingToolState() {
+    syncPaletteFromCanvasTool();
+}
+
 void ScreenshotPinnedEditController::updatePlacement() {
     if (m_toolbarWindow == nullptr || m_updatingPlacement) {
         return;

@@ -1194,8 +1194,10 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
                             host->setActiveTool(ScreenshotToolPalette::Tool::Table);
                         } else if (mode == static_cast<int>(ScreenshotRecognitionSessionController::Mode::Qr)) {
                             host->setActiveTool(ScreenshotToolPalette::Tool::Qr);
+                        } else if (controller->editMode()) {
+                            controller->restoreDrawingToolState();
                         } else {
-                            host->setActiveTool(ScreenshotToolPalette::Tool::Select);
+                            host->clearActiveTool();
                         }
                     }
                 }
@@ -1269,7 +1271,9 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
     SNOW_SHOT_PIN_PERF_MILESTONE("window.context_menu_ready");
     if (m_recognitionSession != nullptr) {
         QTimer::singleShot(0, this, [this]() {
-            if (m_recognitionSession != nullptr && !m_closing) {
+            if (m_recognitionSession != nullptr && m_recognition != nullptr &&
+                m_ocrSupported && !m_closing &&
+                ensureMaterializedImage()) {
                 m_recognitionSession->prefetchText();
             }
         });
