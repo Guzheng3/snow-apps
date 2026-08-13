@@ -337,7 +337,7 @@
         <location filename="../src/widgets/descriptions.cpp" line="504"/>
         <location filename="../src/widgets/descriptions.cpp" line="531"/>
         <source>Label separator</source>
-        <translation type="unfinished"></translation>
+        <translation>標籤分隔符號</translation>
     </message>
     <message>
         <location filename="../src/widgets/descriptions.cpp" line="593"/>
