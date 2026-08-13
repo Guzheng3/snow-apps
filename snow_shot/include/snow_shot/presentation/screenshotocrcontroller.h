@@ -9,7 +9,6 @@
 
 #include <QObject>
 #include <QPointer>
-#include <QHash>
 #include <QImage>
 #include <QRect>
 #include <QVector>
@@ -20,7 +19,6 @@
 class ScreenshotDisplaySession;
 class ScreenshotGeometryMapper;
 class ScreenshotOcrPresentation;
-class ScreenshotOcrTextEditingSession;
 class ScreenshotRecognitionWindow;
 class ScreenshotRecognitionSessionController;
 class ScreenshotTableEditingSession;
@@ -29,7 +27,6 @@ class ScreenshotOverlayWindow;
 class ScreenshotSelectionModel;
 class SnowCanvasRuntime;
 class SnowCanvasWidget;
-class QTextDocument;
 class QWidget;
 class QUrl;
 struct ScreenshotCaptureState;
@@ -110,74 +107,29 @@ class ScreenshotOcrController final : public QObject {
         bool selectionHandlesVisible = true;
         bool selectionBorderVisible = true;
     };
-    struct TextCacheEntry {
-        std::shared_ptr<ScreenshotOcrPresentation> presentation;
-        std::shared_ptr<ScreenshotOcrTextEditingSession> editingSession;
-        bool editing = false;
-    };
-
     void activateMode(Mode mode);
-    void startRecognition();
-    void startTableRecognition();
-    void startQrRecognition();
-    void handleWorkerOutput(quint64 generation, quint64 sessionId, const QRect& selection,
-                            const QString& key, ScreenshotOcrRecognitionResult output);
-    void handleTableOutput(quint64 generation, quint64 sessionId, const QRect& selection,
-                           const QString& key, SnowShotTableResult result);
-    void handleQrOutput(quint64 generation, quint64 sessionId, const QRect& selection,
-                        const QString& key, ScreenshotQrRecognitionResult result);
-    void applyPresentation(std::shared_ptr<ScreenshotOcrPresentation> presentation);
-    void applyTableSession(std::shared_ptr<ScreenshotTableEditingSession> session);
-    void applyQrContents(const QStringList& contents);
     void handleQrLinkActivated(const QUrl& url);
-    void handleTableCommandStateChanged(const ScreenshotTableCommandState& state) const;
     void updateOverlays() const;
     void applyOcrBackgroundToOverlays(
         const std::shared_ptr<ScreenshotOcrPresentation>& presentation) const;
     void clearOcrBackgroundFromOverlays() const;
     void restorePreviousToolAfterFailure();
     void showStatus(const QString& message, bool error) const;
-    void updateToolbarBusy() const;
-    void updateToolbarTextState() const;
-    void showTextEditor();
-    void hideTextEditors();
-    void clearTextEditingState();
-    void handleTextDocumentChanged(const QString& key);
-    void showRecognitionMessage();
-    void hideRecognitionMessage();
     [[nodiscard]] bool ensureRecognitionWindow();
     void destroyRecognitionWindow();
     [[nodiscard]] QString currentCacheKey() const;
 
     ScreenshotOcrControllerContext m_context;
     QVector<CanvasState> m_canvasStates;
-    QPointer<QTextDocument> m_textDocument;
-    QHash<QString, TextCacheEntry> m_textCache;
-    QHash<QString, std::shared_ptr<ScreenshotTableEditingSession>> m_tableCache;
-    QHash<QString, QStringList> m_qrCache;
     std::shared_ptr<ScreenshotOcrPresentation> m_presentation;
     ScreenshotActiveTool m_previousTool = ScreenshotActiveTool::Move;
     std::unique_ptr<ScreenshotMessageService> m_messages;
     std::unique_ptr<ScreenshotRecognitionSessionController> m_session;
     QPointer<ScreenshotRecognitionWindow> m_recognitionWindow;
-    std::shared_ptr<ScreenshotTableEditingSession> m_tableSession;
-    QString m_textCacheKey;
-    QString m_tableCacheKey;
-    QString m_qrCacheKey;
-    QStringList m_qrContents;
-    QString m_editingKey;
     QString m_surfaceKey;
     QImage m_surfaceImage;
-    SnowShotApiClient::RequestToken m_tableRequestToken = 0;
-    ScreenshotQrRecognitionPort::RequestToken m_qrRequestToken = 0;
     Mode m_mode = Mode::Text;
-    quint64 m_textGeneration = 0;
-    quint64 m_tableGeneration = 0;
-    quint64 m_qrGeneration = 0;
-    quint64 m_sessionGeneration = 0;
-    ScreenshotOcrRecognitionPort::RequestToken m_requestToken = 0;
     bool m_active = false;
-    bool m_editing = false;
 };
 
 #endif // SNOW_SHOT_PRESENTATION_SCREENSHOTOCRCONTROLLER_H

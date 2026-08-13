@@ -551,6 +551,14 @@
       "fit": "contain"
     },
     {
+      "variant": "outlined",
+      "symbol": "WheelMouse",
+      "name": "wheel-mouse",
+      "source": "../src/presentation/components/icons/resources/wheel-mouse.svg",
+      "colorModel": "monochrome",
+      "fit": "contain"
+    },
+    {
       "variant": "twotone",
       "symbol": "ScreenshotFeature",
       "name": "screenshot-feature",

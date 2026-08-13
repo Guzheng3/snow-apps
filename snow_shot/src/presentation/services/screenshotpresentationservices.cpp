@@ -100,9 +100,9 @@ void ScreenshotPresentationServices::presentOverlayState(const QRectF& selection
         m_selectionToolbarHovered, m_context.interaction.intelligentSelecting(),
         m_context.interaction.manualSelecting(), m_context.interaction.dragging());
 
-    if (!m_context.interaction.selecting()) {
-        m_context.overlayCoordinator.clearGuideLines(m_context.displaySession);
-    }
+    m_context.overlayCoordinator.updateGuideLinesAtGlobalPosition(
+        m_context.displaySession, QCursor::pos(), m_context.interaction.selecting(),
+        m_uiPreferences.cursorGuideLineColor, m_uiPreferences.monitorCenterGuideLineColor);
 
     const ScreenshotShortcutHintMode hintMode = screenshotShortcutHintModeForState(
         m_context.interaction.intelligentSelecting(), m_context.interaction.manualSelecting(),

@@ -904,6 +904,8 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
 
     auto* generalList = interfacePage.findChild<QWidget*>(
         QStringLiteral("settings-section-list-interface-settings-general"));
+    auto* screenshotActions = quick.findChild<QWidget*>(
+        QStringLiteral("settings-section-list-quick-functions-screenshot"));
     auto* themeRow = interfacePage.findChild<QWidget*>(
         QStringLiteral("settings-item-interface-theme"));
     auto* languageRow = interfacePage.findChild<QWidget*>(
@@ -924,13 +926,16 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
         return height;
     };
     require(generalList != nullptr && generalList->layout() != nullptr &&
+                generalList->layout()->count() == 2 && screenshotActions != nullptr &&
+                screenshotActions->layout() != nullptr &&
+                screenshotActions->layout()->count() == 7 &&
                 generalList->layout()->spacing() == settingItemSpacing &&
                 themeRow != nullptr && themeRow->layout() != nullptr &&
                 themeRow->layout()->contentsMargins().top() == 0 &&
                 themeRow->layout()->contentsMargins().bottom() == 0 &&
                 themeRow->height() == contentHeight(themeRow) &&
                 languageRow != nullptr && languageRow->height() == contentHeight(languageRow),
-            "setting rows must fit their content and use list spacing instead of vertical padding");
+            "quick actions and settings must use list spacing without divider components");
 
     theme->setCurrentValue(QStringLiteral("light"));
     require(bindings.selectValue(settings::SettingsSelectBinding::Theme) ==

@@ -85,6 +85,7 @@ namespace outlined {
 [[nodiscard]] adqt::icons::IconRef ToolWatermark(const adqt::icons::IconColors& colors = {});
 [[nodiscard]] adqt::icons::IconRef Trash(const adqt::icons::IconColors& colors = {});
 [[nodiscard]] adqt::icons::IconRef WatermarkGap(const adqt::icons::IconColors& colors = {});
+[[nodiscard]] adqt::icons::IconRef WheelMouse(const adqt::icons::IconColors& colors = {});
 }  // namespace outlined
 
 namespace twotone {

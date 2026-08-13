@@ -93,16 +93,15 @@ class FakeOcrRecognition final : public ScreenshotOcrRecognitionPort {
   public:
     struct Pending {
         RequestToken token = 0;
-        QImage image;
-        QRectF canvasRect;
+        ScreenshotOcrRequest request;
         QPointer<QObject> receiver;
         Completion completion;
     };
 
-    RequestToken recognize(QImage image, const QRectF& canvasRect, QObject* receiver,
+    RequestToken recognize(ScreenshotOcrRequest request, QObject* receiver,
                            Completion completion) override {
         pending = Pending{
-            ++nextToken, std::move(image), canvasRect, receiver, std::move(completion),
+            ++nextToken, std::move(request), receiver, std::move(completion),
         };
         return pending.token;
     }
@@ -112,6 +111,14 @@ class FakeOcrRecognition final : public ScreenshotOcrRecognitionPort {
         if (pending.token == token) {
             pending = {};
         }
+    }
+
+    bool reprioritize(RequestToken token, ScreenshotOcrRequestPriority priority) override {
+        if (pending.token != token) {
+            return false;
+        }
+        pending.request.priority = priority;
+        return true;
     }
 
     void complete(ScreenshotOcrRecognitionResult result) {
@@ -920,6 +927,7 @@ void pinnedContextMenuAndModes(SnowCanvasRuntime& sourceRuntime) {
                     "pinned menu item order or label is incorrect");
         }
     }
+
     int showMainWindowRequests = 0;
     QObject::connect(pinnedWindow, &ScreenshotPinnedWindow::showMainWindowRequested,
                      [&showMainWindowRequests]() { ++showMainWindowRequests; });
@@ -1093,6 +1101,43 @@ void pinnedCloseCancelsPendingRecognition(SnowCanvasRuntime& sourceRuntime) {
             "closing a pinned window must cancel text recognition immediately");
     require(processUntilDeleted(guardedWindow, 2000),
             "pinned window was not deleted after canceling text recognition");
+}
+
+void pinnedRecognitionPromotesAutomaticPrefetch(SnowCanvasRuntime& sourceRuntime) {
+    QScreen* screen = QGuiApplication::primaryScreen();
+    require(screen != nullptr, "a primary screen is required");
+
+    FakeOcrRecognition recognition;
+    QImage background(160, 90, QImage::Format_ARGB32_Premultiplied);
+    background.fill(QColor(24, 72, 120));
+
+    auto* pinnedWindow = new ScreenshotPinnedWindow(sourceRuntime);
+    QPointer<ScreenshotPinnedWindow> guardedWindow(pinnedWindow);
+    ScreenshotPinnedWindow::Config config;
+    config.nativeGeometry = physicalPinGeometry(*screen, QPoint(60, 60), background.size());
+    config.canvasSourceRect = QRectF(QPointF(), QSizeF(background.size()));
+    config.backgroundImage = background;
+    config.screen = screen;
+    config.recognition = &recognition;
+    require(pinnedWindow->present(config), "priority pin presentation failed");
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+
+    require(recognition.pending.token != 0 &&
+                recognition.pending.request.priority == ScreenshotOcrRequestPriority::Prefetch,
+            "pinned automatic recognition should be submitted as prefetch work");
+    auto* menu = pinnedWindow->findChild<adqt::widgets::AdContextMenu*>(
+        QStringLiteral("screenshotPinnedContextMenu"));
+    require(menu != nullptr && menu->actions().size() > 2,
+            "pinned OCR action should be available during prefetch");
+    menu->actions().at(2)->trigger();
+    require(recognition.pending.request.priority == ScreenshotOcrRequestPriority::Interactive,
+            "opening pending pinned recognition should promote it to interactive work");
+
+    QPushButton* closeButton = buttonNamed(*pinnedWindow, QStringLiteral("Close"));
+    require(closeButton != nullptr, "priority pin close button was not found");
+    closeButton->click();
+    require(processUntilDeleted(guardedWindow, 2000),
+            "priority pin was not deleted after the test");
 }
 
 void pinnedCloseAfterRecognizedText(SnowCanvasRuntime& sourceRuntime) {
@@ -2210,6 +2255,10 @@ int main(int argc, char* argv[]) {
         }
         if (app.arguments().contains(QStringLiteral("--recognition-provider-loss-only"))) {
             pinnedRecognitionProviderLossEndsBusyState(sourceRuntime);
+            return 0;
+        }
+        if (app.arguments().contains(QStringLiteral("--recognition-priority-only"))) {
+            pinnedRecognitionPromotesAutomaticPrefetch(sourceRuntime);
             return 0;
         }
         if (app.arguments().contains(QStringLiteral("--close-after-recognized-text"))) {

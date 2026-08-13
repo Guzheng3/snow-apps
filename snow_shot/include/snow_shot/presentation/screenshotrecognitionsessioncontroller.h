@@ -113,7 +113,7 @@ class ScreenshotRecognitionSessionController final : public QObject {
         bool editing = false;
     };
 
-    void startTextRecognition();
+    void startTextRecognition(ScreenshotOcrRequestPriority priority);
     void startTableRecognition();
     void startQrRecognition();
     void handleTextOutput(quint64 generation, const QString& key,

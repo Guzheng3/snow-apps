@@ -24,7 +24,6 @@ void require(bool condition, const char* message) {
     }
 }
 
-constexpr int kSkipped = 77;
 constexpr int kRecognitionTimeoutMs = 30'000;
 
 QImage whiteImage(int edge = 64) {
@@ -69,7 +68,9 @@ void processEventsFor(int durationMs) {
 }
 
 void embeddedEngineCompletesThroughTheQtWorker(bool directMlEnabled) {
-    ScreenshotOcrRecognitionService service([directMlEnabled]() { return directMlEnabled; });
+    ScreenshotOcrRecognitionService service(
+        directMlEnabled ? ScreenshotOcrBackendPreference::DirectMl
+                        : ScreenshotOcrBackendPreference::Cpu);
     QEventLoop loop;
     ScreenshotOcrRecognitionResult output;
     bool completed = false;
@@ -83,7 +84,8 @@ void embeddedEngineCompletesThroughTheQtWorker(bool directMlEnabled) {
 
     const QImage image = whiteImage();
     const ScreenshotOcrRecognitionPort::RequestToken token =
-        service.recognize(image, QRectF(QPointF(), QSizeF(image.size())), &loop,
+        service.recognize(
+            ScreenshotOcrRequest{image, QRectF(QPointF(), QSizeF(image.size()))}, &loop,
                           [&](ScreenshotOcrRecognitionResult result) {
                               output = std::move(result);
                               completed = true;
@@ -104,7 +106,6 @@ void embeddedEngineCompletesThroughTheQtWorker(bool directMlEnabled) {
 
 void concurrentRequestsCompleteExactlyOnce() {
     constexpr int kRequestCount = 3;
-    qputenv("SNOW_SHOT_OCR_IDLE_TIMEOUT_MS", "30000");
     ScreenshotOcrRecognitionService service;
     QObject receiver;
     QEventLoop loop;
@@ -124,7 +125,9 @@ void concurrentRequestsCompleteExactlyOnce() {
     for (int index = 0; index < kRequestCount; ++index) {
         const QImage image = whiteImage();
         const auto token = service.recognize(
-            image, QRectF(QPointF(index, index), QSizeF(image.size())), &receiver,
+            ScreenshotOcrRequest{
+                image, QRectF(QPointF(index, index), QSizeF(image.size()))},
+            &receiver,
             [&, index](ScreenshotOcrRecognitionResult result) {
                 ++completions;
                 completionOrder.push_back(index);
@@ -162,6 +165,48 @@ void concurrentRequestsCompleteExactlyOnce() {
             "releasing presentations should release every transferred image");
 }
 
+void interactiveRequestsPrecedeQueuedPrefetch() {
+    ScreenshotOcrRecognitionService::Options options;
+    options.workerCount = 1;
+    ScreenshotOcrRecognitionService service(options);
+    QObject receiver;
+    QEventLoop loop;
+    QTimer timeout;
+    timeout.setSingleShot(true);
+    bool timedOut = false;
+    std::vector<int> completionOrder;
+    QObject::connect(&timeout, &QTimer::timeout, &loop, [&]() {
+        timedOut = true;
+        loop.quit();
+    });
+
+    const auto submit = [&](int id, int imageEdge, ScreenshotOcrRequestPriority priority) {
+        const QImage image = whiteImage(imageEdge);
+        const auto token = service.recognize(
+            ScreenshotOcrRequest{image, QRectF(QPointF(), QSizeF(image.size())), priority},
+            &receiver,
+            [&, id](ScreenshotOcrRecognitionResult result) {
+                require(result.error.isEmpty() && result.presentation != nullptr,
+                        "priority test OCR requests should succeed");
+                completionOrder.push_back(id);
+                if (completionOrder.size() == 3) {
+                    loop.quit();
+                }
+            });
+        require(token != 0, "priority test OCR requests should be accepted");
+    };
+
+    submit(0, 512, ScreenshotOcrRequestPriority::Interactive);
+    submit(1, 64, ScreenshotOcrRequestPriority::Prefetch);
+    submit(2, 64, ScreenshotOcrRequestPriority::Interactive);
+
+    timeout.start(kRecognitionTimeoutMs);
+    loop.exec();
+    require(!timedOut, "priority test OCR requests should finish within the timeout");
+    require(completionOrder == std::vector<int>({0, 2, 1}),
+            "queued interactive OCR must run before queued prefetch OCR");
+}
+
 void idleEngineRecyclesAndCanBeRecreated() {
     require(resourceCounts().engines == 0,
             "the previous OCR service should destroy its engines during shutdown");
@@ -180,7 +225,7 @@ void idleEngineRecyclesAndCanBeRecreated() {
     });
     const QImage image = whiteImage();
     const auto token = service.recognize(
-        image, QRectF(QPointF(), QSizeF(image.size())), &receiver,
+        ScreenshotOcrRequest{image, QRectF(QPointF(), QSizeF(image.size()))}, &receiver,
         [&](ScreenshotOcrRecognitionResult result) {
             output = std::move(result);
             loop.quit();
@@ -206,7 +251,7 @@ void idleEngineRecyclesAndCanBeRecreated() {
 
     bool recreated = false;
     const auto secondToken = service.recognize(
-        image, QRectF(QPointF(), QSizeF(image.size())), &receiver,
+        ScreenshotOcrRequest{image, QRectF(QPointF(), QSizeF(image.size()))}, &receiver,
         [&](ScreenshotOcrRecognitionResult result) {
             recreated = result.presentation != nullptr && result.error.isEmpty();
         });
@@ -229,7 +274,7 @@ void queuedCancellationSkipsExecution() {
     for (int index = 0; index < 3; ++index) {
         const QImage image = whiteImage(256);
         tokens.push_back(service.recognize(
-            image, QRectF(QPointF(), QSizeF(image.size())), &receiver,
+            ScreenshotOcrRequest{image, QRectF(QPointF(), QSizeF(image.size()))}, &receiver,
             [&](ScreenshotOcrRecognitionResult) {
                 ++completions;
                 if (completions == 2) {
@@ -250,7 +295,7 @@ void cancellationSuppressesCompletion() {
     bool completed = false;
     const QImage image = whiteImage();
     const auto token = service.recognize(
-        image, QRectF(QPointF(), QSizeF(image.size())), &receiver,
+        ScreenshotOcrRequest{image, QRectF(QPointF(), QSizeF(image.size()))}, &receiver,
         [&](ScreenshotOcrRecognitionResult) { completed = true; });
     require(token != 0, "the cancellable OCR request should be accepted");
     service.cancel(token);
@@ -264,7 +309,7 @@ void receiverDestructionSuppressesCompletion() {
     bool completed = false;
     const QImage image = whiteImage();
     const auto token = service.recognize(
-        image, QRectF(QPointF(), QSizeF(image.size())), receiver.get(),
+        ScreenshotOcrRequest{image, QRectF(QPointF(), QSizeF(image.size()))}, receiver.get(),
         [&](ScreenshotOcrRecognitionResult) { completed = true; });
     require(token != 0, "the receiver-guarded OCR request should be accepted");
     receiver.reset();
@@ -279,7 +324,7 @@ void serviceDestructionJoinsWorkersAndSuppressesLateDelivery() {
     for (int index = 0; index < 3; ++index) {
         const QImage image = whiteImage(256);
         const auto token = service->recognize(
-            image, QRectF(QPointF(), QSizeF(image.size())), &receiver,
+            ScreenshotOcrRequest{image, QRectF(QPointF(), QSizeF(image.size()))}, &receiver,
             [&](ScreenshotOcrRecognitionResult) { ++completions; });
         require(token != 0, "requests queued before service shutdown should be accepted");
     }
@@ -300,13 +345,10 @@ void serviceDestructionJoinsWorkersAndSuppressesLateDelivery() {
 int main(int argc, char** argv) {
     QCoreApplication application(argc, argv);
     const bool directMlRequested = application.arguments().contains(QStringLiteral("--directml"));
-    if (directMlRequested && snow_ocr_directml_is_available() == 0) {
-        std::cout << "DirectML is unavailable in the current test environment\n";
-        return kSkipped;
-    }
     embeddedEngineCompletesThroughTheQtWorker(directMlRequested);
     if (!directMlRequested) {
         concurrentRequestsCompleteExactlyOnce();
+        interactiveRequestsPrecedeQueuedPrefetch();
         queuedCancellationSkipsExecution();
         idleEngineRecyclesAndCanBeRecreated();
         cancellationSuppressesCompletion();

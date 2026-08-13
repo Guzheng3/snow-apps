@@ -62,7 +62,7 @@ void ScreenshotRecognitionSessionController::prefetchText() {
     if (!hasTarget() || m_textCache.contains(m_target.key) || m_textRequestToken != 0) {
         return;
     }
-    startTextRecognition();
+    startTextRecognition(ScreenshotOcrRequestPriority::Prefetch);
 }
 
 void ScreenshotRecognitionSessionController::activate(Mode mode) {
@@ -108,8 +108,12 @@ void ScreenshotRecognitionSessionController::activate(Mode mode) {
                 m_editingKey = m_target.key;
                 beginTextEditing();
             }
+        } else if (m_textRequestToken != 0) {
+            static_cast<void>(m_recognition->reprioritize(
+                m_textRequestToken, ScreenshotOcrRequestPriority::Interactive));
+            showRecognitionMessage();
         } else {
-            startTextRecognition();
+            startTextRecognition(ScreenshotOcrRequestPriority::Interactive);
         }
     } else if (mode == Mode::Table) {
         const auto cached = m_tableCache.constFind(m_target.key);
@@ -138,6 +142,10 @@ void ScreenshotRecognitionSessionController::deactivate() {
     }
     clearTextEditingState();
     m_active = false;
+    if (m_recognition != nullptr && m_textRequestToken != 0) {
+        static_cast<void>(m_recognition->reprioritize(m_textRequestToken,
+                                                      ScreenshotOcrRequestPriority::Prefetch));
+    }
     m_presentation.reset();
     m_tableSession.reset();
     m_qrContents.clear();
@@ -151,6 +159,7 @@ void ScreenshotRecognitionSessionController::deactivate() {
     if (m_actions.setActiveMode) {
         m_actions.setActiveMode(-1);
     }
+    hideRecognitionMessage();
     updateBusyState();
     updateTextState();
     updateTableState({});
@@ -361,20 +370,24 @@ void ScreenshotRecognitionSessionController::setTextDraft(const QString& text) {
     static_cast<void>(it->editingSession->replaceText(text));
 }
 
-void ScreenshotRecognitionSessionController::startTextRecognition() {
+void ScreenshotRecognitionSessionController::startTextRecognition(
+    ScreenshotOcrRequestPriority priority) {
     if (!hasTarget() || m_recognition == nullptr || m_textRequestToken != 0 ||
         !screenshotOcrImageWithinPixelLimit(m_target.image.size())) {
-        if (hasTarget() && !screenshotOcrImageWithinPixelLimit(m_target.image.size())) {
+        if (m_active && hasTarget() &&
+            !screenshotOcrImageWithinPixelLimit(m_target.image.size())) {
             showStatus(tr("Text recognition is unavailable for screenshots larger than 4K"), false);
         }
         return;
     }
     const quint64 generation = ++m_textGeneration;
     const QString key = m_target.key;
-    showRecognitionMessage();
+    if (m_active) {
+        showRecognitionMessage();
+    }
     const auto callbackCompleted = std::make_shared<bool>(false);
     m_textRequestToken = m_recognition->recognize(
-        m_target.image, m_target.canvasRect, this,
+        ScreenshotOcrRequest{m_target.image, m_target.canvasRect, priority}, this,
         [this, generation, key, callbackCompleted](ScreenshotOcrRecognitionResult output) {
             *callbackCompleted = true;
             if (generation == m_textGeneration) {
@@ -387,7 +400,9 @@ void ScreenshotRecognitionSessionController::startTextRecognition() {
     }
     updateBusyState();
     if (m_textRequestToken == 0 && !*callbackCompleted) {
-        showStatus(tr("Text recognition request could not be prepared"), true);
+        if (m_active) {
+            showStatus(tr("Text recognition request could not be prepared"), true);
+        }
         hideRecognitionMessage();
     }
 }
@@ -458,7 +473,10 @@ void ScreenshotRecognitionSessionController::handleTextOutput(
         return;
     }
     if (!output.error.isEmpty() || output.presentation == nullptr) {
-        showStatus(output.error.isEmpty() ? tr("Text recognition failed") : output.error, true);
+        if (m_active && m_mode == Mode::Text) {
+            showStatus(output.error.isEmpty() ? tr("Text recognition failed") : output.error,
+                       true);
+        }
         hideRecognitionMessage();
         updateBusyState();
         return;
@@ -485,14 +503,19 @@ void ScreenshotRecognitionSessionController::handleTableOutput(
         return;
     }
     if (!result.succeeded()) {
-        showStatus(result.error.isEmpty() ? tr("Table recognition failed") : result.error, true);
+        if (m_active && m_mode == Mode::Table) {
+            showStatus(result.error.isEmpty() ? tr("Table recognition failed") : result.error,
+                       true);
+        }
         hideRecognitionMessage();
         updateBusyState();
         return;
     }
     ScreenshotTableDocument document = ScreenshotTableDocument::fromHtml(result.html);
     if (document.empty()) {
-        showStatus(tr("No table cells were recognized"), false);
+        if (m_active && m_mode == Mode::Table) {
+            showStatus(tr("No table cells were recognized"), false);
+        }
         hideRecognitionMessage();
         updateBusyState();
         return;
@@ -513,13 +536,17 @@ void ScreenshotRecognitionSessionController::handleQrOutput(
         return;
     }
     if (!result.error.isEmpty()) {
-        showStatus(result.error, true);
+        if (m_active && m_mode == Mode::Qr) {
+            showStatus(result.error, true);
+        }
         hideRecognitionMessage();
         updateBusyState();
         return;
     }
     if (result.contents.isEmpty()) {
-        showStatus(tr("No QR code was recognized"), false);
+        if (m_active && m_mode == Mode::Qr) {
+            showStatus(tr("No QR code was recognized"), false);
+        }
         hideRecognitionMessage();
         updateBusyState();
         return;
@@ -652,7 +679,7 @@ void ScreenshotRecognitionSessionController::showRecognitionMessage() const {
 }
 
 void ScreenshotRecognitionSessionController::hideRecognitionMessage() const {
-    if (!busy() && m_actions.hideLoading) {
+    if ((!m_active || !busy()) && m_actions.hideLoading) {
         m_actions.hideLoading();
     }
 }
@@ -701,7 +728,7 @@ void ScreenshotRecognitionSessionController::handleRecognitionProviderDestroyed(
 
     updateBusyState();
     hideRecognitionMessage();
-    if (requestWasPending) {
+    if (requestWasPending && m_active) {
         const QString message = mode == Mode::Text    ? tr("Text recognition failed")
                                 : mode == Mode::Table ? tr("Table recognition failed")
                                                       : tr("QR code recognition failed");

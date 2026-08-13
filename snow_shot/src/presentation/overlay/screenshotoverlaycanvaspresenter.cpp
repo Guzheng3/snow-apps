@@ -166,8 +166,8 @@ QVector<ActiveOverlayEntry> activeOverlayEntries(const ScreenshotDisplaySession&
     return entries;
 }
 
-qsizetype preferredOverlayEntryIndex(const QVector<ActiveOverlayEntry>& entries) {
-    const QPoint cursorPosition = QCursor::pos();
+qsizetype overlayEntryIndexAtPosition(const QVector<ActiveOverlayEntry>& entries,
+                                      const QPoint& cursorPosition) {
     for (qsizetype index = 0; index < entries.size(); ++index) {
         const CapturedDisplayModel* display = entries.at(index).display;
         if (display != nullptr && display->logicalRect.contains(cursorPosition, false)) {
@@ -175,7 +175,13 @@ qsizetype preferredOverlayEntryIndex(const QVector<ActiveOverlayEntry>& entries)
         }
     }
 
-    return entries.isEmpty() ? -1 : 0;
+    return -1;
+}
+
+qsizetype preferredOverlayEntryIndex(const QVector<ActiveOverlayEntry>& entries,
+                                     const QPoint& cursorPosition) {
+    const qsizetype cursorIndex = overlayEntryIndexAtPosition(entries, cursorPosition);
+    return cursorIndex >= 0 || entries.isEmpty() ? cursorIndex : 0;
 }
 
 void showCapturedImageOverlayNow(ScreenshotOverlayWindow& overlay) {
@@ -206,7 +212,7 @@ void showCapturedImageOverlayDeferred(ScreenshotOverlayWindow* overlay) {
 
 void showCapturedImageOverlaysForDisplaySession(const ScreenshotDisplaySession& displaySession) {
     const QVector<ActiveOverlayEntry> entries = activeOverlayEntries(displaySession);
-    const qsizetype preferredIndex = preferredOverlayEntryIndex(entries);
+    const qsizetype preferredIndex = preferredOverlayEntryIndex(entries, QCursor::pos());
 
     if (preferredIndex >= 0 && preferredIndex < entries.size()) {
         showCapturedImageOverlayNow(*entries.at(preferredIndex).overlay);
@@ -327,6 +333,26 @@ void ScreenshotOverlayCanvasPresenter::updateGuideLines(
                 overlay->clearScreenshotGuideLines();
             }
         });
+}
+
+void ScreenshotOverlayCanvasPresenter::updateGuideLinesAtGlobalPosition(
+    const ScreenshotDisplaySession& displaySession, const QPoint& globalPosition, bool selecting,
+    const QColor& cursorColor, const QColor& monitorCenterColor) const {
+    if (!selecting) {
+        clearGuideLines(displaySession);
+        return;
+    }
+
+    const QVector<ActiveOverlayEntry> entries = activeOverlayEntries(displaySession);
+    const qsizetype ownerIndex = overlayEntryIndexAtPosition(entries, globalPosition);
+    if (ownerIndex < 0 || ownerIndex >= entries.size()) {
+        clearGuideLines(displaySession);
+        return;
+    }
+
+    ScreenshotOverlayWindow* owner = entries.at(ownerIndex).overlay;
+    const QPointF localPosition = QPointF(globalPosition - owner->geometry().topLeft());
+    updateGuideLines(displaySession, owner, localPosition, true, cursorColor, monitorCenterColor);
 }
 
 void ScreenshotOverlayCanvasPresenter::clearGuideLines(

@@ -574,6 +574,47 @@ void onlyTheInputOverlayOwnsGuideLines() {
             "transparent configured colors must keep every overlay guide-free");
 }
 
+void guideLinesInitializeFromGlobalCursorPosition() {
+    NoopOverlayEventSink eventSink;
+    auto* firstCanvas = new SnowCanvasWidget;
+    auto* secondCanvas = new SnowCanvasWidget;
+    ScreenshotOverlayWindow firstOverlay(eventSink, firstCanvas);
+    ScreenshotOverlayWindow secondOverlay(eventSink, secondCanvas);
+
+    CapturedDisplayModel firstDisplay;
+    firstDisplay.active = true;
+    firstDisplay.logicalRect = QRect(100, 100, 80, 60);
+    CapturedDisplayModel secondDisplay;
+    secondDisplay.active = true;
+    secondDisplay.logicalRect = QRect(180, 100, 80, 60);
+    ScreenshotDisplaySession displays;
+    displays.appendDisplay(firstDisplay, &firstOverlay);
+    displays.appendDisplay(secondDisplay, &secondOverlay);
+    firstOverlay.setGeometry(firstDisplay.logicalRect);
+    secondOverlay.setGeometry(secondDisplay.logicalRect);
+
+    ScreenshotOverlayCanvasPresenter presenter({});
+    auto* firstRenderer = firstOverlay.screenshotRendererForTesting();
+    auto* secondRenderer = secondOverlay.screenshotRendererForTesting();
+    require(firstRenderer != nullptr && secondRenderer != nullptr,
+            "the initial guide test requires both overlay renderers");
+
+    presenter.updateGuideLinesAtGlobalPosition(displays, QPoint(112, 114), true,
+                                               QColor(220, 30, 40), QColor(30, 80, 220));
+    require(firstRenderer->guideLinesVisible() && !secondRenderer->guideLinesVisible(),
+            "initial guide synchronization should choose the overlay under the cursor");
+
+    presenter.updateGuideLinesAtGlobalPosition(displays, QPoint(192, 124), true,
+                                               QColor(220, 30, 40), QColor(30, 80, 220));
+    require(!firstRenderer->guideLinesVisible() && secondRenderer->guideLinesVisible(),
+            "initial guide synchronization should use the cursor's current display");
+
+    presenter.updateGuideLinesAtGlobalPosition(displays, QPoint(20, 20), true, QColor(220, 30, 40),
+                                               QColor(30, 80, 220));
+    require(!firstRenderer->guideLinesVisible() && !secondRenderer->guideLinesVisible(),
+            "initial guide synchronization should clear guides outside captured displays");
+}
+
 void screenshotImageMaskAndSelectionRenderInTheirOwnedPasses() {
     SnowCanvasWidget canvas;
     canvas.resize(80, 80);
@@ -2532,6 +2573,10 @@ void resettingDisplaySessionEditingStateResetsEveryCanvas() {
 
 int main(int argc, char** argv) {
     QApplication application(argc, argv);
+    if (application.arguments().contains(QStringLiteral("--guide-line-initialization"))) {
+        guideLinesInitializeFromGlobalCursorPosition();
+        return 0;
+    }
     if (application.arguments().contains(QStringLiteral("--screenshot-ui-preferences"))) {
         screenshotUiPreferencesNormalizeAndApplyPickerVisibilityPolicies();
         shortcutHintStagesUseTheExactRequiredLines();
@@ -2539,6 +2584,7 @@ int main(int argc, char** argv) {
         cursorAndMonitorGuideLinesUseDashedAndSolidPixels();
         colorPickerCenterGuidesLeaveTheSampleUntouched();
         onlyTheInputOverlayOwnsGuideLines();
+        guideLinesInitializeFromGlobalCursorPosition();
         return 0;
     }
 #if defined(Q_OS_WIN)
@@ -2613,5 +2659,6 @@ int main(int argc, char** argv) {
     cursorAndMonitorGuideLinesUseDashedAndSolidPixels();
     colorPickerCenterGuidesLeaveTheSampleUntouched();
     onlyTheInputOverlayOwnsGuideLines();
+    guideLinesInitializeFromGlobalCursorPosition();
     return 0;
 }

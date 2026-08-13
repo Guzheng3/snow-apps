@@ -12,8 +12,8 @@ adqt::icons::ExternalIconPackDefinition definition() {
   ExternalIconPackDefinition result;
   result.pack = QStringLiteral("snow-shot");
   result.source = QStringLiteral("Snow Shot project-owned static SVG assets");
-  result.contentHash = QByteArrayLiteral("2fed05c77c285a09264f4a36adecbc759a5172435d962c9fd09136cbbddbec51");
-  result.entries.reserve(69);
+  result.contentHash = QByteArrayLiteral("01b344aa6df6742b874efff09cf2051f4a419a8d148aa3f7180a29faed786263");
+  result.entries.reserve(70);
   result.entries.append(ExternalIconPackEntry{
       QStringLiteral("app"), QStringLiteral("application-icon"),
       IconColorModel::FullColor, IconFit::Contain, {},
@@ -558,9 +558,20 @@ adqt::icons::ExternalIconPackDefinition definition() {
 )ADQT_SVG_67"),
       QByteArrayLiteral("71d5fc1aedd9b0f02a69018d9f7efb5c0d2eb4c0fac5dc58501ff97d42209310"), false});
   result.entries.append(ExternalIconPackEntry{
+      QStringLiteral("outlined"), QStringLiteral("wheel-mouse"),
+      IconColorModel::Monochrome, IconFit::Contain, {},
+      QByteArray(R"ADQT_SVG_68(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="__ADQT_SLOT_PRIMARY__">
+    <path
+        d="M755.2 197.7c-28.5-44.8-68.7-80.9-116.3-104.3-34.4-16.9-74.4-14.9-106.9 5.4s-52 55.3-52 93.6v69.1c-37.2 13.2-64 48.8-64 90.5v32H288v-32c0-91.8 55-173.3 140-207.7 16.4-6.6 24.3-25.3 17.7-41.7S420.4 78.3 404 84.9c-52.6 21.3-97.4 57.3-129.6 104.2-33 48.1-50.4 104.4-50.4 162.9v320c0 76.9 30 149.3 84.4 203.6C362.7 930 435.1 960 512 960c76.9 0 149.3-30 203.6-84.4C770 821.3 800 748.9 800 672V352c0-54.9-15.5-108.2-44.8-154.3z m-189.4-44.6c13.9-8.6 30.2-9.5 44.9-2.2C688 188.8 736 265.9 736 352v32H608v-32c0-41.7-26.8-77.3-64-90.5v-69.1c0-16.4 7.9-30.7 21.8-39.3zM480 352c0-17.6 14.4-32 32-32s32 14.4 32 32v58.2c0 17.6-14.4 32-32 32s-32-14.4-32-32V352z m32 544c-123.5 0-224-100.5-224-224V448h129.5c2.1 0 4.1-0.2 6.1-0.6 14.6 34.5 48.7 58.8 88.5 58.8 39.5 0 73.5-24 88.2-58.2H736v224c0 123.5-100.5 224-224 224z"
+        fill="__ADQT_SLOT_PRIMARY__"
+    />
+</svg>
+)ADQT_SVG_68"),
+      QByteArrayLiteral("91ca2cdacd3bee3e16b203a724c9deef90d54a14d2b3b886b3f1cf3f1bbd76a0"), false});
+  result.entries.append(ExternalIconPackEntry{
       QStringLiteral("twotone"), QStringLiteral("screenshot-feature"),
       IconColorModel::TwoTone, IconFit::Contain, IconColors().withSecondary(QColor("#9254DE")),
-      QByteArray(R"ADQT_SVG_68(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="__ADQT_SLOT_PRIMARY__">
+      QByteArray(R"ADQT_SVG_69(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="__ADQT_SLOT_PRIMARY__">
     <path
         d="M219.411692 804.588308V9.137231A9.137231 9.137231 0 0 0 210.313846 0H146.274462a9.137231 9.137231 0 0 0-9.137231 9.137231v128H9.137231A9.137231 9.137231 0 0 0 0 146.274462V210.313846c0 5.041231 4.096 9.137231 9.137231 9.137231h128V850.313846c0 20.204308 16.384 36.588308 36.588307 36.588308h630.86277v128c0 5.041231 4.096 9.137231 9.13723 9.137231h64a9.137231 9.137231 0 0 0 9.137231-9.137231v-128h128a9.137231 9.137231 0 0 0 9.137231-9.137231V813.686154a9.137231 9.137231 0 0 0-9.137231-9.137231H219.372308z"
         fill="__ADQT_SLOT_PRIMARY__"
@@ -570,7 +581,7 @@ adqt::icons::ExternalIconPackDefinition definition() {
         fill="__ADQT_SLOT_SECONDARY__"
     />
 </svg>
-)ADQT_SVG_68"),
+)ADQT_SVG_69"),
       QByteArrayLiteral("d744264cf764d1add2b5caf7e65aa7b7006ab81ce8352804d8d7c0b566b6c55b"), false});
   return result;
 }
@@ -870,6 +881,10 @@ adqt::icons::IconRef Trash(const adqt::icons::IconColors& colors) {
 
 adqt::icons::IconRef WatermarkGap(const adqt::icons::IconColors& colors) {
   return pack().icon(QStringLiteral("outlined"), QStringLiteral("watermark-gap"), colors);
+}
+
+adqt::icons::IconRef WheelMouse(const adqt::icons::IconColors& colors) {
+  return pack().icon(QStringLiteral("outlined"), QStringLiteral("wheel-mouse"), colors);
 }
 
 }  // namespace outlined

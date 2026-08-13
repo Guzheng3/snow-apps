@@ -20,7 +20,6 @@
 #include "snow_shot/presentation/screenshotmessageservice.h"
 #include "snow_shot/presentation/screenshotocrcontroller.h"
 #include "snow_shot/presentation/screenshotocrrecognitionservice.h"
-#include "snow_shot/presentation/settings/textrecognitionacceleration.h"
 #include "snow_shot/presentation/screenshotqrrecognitionservice.h"
 #include "snow_shot/presentation/screenshotselectioneditworkflow.h"
 #include "snow_shot/presentation/screenshotselectionexportworkflow.h"
@@ -441,15 +440,27 @@ void ScreenshotController::Impl::createPresentationInfrastructure() {
             m_interaction,
             m_selection,
         });
-    m_ocrRecognition = std::make_unique<ScreenshotOcrRecognitionService>(
-        []() {
-            auto& storage = snow_shot::storage::ApplicationStorage::instance();
-            return snow_shot::presentation::settings::directMlTextRecognitionSupported() &&
-                   storage.configuration()
-                       .value(QStringLiteral("text_recognition/direct_ml_acceleration"))
-                       .toBool();
-        },
-        &owner);
+    auto& applicationStorage = snow_shot::storage::ApplicationStorage::instance();
+    const auto backendPreference =
+        applicationStorage.configuration()
+                .value(QStringLiteral("text_recognition/direct_ml_acceleration"))
+                .toBool()
+            ? ScreenshotOcrBackendPreference::DirectMl
+            : ScreenshotOcrBackendPreference::Cpu;
+    m_ocrRecognition =
+        std::make_unique<ScreenshotOcrRecognitionService>(backendPreference, &owner);
+    QObject::connect(
+        &applicationStorage.configuration(),
+        &snow_shot::storage::ConfigurationStore::valueChanged, &owner,
+        [this](const QString& key, const QJsonValue& value) {
+            if (key != QStringLiteral("text_recognition/direct_ml_acceleration") ||
+                m_ocrRecognition == nullptr) {
+                return;
+            }
+            const auto preference = value.toBool() ? ScreenshotOcrBackendPreference::DirectMl
+                                                   : ScreenshotOcrBackendPreference::Cpu;
+            m_ocrRecognition->setBackendPreference(preference);
+        });
     m_qrRecognition = std::make_unique<ScreenshotQrRecognitionService>(&owner);
     QString tableApiUrl = QStringLiteral(SNOW_SHOT_API_BASE_URL);
     const QString runtimeTableApiUrl =
@@ -903,16 +914,10 @@ void ScreenshotController::Impl::toggleTextEditing() {
     } else {
         m_ocrController->beginTextEditing();
     }
-    if (ScreenshotToolbarWindow* toolbar = m_overlayCoordinator->toolbar()) {
-        toolbar->setTextEditingState(m_ocrController->hasTextResult(), m_ocrController->editing());
-    }
 }
 
 void ScreenshotController::Impl::resetTextEditing() {
     m_ocrController->resetTextEditing();
-    if (ScreenshotToolbarWindow* toolbar = m_overlayCoordinator->toolbar()) {
-        toolbar->setTextEditingState(m_ocrController->hasTextResult(), m_ocrController->editing());
-    }
 }
 
 void ScreenshotController::Impl::applyTextFormatting(const QString& value) {
@@ -924,7 +929,6 @@ void ScreenshotController::Impl::applyTextFormatting(const QString& value) {
     }
     if (ScreenshotToolbarWindow* toolbar = m_overlayCoordinator->toolbar()) {
         toolbar->clearTextTransformSelections();
-        toolbar->setTextEditingState(m_ocrController->hasTextResult(), m_ocrController->editing());
     }
 }
 
@@ -936,7 +940,6 @@ void ScreenshotController::Impl::applyTextPunctuation(const QString& value) {
     }
     if (ScreenshotToolbarWindow* toolbar = m_overlayCoordinator->toolbar()) {
         toolbar->clearTextTransformSelections();
-        toolbar->setTextEditingState(m_ocrController->hasTextResult(), m_ocrController->editing());
     }
 }
 

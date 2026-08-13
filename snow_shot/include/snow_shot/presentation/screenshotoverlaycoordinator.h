@@ -63,6 +63,10 @@ class ScreenshotOverlayCoordinator final : public ScreenshotOverlayExclusionPort
                           ScreenshotOverlayWindow* owner, const QPointF& localPosition,
                           bool selecting, const QColor& cursorColor,
                           const QColor& monitorCenterColor) const;
+    void updateGuideLinesAtGlobalPosition(const ScreenshotDisplaySession& displaySession,
+                                          const QPoint& globalPosition, bool selecting,
+                                          const QColor& cursorColor,
+                                          const QColor& monitorCenterColor) const;
     void clearGuideLines(const ScreenshotDisplaySession& displaySession) const;
     void setOverlayCursor(ScreenshotOverlayWindow* overlay,
                           ScreenshotSelectionDragMode dragMode) const;

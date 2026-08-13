@@ -1,11 +1,16 @@
 #include "snow_shot/presentation/screenshotoverlayuihost.h"
 
 #include "snow_draw_engine_qt/snow_canvas_widget.h"
+#include "snow_shot/presentation/components/icons/iconrenderutils.h"
+#include "snow_shot/presentation/components/icons/snowshoticons.h"
 #include "snow_shot/presentation/screenshotcolorpickerwidget.h"
 #include "snow_shot/presentation/screenshotselectiontoolbarwindow.h"
 #include "snow_shot/presentation/screenshotoverlaywindow.h"
 #include "snow_shot/presentation/screenshottoolbarcommands.h"
 #include "snow_shot/presentation/screenshottoolbarwindow.h"
+
+#include <algorithm>
+#include <utility>
 
 #include <QCoreApplication>
 #include <QCursor>
@@ -15,6 +20,8 @@
 #include <QGuiApplication>
 #include <QPainter>
 #include <QPaintEvent>
+#include <QPen>
+#include <QVector>
 #include <QWidget>
 
 #if defined(Q_OS_WIN) || defined(_WIN32)
@@ -23,10 +30,31 @@
 
 namespace {
 constexpr int kShortcutHintsMargin = 16;
-constexpr int kShortcutHintsHorizontalPadding = 12;
-constexpr int kShortcutHintsVerticalPadding = 10;
-constexpr int kShortcutHintsLineSpacing = 5;
+constexpr int kShortcutHintsPadding = 16;
 constexpr int kShortcutHintsRadius = 6;
+constexpr int kShortcutHintsFontSize = 14;
+constexpr int kShortcutHintsLineHeight = 22;
+constexpr int kShortcutHintsRowSpacing = 16;
+constexpr int kShortcutHintsLabelChipGap = 16;
+constexpr int kShortcutHintsChipHorizontalPadding = 16;
+constexpr int kShortcutHintsChipVerticalPadding = 2;
+constexpr int kShortcutHintsChipRadius = 6;
+constexpr int kShortcutHintsIconSize = 14;
+constexpr int kShortcutHintsIconTextGap = 8;
+constexpr int kShortcutHintsChipGap = 8;
+
+namespace custom_outlined_icons = snow_shot::presentation::icons::custom::outlined;
+
+enum class ShortcutHintIcon {
+    Keyboard,
+    Mouse,
+};
+
+struct ShortcutHintRow {
+    QString label;
+    QStringList shortcuts;
+    ShortcutHintIcon icon = ShortcutHintIcon::Keyboard;
+};
 
 class ScreenshotShortcutHintsWidget final : public QWidget {
   public:
@@ -36,6 +64,9 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
         setAttribute(Qt::WA_NoSystemBackground, true);
         setAttribute(Qt::WA_TransparentForMouseEvents, true);
         setFocusPolicy(Qt::NoFocus);
+        QFont hintFont = font();
+        hintFont.setPixelSize(kShortcutHintsFontSize);
+        setFont(hintFont);
         m_opacityEffect = new QGraphicsOpacityEffect(this);
         m_opacityEffect->setOpacity(1.0);
         setGraphicsEffect(m_opacityEffect);
@@ -74,21 +105,106 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
         painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5),
                                 kShortcutHintsRadius, kShortcutHintsRadius);
 
-        painter.setRenderHint(QPainter::Antialiasing, false);
-        painter.setPen(QColor(255, 255, 255, 235));
         const QFontMetrics metrics(font());
-        int baseline = kShortcutHintsVerticalPadding + metrics.ascent();
-        for (const QString& line : m_lines) {
-            painter.drawText(kShortcutHintsHorizontalPadding, baseline, line);
-            baseline += metrics.height() + kShortcutHintsLineSpacing;
+        const QColor contentColor(Qt::white);
+        int rowTop = kShortcutHintsPadding;
+        for (const ShortcutHintRow& row : m_rows) {
+            const int labelWidth = metrics.horizontalAdvance(row.label);
+            painter.setPen(QColor(255, 255, 255, 184));
+            painter.drawText(QRect(kShortcutHintsPadding,
+                                   rowTop + kShortcutHintsChipVerticalPadding, labelWidth,
+                                   kShortcutHintsLineHeight),
+                             Qt::AlignLeft | Qt::AlignVCenter, row.label);
+
+            int chipLeft = kShortcutHintsPadding + labelWidth;
+            if (!row.shortcuts.isEmpty()) {
+                chipLeft += kShortcutHintsLabelChipGap;
+            }
+            for (const QString& shortcut : row.shortcuts) {
+                const int chipWidth = shortcutChipWidth(shortcut, metrics);
+                const QRectF chipRect(chipLeft, rowTop, chipWidth, shortcutChipHeight());
+                painter.setRenderHint(QPainter::Antialiasing, true);
+                painter.setPen(QPen(contentColor, 1.0));
+                painter.setBrush(Qt::NoBrush);
+                painter.drawRoundedRect(chipRect.adjusted(0.5, 0.5, -0.5, -0.5),
+                                        kShortcutHintsChipRadius, kShortcutHintsChipRadius);
+
+                const int iconLeft = chipLeft + kShortcutHintsChipHorizontalPadding;
+                const int iconTop = rowTop + (shortcutChipHeight() - kShortcutHintsIconSize) / 2;
+                const auto icon = row.icon == ShortcutHintIcon::Mouse
+                                      ? custom_outlined_icons::WheelMouse()
+                                      : custom_outlined_icons::Keyboard();
+                const QPixmap iconPixmap =
+                    snow_shot::presentation::icons::renderTintedIconPixmap(
+                        icon, QSize(kShortcutHintsIconSize, kShortcutHintsIconSize),
+                        devicePixelRatioF(), contentColor);
+                if (!iconPixmap.isNull()) {
+                    painter.drawPixmap(iconLeft, iconTop, iconPixmap);
+                }
+
+                const int textLeft = iconLeft + kShortcutHintsIconSize +
+                                     kShortcutHintsIconTextGap;
+                const int textWidth = metrics.horizontalAdvance(shortcut);
+                painter.setRenderHint(QPainter::Antialiasing, false);
+                painter.setPen(contentColor);
+                painter.drawText(QRect(textLeft, rowTop + kShortcutHintsChipVerticalPadding,
+                                       textWidth, kShortcutHintsLineHeight),
+                                 Qt::AlignLeft | Qt::AlignVCenter, shortcut);
+                chipLeft += chipWidth + kShortcutHintsChipGap;
+            }
+            rowTop += shortcutChipHeight() + kShortcutHintsRowSpacing;
         }
     }
 
   private:
+    [[nodiscard]] static int shortcutChipHeight() {
+        return kShortcutHintsLineHeight + kShortcutHintsChipVerticalPadding * 2;
+    }
+
+    [[nodiscard]] static int shortcutChipWidth(const QString& shortcut,
+                                               const QFontMetrics& metrics) {
+        return kShortcutHintsChipHorizontalPadding * 2 + kShortcutHintsIconSize +
+               kShortcutHintsIconTextGap + metrics.horizontalAdvance(shortcut);
+    }
+
+    [[nodiscard]] static int separatorIndex(const QString& line) {
+        const int asciiSeparator = line.indexOf(QLatin1Char(':'));
+        const int fullWidthSeparator = line.indexOf(QChar(0xFF1A));
+        if (asciiSeparator < 0) {
+            return fullWidthSeparator;
+        }
+        if (fullWidthSeparator < 0) {
+            return asciiSeparator;
+        }
+        return std::min(asciiSeparator, fullWidthSeparator);
+    }
+
+    void rebuildRows() {
+        m_rows.clear();
+        m_rows.reserve(m_lines.size());
+        for (qsizetype index = 0; index < m_lines.size(); ++index) {
+            const QString& line = m_lines.at(index);
+            const int separator = separatorIndex(line);
+            ShortcutHintRow row;
+            row.label = separator >= 0 ? line.left(separator + 1) : line;
+            row.icon = m_mode == ScreenshotShortcutHintMode::SmartSelection && index == 0
+                           ? ShortcutHintIcon::Mouse
+                           : ShortcutHintIcon::Keyboard;
+            const bool historyRow = index == m_lines.size() - 1;
+            if (historyRow) {
+                row.shortcuts = {QStringLiteral(","), QStringLiteral(".")};
+            } else if (separator >= 0) {
+                row.shortcuts = {line.mid(separator + 1).trimmed()};
+            }
+            m_rows.push_back(std::move(row));
+        }
+    }
+
     void updateTranslatedLines() {
         const QStringList nextLines = screenshotShortcutHintLines(m_mode);
         if (m_lines != nextLines) {
             m_lines = nextLines;
+            rebuildRows();
             setAccessibleName(m_lines.join(QLatin1Char('\n')));
             updateSize();
             update();
@@ -98,19 +214,31 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
     void updateSize() {
         const QFontMetrics metrics(font());
         int width = 0;
-        for (const QString& line : m_lines) {
-            width = std::max(width, metrics.horizontalAdvance(line));
+        for (const ShortcutHintRow& row : m_rows) {
+            int rowWidth = metrics.horizontalAdvance(row.label);
+            if (!row.shortcuts.isEmpty()) {
+                rowWidth += kShortcutHintsLabelChipGap;
+            }
+            for (const QString& shortcut : row.shortcuts) {
+                rowWidth += shortcutChipWidth(shortcut, metrics);
+            }
+            if (row.shortcuts.size() > 1) {
+                rowWidth += kShortcutHintsChipGap *
+                            (static_cast<int>(row.shortcuts.size()) - 1);
+            }
+            width = std::max(width, rowWidth);
         }
-        const int lineCount = static_cast<int>(m_lines.size());
+        const int rowCount = static_cast<int>(m_rows.size());
         const int contentHeight =
-            lineCount > 0 ? metrics.height() * lineCount + kShortcutHintsLineSpacing *
-                                                        (lineCount - 1)
-                          : 0;
-        setFixedSize(width + kShortcutHintsHorizontalPadding * 2,
-                     contentHeight + kShortcutHintsVerticalPadding * 2);
+            rowCount > 0 ? shortcutChipHeight() * rowCount +
+                               kShortcutHintsRowSpacing * (rowCount - 1)
+                         : 0;
+        setFixedSize(width + kShortcutHintsPadding * 2,
+                     contentHeight + kShortcutHintsPadding * 2);
     }
 
     QStringList m_lines;
+    QVector<ShortcutHintRow> m_rows;
     ScreenshotShortcutHintMode m_mode = ScreenshotShortcutHintMode::Hidden;
     qreal m_opacity = 0.0;
     QGraphicsOpacityEffect* m_opacityEffect = nullptr;

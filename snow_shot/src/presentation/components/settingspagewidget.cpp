@@ -25,7 +25,6 @@
 #include <QAbstractButton>
 #include <QEvent>
 #include <QFileDialog>
-#include <QFrame>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QLabel>
@@ -162,13 +161,9 @@ class SettingsPageWidget::Impl {
             listLayout->setContentsMargins(0, 0, 0, 0);
             listLayout->setSpacing(metric.padding);
 
-            for (int itemIndex = 0; itemIndex < sectionDefinition.items.size(); ++itemIndex) {
-                if (itemIndex > 0) {
-                    QFrame* divider = settings_ui::createSettingsDivider(list, metric);
-                    dividers.push_back(divider);
-                    listLayout->addWidget(divider);
-                }
-                buildItem(sectionDefinition.items.at(itemIndex), list, listLayout);
+            for (const settings::SettingsItemDefinition& itemDefinition :
+                 sectionDefinition.items) {
+                buildItem(itemDefinition, list, listLayout);
             }
             contentLayout->addWidget(list);
         }
@@ -859,9 +854,6 @@ class SettingsPageWidget::Impl {
                 runtime.customControl->applyTheme(scheme);
             }
         }
-        for (QFrame* divider : std::as_const(dividers)) {
-            settings_ui::applySettingsDividerTheme(divider, scheme);
-        }
         requestScrollGeometryUpdate();
         q.update();
     }
@@ -1034,7 +1026,6 @@ class SettingsPageWidget::Impl {
     QWidget* trailingScrollSpace = nullptr;
     QVector<RuntimeSection> sections;
     QVector<RuntimeItem> items;
-    QVector<QFrame*> dividers;
     snow_shot::presentation::styles::ThemeColorScheme colorScheme;
     int scrollMarginX = 0;
     int scrollMarginY = 0;

@@ -1407,9 +1407,14 @@ if(SNOW_SHOT_BUILD_TESTS)
         NAME snow-shot-pinned-recognition-provider-loss-tests
         COMMAND snow-shot-pinned-window-tests --recognition-provider-loss-only
     )
+    add_test(
+        NAME snow-shot-pinned-recognition-priority-tests
+        COMMAND snow-shot-pinned-window-tests --recognition-priority-only
+    )
     set_tests_properties(
         snow-shot-pinned-window-tests
         snow-shot-pinned-recognition-provider-loss-tests
+        snow-shot-pinned-recognition-priority-tests
         PROPERTIES
         RUN_SERIAL TRUE
         TIMEOUT 90
@@ -2034,7 +2039,6 @@ if(SNOW_SHOT_BUILD_TESTS)
     )
     set_tests_properties(snow-shot-ocr-directml-recognition-service-tests PROPERTIES
         TIMEOUT 120
-        SKIP_RETURN_CODE 77
         ENVIRONMENT_MODIFICATION
             "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
