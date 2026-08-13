@@ -130,6 +130,13 @@ ScreenshotOcrController::ScreenshotOcrController(ScreenshotOcrControllerContext 
                     toolbar->setTextEditingState(available, editing, canUndo, canRedo);
                 }
             },
+            [this](bool available, bool translating, bool streaming, bool canUndo, bool canRedo,
+                   bool canReset) {
+                if (ScreenshotToolbarWindow* toolbar = m_context.overlayCoordinator.toolbar()) {
+                    toolbar->setTextTranslationState(available, translating, streaming, canUndo,
+                                                     canRedo, canReset);
+                }
+            },
             [this](bool available, bool canUndo, bool canRedo, bool canMerge, bool canSplit,
                    bool canReset) {
                 if (ScreenshotToolbarWindow* toolbar = m_context.overlayCoordinator.toolbar()) {
@@ -153,6 +160,16 @@ ScreenshotOcrController::ScreenshotOcrController(ScreenshotOcrControllerContext 
             },
             [this](const QString& message, bool error) { showStatus(message, error); },
             [this](const QUrl& url) { handleQrLinkActivated(url); },
+            [this]() -> QWidget* {
+                const QRectF selection = m_context.selection.normalizedSelection();
+                const CapturedDisplayModel* display = m_context.geometry.displayForCanvasPoint(
+                    m_context.displaySession, selection.center());
+                if (display == nullptr) {
+                    display = m_context.geometry.displayForCanvasRect(m_context.displaySession,
+                                                                     selection);
+                }
+                return m_context.displaySession.overlayForDisplay(display);
+            },
         },
         this);
     connect(m_session.get(), &ScreenshotRecognitionSessionController::textEditingChanged, this,
@@ -376,8 +393,16 @@ void ScreenshotOcrController::beginTextEditing() {
     m_session->beginTextEditing();
 }
 
+void ScreenshotOcrController::beginTextTranslation() {
+    m_session->beginTextTranslation();
+}
+
 void ScreenshotOcrController::endTextEditing() {
     m_session->endTextEditing();
+}
+
+void ScreenshotOcrController::openTranslationSettings() {
+    m_session->openTranslationSettings();
 }
 
 void ScreenshotOcrController::resetTextEditing() {
@@ -398,6 +423,10 @@ void ScreenshotOcrController::applyFullWidthPunctuation() {
 
 bool ScreenshotOcrController::editing() const {
     return m_session->editing();
+}
+
+bool ScreenshotOcrController::translating() const {
+    return m_session->translating();
 }
 
 bool ScreenshotOcrController::hasTextResult() const {

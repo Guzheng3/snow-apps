@@ -27,6 +27,9 @@ class ScreenshotOcrTextLayer;
 class ScreenshotTableEditingSession;
 class ScreenshotTableEditor;
 struct ScreenshotTableCommandState;
+namespace adqt::widgets {
+class AdSpin;
+}
 
 struct ScreenshotRecognitionWindowActions {
     std::function<void()> handleCancel = []() {};
@@ -77,7 +80,9 @@ class ScreenshotRecognitionWindow final : public QWidget {
     void redoTableEdit();
     void commitActiveTableEdit();
 
-    void showTextEditor(QTextDocument* document);
+    void showTextEditor(QTextDocument* document, bool readOnly = false,
+                        bool streaming = false);
+    void setTextEditorStreaming(bool streaming);
     void hideTextEditor();
 
     void showQrContents(const QStringList& contents);
@@ -98,6 +103,7 @@ class ScreenshotRecognitionWindow final : public QWidget {
     [[nodiscard]] QTransform canvasToLocalTransform() const;
     bool handleRecognitionKeyPress(QKeyEvent* event);
     void synchronizeTextLayer();
+    void updateTextEditorSpinGeometry();
 
     ScreenshotRecognitionWindowActions m_actions;
     std::shared_ptr<ScreenshotOcrPresentation> m_ocrPresentation;
@@ -105,6 +111,7 @@ class ScreenshotRecognitionWindow final : public QWidget {
     ScreenshotOcrTextLayer* m_textLayer = nullptr;
     QWidget* m_textEditorContainer = nullptr;
     QTextEdit* m_textEditor = nullptr;
+    adqt::widgets::AdSpin* m_textEditorSpin = nullptr;
     QTextBrowser* m_qrBrowser = nullptr;
     ScreenshotTableEditor* m_tableEditor = nullptr;
     QRectF m_canvasSelection;

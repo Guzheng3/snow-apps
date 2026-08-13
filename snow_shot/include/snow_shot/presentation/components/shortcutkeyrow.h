@@ -65,6 +65,9 @@ class ShortcutKeyRow : public adqt::widgets::AdButton {
 
   private:
     void openShortcutConfigDialog();
+    [[nodiscard]] QString delayDisplayTitle() const;
+    bool adjustDelayFromWheel(QEvent* event);
+    void syncDelayUnderline();
     void syncTitle();
     void syncTitleLabelColor(const QColor& textColor);
     void syncTitleIcon(const QColor& iconColor);
@@ -73,6 +76,7 @@ class ShortcutKeyRow : public adqt::widgets::AdButton {
     bool isShortcutButtonActive() const;
 
     QLabel* m_titleLabel = nullptr;
+    QWidget* m_delayUnderline = nullptr;
     QLabel* m_titleIcon = nullptr;
     adqt::widgets::AdButton* m_shortcutButton = nullptr;
     QString m_rowState;
@@ -85,6 +89,7 @@ class ShortcutKeyRow : public adqt::widgets::AdButton {
     bool m_useStableBorder = false;
     int m_maxShortcutCount = 2;
     bool m_adjustableDelay = false;
+    bool m_delayTitleHovered = false;
     int m_delaySeconds = 3;
     std::function<bool(int)> m_delaySetter;
     std::function<snow_shot::presentation::GlobalShortcutValidationResult(const QString&)>

@@ -7,6 +7,7 @@
 
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QLocale>
 
 namespace snow_shot::storage {
 namespace {
@@ -42,6 +43,24 @@ bool setShortcutValue(const QString& key, const QStringList& shortcuts) {
     return cache().setValue(key, stringArray(shortcuts));
 }
 
+QVector<QStringList> stringListArray(const QJsonValue& value) {
+    QVector<QStringList> result;
+    for (const QJsonValue& item : value.toArray()) {
+        if (item.isArray()) {
+            result.push_back(stringList(item));
+        }
+    }
+    return result;
+}
+
+QJsonArray stringArrayArray(const QVector<QStringList>& values) {
+    QJsonArray result;
+    for (const QStringList& value : values) {
+        result.push_back(stringArray(value));
+    }
+    return result;
+}
+
 QColor colorValue(const QString& key) {
     return colorFromRgbaString(cache().value(key).toString());
 }
@@ -61,8 +80,7 @@ QColor colorFromRgbaString(const QString& value) {
     if (!valid) {
         return {};
     }
-    return QColor(static_cast<int>((rgba >> 24) & 0xffU),
-                  static_cast<int>((rgba >> 16) & 0xffU),
+    return QColor(static_cast<int>((rgba >> 24) & 0xffU), static_cast<int>((rgba >> 16) & 0xffU),
                   static_cast<int>((rgba >> 8) & 0xffU), static_cast<int>(rgba & 0xffU));
 }
 
@@ -216,9 +234,7 @@ bool ScreenshotUiSettings::setToolbarSize(const QString& size) const {
 }
 
 bool ScreenshotUiSettings::selectionTransitionAnimationEnabled() const {
-    return cache()
-        .value(QStringLiteral("screenshot_ui/selection_transition_animation"))
-        .toBool();
+    return cache().value(QStringLiteral("screenshot_ui/selection_transition_animation")).toBool();
 }
 
 bool ScreenshotUiSettings::setSelectionTransitionAnimationEnabled(bool enabled) const {
@@ -318,14 +334,29 @@ bool ScreenshotToolbarSettings::setTableQrTool(const QString& tool) const {
 ScreenshotToolbarLayout ScreenshotToolbarSettings::layout() const {
     const QJsonObject object =
         cache().value(QStringLiteral("screenshot_toolbar/layout")).toObject();
-    return {stringList(object.value(QStringLiteral("order"))),
+    return {stringListArray(object.value(QStringLiteral("positions"))),
             stringList(object.value(QStringLiteral("hidden")))};
+}
+
+ScreenshotTranslationConfiguration ScreenshotTranslationSettings::configuration() const {
+    return {cache().value(QStringLiteral("screenshot_translation/source_language")).toString(),
+            cache().value(QStringLiteral("screenshot_translation/target_language")).toString(),
+            cache().value(QStringLiteral("screenshot_translation/model")).toString()};
+}
+
+bool ScreenshotTranslationSettings::setConfiguration(
+    const ScreenshotTranslationConfiguration& configuration) const {
+    return cache().setValues({
+        {QStringLiteral("screenshot_translation/source_language"), configuration.sourceLanguage},
+        {QStringLiteral("screenshot_translation/target_language"), configuration.targetLanguage},
+        {QStringLiteral("screenshot_translation/model"), configuration.modelId},
+    });
 }
 
 bool ScreenshotToolbarSettings::setLayout(const ScreenshotToolbarLayout& layout) const {
     return cache().setValue(
         QStringLiteral("screenshot_toolbar/layout"),
-        QJsonObject{{QStringLiteral("order"), stringArray(layout.order)},
+        QJsonObject{{QStringLiteral("positions"), stringArrayArray(layout.positions)},
                     {QStringLiteral("hidden"), stringArray(layout.hidden)}});
 }
 

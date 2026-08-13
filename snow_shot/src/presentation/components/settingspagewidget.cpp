@@ -159,7 +159,9 @@ class SettingsPageWidget::Impl {
             list->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
             auto* listLayout = new QVBoxLayout(list);
             listLayout->setContentsMargins(0, 0, 0, 0);
-            listLayout->setSpacing(metric.padding);
+            listLayout->setSpacing(page->id == QStringLiteral("quick-functions")
+                                       ? metric.padding
+                                       : metric.paddingLG);
 
             for (const settings::SettingsItemDefinition& itemDefinition :
                  sectionDefinition.items) {
@@ -249,7 +251,7 @@ class SettingsPageWidget::Impl {
                     auto* container = new QWidget(list);
                     auto* layout = new QHBoxLayout(container);
                     layout->setContentsMargins(0, 0, 0, 0);
-                    layout->setSpacing(colorScheme.metricAlias.marginSM);
+                    layout->setSpacing(0);
                     auto* control = new adqt::widgets::AdSlider(container);
                     const auto* schemaEntry = snow_shot::storage::ConfigurationSchema::entry(
                         definition.configurationKey);
@@ -301,6 +303,12 @@ class SettingsPageWidget::Impl {
                     control->setTriggerTextVisible(true);
                     control->setFixedWidth(
                         settings_ui::settingsControlWidth(colorScheme.metricAlias));
+                    if (auto* layout = qobject_cast<QHBoxLayout*>(control->layout());
+                        layout != nullptr && layout->count() > 0 &&
+                        layout->itemAt(0)->widget() != nullptr) {
+                        layout->setAlignment(layout->itemAt(0)->widget(),
+                                             Qt::AlignRight | Qt::AlignVCenter);
+                    }
                     runtime.colorControl = control;
                     runtime.focusTarget = control;
                     runtime.anchor = settings_ui::createSettingItemRow(
@@ -321,23 +329,30 @@ class SettingsPageWidget::Impl {
                 } else if constexpr (std::is_same_v<Payload,
                                                      settings::SettingsRadioDefinition>) {
                     auto* container = new QWidget(list);
-                    auto* layout = new QVBoxLayout(container);
+                    auto* layout = new QHBoxLayout(container);
                     layout->setContentsMargins(0, 0, 0, 0);
-                    layout->setSpacing(colorScheme.metricAlias.marginXS);
+                    layout->setSpacing(0);
+                    auto* radioList = new QWidget(container);
+                    radioList->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+                    auto* radioLayout = new QVBoxLayout(radioList);
+                    radioLayout->setContentsMargins(0, 0, 0, 0);
+                    radioLayout->setSpacing(colorScheme.metricAlias.marginXS);
                     auto* group = new adqt::widgets::AdRadioButtonGroup(container);
-                    group->setManagedLayout(layout);
+                    group->setManagedLayout(radioLayout);
                     group->setControlSize(adqt::widgets::AdRadio::ControlSize::Small);
                     for (int index = 0; index < payload.options.size(); ++index) {
                         const settings::SettingsRadioOptionDefinition& option =
                             payload.options.at(index);
-                        auto* radio = new adqt::widgets::AdRadio(container);
+                        auto* radio = new adqt::widgets::AdRadio(radioList);
                         radio->setIcon(QIcon(option.iconResource));
                         radio->setIconSize(QSize(24, 24));
                         group->addButton(radio, index);
-                        layout->addWidget(radio);
+                        radioLayout->addWidget(radio);
                         runtime.radioButtons.push_back(radio);
                         runtime.radioValues.push_back(option.value);
                     }
+                    layout->addStretch(1);
+                    layout->addWidget(radioList, 0, Qt::AlignRight);
                     container->setFixedWidth(
                         settings_ui::settingsControlWidth(colorScheme.metricAlias));
                     runtime.radioContainer = container;

@@ -139,7 +139,9 @@ class ScreenshotPinnedWindow final : public QWidget {
     void deactivateRecognition();
     void updateRecognitionToolbarState();
     void handleTextEditingRequested();
+    void handleTextTranslationRequested();
     void handleTextResetRequested();
+    void handleTextSettingsRequested();
     void handleTextFormattingRequested(const QString& value);
     void handleTextPunctuationRequested(const QString& value);
     void handleTableMergeRequested();

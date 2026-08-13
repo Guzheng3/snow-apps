@@ -44,7 +44,9 @@ class ScreenshotToolbarCommandSink {
     virtual void resetTable() {}
     virtual void beginTextEditing() {}
     virtual void toggleTextEditing() { beginTextEditing(); }
+    virtual void beginTextTranslation() {}
     virtual void resetTextEditing() {}
+    virtual void openTextTranslationSettings() {}
     virtual void applyTextFormatting(const QString&) {}
     virtual void applyTextPunctuation(const QString&) {}
     virtual void startScrollingScreenshot() = 0;

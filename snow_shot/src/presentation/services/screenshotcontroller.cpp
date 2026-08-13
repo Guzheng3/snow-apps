@@ -163,7 +163,9 @@ struct ScreenshotController::Impl final : public ScreenshotToolbarCommandSink,
     void splitTableSelection() override;
     void resetTable() override;
     void toggleTextEditing() override;
+    void beginTextTranslation() override;
     void resetTextEditing() override;
+    void openTextTranslationSettings() override;
     void applyTextFormatting(const QString& value) override;
     void applyTextPunctuation(const QString& value) override;
     void startScrollingScreenshot() override;
@@ -909,15 +911,26 @@ void ScreenshotController::Impl::resetTable() {
 }
 
 void ScreenshotController::Impl::toggleTextEditing() {
-    if (m_ocrController->editing()) {
+    if (m_ocrController->translating()) {
+        m_ocrController->endTextEditing();
+        m_ocrController->beginTextEditing();
+    } else if (m_ocrController->editing()) {
         m_ocrController->endTextEditing();
     } else {
         m_ocrController->beginTextEditing();
     }
 }
 
+void ScreenshotController::Impl::beginTextTranslation() {
+    m_ocrController->beginTextTranslation();
+}
+
 void ScreenshotController::Impl::resetTextEditing() {
     m_ocrController->resetTextEditing();
+}
+
+void ScreenshotController::Impl::openTextTranslationSettings() {
+    m_ocrController->openTranslationSettings();
 }
 
 void ScreenshotController::Impl::applyTextFormatting(const QString& value) {

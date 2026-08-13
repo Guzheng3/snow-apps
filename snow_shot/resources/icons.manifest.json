@@ -232,6 +232,14 @@
     },
     {
       "variant": "outlined",
+      "symbol": "OcrTranslate",
+      "name": "ocr-translate",
+      "source": "../src/presentation/components/icons/resources/ocr-translate.svg",
+      "colorModel": "monochrome",
+      "fit": "contain"
+    },
+    {
+      "variant": "outlined",
       "symbol": "Opacity",
       "name": "opacity",
       "source": "../src/presentation/components/icons/resources/opacity.svg",

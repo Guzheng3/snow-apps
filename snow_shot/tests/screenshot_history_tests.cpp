@@ -815,6 +815,45 @@ void historyKeysOnlyWorkDuringSelectionStates() {
     require(!handler.handleKeyPress(Qt::Key_Comma, {}), "comma key was handled while editing");
     require(previousCount == 2, "comma key navigated history while editing");
 }
+
+void moveToolCanStartManualSelectionOutsideConfirmedBox() {
+    ScreenshotCaptureState captureState;
+    ScreenshotDisplaySession displays;
+    ScreenshotGeometryMapper geometry;
+    ScreenshotSelectionModel selection;
+    selection.setSelectionRect(QRectF(10, 10, 20, 20));
+    ScreenshotIntelligentSelectionModel intelligent;
+    ScreenshotInteractionState interaction;
+    interaction.confirmSelection();
+
+    int overlayUpdates = 0;
+    int guideLineUpdates = 0;
+    ScreenshotOverlayInputActions actions;
+    actions.updateOverlayState = [&overlayUpdates]() { ++overlayUpdates; };
+    actions.updateGuideLinesForOverlay = [&guideLineUpdates](ScreenshotOverlayWindow*,
+                                                              const QPointF&) {
+        ++guideLineUpdates;
+    };
+    ScreenshotOverlayInputHandler handler({
+        captureState,
+        interaction,
+        selection,
+        intelligent,
+        geometry,
+        displays,
+        std::move(actions),
+    });
+
+    require(handler.shouldHandleMouseEvent(nullptr, QPointF(50, 50), true),
+            "Move must handle a press outside the confirmed selection");
+    handler.handleMousePress(nullptr, QPointF(50, 50));
+    require(interaction.manualSelecting() && interaction.dragging(),
+            "Move press outside the selection must enter manual drag mode");
+    require(selection.normalizedSelection() == QRectF(50, 50, 0, 0),
+            "manual drag did not reset the selection origin");
+    require(overlayUpdates == 1, "manual drag did not refresh the overlay");
+    require(guideLineUpdates == 1, "manual drag did not update the cursor guide lines");
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -848,5 +887,6 @@ int main(int argc, char** argv) {
     failedPublicationDoesNotInsertRecord(
         QDir(temporary.path()).filePath(QStringLiteral("blocked-history-root")));
     historyKeysOnlyWorkDuringSelectionStates();
+    moveToolCanStartManualSelectionOutsideConfirmedBox();
     return 0;
 }

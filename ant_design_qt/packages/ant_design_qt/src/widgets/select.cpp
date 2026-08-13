@@ -185,7 +185,7 @@ bool selectionItemsEqual(const QVector<AdSelect::SelectionItem>& lhs,
 
 QString defaultSelectAccessibleName(const AdSelect* select) {
   if (!select) {
-    return QStringLiteral("Select");
+    return AdSelect::tr("Select");
   }
 
   QString explicitName = select->accessibleName().trimmed();

@@ -7,6 +7,7 @@
 
 #include <QColor>
 #include <QImage>
+#include <QPoint>
 #include <QPointer>
 #include <QRectF>
 #include <QRegion>
@@ -47,6 +48,13 @@ QRegion planScreenshotSelectionDamage(const ScreenshotSelectionVisualState& prev
                                       const ScreenshotSelectionVisualState& next,
                                       const QRect& viewportRect,
                                       const QTransform& canvasToViewTransform, bool maskVisible);
+QRegion planScreenshotGuideLineDamage(const QRect& viewportRect,
+                                      const QPoint& previousCursorPosition,
+                                      const QColor& previousCursorColor,
+                                      const QColor& previousMonitorCenterColor,
+                                      const QPoint& nextCursorPosition,
+                                      const QColor& nextCursorColor,
+                                      const QColor& nextMonitorCenterColor);
 
 #if defined(SNOW_SHOT_BENCH_INTERNALS)
 struct ScreenshotSelectionRenderDiagnostics {
@@ -54,8 +62,15 @@ struct ScreenshotSelectionRenderDiagnostics {
     std::size_t pathFallbacks = 0;
 };
 
+struct ScreenshotGuideLineRenderDiagnostics {
+    std::size_t requestedDamagePixels = 0;
+    std::size_t updateRequests = 0;
+};
+
 ScreenshotSelectionRenderDiagnostics selectionRenderDiagnosticsForCurrentThread();
 void resetSelectionRenderDiagnosticsForCurrentThread();
+ScreenshotGuideLineRenderDiagnostics guideLineRenderDiagnosticsForCurrentThread();
+void resetGuideLineRenderDiagnosticsForCurrentThread();
 #endif
 
 class ScreenshotCanvasRenderer final : public SnowCanvasCustomRenderer {
@@ -135,7 +150,7 @@ class ScreenshotCanvasRenderer final : public SnowCanvasCustomRenderer {
     RenderMode m_renderMode = RenderMode::Standard;
     bool m_maskVisible = false;
     QColor m_maskColor = QColor(0, 0, 0, 128);
-    QPointF m_guideLineCursorPosition;
+    QPoint m_guideLineCursorPosition;
     QColor m_cursorGuideLineColor = QColor(0, 0, 0, 0);
     QColor m_monitorCenterGuideLineColor = QColor(0, 0, 0, 0);
     bool m_guideLinesVisible = false;

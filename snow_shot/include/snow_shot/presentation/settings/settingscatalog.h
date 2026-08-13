@@ -214,7 +214,7 @@ struct SettingsItemDefinition {
 enum class SettingsSectionReset {
     None,
     ScreenshotShortcuts,
-    OpenSettingsShortcuts,
+    OtherShortcuts,
     GeneralSettings,
     HistoryPolicy,
     ScreenshotSettings,

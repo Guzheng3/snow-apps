@@ -170,13 +170,7 @@ ScreenshotHistoryPageWidget* ContentCardWidget::ensureHistoryPage(const QString&
 }
 
 void ContentCardWidget::showInterfaceSettings() {
-    const auto command =
-        m_catalog.commandForShortcut(snow_shot::presentation::GlobalShortcutAction::OpenSettings);
-    if (command.has_value()) {
-        handleCommand(*command);
-    } else {
-        navigateTo(m_catalog.defaultLocation());
-    }
+    navigateTo({QStringLiteral("interface-settings"), QStringLiteral("general"), {}});
 }
 
 void ContentCardWidget::handleCommand(

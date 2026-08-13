@@ -325,14 +325,27 @@ void ScreenshotOverlayCanvasPresenter::updateGuideLines(
     const ScreenshotDisplaySession& displaySession, ScreenshotOverlayWindow* owner,
     const QPointF& localPosition, bool selecting, const QColor& cursorColor,
     const QColor& monitorCenterColor) const {
-    displaySession.forEachActiveOverlay(
-        [&](qsizetype, const CapturedDisplayModel&, ScreenshotOverlayWindow* overlay) {
-            if (selecting && overlay == owner) {
-                overlay->setScreenshotGuideLines(localPosition, cursorColor, monitorCenterColor);
-            } else {
-                overlay->clearScreenshotGuideLines();
-            }
-        });
+    const bool guideLinesEnabled = (cursorColor.isValid() && cursorColor.alpha() > 0) ||
+                                   (monitorCenterColor.isValid() && monitorCenterColor.alpha() > 0);
+    ScreenshotOverlayWindow* nextOwner = selecting && guideLinesEnabled ? owner : nullptr;
+    if (nextOwner != nullptr && m_guideLineOwner != nextOwner) {
+        bool activeOwner = false;
+        displaySession.forEachActiveOverlay(
+            [&](qsizetype, const CapturedDisplayModel&, ScreenshotOverlayWindow* overlay) {
+                activeOwner = activeOwner || overlay == nextOwner;
+            });
+        if (!activeOwner) {
+            nextOwner = nullptr;
+        }
+    }
+
+    if (m_guideLineOwner != nextOwner && m_guideLineOwner != nullptr) {
+        m_guideLineOwner->clearScreenshotGuideLines();
+    }
+    m_guideLineOwner = nextOwner;
+    if (nextOwner != nullptr) {
+        nextOwner->setScreenshotGuideLines(localPosition, cursorColor, monitorCenterColor);
+    }
 }
 
 void ScreenshotOverlayCanvasPresenter::updateGuideLinesAtGlobalPosition(
@@ -357,8 +370,15 @@ void ScreenshotOverlayCanvasPresenter::updateGuideLinesAtGlobalPosition(
 
 void ScreenshotOverlayCanvasPresenter::clearGuideLines(
     const ScreenshotDisplaySession& displaySession) const {
-    displaySession.forEachOverlay([](qsizetype, ScreenshotOverlayWindow* overlay) {
-        overlay->clearScreenshotGuideLines();
+    const QPointer<ScreenshotOverlayWindow> previousOwner = m_guideLineOwner;
+    m_guideLineOwner = nullptr;
+    if (previousOwner != nullptr) {
+        previousOwner->clearScreenshotGuideLines();
+    }
+    displaySession.forEachOverlay([previousOwner](qsizetype, ScreenshotOverlayWindow* overlay) {
+        if (overlay != previousOwner) {
+            overlay->clearScreenshotGuideLines();
+        }
     });
 }
 

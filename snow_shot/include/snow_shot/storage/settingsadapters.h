@@ -6,17 +6,18 @@
 #include <QColor>
 #include <QString>
 #include <QStringList>
+#include <QVector>
 
 #include <future>
 
 namespace snow_shot::storage {
 struct ScreenshotToolbarLayout {
-    QStringList order;
+    QVector<QStringList> positions;
     QStringList hidden;
 
     friend bool operator==(const ScreenshotToolbarLayout& first,
                            const ScreenshotToolbarLayout& second) {
-        return first.order == second.order && first.hidden == second.hidden;
+        return first.positions == second.positions && first.hidden == second.hidden;
     }
     friend bool operator!=(const ScreenshotToolbarLayout& first,
                            const ScreenshotToolbarLayout& second) {
@@ -69,6 +70,21 @@ class ScreenshotSettings final {
   public:
     [[nodiscard]] int delaySeconds() const;
     bool setDelaySeconds(int seconds) const;
+};
+
+struct ScreenshotTranslationConfiguration {
+    QString sourceLanguage;
+    QString targetLanguage;
+    QString modelId;
+
+    friend bool operator==(const ScreenshotTranslationConfiguration& first,
+                           const ScreenshotTranslationConfiguration& second) = default;
+};
+
+class ScreenshotTranslationSettings final {
+  public:
+    [[nodiscard]] ScreenshotTranslationConfiguration configuration() const;
+    bool setConfiguration(const ScreenshotTranslationConfiguration& configuration) const;
 };
 
 class ScreenshotUiSettings final {

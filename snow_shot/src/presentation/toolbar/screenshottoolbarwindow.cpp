@@ -204,8 +204,12 @@ void ScreenshotToolbarWindow::connectToolCommands(ScreenshotToolPalette& toolPal
     });
     connect(&toolPalette, &ScreenshotToolPalette::textEditRequested, this,
             [this]() { m_commands.toggleTextEditing(); });
+    connect(&toolPalette, &ScreenshotToolPalette::textTranslateRequested, this,
+            [this]() { m_commands.beginTextTranslation(); });
     connect(&toolPalette, &ScreenshotToolPalette::textResetRequested, this,
             [this]() { m_commands.resetTextEditing(); });
+    connect(&toolPalette, &ScreenshotToolPalette::textSettingsRequested, this,
+            [this]() { m_commands.openTextTranslationSettings(); });
     connect(&toolPalette, &ScreenshotToolPalette::textFormattingRequested, this,
             [this](const QString& value) { m_commands.applyTextFormatting(value); });
     connect(&toolPalette, &ScreenshotToolPalette::textPunctuationRequested, this,
@@ -432,6 +436,15 @@ void ScreenshotToolbarWindow::setTextEditingState(bool available, bool editing, 
                                                    bool canRedo) {
     if (ScreenshotToolPalette* toolPalette = palette()) {
         toolPalette->setTextEditingState(available, editing, canUndo, canRedo);
+    }
+}
+
+void ScreenshotToolbarWindow::setTextTranslationState(bool available, bool translating,
+                                                       bool streaming, bool canUndo,
+                                                       bool canRedo, bool canReset) {
+    if (ScreenshotToolPalette* toolPalette = palette()) {
+        toolPalette->setTextTranslationState(available, translating, streaming, canUndo, canRedo,
+                                             canReset);
     }
 }
 

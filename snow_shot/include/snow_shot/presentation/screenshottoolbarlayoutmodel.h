@@ -4,8 +4,6 @@
 #include "snow_shot/presentation/components/icons/snowshoticons.h"
 #include "snow_shot/storage/settingsadapters.h"
 
-#include "antd_icons.h"
-
 #include <QSet>
 #include <QString>
 #include <QStringList>
@@ -14,28 +12,20 @@
 namespace snow_shot::presentation::toolbar_layout {
 
 enum class Item {
-    Move,
-    Select,
     Shape,
-    ArrowLine,
+    Arrow,
+    Line,
     FreeDraw,
-    Highlight,
+    Highlighter,
+    Spotlight,
     Text,
     SerialNumber,
     Filter,
     Eraser,
     Watermark,
-    History,
-    TableQr,
-    VideoRecord,
-    Pin,
-    Ocr,
-    ScrollingScreenshot,
 };
 
 enum class Icon {
-    Move,
-    Select,
     Shape,
     Arrow,
     Line,
@@ -47,97 +37,41 @@ enum class Icon {
     Filter,
     Eraser,
     Watermark,
-    Undo,
-    Redo,
-    Table,
-    Qr,
-    VideoRecord,
-    Pin,
-    Ocr,
-    ScrollingScreenshot,
-};
-
-struct ChildDescriptor {
-    const char* label = nullptr;
-    Icon icon = Icon::Move;
 };
 
 struct Descriptor {
-    Item item = Item::Move;
+    Item item = Item::Shape;
     const char* id = nullptr;
     const char* label = nullptr;
-    Icon icon = Icon::Move;
-    QVector<ChildDescriptor> children;
+    Icon icon = Icon::Shape;
 };
 
 [[nodiscard]] inline const QVector<Descriptor>& descriptors() {
     static const QVector<Descriptor> value{
-        {Item::Move, "move",
-         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Edit selection"), Icon::Move,
-         {}},
-        {Item::Select, "select",
-         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Select elements"),
-         Icon::Select, {}},
         {Item::Shape, "shape", QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Shape"),
-         Icon::Shape, {}},
-        {Item::ArrowLine,
-         "arrow-line",
-         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Arrow and Line"),
-         Icon::Arrow,
-         {{QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Arrow"), Icon::Arrow},
-          {QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Line"), Icon::Line}}},
+         Icon::Shape},
+        {Item::Arrow, "arrow", QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Arrow"),
+         Icon::Arrow},
+        {Item::Line, "line", QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Line"),
+         Icon::Line},
         {Item::FreeDraw, "free-draw",
-         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Pen"), Icon::FreeDraw, {}},
-        {Item::Highlight,
-         "highlight",
-         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Highlight"),
-         Icon::Highlight,
-         {{QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Pen highlight"),
-           Icon::Highlight},
-          {QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Rectangle highlight"),
-           Icon::Highlight},
-          {QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Spotlight"),
-           Icon::Spotlight}}},
+         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Pen"), Icon::FreeDraw},
+        {Item::Highlighter, "highlighter",
+         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Highlighter Tool"),
+         Icon::Highlight},
+        {Item::Spotlight, "spotlight",
+         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Spotlight"), Icon::Spotlight},
         {Item::Text, "text", QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Text"),
-         Icon::Text, {}},
+         Icon::Text},
         {Item::SerialNumber, "serial-number",
          QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Serial number"),
-         Icon::SerialNumber, {}},
-        {Item::Filter, "filter",
-         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Filter"), Icon::Filter, {}},
-        {Item::Eraser, "eraser",
-         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Eraser"), Icon::Eraser, {}},
+         Icon::SerialNumber},
+        {Item::Filter, "filter", QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Filter"),
+         Icon::Filter},
+        {Item::Eraser, "eraser", QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Eraser"),
+         Icon::Eraser},
         {Item::Watermark, "watermark",
-         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Watermark"), Icon::Watermark,
-         {}},
-        {Item::History,
-         "history",
-         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Undo and Redo"),
-         Icon::Undo,
-         {{QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Undo"), Icon::Undo},
-          {QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Redo"), Icon::Redo}}},
-        {Item::TableQr,
-         "table-qr",
-         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Table and QR"),
-         Icon::Table,
-         {{QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Table recognition"),
-           Icon::Table},
-          {QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "QR code recognition"),
-           Icon::Qr}}},
-        {Item::VideoRecord, "video-record",
-         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Record video"),
-         Icon::VideoRecord, {}},
-        {Item::Pin, "pin",
-         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Pin to screen"), Icon::Pin,
-         {}},
-        {Item::Ocr, "ocr",
-         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Text recognition"), Icon::Ocr,
-         {}},
-        {Item::ScrollingScreenshot,
-         "scrolling-screenshot",
-         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Scrolling screenshot"),
-         Icon::ScrollingScreenshot,
-         {}},
+         QT_TRANSLATE_NOOP("DrawingToolbarEditorSettingsWidget", "Watermark"), Icon::Watermark},
     };
     return value;
 }
@@ -173,28 +107,67 @@ struct Descriptor {
     return result;
 }
 
+[[nodiscard]] inline QVector<QStringList> defaultPositions() {
+    return {
+        {QStringLiteral("shape")},
+        {QStringLiteral("line"), QStringLiteral("arrow")},
+        {QStringLiteral("free-draw")},
+        {QStringLiteral("spotlight"), QStringLiteral("highlighter")},
+        {QStringLiteral("text")},
+        {QStringLiteral("serial-number")},
+        {QStringLiteral("filter")},
+        {QStringLiteral("eraser")},
+        {QStringLiteral("watermark")},
+    };
+}
+
 [[nodiscard]] inline storage::ScreenshotToolbarLayout
 normalizedLayout(const storage::ScreenshotToolbarLayout& input) {
     const QStringList defaults = defaultOrder();
     const QSet<QString> known(defaults.cbegin(), defaults.cend());
-    QSet<QString> ordered;
+    QSet<QString> positioned;
     storage::ScreenshotToolbarLayout result;
-    for (const QString& itemId : input.order) {
-        if (known.contains(itemId) && !ordered.contains(itemId)) {
-            result.order.push_back(itemId);
-            ordered.insert(itemId);
+    for (const QStringList& inputPosition : input.positions) {
+        QStringList position;
+        for (const QString& storedItemId : inputPosition) {
+            const QString itemId =
+                storedItemId == QStringLiteral("rectangle-highlight") ||
+                        storedItemId == QStringLiteral("pen-highlight")
+                    ? QStringLiteral("highlighter")
+                    : storedItemId;
+            if (known.contains(itemId) && !positioned.contains(itemId)) {
+                position.push_back(itemId);
+                positioned.insert(itemId);
+            }
         }
-    }
-    for (const QString& itemId : defaults) {
-        if (!ordered.contains(itemId)) {
-            result.order.push_back(itemId);
+        if (!position.isEmpty()) {
+            result.positions.push_back(position);
         }
     }
 
-    const QSet<QString> requestedHidden(input.hidden.cbegin(), input.hidden.cend());
-    for (const QString& itemId : result.order) {
-        if (known.contains(itemId) && requestedHidden.contains(itemId)) {
+    QSet<QString> hidden;
+    for (const QString& storedItemId : input.hidden) {
+        const QString itemId =
+            storedItemId == QStringLiteral("rectangle-highlight") ||
+                    storedItemId == QStringLiteral("pen-highlight")
+                ? QStringLiteral("highlighter")
+                : storedItemId;
+        if (known.contains(itemId) && !positioned.contains(itemId) && !hidden.contains(itemId)) {
             result.hidden.push_back(itemId);
+            hidden.insert(itemId);
+        }
+    }
+
+    for (const QStringList& defaultPosition : defaultPositions()) {
+        QStringList missing;
+        for (const QString& itemId : defaultPosition) {
+            if (!positioned.contains(itemId) && !hidden.contains(itemId)) {
+                missing.push_back(itemId);
+                positioned.insert(itemId);
+            }
+        }
+        if (!missing.isEmpty()) {
+            result.positions.push_back(missing);
         }
     }
     return result;
@@ -202,12 +175,7 @@ normalizedLayout(const storage::ScreenshotToolbarLayout& input) {
 
 [[nodiscard]] inline adqt::icons::IconRef icon(Icon semantic) {
     namespace custom = snow_shot::presentation::icons::custom::outlined;
-    namespace ant = adqt::icons::antd::outlined;
     switch (semantic) {
-    case Icon::Move:
-        return custom::ToolMove();
-    case Icon::Select:
-        return custom::ToolSelect();
     case Icon::Shape:
         return custom::ToolRectangle();
     case Icon::Arrow:
@@ -230,22 +198,6 @@ normalizedLayout(const storage::ScreenshotToolbarLayout& input) {
         return custom::ToolEraser();
     case Icon::Watermark:
         return custom::ToolWatermark();
-    case Icon::Undo:
-        return ant::Undo();
-    case Icon::Redo:
-        return ant::Redo();
-    case Icon::Table:
-        return custom::TableRecognition();
-    case Icon::Qr:
-        return custom::ScanQrcode();
-    case Icon::VideoRecord:
-        return custom::RecordVideo();
-    case Icon::Pin:
-        return custom::PinToScreen();
-    case Icon::Ocr:
-        return custom::ToolRecognizeText();
-    case Icon::ScrollingScreenshot:
-        return custom::ScrollingScreenshot();
     }
     return {};
 }

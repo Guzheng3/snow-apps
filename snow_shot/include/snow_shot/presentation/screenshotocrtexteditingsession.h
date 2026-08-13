@@ -17,6 +17,9 @@ class ScreenshotOcrTextEditingSession final {
     // Replaces the complete draft as one text-history step.
     bool replaceText(const QString& text);
     bool reset();
+    void establishBaseline(const QString& text);
+    void establishHistory(const QString& text);
+    void replaceTextWithoutHistory(const QString& text);
     void recordCurrentText();
     void undo();
     void redo();

@@ -15,7 +15,16 @@
 
 namespace snow_shot::storage {
 namespace {
-const QStringList kScreenshotToolbarItemIds = {
+const QStringList kDrawingToolbarItemIds = {
+    QStringLiteral("shape"),     QStringLiteral("arrow"),
+    QStringLiteral("line"),      QStringLiteral("free-draw"),
+    QStringLiteral("highlighter"), QStringLiteral("spotlight"),
+    QStringLiteral("text"),      QStringLiteral("serial-number"),
+    QStringLiteral("filter"),    QStringLiteral("eraser"),
+    QStringLiteral("watermark"),
+};
+
+const QStringList kLegacyScreenshotToolbarItemIds = {
     QStringLiteral("move"),
     QStringLiteral("select"),
     QStringLiteral("shape"),
@@ -43,11 +52,31 @@ QJsonArray jsonArray(const QStringList& values) {
     return result;
 }
 
-QJsonObject defaultScreenshotToolbarLayout() {
+QJsonArray jsonArray(const QVector<QStringList>& values) {
+    QJsonArray result;
+    for (const QStringList& value : values) {
+        result.push_back(jsonArray(value));
+    }
+    return result;
+}
+
+QVector<QStringList> defaultDrawingToolbarPositions() {
     return {
-        {QStringLiteral("order"), jsonArray(kScreenshotToolbarItemIds)},
-        {QStringLiteral("hidden"), QJsonArray()},
+        {QStringLiteral("shape")},
+        {QStringLiteral("line"), QStringLiteral("arrow")},
+        {QStringLiteral("free-draw")},
+        {QStringLiteral("spotlight"), QStringLiteral("highlighter")},
+        {QStringLiteral("text")},
+        {QStringLiteral("serial-number")},
+        {QStringLiteral("filter")},
+        {QStringLiteral("eraser")},
+        {QStringLiteral("watermark")},
     };
+}
+
+QJsonObject defaultScreenshotToolbarLayout() {
+    return {{QStringLiteral("positions"), jsonArray(defaultDrawingToolbarPositions())},
+            {QStringLiteral("hidden"), QJsonArray()}};
 }
 
 const QVector<ConfigurationSchemaEntry> kEntries = {
@@ -68,6 +97,20 @@ const QVector<ConfigurationSchemaEntry> kEntries = {
       QStringLiteral("real_time")}},
     {QStringLiteral("text_recognition/direct_ml_acceleration"), true,
      ConfigurationValueKind::Boolean},
+    {QStringLiteral("screenshot_translation/source_language"), QStringLiteral("auto"),
+     ConfigurationValueKind::String, std::nullopt,
+     {QStringLiteral("auto"), QStringLiteral("ar"), QStringLiteral("de"),
+      QStringLiteral("en"), QStringLiteral("es"), QStringLiteral("fr"),
+      QStringLiteral("it"), QStringLiteral("ja"), QStringLiteral("pt"),
+      QStringLiteral("ru"), QStringLiteral("tr"), QStringLiteral("zh-Hans"),
+      QStringLiteral("zh-Hant")}},
+    {QStringLiteral("screenshot_translation/target_language"), QString(),
+     ConfigurationValueKind::String, std::nullopt,
+     {QStringLiteral("ar"), QStringLiteral("de"), QStringLiteral("en"),
+      QStringLiteral("es"), QStringLiteral("fr"), QStringLiteral("it"),
+      QStringLiteral("ja"), QStringLiteral("pt"), QStringLiteral("ru"),
+      QStringLiteral("tr"), QStringLiteral("zh-Hans"), QStringLiteral("zh-Hant")}},
+    {QStringLiteral("screenshot_translation/model"), QString(), ConfigurationValueKind::String},
     {QStringLiteral("interface/sidebar_collapsed"), false, ConfigurationValueKind::Boolean},
     {QStringLiteral("global_shortcuts/screenshot"),
      QJsonArray(),
@@ -173,26 +216,25 @@ const QVector<ConfigurationSchemaEntry> kEntries = {
      std::nullopt,
      {QStringLiteral("hide_outside_selection"), QStringLiteral("always_show"),
       QStringLiteral("always_hide")}},
-    {QStringLiteral("screenshot_ui/selection_mask_color"),
-     QStringLiteral("#00000080"), ConfigurationValueKind::String},
-    {QStringLiteral("screenshot_ui/shortcut_hint_opacity"), 100,
-     ConfigurationValueKind::Integer, ConfigurationIntegerRange{0, 100, 1}},
-    {QStringLiteral("screenshot_ui/cursor_guide_line_color"),
-     QStringLiteral("#00000000"), ConfigurationValueKind::String},
-    {QStringLiteral("screenshot_ui/monitor_center_guide_line_color"),
-     QStringLiteral("#00000000"), ConfigurationValueKind::String},
+    {QStringLiteral("screenshot_ui/selection_mask_color"), QStringLiteral("#00000080"),
+     ConfigurationValueKind::String},
+    {QStringLiteral("screenshot_ui/shortcut_hint_opacity"), 100, ConfigurationValueKind::Integer,
+     ConfigurationIntegerRange{0, 100, 1}},
+    {QStringLiteral("screenshot_ui/cursor_guide_line_color"), QStringLiteral("#00000000"),
+     ConfigurationValueKind::String},
+    {QStringLiteral("screenshot_ui/monitor_center_guide_line_color"), QStringLiteral("#00000000"),
+     ConfigurationValueKind::String},
     {QStringLiteral("screenshot_ui/color_picker_center_guide_line_color"),
      QStringLiteral("#00000000"), ConfigurationValueKind::String},
-    {QStringLiteral("pin_to_screen/border_color"),
-     QStringLiteral("#DBDBDBFF"), ConfigurationValueKind::String},
+    {QStringLiteral("pin_to_screen/border_color"), QStringLiteral("#DBDBDBFF"),
+     ConfigurationValueKind::String},
     {QStringLiteral("tray/enabled"), true, ConfigurationValueKind::Boolean},
     {QStringLiteral("tray/icon"),
      QStringLiteral("default"),
      ConfigurationValueKind::String,
      std::nullopt,
      {QStringLiteral("default"), QStringLiteral("light"), QStringLiteral("dark"),
-      QStringLiteral("snow-default"), QStringLiteral("snow-light"),
-      QStringLiteral("snow-dark")}},
+      QStringLiteral("snow-default"), QStringLiteral("snow-light"), QStringLiteral("snow-dark")}},
     {QStringLiteral("tray/custom_icon"), QString(), ConfigurationValueKind::String},
     {QStringLiteral("screenshot_selection/previous_selection"), QJsonValue::Null,
      ConfigurationValueKind::Structured},
@@ -386,52 +428,143 @@ ConfigurationNormalization normalizeRgbaColor(const QJsonValue& value) {
     return {normalized, true, normalized != original};
 }
 
+ConfigurationNormalization normalizeTranslationLanguage(
+    const ConfigurationSchemaEntry& schemaEntry, const QJsonValue& value) {
+    if (!value.isString()) {
+        return {};
+    }
+    const QString original = value.toString();
+    const QString trimmed = original.trimmed();
+    const auto canonical = std::find_if(
+        schemaEntry.allowedStringValues.cbegin(), schemaEntry.allowedStringValues.cend(),
+        [&trimmed](const QString& allowed) {
+            return allowed.compare(trimmed, Qt::CaseInsensitive) == 0;
+        });
+    if (canonical == schemaEntry.allowedStringValues.cend()) {
+        return {};
+    }
+    return {*canonical, true, *canonical != original};
+}
+
 ConfigurationNormalization normalizeToolbarLayout(const QJsonValue& value) {
     if (!value.isObject()) {
         return {};
     }
     const QJsonObject object = value.toObject();
-    if (!object.value(QStringLiteral("order")).isArray() ||
-        !object.value(QStringLiteral("hidden")).isArray()) {
+    const QSet<QString> known(kDrawingToolbarItemIds.cbegin(), kDrawingToolbarItemIds.cend());
+    QVector<QStringList> positions;
+    QSet<QString> positioned;
+    QStringList hidden;
+    QSet<QString> hiddenSet;
+    const auto canonicalItemId = [](const QString& id) {
+        return id == QStringLiteral("rectangle-highlight") || id == QStringLiteral("pen-highlight")
+                   ? QStringLiteral("highlighter")
+                   : id;
+    };
+    const auto appendPosition = [&positions, &positioned, &hiddenSet,
+                                 &known, &canonicalItemId](const QStringList& ids) {
+        QStringList position;
+        for (const QString& storedId : ids) {
+            const QString id = canonicalItemId(storedId);
+            if (known.contains(id) && !positioned.contains(id) && !hiddenSet.contains(id)) {
+                position.push_back(id);
+                positioned.insert(id);
+            }
+        }
+        if (!position.isEmpty()) {
+            positions.push_back(position);
+        }
+    };
+    const auto appendHidden = [&hidden, &hiddenSet, &positioned,
+                               &known, &canonicalItemId](const QStringList& ids) {
+        for (const QString& storedId : ids) {
+            const QString id = canonicalItemId(storedId);
+            if (known.contains(id) && !positioned.contains(id) && !hiddenSet.contains(id)) {
+                hidden.push_back(id);
+                hiddenSet.insert(id);
+            }
+        }
+    };
+
+    if (object.value(QStringLiteral("positions")).isArray()) {
+        for (const QJsonValue& positionValue :
+             object.value(QStringLiteral("positions")).toArray()) {
+            if (!positionValue.isArray()) {
+                continue;
+            }
+            QStringList ids;
+            for (const QJsonValue& item : positionValue.toArray()) {
+                if (item.isString()) {
+                    ids.push_back(item.toString());
+                }
+            }
+            appendPosition(ids);
+        }
+        if (object.value(QStringLiteral("hidden")).isArray()) {
+            QStringList hiddenIds;
+            for (const QJsonValue& item : object.value(QStringLiteral("hidden")).toArray()) {
+                if (item.isString()) {
+                    hiddenIds.push_back(item.toString());
+                }
+            }
+            appendHidden(hiddenIds);
+        }
+    } else if (object.value(QStringLiteral("order")).isArray()) {
+        const QSet<QString> legacyKnown(kLegacyScreenshotToolbarItemIds.cbegin(),
+                                        kLegacyScreenshotToolbarItemIds.cend());
+        QSet<QString> legacyHidden;
+        if (object.value(QStringLiteral("hidden")).isArray()) {
+            for (const QJsonValue& item : object.value(QStringLiteral("hidden")).toArray()) {
+                if (item.isString() && legacyKnown.contains(item.toString())) {
+                    legacyHidden.insert(item.toString());
+                }
+            }
+        }
+        const auto mappedLegacyIds = [](const QString& id) {
+            if (id == QStringLiteral("arrow-line")) {
+                return QStringList{QStringLiteral("line"), QStringLiteral("arrow")};
+            }
+            if (id == QStringLiteral("highlight")) {
+                return QStringList{QStringLiteral("spotlight"),
+                                   QStringLiteral("highlighter")};
+            }
+            return QStringList{id};
+        };
+        for (const QJsonValue& item : object.value(QStringLiteral("hidden")).toArray()) {
+            if (item.isString() && legacyHidden.contains(item.toString())) {
+                appendHidden(mappedLegacyIds(item.toString()));
+            }
+        }
+        QSet<QString> migratedGroups;
+        for (const QJsonValue& item : object.value(QStringLiteral("order")).toArray()) {
+            if (!item.isString()) {
+                continue;
+            }
+            const QString id = item.toString();
+            if (!legacyKnown.contains(id) || migratedGroups.contains(id)) {
+                continue;
+            }
+            migratedGroups.insert(id);
+            if (!legacyHidden.contains(id)) {
+                appendPosition(mappedLegacyIds(id));
+            }
+        }
+    } else {
         return {};
     }
 
-    const QSet<QString> known(kScreenshotToolbarItemIds.cbegin(),
-                              kScreenshotToolbarItemIds.cend());
-    QStringList order;
-    QSet<QString> ordered;
-    for (const QJsonValue& item : object.value(QStringLiteral("order")).toArray()) {
-        if (!item.isString()) {
-            continue;
+    for (const QStringList& defaultPosition : defaultDrawingToolbarPositions()) {
+        QStringList missing;
+        for (const QString& id : defaultPosition) {
+            if (!positioned.contains(id) && !hiddenSet.contains(id)) {
+                missing.push_back(id);
+            }
         }
-        const QString id = item.toString();
-        if (known.contains(id) && !ordered.contains(id)) {
-            order.push_back(id);
-            ordered.insert(id);
-        }
-    }
-    for (const QString& id : kScreenshotToolbarItemIds) {
-        if (!ordered.contains(id)) {
-            order.push_back(id);
-            ordered.insert(id);
-        }
-    }
-
-    QSet<QString> hiddenSet;
-    for (const QJsonValue& item : object.value(QStringLiteral("hidden")).toArray()) {
-        if (item.isString() && known.contains(item.toString())) {
-            hiddenSet.insert(item.toString());
-        }
-    }
-    QStringList hidden;
-    for (const QString& id : order) {
-        if (hiddenSet.contains(id)) {
-            hidden.push_back(id);
-        }
+        appendPosition(missing);
     }
 
     const QJsonObject normalized{
-        {QStringLiteral("order"), jsonArray(order)},
+        {QStringLiteral("positions"), jsonArray(positions)},
         {QStringLiteral("hidden"), jsonArray(hidden)},
     };
     return {normalized, true, normalized != object};
@@ -490,6 +623,10 @@ ConfigurationNormalization ConfigurationSchema::normalize(const QString& key,
     }
     if (isRgbaColorKey(key)) {
         return normalizeRgbaColor(value);
+    }
+    if (key == QStringLiteral("screenshot_translation/source_language") ||
+        key == QStringLiteral("screenshot_translation/target_language")) {
+        return normalizeTranslationLanguage(*schemaEntry, value);
     }
     switch (schemaEntry->valueKind) {
     case ConfigurationValueKind::Boolean:

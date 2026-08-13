@@ -11,17 +11,23 @@
 #include <QPointer>
 #include <QRectF>
 #include <QStringList>
+#include "snow_shot/storage/settingsadapters.h"
 
 #include <functional>
 #include <memory>
 
 class QUrl;
 class QTextDocument;
+class QWidget;
 class ScreenshotOcrPresentation;
 class ScreenshotOcrTextEditingSession;
 class ScreenshotRecognitionWindow;
 class ScreenshotTableEditingSession;
 struct ScreenshotTableCommandState;
+
+namespace adqt::widgets {
+class AdModal;
+}
 
 struct ScreenshotRecognitionTarget {
     QString key;
@@ -43,12 +49,14 @@ struct ScreenshotRecognitionSessionActions {
     std::function<void(bool)> setRecognitionVisualState;
     std::function<void(int)> setActiveMode;
     std::function<void(bool, bool, bool, bool)> setTextEditingState;
+    std::function<void(bool, bool, bool, bool, bool, bool)> setTextTranslationState;
     std::function<void(bool, bool, bool, bool, bool, bool)> setTableEditingState;
     std::function<void(bool, bool, bool)> setBusyState;
     std::function<void(const QString&)> showLoading;
     std::function<void()> hideLoading;
     std::function<void(const QString&, bool)> showStatus;
     std::function<void(const QUrl&)> handleQrLink;
+    std::function<QWidget*()> translationSettingsOwner;
 };
 
 class ScreenshotRecognitionSessionController final : public QObject {
@@ -87,12 +95,15 @@ class ScreenshotRecognitionSessionController final : public QObject {
     void redoTextEdit();
 
     void beginTextEditing();
+    void beginTextTranslation();
     void endTextEditing();
+    void openTranslationSettings();
     void resetTextEditing();
     void applyRemoveLineBreaks();
     void applyHalfWidthPunctuation();
     void applyFullWidthPunctuation();
     [[nodiscard]] bool editing() const;
+    [[nodiscard]] bool translating() const;
     [[nodiscard]] bool hasTextResult() const;
     [[nodiscard]] QString textDraft() const;
     [[nodiscard]] QString originalText() const;
@@ -108,8 +119,15 @@ class ScreenshotRecognitionSessionController final : public QObject {
 
   private:
     struct TextCacheEntry {
+        enum class TranslationStatus { Absent, Streaming, Completed, Failed };
         std::shared_ptr<ScreenshotOcrPresentation> presentation;
         std::shared_ptr<ScreenshotOcrTextEditingSession> editingSession;
+        std::shared_ptr<ScreenshotOcrTextEditingSession> translationSession;
+        snow_shot::storage::ScreenshotTranslationConfiguration translationSettings;
+        QString translationText;
+        QString successfulTranslation;
+        TranslationStatus translationStatus = TranslationStatus::Absent;
+        bool hasSuccessfulTranslation = false;
         bool editing = false;
     };
 
@@ -127,6 +145,14 @@ class ScreenshotRecognitionSessionController final : public QObject {
     void applyTableSession(const std::shared_ptr<ScreenshotTableEditingSession>& session);
     void applyQrContents(const QStringList& contents);
     void handleTextDocumentChanged(const QString& key);
+    void handleTranslationDocumentChanged(const QString& key);
+    void startTranslation();
+    void startTranslationWithModels(const QVector<SnowShotChatModel>& models);
+    void handleTranslationDelta(quint64 generation, const QString& key, const QString& delta);
+    void handleTranslationFinished(quint64 generation, const QString& key,
+                                   SnowShotTranslationResult result);
+    void showTranslationSettingsModal(const QVector<SnowShotChatModel>& models);
+    void invalidateCurrentTranslation(bool restartIfVisible);
     void updateBusyState() const;
     void updateTextState() const;
     void updateTableState(const ScreenshotTableCommandState& state) const;
@@ -155,15 +181,22 @@ class ScreenshotRecognitionSessionController final : public QObject {
     QStringList m_qrContents;
     QPointer<QTextDocument> m_textDocument;
     QString m_editingKey;
+    QString m_translationKey;
     ScreenshotOcrRecognitionPort::RequestToken m_textRequestToken = 0;
     SnowShotApiClient::RequestToken m_tableRequestToken = 0;
+    SnowShotApiClient::RequestToken m_modelsRequestToken = 0;
+    SnowShotApiClient::RequestToken m_settingsModelsRequestToken = 0;
+    SnowShotApiClient::RequestToken m_translationRequestToken = 0;
     ScreenshotQrRecognitionPort::RequestToken m_qrRequestToken = 0;
     quint64 m_textGeneration = 0;
     quint64 m_tableGeneration = 0;
     quint64 m_qrGeneration = 0;
+    quint64 m_translationGeneration = 0;
     Mode m_mode = Mode::Text;
     bool m_active = false;
     bool m_editing = false;
+    bool m_translating = false;
+    QPointer<adqt::widgets::AdModal> m_translationSettingsModal;
 };
 
 #endif // SNOW_SHOT_PRESENTATION_SCREENSHOTRECOGNITIONSESSIONCONTROLLER_H

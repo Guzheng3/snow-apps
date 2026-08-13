@@ -27,11 +27,18 @@ struct SettingsSearchEntry {
     int catalogOrder = 0;
 };
 
+struct SettingsSearchRuntimeValues {
+    int screenshotDelaySeconds = 3;
+};
+
 class SettingsSearchIndex final {
   public:
-    explicit SettingsSearchIndex(const SettingsCatalog& catalog);
+    explicit SettingsSearchIndex(
+        const SettingsCatalog& catalog,
+        SettingsSearchRuntimeValues runtimeValues = {});
 
     void rebuild();
+    void setRuntimeValues(SettingsSearchRuntimeValues runtimeValues);
     [[nodiscard]] const QVector<SettingsSearchEntry>& entries() const;
     [[nodiscard]] QVector<SettingsSearchEntry> search(const QString& query) const;
 
@@ -46,6 +53,7 @@ class SettingsSearchIndex final {
 
   private:
     const SettingsCatalog& m_catalog;
+    SettingsSearchRuntimeValues m_runtimeValues;
     QVector<SettingsSearchEntry> m_entries;
     QVector<NormalizedFields> m_normalizedEntries;
 };

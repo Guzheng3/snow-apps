@@ -44,11 +44,11 @@ SettingsItemDefinition screenshotItem() {
     };
 }
 
-SettingsItemDefinition quickActionItem(
-    const QString& id, const char* title, const char* description,
-    QVector<TranslatableText> aliases, GlobalShortcutAction shortcutAction,
-    const QString& configurationKey, std::function<adqt::icons::IconRef()> iconFactory,
-    SettingsShortcutAdjustment adjustment = SettingsShortcutAdjustment::None) {
+SettingsItemDefinition
+quickActionItem(const QString& id, const char* title, const char* description,
+                QVector<TranslatableText> aliases, GlobalShortcutAction shortcutAction,
+                const QString& configurationKey, std::function<adqt::icons::IconRef()> iconFactory,
+                SettingsShortcutAdjustment adjustment = SettingsShortcutAdjustment::None) {
     SettingsShortcutActionDefinition payload;
     payload.shortcutAction = shortcutAction;
     payload.command = {
@@ -75,8 +75,7 @@ SettingsItemDefinition screenshotDelayItem() {
         QT_TRANSLATE_NOOP("SettingsCatalog", "Take a screenshot after the configured delay"),
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Delayed screenshot")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Delay capture"))},
-        GlobalShortcutAction::ScreenshotDelay,
-        QStringLiteral("global_shortcuts/screenshot_delay"),
+        GlobalShortcutAction::ScreenshotDelay, QStringLiteral("global_shortcuts/screenshot_delay"),
         []() { return custom_outlined_icons::ScreenshotDelay(); },
         SettingsShortcutAdjustment::ScreenshotDelaySeconds);
 }
@@ -85,11 +84,11 @@ SettingsItemDefinition screenshotFixedItem() {
     return quickActionItem(
         QStringLiteral("quick.screenshot-fixed"),
         QT_TRANSLATE_NOOP("SettingsCatalog", "Pin to Screen"),
-        QT_TRANSLATE_NOOP("SettingsCatalog", "Pin the confirmed screenshot selection to the screen"),
+        QT_TRANSLATE_NOOP("SettingsCatalog",
+                          "Pin the confirmed screenshot selection to the screen"),
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Fixed screenshot")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Pin selection"))},
-        GlobalShortcutAction::ScreenshotFixed,
-        QStringLiteral("global_shortcuts/screenshot_fixed"),
+        GlobalShortcutAction::ScreenshotFixed, QStringLiteral("global_shortcuts/screenshot_fixed"),
         []() { return custom_outlined_icons::PinToScreen(); });
 }
 
@@ -97,11 +96,11 @@ SettingsItemDefinition screenshotOcrItem() {
     return quickActionItem(
         QStringLiteral("quick.screenshot-ocr"),
         QT_TRANSLATE_NOOP("SettingsCatalog", "Text Recognition"),
-        QT_TRANSLATE_NOOP("SettingsCatalog", "Recognize text in the confirmed screenshot selection"),
+        QT_TRANSLATE_NOOP("SettingsCatalog",
+                          "Recognize text in the confirmed screenshot selection"),
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "OCR")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Recognize text"))},
-        GlobalShortcutAction::ScreenshotOcr,
-        QStringLiteral("global_shortcuts/screenshot_ocr"),
+        GlobalShortcutAction::ScreenshotOcr, QStringLiteral("global_shortcuts/screenshot_ocr"),
         []() { return custom_outlined_icons::ToolRecognizeText(); });
 }
 
@@ -109,11 +108,11 @@ SettingsItemDefinition screenshotCopyItem() {
     return quickActionItem(
         QStringLiteral("quick.screenshot-copy"),
         QT_TRANSLATE_NOOP("SettingsCatalog", "Copy to Clipboard"),
-        QT_TRANSLATE_NOOP("SettingsCatalog", "Copy the confirmed screenshot selection to the clipboard"),
+        QT_TRANSLATE_NOOP("SettingsCatalog",
+                          "Copy the confirmed screenshot selection to the clipboard"),
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Copy screenshot")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Clipboard"))},
-        GlobalShortcutAction::ScreenshotCopy,
-        QStringLiteral("global_shortcuts/screenshot_copy"),
+        GlobalShortcutAction::ScreenshotCopy, QStringLiteral("global_shortcuts/screenshot_copy"),
         []() { return custom_outlined_icons::ScreenshotCopy(); });
 }
 
@@ -121,7 +120,8 @@ SettingsItemDefinition screenshotFullScreenItem() {
     return quickActionItem(
         QStringLiteral("quick.screenshot-full-screen"),
         QT_TRANSLATE_NOOP("SettingsCatalog", "Current Monitor"),
-        QT_TRANSLATE_NOOP("SettingsCatalog", "Capture every monitor and copy the monitor under the pointer"),
+        QT_TRANSLATE_NOOP("SettingsCatalog",
+                          "Capture every monitor and copy the monitor under the pointer"),
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Full screen")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Monitor capture"))},
         GlobalShortcutAction::ScreenshotFullScreen,
@@ -148,8 +148,7 @@ SettingsItemDefinition videoRecordItem() {
         QT_TRANSLATE_NOOP("SettingsCatalog", "Start a screen recording from a confirmed selection"),
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Record video")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Video recording"))},
-        GlobalShortcutAction::VideoRecord,
-        QStringLiteral("global_shortcuts/video_record"),
+        GlobalShortcutAction::VideoRecord, QStringLiteral("global_shortcuts/video_record"),
         []() { return custom_outlined_icons::RecordVideo(); });
 }
 
@@ -160,8 +159,7 @@ SettingsItemDefinition videoRecordCopyItem() {
         QT_TRANSLATE_NOOP("SettingsCatalog", "Start recording, or stop and copy the current video"),
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Copy video")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Recording toggle"))},
-        GlobalShortcutAction::VideoRecordCopy,
-        QStringLiteral("global_shortcuts/video_record_copy"),
+        GlobalShortcutAction::VideoRecordCopy, QStringLiteral("global_shortcuts/video_record_copy"),
         []() { return custom_outlined_icons::ScreenshotCopy(); });
 }
 
@@ -169,7 +167,8 @@ SettingsItemDefinition showOrHideMainWindowItem() {
     return quickActionItem(
         QStringLiteral("quick.show-or-hide-main-window"),
         QT_TRANSLATE_NOOP("SettingsCatalog", "Show/Hide Main Window"),
-        QT_TRANSLATE_NOOP("SettingsCatalog", "Show the main window, or close it when it is already open"),
+        QT_TRANSLATE_NOOP("SettingsCatalog",
+                          "Show the main window, or close it when it is already open"),
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Main window")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Toggle window"))},
         GlobalShortcutAction::ShowOrHideMainWindow,
@@ -187,25 +186,6 @@ SettingsItemDefinition openCaptureHistoryItem() {
         GlobalShortcutAction::OpenCaptureHistory,
         QStringLiteral("global_shortcuts/open_capture_history"),
         []() { return outlined_icons::History(); });
-}
-
-SettingsItemDefinition openSettingsItem() {
-    SettingsShortcutActionDefinition payload;
-    payload.shortcutAction = GlobalShortcutAction::OpenSettings;
-    payload.command = {
-        SettingsCommandKind::Navigate,
-        {QString::fromLatin1(INTERFACE_PAGE_ID), QStringLiteral("general"), {}},
-    };
-    payload.iconFactory = []() { return outlined_icons::Control(); };
-    return {
-        QStringLiteral("quick.open-interface-settings"),
-        settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Open Interface Settings")),
-        settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
-                                       "Open the application interface settings panel")),
-        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Preferences"))},
-        QStringLiteral("global_shortcuts/open_settings"),
-        payload,
-    };
 }
 
 SettingsItemDefinition themeItem() {
@@ -239,8 +219,8 @@ SettingsItemDefinition languageItem() {
     return {
         QStringLiteral("interface.language"),
         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Language")),
-        settingsText(QT_TRANSLATE_NOOP(
-            "SettingsCatalog", "Select the language used throughout the application")),
+        settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                       "Select the language used throughout the application")),
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Locale")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Translation"))},
         QStringLiteral("interface/language"),
@@ -257,16 +237,17 @@ SettingsItemDefinition screenshotToolbarSizeItem() {
     };
     return {QStringLiteral("interface.screenshot.toolbar-size"),
             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Toolbar size")),
-            settingsText(QT_TRANSLATE_NOOP(
-                "SettingsCatalog", "Choose the size of the screenshot drawing toolbar")),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                           "Choose the size of the screenshot drawing toolbar")),
             {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screenshot toolbar"))},
-            QStringLiteral("screenshot_ui/toolbar_size"), payload};
+            QStringLiteral("screenshot_ui/toolbar_size"),
+            payload};
 }
 
 SettingsItemDefinition selectionTransitionAnimationItem() {
     return {QStringLiteral("interface.screenshot.selection-transition-animation"),
-            settingsText(QT_TRANSLATE_NOOP(
-                "SettingsCatalog", "Screenshot selection transition animation")),
+            settingsText(
+                QT_TRANSLATE_NOOP("SettingsCatalog", "Screenshot selection transition animation")),
             settingsText(QT_TRANSLATE_NOOP(
                 "SettingsCatalog", "Animate transitions between smart screenshot selections")),
             {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Selection animation"))},
@@ -287,39 +268,44 @@ SettingsItemDefinition colorPickerDisplayModeItem() {
     };
     return {QStringLiteral("interface.screenshot.color-picker-display-mode"),
             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Color picker display mode")),
-            settingsText(QT_TRANSLATE_NOOP(
-                "SettingsCatalog", "Control when the screenshot color picker is visible")),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                           "Control when the screenshot color picker is visible")),
             {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Magnifier visibility"))},
-            QStringLiteral("screenshot_ui/color_picker_display_mode"), payload};
+            QStringLiteral("screenshot_ui/color_picker_display_mode"),
+            payload};
 }
 
 SettingsItemDefinition screenshotColorItem(const QString& id, const char* title,
                                            const char* description, const QString& key,
                                            SettingsColorBinding binding,
                                            QVector<TranslatableText> aliases = {}) {
-    return {id, settingsText(title), settingsText(description), std::move(aliases), key,
+    return {id,
+            settingsText(title),
+            settingsText(description),
+            std::move(aliases),
+            key,
             SettingsColorDefinition{binding, true}};
 }
 
 SettingsItemDefinition shortcutHintOpacityItem() {
     return {QStringLiteral("interface.screenshot.shortcut-hint-opacity"),
             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Shortcut hint opacity")),
-            settingsText(QT_TRANSLATE_NOOP(
-                "SettingsCatalog", "Set the overall opacity of screenshot shortcut hints")),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                           "Set the overall opacity of screenshot shortcut hints")),
             {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Hotkey hint opacity"))},
             QStringLiteral("screenshot_ui/shortcut_hint_opacity"),
-            SettingsSliderDefinition{
-                SettingsSliderBinding::ShortcutHintOpacity,
-                settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "%"))}};
+            SettingsSliderDefinition{SettingsSliderBinding::ShortcutHintOpacity,
+                                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "%"))}};
 }
 
 SettingsItemDefinition drawingToolbarEditorItem() {
     return {QStringLiteral("interface.toolbar.drawing-toolbar-editor"),
-            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Drawing toolbar editor")),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Drawing toolbar settings")),
             settingsText(QT_TRANSLATE_NOOP(
-                "SettingsCatalog", "Drag drawing tools to reorder them or move them into the hidden area")),
-            {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Toolbar order")),
-             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Hidden tools"))},
+                "SettingsCatalog",
+                "Drag drawing tools to reorder them or stack them in the same toolbar position.")),
+            {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Tool positions")),
+             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Stack drawing tools"))},
             QStringLiteral("screenshot_toolbar/layout"),
             SettingsCustomDefinition{SettingsCustomRenderer::DrawingToolbarEditor}};
 }
@@ -346,8 +332,7 @@ SettingsItemDefinition trayEnabledItem() {
 SettingsItemDefinition trayIconItem() {
     SettingsRadioDefinition payload;
     payload.options = {
-        {QStringLiteral("default"),
-         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Default")),
+        {QStringLiteral("default"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Default")),
          QStringLiteral(":/snow-shot/app-icons/snow-shot-tray-default.png")},
         {QStringLiteral("light"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Light")),
          QStringLiteral(":/snow-shot/app-icons/snow-shot-tray-light.png")},
@@ -365,36 +350,38 @@ SettingsItemDefinition trayIconItem() {
     };
     return {QStringLiteral("interface.tray.icon"),
             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Icon")),
-            settingsText(QT_TRANSLATE_NOOP(
-                "SettingsCatalog", "Choose the bundled icon used in the system tray")),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                           "Choose the bundled icon used in the system tray")),
             {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Tray appearance"))},
-            QStringLiteral("tray/icon"), payload};
+            QStringLiteral("tray/icon"),
+            payload};
 }
 
 SettingsItemDefinition trayCustomIconItem() {
-    return {QStringLiteral("interface.tray.custom-icon"),
-            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Custom icon")),
+    return {
+        QStringLiteral("interface.tray.custom-icon"),
+        settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Custom icon")),
+        settingsText(QT_TRANSLATE_NOOP(
+            "SettingsCatalog",
+            "Enter or browse to a PNG or ICO file; invalid files use the selected bundled icon")),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Tray icon path"))},
+        QStringLiteral("tray/custom_icon"),
+        SettingsFilePathDefinition{
+            SettingsFilePathBinding::TrayCustomIcon,
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Browse")),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Select tray icon")),
             settingsText(QT_TRANSLATE_NOOP(
-                "SettingsCatalog", "Enter or browse to a PNG or ICO file; invalid files use the selected bundled icon")),
-            {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Tray icon path"))},
-            QStringLiteral("tray/custom_icon"),
-            SettingsFilePathDefinition{
-                SettingsFilePathBinding::TrayCustomIcon,
-                settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Browse")),
-                settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Select tray icon")),
-                settingsText(QT_TRANSLATE_NOOP(
-                    "SettingsCatalog", "Image files (*.png *.ico);;PNG images (*.png);;Icon files (*.ico)"))}};
+                "SettingsCatalog",
+                "Image files (*.png *.ico);;PNG images (*.png);;Icon files (*.ico)"))}};
 }
 
 SettingsItemDefinition applicationPriorityItem() {
     SettingsSelectDefinition payload;
     payload.options = {
-        {QStringLiteral("normal"),
-         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Normal"))},
+        {QStringLiteral("normal"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Normal"))},
         {QStringLiteral("above_normal"),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Above normal"))},
-        {QStringLiteral("high"),
-         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "High"))},
+        {QStringLiteral("high"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "High"))},
         {QStringLiteral("real_time"),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Real-time"))},
     };
@@ -402,8 +389,8 @@ SettingsItemDefinition applicationPriorityItem() {
     return {
         QStringLiteral("system.application-priority"),
         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Application priority")),
-        settingsText(QT_TRANSLATE_NOOP(
-            "SettingsCatalog", "Choose how much execution time the application receives")),
+        settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                       "Choose how much execution time the application receives")),
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Process priority")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Execution order"))},
         QStringLiteral("system/application_priority"),
@@ -415,8 +402,8 @@ SettingsItemDefinition historyEnabledItem() {
     return {
         QStringLiteral("history.enabled"),
         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Persistent capture history")),
-        settingsText(QT_TRANSLATE_NOOP(
-            "SettingsCatalog", "Keep captures available after the application closes")),
+        settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                       "Keep captures available after the application closes")),
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Save history"))},
         QStringLiteral("capture_history/enabled"),
         SettingsSwitchDefinition{},
@@ -428,8 +415,7 @@ SettingsItemDefinition smartSelectionItem() {
         QStringLiteral("screenshot.smart-selection"),
         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Smart Selection")),
         settingsText(QT_TRANSLATE_NOOP(
-            "SettingsCatalog",
-            "Select child elements within a window while taking a screenshot")),
+            "SettingsCatalog", "Select child elements within a window while taking a screenshot")),
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Child elements")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "MSAA"))},
         QStringLiteral("screenshot_selection/smart_selection"),
@@ -441,8 +427,9 @@ SettingsItemDefinition directMlAccelerationItem() {
     return {
         QStringLiteral("text-recognition.direct-ml-acceleration"),
         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Direct ML acceleration")),
-        settingsText(QT_TRANSLATE_NOOP(
-            "SettingsCatalog", "Use Direct ML for GPU-accelerated text recognition when available")),
+        settingsText(
+            QT_TRANSLATE_NOOP("SettingsCatalog",
+                              "Use Direct ML for GPU-accelerated text recognition when available")),
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "DirectML")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "GPU acceleration"))},
         QStringLiteral("text_recognition/direct_ml_acceleration"),
@@ -451,17 +438,11 @@ SettingsItemDefinition directMlAccelerationItem() {
 }
 
 SettingsItemDefinition historyIntegerItem(const QString& id, TranslatableText title,
-                                           TranslatableText description, const QString& key,
-                                           SettingsIntegerBinding binding,
-                                           TranslatableText suffix,
-                                           QVector<TranslatableText> aliases = {}) {
+                                          TranslatableText description, const QString& key,
+                                          SettingsIntegerBinding binding, TranslatableText suffix,
+                                          QVector<TranslatableText> aliases = {}) {
     return {
-        id,
-        title,
-        description,
-        aliases,
-        key,
-        SettingsIntegerDefinition{binding, suffix},
+        id, title, description, aliases, key, SettingsIntegerDefinition{binding, suffix},
     };
 }
 
@@ -493,8 +474,8 @@ SettingsItemDefinition storageStatusItem() {
     return {
         QStringLiteral("storage.status"),
         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Storage status")),
-        settingsText(QT_TRANSLATE_NOOP(
-            "SettingsCatalog", "Current storage location, mode, usage, and latest errors")),
+        settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                       "Current storage location, mode, usage, and latest errors")),
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Disk usage")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Storage location")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Storage error"))},
@@ -514,8 +495,8 @@ QVector<SettingsPageDefinition> builtInPages() {
                 {
                     QStringLiteral("screenshot"),
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screenshot")),
-                    settingsText(QT_TRANSLATE_NOOP(
-                        "SettingsCatalog", "Screenshot shortcuts and actions")),
+                    settingsText(
+                        QT_TRANSLATE_NOOP("SettingsCatalog", "Screenshot shortcuts and actions")),
                     SettingsSectionReset::ScreenshotShortcuts,
                     {
                         screenshotItem(),
@@ -530,8 +511,8 @@ QVector<SettingsPageDefinition> builtInPages() {
                 {
                     QStringLiteral("screen-recording"),
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screen Recording")),
-                    settingsText(QT_TRANSLATE_NOOP(
-                        "SettingsCatalog", "Screen recording shortcuts and actions")),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                                   "Screen recording shortcuts and actions")),
                     SettingsSectionReset::None,
                     {
                         videoRecordItem(),
@@ -541,13 +522,12 @@ QVector<SettingsPageDefinition> builtInPages() {
                 {
                     QStringLiteral("other"),
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Other")),
-                    settingsText(QT_TRANSLATE_NOOP(
-                        "SettingsCatalog", "Other application shortcuts and actions")),
-                    SettingsSectionReset::OpenSettingsShortcuts,
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                                   "Other application shortcuts and actions")),
+                    SettingsSectionReset::OtherShortcuts,
                     {
                         showOrHideMainWindowItem(),
                         openCaptureHistoryItem(),
-                        openSettingsItem(),
                     },
                 },
             },
@@ -556,8 +536,8 @@ QVector<SettingsPageDefinition> builtInPages() {
             QString::fromLatin1(HISTORY_PAGE_ID),
             QStringLiteral("/history"),
             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screenshot History")),
-            settingsText(QT_TRANSLATE_NOOP(
-                "SettingsCatalog", "Preview and manage saved screenshot history")),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                           "Preview and manage saved screenshot history")),
             {},
             SettingsPageKind::ScreenshotHistory,
         },
@@ -570,8 +550,8 @@ QVector<SettingsPageDefinition> builtInPages() {
                 {
                     QStringLiteral("screenshot-settings"),
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screenshot")),
-                    settingsText(QT_TRANSLATE_NOOP(
-                        "SettingsCatalog", "Screenshot selection behavior")),
+                    settingsText(
+                        QT_TRANSLATE_NOOP("SettingsCatalog", "Screenshot selection behavior")),
                     SettingsSectionReset::ScreenshotSettings,
                     {smartSelectionItem()},
                 },
@@ -586,8 +566,8 @@ QVector<SettingsPageDefinition> builtInPages() {
                 {
                     QStringLiteral("general"),
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "General")),
-                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
-                                                   "Appearance and language settings")),
+                    settingsText(
+                        QT_TRANSLATE_NOOP("SettingsCatalog", "Appearance and language settings")),
                     SettingsSectionReset::GeneralSettings,
                     {themeItem(), languageItem()},
                 },
@@ -605,7 +585,8 @@ QVector<SettingsPageDefinition> builtInPages() {
                             QStringLiteral("interface.screenshot.selection-mask-color"),
                             QT_TRANSLATE_NOOP("SettingsCatalog", "Selection mask color"),
                             QT_TRANSLATE_NOOP(
-                                "SettingsCatalog", "Set the color and opacity outside the screenshot selection"),
+                                "SettingsCatalog",
+                                "Set the color and opacity outside the screenshot selection"),
                             QStringLiteral("screenshot_ui/selection_mask_color"),
                             SettingsColorBinding::SelectionMaskColor),
                         shortcutHintOpacityItem(),
@@ -613,46 +594,52 @@ QVector<SettingsPageDefinition> builtInPages() {
                             QStringLiteral("interface.screenshot.cursor-guide-line-color"),
                             QT_TRANSLATE_NOOP("SettingsCatalog", "Cursor guide line color"),
                             QT_TRANSLATE_NOOP(
-                                "SettingsCatalog", "Draw a dashed crosshair at the pointer while selecting"),
+                                "SettingsCatalog",
+                                "Draw a dashed crosshair at the pointer while selecting"),
                             QStringLiteral("screenshot_ui/cursor_guide_line_color"),
                             SettingsColorBinding::CursorGuideLineColor),
                         screenshotColorItem(
                             QStringLiteral("interface.screenshot.monitor-center-guide-line-color"),
                             QT_TRANSLATE_NOOP("SettingsCatalog", "Monitor center guide line color"),
-                            QT_TRANSLATE_NOOP(
-                                "SettingsCatalog", "Draw a solid crosshair at the active monitor center while selecting"),
+                            QT_TRANSLATE_NOOP("SettingsCatalog",
+                                              "Draw a solid crosshair at the active monitor center "
+                                              "while selecting"),
                             QStringLiteral("screenshot_ui/monitor_center_guide_line_color"),
                             SettingsColorBinding::MonitorCenterGuideLineColor),
                         screenshotColorItem(
-                            QStringLiteral("interface.screenshot.color-picker-center-guide-line-color"),
-                            QT_TRANSLATE_NOOP("SettingsCatalog", "Color picker center guide line color"),
+                            QStringLiteral(
+                                "interface.screenshot.color-picker-center-guide-line-color"),
+                            QT_TRANSLATE_NOOP("SettingsCatalog",
+                                              "Color picker center guide line color"),
                             QT_TRANSLATE_NOOP(
-                                "SettingsCatalog", "Draw four guide segments around the sampled center pixel"),
+                                "SettingsCatalog",
+                                "Draw four guide segments around the sampled center pixel"),
                             QStringLiteral("screenshot_ui/color_picker_center_guide_line_color"),
                             SettingsColorBinding::ColorPickerCenterGuideLineColor),
                     },
                 },
                 {
                     QStringLiteral("toolbar"),
-                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Toolbar")),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Drawing toolbar")),
                     settingsText(QT_TRANSLATE_NOOP(
-                        "SettingsCatalog", "Drawing toolbar order and visibility settings")),
+                        "SettingsCatalog",
+                        "Position and stack drawing tools on the screenshot toolbar")),
                     SettingsSectionReset::DrawingToolbar,
                     {drawingToolbarEditorItem()},
                 },
                 {
                     QStringLiteral("pin-to-screen"),
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Pin to Screen")),
-                    settingsText(QT_TRANSLATE_NOOP(
-                        "SettingsCatalog", "Pinned screenshot window appearance settings")),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                                   "Pinned screenshot window appearance settings")),
                     SettingsSectionReset::PinToScreen,
                     {pinBorderColorItem()},
                 },
                 {
                     QStringLiteral("tray"),
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Tray")),
-                    settingsText(QT_TRANSLATE_NOOP(
-                        "SettingsCatalog", "System tray availability and icon settings")),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                                   "System tray availability and icon settings")),
                     SettingsSectionReset::Tray,
                     {trayEnabledItem(), trayIconItem(), trayCustomIconItem()},
                 },
@@ -662,8 +649,7 @@ QVector<SettingsPageDefinition> builtInPages() {
             QString::fromLatin1(STORAGE_PAGE_ID),
             QStringLiteral("/settings/storageAndPrivacy"),
             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Storage and Privacy")),
-            settingsText(
-                QT_TRANSLATE_NOOP("SettingsCatalog", "Storage and Privacy settings page")),
+            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Storage and Privacy settings page")),
             {
                 {
                     QStringLiteral("history"),
@@ -675,8 +661,7 @@ QVector<SettingsPageDefinition> builtInPages() {
                         historyEnabledItem(),
                         historyIntegerItem(
                             QStringLiteral("history.retention-days"),
-                            settingsText(
-                                QT_TRANSLATE_NOOP("SettingsCatalog", "Retention period")),
+                            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Retention period")),
                             settingsText(QT_TRANSLATE_NOOP(
                                 "SettingsCatalog", "Delete captures after they reach this age")),
                             QStringLiteral("capture_history/retention_days"),
@@ -685,15 +670,13 @@ QVector<SettingsPageDefinition> builtInPages() {
                             {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Age"))}),
                         historyIntegerItem(
                             QStringLiteral("history.max-entries"),
-                            settingsText(
-                                QT_TRANSLATE_NOOP("SettingsCatalog", "Maximum entries")),
+                            settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Maximum entries")),
                             settingsText(QT_TRANSLATE_NOOP(
                                 "SettingsCatalog",
                                 "Remove the oldest captures when this limit is exceeded")),
                             QStringLiteral("capture_history/max_entries"),
                             SettingsIntegerBinding::HistoryMaxEntries, {},
-                            {settingsText(
-                                QT_TRANSLATE_NOOP("SettingsCatalog", "Capture count"))}),
+                            {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Capture count"))}),
                         historyIntegerItem(
                             QStringLiteral("history.max-disk-mib"),
                             settingsText(
@@ -704,8 +687,7 @@ QVector<SettingsPageDefinition> builtInPages() {
                             QStringLiteral("capture_history/max_disk_mib"),
                             SettingsIntegerBinding::HistoryMaxDiskMiB,
                             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", " MiB")),
-                            {settingsText(
-                                QT_TRANSLATE_NOOP("SettingsCatalog", "Disk limit"))}),
+                            {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Disk limit"))}),
                         clearHistoryItem(),
                     },
                 },
@@ -723,8 +705,8 @@ QVector<SettingsPageDefinition> builtInPages() {
             QString::fromLatin1(SYSTEM_PAGE_ID),
             QStringLiteral("/settings/systemSettings"),
             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "System Settings")),
-            settingsText(QT_TRANSLATE_NOOP(
-                "SettingsCatalog", "Configure application process behavior")),
+            settingsText(
+                QT_TRANSLATE_NOOP("SettingsCatalog", "Configure application process behavior")),
             {
                 {
                     QStringLiteral("core"),
@@ -736,8 +718,8 @@ QVector<SettingsPageDefinition> builtInPages() {
                 {
                     QStringLiteral("text-recognition"),
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Text Recognition")),
-                    settingsText(QT_TRANSLATE_NOOP(
-                        "SettingsCatalog", "Configure text recognition acceleration")),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                                   "Configure text recognition acceleration")),
                     SettingsSectionReset::TextRecognition,
                     {directMlAccelerationItem()},
                 },
@@ -864,16 +846,14 @@ const SettingsLocation& SettingsCatalog::defaultLocation() const {
 }
 
 const SettingsPageDefinition* SettingsCatalog::page(const QString& pageId) const {
-    const auto found = std::find_if(m_pages.cbegin(), m_pages.cend(), [&pageId](const auto& item) {
-        return item.id == pageId;
-    });
+    const auto found = std::find_if(m_pages.cbegin(), m_pages.cend(),
+                                    [&pageId](const auto& item) { return item.id == pageId; });
     return found == m_pages.cend() ? nullptr : &*found;
 }
 
 const SettingsPageDefinition* SettingsCatalog::pageForRoute(const QString& route) const {
-    const auto found = std::find_if(m_pages.cbegin(), m_pages.cend(), [&route](const auto& item) {
-        return item.route == route;
-    });
+    const auto found = std::find_if(m_pages.cbegin(), m_pages.cend(),
+                                    [&route](const auto& item) { return item.route == route; });
     return found == m_pages.cend() ? nullptr : &*found;
 }
 
@@ -894,10 +874,9 @@ const SettingsItemDefinition* SettingsCatalog::item(const SettingsLocation& loca
     if (foundSection == nullptr || location.itemId.isEmpty()) {
         return nullptr;
     }
-    const auto found = std::find_if(foundSection->items.cbegin(), foundSection->items.cend(),
-                                    [&location](const auto& item) {
-                                        return item.id == location.itemId;
-                                    });
+    const auto found =
+        std::find_if(foundSection->items.cbegin(), foundSection->items.cend(),
+                     [&location](const auto& item) { return item.id == location.itemId; });
     return found == foundSection->items.cend() ? nullptr : &*found;
 }
 
@@ -927,7 +906,7 @@ SettingsLocation SettingsCatalog::resolveLocation(const SettingsLocation& reques
     if (foundSection == nullptr) {
         if (foundPage->sections.isEmpty()) {
             return foundPage->kind == SettingsPageKind::ScreenshotHistory ? resolved
-                                                                           : m_defaultLocation;
+                                                                          : m_defaultLocation;
         }
         foundSection = &foundPage->sections.constFirst();
     }
@@ -969,8 +948,8 @@ QStringList SettingsCatalog::validationErrors() const {
         addUnique(&errors, &pageIds, pageDefinition.id, QStringLiteral("page id"));
         addUnique(&errors, &routes, pageDefinition.route, QStringLiteral("route"));
         if (!pageDefinition.route.startsWith(u'/')) {
-            errors.push_back(QStringLiteral("page route must be absolute: %1")
-                                 .arg(pageDefinition.route));
+            errors.push_back(
+                QStringLiteral("page route must be absolute: %1").arg(pageDefinition.route));
         }
         if (pageDefinition.sections.isEmpty() &&
             pageDefinition.kind == SettingsPageKind::GeneratedSettings) {
@@ -985,11 +964,9 @@ QStringList SettingsCatalog::validationErrors() const {
             errors.push_back(QStringLiteral("page text is incomplete: %1").arg(pageDefinition.id));
         }
         for (const SettingsSectionDefinition& sectionDefinition : pageDefinition.sections) {
-            addUnique(&errors, &sectionIds, sectionDefinition.id,
-                      QStringLiteral("section id"));
+            addUnique(&errors, &sectionIds, sectionDefinition.id, QStringLiteral("section id"));
             addUnique(&errors, &searchIds,
-                      QStringLiteral("section:%1/%2")
-                          .arg(pageDefinition.id, sectionDefinition.id),
+                      QStringLiteral("section:%1/%2").arg(pageDefinition.id, sectionDefinition.id),
                       QStringLiteral("generated search id"));
             addUnique(&errors, &objectNames,
                       generatedObjectName(
@@ -1007,16 +984,14 @@ QStringList SettingsCatalog::validationErrors() const {
             }
             for (const SettingsItemDefinition& itemDefinition : sectionDefinition.items) {
                 addUnique(&errors, &itemIds, itemDefinition.id, QStringLiteral("item id"));
-                addUnique(&errors, &searchIds,
-                          QStringLiteral("item:%1").arg(itemDefinition.id),
+                addUnique(&errors, &searchIds, QStringLiteral("item:%1").arg(itemDefinition.id),
                           QStringLiteral("generated search id"));
                 addUnique(&errors, &objectNames,
-                          generatedObjectName(QStringLiteral("settings-item"),
-                                              itemDefinition.id),
+                          generatedObjectName(QStringLiteral("settings-item"), itemDefinition.id),
                           QStringLiteral("generated object name"));
                 if (!itemDefinition.title.isValid() || !itemDefinition.description.isValid()) {
-                    errors.push_back(QStringLiteral("item text is incomplete: %1")
-                                         .arg(itemDefinition.id));
+                    errors.push_back(
+                        QStringLiteral("item text is incomplete: %1").arg(itemDefinition.id));
                 }
                 for (const TranslatableText& alias : itemDefinition.aliases) {
                     if (!alias.isValid()) {
@@ -1024,17 +999,16 @@ QStringList SettingsCatalog::validationErrors() const {
                                              .arg(itemDefinition.id));
                     }
                 }
-                const auto* schemaEntry = itemDefinition.configurationKey.isEmpty()
-                                              ? nullptr
-                                              : storage::ConfigurationSchema::entry(
-                                                    itemDefinition.configurationKey);
+                const auto* schemaEntry =
+                    itemDefinition.configurationKey.isEmpty()
+                        ? nullptr
+                        : storage::ConfigurationSchema::entry(itemDefinition.configurationKey);
                 if (!itemDefinition.configurationKey.isEmpty() && schemaEntry == nullptr) {
                     errors.push_back(QStringLiteral("unknown configuration key for %1: %2")
-                                         .arg(itemDefinition.id,
-                                              itemDefinition.configurationKey));
+                                         .arg(itemDefinition.id, itemDefinition.configurationKey));
                 }
-                if (const auto* select = std::get_if<SettingsSelectDefinition>(
-                        &itemDefinition.payload);
+                if (const auto* select =
+                        std::get_if<SettingsSelectDefinition>(&itemDefinition.payload);
                     select != nullptr) {
                     QString expectedKey;
                     SettingsSelectSource expectedSource = SettingsSelectSource::Fixed;
@@ -1059,8 +1033,8 @@ QStringList SettingsCatalog::validationErrors() const {
                     if (schemaEntry == nullptr ||
                         schemaEntry->valueKind != storage::ConfigurationValueKind::String ||
                         select->options.isEmpty()) {
-                        errors.push_back(QStringLiteral("select item is incomplete: %1")
-                                             .arg(itemDefinition.id));
+                        errors.push_back(
+                            QStringLiteral("select item is incomplete: %1").arg(itemDefinition.id));
                     }
                     if (itemDefinition.configurationKey != expectedKey ||
                         select->source != expectedSource) {
@@ -1148,8 +1122,8 @@ QStringList SettingsCatalog::validationErrors() const {
                                              .arg(itemDefinition.id));
                     }
                     if (shortcutActions.contains(shortcut->shortcutAction)) {
-                        errors.push_back(QStringLiteral("duplicate shortcut action: %1")
-                                             .arg(itemDefinition.id));
+                        errors.push_back(
+                            QStringLiteral("duplicate shortcut action: %1").arg(itemDefinition.id));
                     } else {
                         shortcutActions.insert(shortcut->shortcutAction);
                     }
@@ -1161,15 +1135,16 @@ QStringList SettingsCatalog::validationErrors() const {
                                                  .arg(itemDefinition.id));
                         }
                     } else if (shortcut->command.location != SettingsLocation{}) {
-                        errors.push_back(QStringLiteral("shortcut command location is unexpected: %1")
-                                             .arg(itemDefinition.id));
+                        errors.push_back(
+                            QStringLiteral("shortcut command location is unexpected: %1")
+                                .arg(itemDefinition.id));
                     }
                     const SettingsCommandKind expectedCommand =
                         shortcut->shortcutAction == GlobalShortcutAction::Screenshot
                             ? SettingsCommandKind::CaptureScreenshot
-                            : shortcut->shortcutAction == GlobalShortcutAction::OpenSettings
-                                  ? SettingsCommandKind::Navigate
-                                  : SettingsCommandKind::ExecuteQuickAction;
+                        : shortcut->shortcutAction == GlobalShortcutAction::OpenSettings
+                            ? SettingsCommandKind::Navigate
+                            : SettingsCommandKind::ExecuteQuickAction;
                     if (shortcut->command.kind != expectedCommand) {
                         errors.push_back(QStringLiteral("shortcut command is incompatible: %1")
                                              .arg(itemDefinition.id));
@@ -1181,7 +1156,8 @@ QStringList SettingsCatalog::validationErrors() const {
                     }
                     const bool isDelayAction =
                         shortcut->shortcutAction == GlobalShortcutAction::ScreenshotDelay;
-                    if (shortcut->adjustment == SettingsShortcutAdjustment::ScreenshotDelaySeconds) {
+                    if (shortcut->adjustment ==
+                        SettingsShortcutAdjustment::ScreenshotDelaySeconds) {
                         const auto* delaySchema = storage::ConfigurationSchema::entry(
                             QStringLiteral("screenshot/delay_seconds"));
                         if (!isDelayAction || delaySchema == nullptr ||
@@ -1189,8 +1165,9 @@ QStringList SettingsCatalog::validationErrors() const {
                             !delaySchema->integerRange.has_value() ||
                             delaySchema->integerRange->minimum != 1 ||
                             delaySchema->integerRange->maximum != 10) {
-                            errors.push_back(QStringLiteral("shortcut adjustment is incompatible: %1")
-                                                 .arg(itemDefinition.id));
+                            errors.push_back(
+                                QStringLiteral("shortcut adjustment is incompatible: %1")
+                                    .arg(itemDefinition.id));
                         }
                     } else if (isDelayAction) {
                         errors.push_back(QStringLiteral("delay shortcut adjustment is missing: %1")
@@ -1207,8 +1184,7 @@ QStringList SettingsCatalog::validationErrors() const {
                     }
                     if (itemDefinition.configurationKey != expectedKey || schemaEntry == nullptr ||
                         schemaEntry->valueKind != storage::ConfigurationValueKind::Integer ||
-                        !schemaEntry->integerRange.has_value() ||
-                        !slider->suffix.isValid()) {
+                        !schemaEntry->integerRange.has_value() || !slider->suffix.isValid()) {
                         errors.push_back(QStringLiteral("slider binding is incompatible: %1")
                                              .arg(itemDefinition.id));
                     }
@@ -1291,8 +1267,8 @@ QStringList SettingsCatalog::validationErrors() const {
                         std::get_if<SettingsActionDefinition>(&itemDefinition.payload)) {
                     if (!itemDefinition.configurationKey.isEmpty() ||
                         !action->buttonText.isValid() || !action->iconFactory) {
-                        errors.push_back(QStringLiteral("action item is incomplete: %1")
-                                             .arg(itemDefinition.id));
+                        errors.push_back(
+                            QStringLiteral("action item is incomplete: %1").arg(itemDefinition.id));
                     }
                     if (action->confirmation.has_value() &&
                         (!action->confirmation->title.isValid() ||
@@ -1316,8 +1292,8 @@ QStringList SettingsCatalog::validationErrors() const {
                         (custom->renderer == SettingsCustomRenderer::DrawingToolbarEditor &&
                          (schemaEntry == nullptr ||
                           schemaEntry->valueKind != storage::ConfigurationValueKind::Structured))) {
-                        errors.push_back(QStringLiteral("custom item is incomplete: %1")
-                                             .arg(itemDefinition.id));
+                        errors.push_back(
+                            QStringLiteral("custom item is incomplete: %1").arg(itemDefinition.id));
                     }
                 }
             }
@@ -1328,8 +1304,8 @@ QStringList SettingsCatalog::validationErrors() const {
     const auto validateNavigationPage = [&](const SettingsNavigationPageDefinition& navPage) {
         addUnique(&errors, &navigationIds, navPage.id, QStringLiteral("navigation id"));
         if (page(navPage.pageId) == nullptr) {
-            errors.push_back(QStringLiteral("navigation references unknown page: %1")
-                                 .arg(navPage.pageId));
+            errors.push_back(
+                QStringLiteral("navigation references unknown page: %1").arg(navPage.pageId));
         } else if (navigatedPages.contains(navPage.pageId)) {
             errors.push_back(QStringLiteral("page appears more than once in navigation: %1")
                                  .arg(navPage.pageId));
@@ -1337,8 +1313,8 @@ QStringList SettingsCatalog::validationErrors() const {
             navigatedPages.insert(navPage.pageId);
         }
         if (!navPage.iconFactory) {
-            errors.push_back(QStringLiteral("navigation icon factory is missing: %1")
-                                 .arg(navPage.id));
+            errors.push_back(
+                QStringLiteral("navigation icon factory is missing: %1").arg(navPage.id));
         }
     };
     for (const SettingsNavigationNode& node : m_navigation) {
@@ -1347,8 +1323,8 @@ QStringList SettingsCatalog::validationErrors() const {
         } else if (const auto* group = std::get_if<SettingsNavigationGroupDefinition>(&node)) {
             addUnique(&errors, &navigationIds, group->id, QStringLiteral("navigation id"));
             if (!group->title.isValid() || !group->iconFactory || group->pages.isEmpty()) {
-                errors.push_back(QStringLiteral("navigation group is incomplete: %1")
-                                     .arg(group->id));
+                errors.push_back(
+                    QStringLiteral("navigation group is incomplete: %1").arg(group->id));
             }
             for (const SettingsNavigationPageDefinition& groupedPage : group->pages) {
                 validateNavigationPage(groupedPage);
@@ -1357,8 +1333,8 @@ QStringList SettingsCatalog::validationErrors() const {
     }
     for (const SettingsPageDefinition& pageDefinition : m_pages) {
         if (!navigatedPages.contains(pageDefinition.id)) {
-            errors.push_back(QStringLiteral("page is absent from navigation: %1")
-                                 .arg(pageDefinition.id));
+            errors.push_back(
+                QStringLiteral("page is absent from navigation: %1").arg(pageDefinition.id));
         }
     }
 
@@ -1369,14 +1345,15 @@ QStringList SettingsCatalog::validationErrors() const {
         m_defaultLocation.itemId.isEmpty() || item(m_defaultLocation) != nullptr;
     if (m_defaultLocation.isEmpty() || defaultPage == nullptr || defaultSection == nullptr ||
         !defaultItemValid) {
-        errors.push_back(QStringLiteral("invalid default location: %1")
-                             .arg(locationText(m_defaultLocation)));
+        errors.push_back(
+            QStringLiteral("invalid default location: %1").arg(locationText(m_defaultLocation)));
     }
     return errors;
 }
 
 SettingsCatalog buildBuiltInSettingsCatalog() {
-    return {builtInPages(), builtInNavigation(),
+    return {builtInPages(),
+            builtInNavigation(),
             {QString::fromLatin1(QUICK_PAGE_ID), QStringLiteral("screenshot"),
              QStringLiteral("quick.screenshot")}};
 }

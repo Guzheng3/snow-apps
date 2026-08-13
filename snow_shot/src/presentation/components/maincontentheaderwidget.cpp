@@ -13,8 +13,8 @@
 #include <QVBoxLayout>
 
 namespace {
-constexpr int GLOBAL_SEARCH_MAX_WIDTH = 360;
-constexpr int GLOBAL_SEARCH_MIN_WIDTH = 260;
+constexpr int GLOBAL_SEARCH_MAX_WIDTH = 400;
+constexpr int GLOBAL_SEARCH_MIN_WIDTH = 280;
 } // namespace
 
 MainContentHeaderWidget::MainContentHeaderWidget(

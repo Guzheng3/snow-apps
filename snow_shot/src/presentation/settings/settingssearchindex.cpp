@@ -103,9 +103,22 @@ QStringList radioOptionLabels(const SettingsRadioDefinition& radio) {
     }
     return result;
 }
+
+QString itemTitle(const SettingsItemDefinition& item,
+                  const SettingsSearchRuntimeValues& runtimeValues) {
+    QString title = item.title.translated();
+    const auto* shortcut = std::get_if<SettingsShortcutActionDefinition>(&item.payload);
+    if (shortcut != nullptr &&
+        shortcut->adjustment == SettingsShortcutAdjustment::ScreenshotDelaySeconds) {
+        title = title.arg(runtimeValues.screenshotDelaySeconds);
+    }
+    return title;
+}
 } // namespace
 
-SettingsSearchIndex::SettingsSearchIndex(const SettingsCatalog& catalog) : m_catalog(catalog) {
+SettingsSearchIndex::SettingsSearchIndex(const SettingsCatalog& catalog,
+                                         SettingsSearchRuntimeValues runtimeValues)
+    : m_catalog(catalog), m_runtimeValues(runtimeValues) {
     rebuild();
 }
 
@@ -155,7 +168,7 @@ void SettingsSearchIndex::rebuild() {
                     QStringLiteral("item:%1").arg(item.id),
                     SettingsSearchNodeKind::Item,
                     {page.id, section.id, item.id},
-                    item.title.translated(),
+                    itemTitle(item, m_runtimeValues),
                     item.description.translated(),
                     itemPath,
                     translatedAliases(item.aliases),
@@ -175,6 +188,14 @@ void SettingsSearchIndex::rebuild() {
             normalizedList(entry.optionLabels),
         });
     }
+}
+
+void SettingsSearchIndex::setRuntimeValues(SettingsSearchRuntimeValues runtimeValues) {
+    if (m_runtimeValues.screenshotDelaySeconds == runtimeValues.screenshotDelaySeconds) {
+        return;
+    }
+    m_runtimeValues = runtimeValues;
+    rebuild();
 }
 
 const QVector<SettingsSearchEntry>& SettingsSearchIndex::entries() const {

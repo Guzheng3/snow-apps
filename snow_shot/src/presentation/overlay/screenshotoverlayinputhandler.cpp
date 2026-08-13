@@ -49,7 +49,14 @@ void ScreenshotOverlayInputHandler::handleMousePress(ScreenshotOverlayWindow* ov
     m_context.actions.updateColorPickerForOverlay(overlay, localPosition);
     const QPointF virtualPosition = virtualPositionForOverlay(overlay, localPosition);
     if (m_context.interaction.movingSelection()) {
-        handleMovingSelectionPress(overlay, virtualPosition);
+        if (dragModeForVirtualPosition(virtualPosition, false) !=
+            ScreenshotSelectionDragMode::None) {
+            handleMovingSelectionPress(overlay, virtualPosition);
+        } else {
+            // Move also acts as the selection tool when the new box starts
+            // outside the currently confirmed selection.
+            handleManualSelectionPress(overlay, localPosition, virtualPosition);
+        }
         return;
     }
 
@@ -92,9 +99,8 @@ void ScreenshotOverlayInputHandler::handleManualSelectionPress(ScreenshotOverlay
     m_context.actions.updateColorPickerForOverlay(overlay, localPosition);
 }
 
-bool ScreenshotOverlayInputHandler::shouldHandleMouseEvent(const ScreenshotOverlayWindow* overlay,
-                                                           const QPointF& localPosition,
-                                                           bool) const {
+bool ScreenshotOverlayInputHandler::shouldHandleMouseEvent(const ScreenshotOverlayWindow*,
+                                                           const QPointF&, bool) const {
     if (m_context.interaction.scrollingCapture()) {
         return false;
     }
@@ -108,8 +114,9 @@ bool ScreenshotOverlayInputHandler::shouldHandleMouseEvent(const ScreenshotOverl
         return true;
     }
     if (m_context.interaction.movingSelection()) {
-        return dragModeForPosition(overlay, localPosition, false) !=
-               ScreenshotSelectionDragMode::None;
+        // A confirmed selection can be replaced by dragging a new box from
+        // any point on the capture surface, not only by grabbing its edge.
+        return true;
     }
     return false;
 }

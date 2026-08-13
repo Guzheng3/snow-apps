@@ -1209,6 +1209,15 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
                     }
                 }
             },
+            [this](bool available, bool translating, bool streaming, bool canUndo, bool canRedo,
+                   bool canReset) {
+                if (m_editController != nullptr && m_editController->toolbarWindow() != nullptr) {
+                    if (ScreenshotToolPalette* toolbar = m_editController->toolbarWindow()->palette()) {
+                        toolbar->setTextTranslationState(available, translating, streaming, canUndo,
+                                                         canRedo, canReset);
+                    }
+                }
+            },
             [this](bool available, bool canUndo, bool canRedo, bool canMerge, bool canSplit,
                    bool canReset) {
                 if (m_editController != nullptr && m_editController->toolbarWindow() != nullptr) {
@@ -1248,6 +1257,7 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
                     QDesktopServices::openUrl(url);
                 }
             },
+            [this]() -> QWidget* { return this; },
         },
         this);
     connect(m_recognitionSession.get(), &ScreenshotRecognitionSessionController::textResultChanged,
@@ -2120,8 +2130,12 @@ void ScreenshotPinnedWindow::ensureEditController() {
             });
             connect(toolbar, &ScreenshotToolPalette::textEditRequested, this,
                     &ScreenshotPinnedWindow::handleTextEditingRequested);
+            connect(toolbar, &ScreenshotToolPalette::textTranslateRequested, this,
+                    &ScreenshotPinnedWindow::handleTextTranslationRequested);
             connect(toolbar, &ScreenshotToolPalette::textResetRequested, this,
                     &ScreenshotPinnedWindow::handleTextResetRequested);
+            connect(toolbar, &ScreenshotToolPalette::textSettingsRequested, this,
+                    &ScreenshotPinnedWindow::handleTextSettingsRequested);
             connect(toolbar, &ScreenshotToolPalette::textFormattingRequested, this,
                     &ScreenshotPinnedWindow::handleTextFormattingRequested);
             connect(toolbar, &ScreenshotToolPalette::textPunctuationRequested, this,
@@ -2269,7 +2283,10 @@ void ScreenshotPinnedWindow::updateRecognitionToolbarState() {
 
 void ScreenshotPinnedWindow::handleTextEditingRequested() {
     if (m_recognitionSession != nullptr) {
-        if (m_recognitionSession->editing()) {
+        if (m_recognitionSession->translating()) {
+            m_recognitionSession->endTextEditing();
+            m_recognitionSession->beginTextEditing();
+        } else if (m_recognitionSession->editing()) {
             m_recognitionSession->endTextEditing();
         } else {
             m_recognitionSession->beginTextEditing();
@@ -2277,9 +2294,21 @@ void ScreenshotPinnedWindow::handleTextEditingRequested() {
     }
 }
 
+void ScreenshotPinnedWindow::handleTextTranslationRequested() {
+    if (m_recognitionSession != nullptr) {
+        m_recognitionSession->beginTextTranslation();
+    }
+}
+
 void ScreenshotPinnedWindow::handleTextResetRequested() {
     if (m_recognitionSession != nullptr) {
         m_recognitionSession->resetTextEditing();
+    }
+}
+
+void ScreenshotPinnedWindow::handleTextSettingsRequested() {
+    if (m_recognitionSession != nullptr) {
+        m_recognitionSession->openTranslationSettings();
     }
 }
 

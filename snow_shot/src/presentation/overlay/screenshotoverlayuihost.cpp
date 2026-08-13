@@ -85,12 +85,13 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
         if (m_opacityEffect != nullptr) {
             m_opacityEffect->setOpacity(m_opacity);
         }
-        if (m_lines.isEmpty() || m_opacity <= 0.0) {
+        if (!hasVisiblePresentation()) {
             hide();
-        } else {
-            show();
-            raise();
         }
+    }
+
+    [[nodiscard]] bool hasVisiblePresentation() const {
+        return !m_lines.isEmpty() && m_opacity > 0.0;
     }
 
   protected:
@@ -553,12 +554,16 @@ void ScreenshotOverlayUiHost::updateShortcutHints(ScreenshotOverlayWindow* overl
         hints->setWindowFlags(Qt::Widget);
     }
     hints->setPresentation(mode, opacity);
-    if (hints->isVisible()) {
-        const int y = std::max(kShortcutHintsMargin,
-                               overlay->height() - hints->height() - kShortcutHintsMargin);
-        hints->move(kShortcutHintsMargin, y);
-        hints->raise();
+    if (!hints->hasVisiblePresentation()) {
+        hints->hide();
+        return;
     }
+
+    const int y = std::max(kShortcutHintsMargin,
+                           overlay->height() - hints->height() - kShortcutHintsMargin);
+    hints->move(kShortcutHintsMargin, y);
+    hints->show();
+    hints->raise();
 }
 
 void ScreenshotOverlayUiHost::hideShortcutHints() {

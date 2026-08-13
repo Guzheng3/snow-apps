@@ -13,6 +13,7 @@
 #include <QPoint>
 #include <QRect>
 #include <QSize>
+#include <QStringList>
 #include <QVector>
 #include <QWidget>
 
@@ -184,7 +185,10 @@ class ScreenshotToolPalette final : public QWidget {
     void setTableEditingState(bool available, bool canUndo, bool canRedo, bool canMerge,
                               bool canSplit, bool canReset);
     void setTextEditingState(bool available, bool editing, bool canUndo = false,
-                              bool canRedo = false);
+                             bool canRedo = false);
+    void setTextTranslationState(bool available, bool translating, bool streaming,
+                                 bool canUndo = false, bool canRedo = false,
+                                 bool canReset = false);
     void clearTextTransformSelections();
 
 #if defined(SNOW_SHOT_TEST_HOOKS)
@@ -221,7 +225,9 @@ class ScreenshotToolPalette final : public QWidget {
     void tableSplitRequested();
     void tableResetRequested();
     void textEditRequested();
+    void textTranslateRequested();
     void textResetRequested();
+    void textSettingsRequested();
     void textFormattingRequested(const QString& value);
     void textPunctuationRequested(const QString& value);
     void scrollingScreenshotRequested();
@@ -283,14 +289,13 @@ class ScreenshotToolPalette final : public QWidget {
     bool addMainSecondaryButtons(const Options& options, QBoxLayout* layout);
     void addMainActionButtons(const Options& options, QBoxLayout* layout);
     void applyMainToolbarLayout(bool notify);
-    QVector<QWidget*> mainToolbarWidgetsForItem(const QString& itemId) const;
+    adqt::widgets::AdButton* drawingToolButton(const QString& itemId) const;
+    adqt::widgets::AdButton* drawingToolEntryButton(Tool tool) const;
+    void clearDrawingToolGroups();
+    void activateDrawingTool(Tool tool);
+    void selectDrawingToolGroupEntry(Tool tool);
+    void refreshDrawingToolGroup(int groupIndex);
     void addRecordingControls(QBoxLayout* layout);
-    void activateArrowLineTool(Tool tool);
-    void setArrowLineEntryTool(Tool tool);
-    void refreshArrowLineTrigger();
-    void activateHighlightTool(Tool tool);
-    void setHighlightEntryTool(Tool tool);
-    void refreshHighlightTrigger();
     void activateTableQrTool(Tool tool);
     void setTableQrEntryTool(Tool tool);
     void refreshTableQrTrigger();
@@ -392,6 +397,17 @@ class ScreenshotToolPalette final : public QWidget {
         QVector<Tool> tools;
     };
 
+    struct DrawingToolGroup {
+        QStringList itemIds;
+        QVector<Tool> tools;
+        Tool entryTool = Tool::Shape;
+        adqt::widgets::AdButton* trigger = nullptr;
+        adqt::widgets::AdPopover* popover = nullptr;
+        QVector<adqt::widgets::AdButton*> optionButtons;
+        QVector<int> optionValues;
+        bool ownsTrigger = false;
+    };
+
     ScreenshotToolbarMainPanel* m_mainPanel = nullptr;
     QWidget* m_selectActionPanel = nullptr;
     QWidget* m_rectangleStylePanel = nullptr;
@@ -421,20 +437,12 @@ class ScreenshotToolPalette final : public QWidget {
     adqt::widgets::AdButton* m_redoButton = nullptr;
     adqt::widgets::AdButton* m_selectButton = nullptr;
     adqt::widgets::AdButton* m_shapeButton = nullptr;
-    adqt::widgets::AdButton* m_arrowLineButton = nullptr;
     adqt::widgets::AdButton* m_arrowButton = nullptr;
     adqt::widgets::AdButton* m_lineButton = nullptr;
-    adqt::widgets::AdPopover* m_arrowLinePopover = nullptr;
-    QVector<adqt::widgets::AdButton*> m_arrowLineOptionButtons;
-    QVector<int> m_arrowLineOptionValues;
-    Tool m_arrowLineEntryTool = Tool::Arrow;
     adqt::widgets::AdButton* m_freeDrawButton = nullptr;
-    adqt::widgets::AdButton* m_highlightButton = nullptr;
+    adqt::widgets::AdButton* m_highlighterButton = nullptr;
+    adqt::widgets::AdButton* m_spotlightButton = nullptr;
     QVector<adqt::widgets::AdRadioButtonGroup*> m_highlightModeGroups;
-    adqt::widgets::AdPopover* m_highlightPopover = nullptr;
-    QVector<adqt::widgets::AdButton*> m_highlightOptionButtons;
-    QVector<int> m_highlightOptionValues;
-    Tool m_highlightEntryTool = Tool::PenHighlight;
     QVector<adqt::widgets::AdRadioButtonGroup*> m_filterModeGroups;
     adqt::widgets::AdButton* m_eraserButton = nullptr;
     adqt::widgets::AdButton* m_filterButton = nullptr;
@@ -450,7 +458,9 @@ class ScreenshotToolPalette final : public QWidget {
     QVector<int> m_tableQrOptionValues;
     Tool m_tableQrEntryTool = Tool::Table;
     adqt::widgets::AdButton* m_textEditButton = nullptr;
+    adqt::widgets::AdButton* m_textTranslateButton = nullptr;
     adqt::widgets::AdButton* m_textResetButton = nullptr;
+    adqt::widgets::AdButton* m_textSettingsButton = nullptr;
     adqt::widgets::AdButton* m_tableMergeButton = nullptr;
     adqt::widgets::AdButton* m_tableSplitButton = nullptr;
     adqt::widgets::AdButton* m_tableResetButton = nullptr;
@@ -520,12 +530,17 @@ class ScreenshotToolPalette final : public QWidget {
     bool m_tableCanUndo = false;
     bool m_tableCanRedo = false;
     bool m_textEditingAvailable = false;
+    bool m_textEditing = false;
+    bool m_textTranslating = false;
+    bool m_textTranslationStreaming = false;
     bool m_textCanUndo = false;
     bool m_textCanRedo = false;
+    bool m_textCanReset = false;
     SnowCanvasHistoryState m_canvasHistoryState;
     const SnowCanvasStyleDefaults m_styleDefaults;
     const Options m_options;
     std::optional<snow_shot::storage::ScreenshotToolbarLayout> m_toolbarLayout;
+    QVector<DrawingToolGroup> m_drawingToolGroups;
     FilterEditor m_filterEditor;
     FilterEditor m_penFilterEditor;
     QLabel* m_spotlightOpacityIcon = nullptr;

@@ -25,6 +25,7 @@
 #include "widgets/navigation_menu.h"
 #include "widgets/pagination.h"
 #include "widgets/popconfirm.h"
+#include "widgets/radio.h"
 #include "widgets/scroll_area.h"
 #include "widgets/select.h"
 #include "widgets/switch.h"
@@ -76,15 +77,16 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
         m_storageStatus.effectiveDirectory = QStringLiteral("C:/settings-test-storage");
         m_storageStatus.historyUsage.entryCount = 2;
         m_storageStatus.historyUsage.totalBytes = 2048;
-        m_shortcutStates.insert(
-            snow_shot::presentation::GlobalShortcutAction::Screenshot,
-            {snow_shot::presentation::GlobalShortcutAction::Screenshot,
-             {QStringLiteral("Ctrl+Shift+S")},
-             snow_shot::presentation::GlobalShortcutStatus::Registered, {}});
-        m_shortcutStates.insert(
-            snow_shot::presentation::GlobalShortcutAction::OpenSettings,
-            {snow_shot::presentation::GlobalShortcutAction::OpenSettings, {},
-             snow_shot::presentation::GlobalShortcutStatus::Unset, {}});
+        m_shortcutStates.insert(snow_shot::presentation::GlobalShortcutAction::Screenshot,
+                                {snow_shot::presentation::GlobalShortcutAction::Screenshot,
+                                 {QStringLiteral("Ctrl+Shift+S")},
+                                 snow_shot::presentation::GlobalShortcutStatus::Registered,
+                                 {}});
+        m_shortcutStates.insert(snow_shot::presentation::GlobalShortcutAction::OpenSettings,
+                                {snow_shot::presentation::GlobalShortcutAction::OpenSettings,
+                                 {},
+                                 snow_shot::presentation::GlobalShortcutStatus::Unset,
+                                 {}});
     }
 
     QVariant selectValue(settings::SettingsSelectBinding binding) const override {
@@ -111,8 +113,7 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
         return {{QStringLiteral("en_US"), QStringLiteral("English")}};
     }
 
-    bool applySelectValue(settings::SettingsSelectBinding binding,
-                          const QVariant& value) override {
+    bool applySelectValue(settings::SettingsSelectBinding binding, const QVariant& value) override {
         if (!acceptWrites) {
             return false;
         }
@@ -225,8 +226,7 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
         return m_colors.value(binding, QColor(QStringLiteral("#1677FFFF")));
     }
 
-    bool applyColorValue(settings::SettingsColorBinding binding,
-                         const QColor& value) override {
+    bool applyColorValue(settings::SettingsColorBinding binding, const QColor& value) override {
         if (!acceptWrites) {
             return false;
         }
@@ -252,8 +252,7 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
         return m_trayCustomIcon;
     }
 
-    bool applyFilePathValue(settings::SettingsFilePathBinding,
-                            const QString& value) override {
+    bool applyFilePathValue(settings::SettingsFilePathBinding, const QString& value) override {
         if (!acceptWrites) {
             return false;
         }
@@ -266,13 +265,11 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
         return m_toolbarLayout;
     }
 
-    bool applyToolbarLayout(
-        const snow_shot::storage::ScreenshotToolbarLayout& layout) override {
+    bool applyToolbarLayout(const snow_shot::storage::ScreenshotToolbarLayout& layout) override {
         if (!acceptWrites) {
             return false;
         }
-        m_toolbarLayout =
-            snow_shot::presentation::toolbar_layout::normalizedLayout(layout);
+        m_toolbarLayout = snow_shot::presentation::toolbar_layout::normalizedLayout(layout);
         ++toolbarLayoutApplyCount;
         emit synchronized();
         return true;
@@ -300,8 +297,7 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
         return true;
     }
 
-    settings::SettingsActionState
-    actionState(settings::SettingsActionBinding) const override {
+    settings::SettingsActionState actionState(settings::SettingsActionBinding) const override {
         return {m_storageStatus.writeAvailable && !m_storageStatus.historyClearing &&
                     m_storageStatus.historyUsage.entryCount > 0,
                 m_storageStatus.historyClearing};
@@ -369,7 +365,7 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
     QString m_trayIcon = QStringLiteral("default");
     QString m_trayCustomIcon;
     snow_shot::storage::ScreenshotToolbarLayout m_toolbarLayout{
-        snow_shot::presentation::toolbar_layout::defaultOrder(), {}};
+        snow_shot::presentation::toolbar_layout::defaultPositions()};
     snow_shot::storage::StorageStatus m_storageStatus;
     QHash<snow_shot::presentation::GlobalShortcutAction,
           snow_shot::presentation::GlobalShortcutRegistrationState>
@@ -378,7 +374,8 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
 
 class PageTranslator final : public QTranslator {
   public:
-    QString translate(const char* context, const char* sourceText, const char*, int) const override {
+    QString translate(const char* context, const char* sourceText, const char*,
+                      int) const override {
         if (QString::fromLatin1(context) == QStringLiteral("SettingsCatalog") &&
             QString::fromUtf8(sourceText) == QStringLiteral("Theme")) {
             return QStringLiteral("Localized Theme");
@@ -395,8 +392,8 @@ settings::TranslatableText text(const char* source) {
     return {"SettingsPageTests", source};
 }
 
-snow_shot::storage::CaptureHistoryDraft historyDraft(
-    const QDateTime& createdUtc, snow_shot::storage::CaptureHistorySource source) {
+snow_shot::storage::CaptureHistoryDraft
+historyDraft(const QDateTime& createdUtc, snow_shot::storage::CaptureHistorySource source) {
     snow_shot::storage::CaptureHistoryDraft draft;
     draft.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
     draft.createdUtc = createdUtc;
@@ -405,8 +402,7 @@ snow_shot::storage::CaptureHistoryDraft historyDraft(
     draft.selection.cornerRadius = 4;
     draft.selection.shadowWidth = 2;
     draft.selection.shadowColor = QColor(0, 0, 0, 96);
-    draft.canvasHistory = QByteArrayLiteral(
-        "{\"schemaVersion\":1,\"document\":{},\"history\":{}}");
+    draft.canvasHistory = QByteArrayLiteral("{\"schemaVersion\":1,\"document\":{},\"history\":{}}");
     draft.source = source;
     QImage image(96, 64, QImage::Format_RGBA8888);
     image.fill(source == snow_shot::storage::CaptureHistorySource::PinnedToScreen
@@ -495,9 +491,7 @@ void screenshotHistoryLifecycleAndIdentityDiff() {
         QStringLiteral("screenshotHistoryEntryDelete"));
     QString editedRecordId;
     QObject::connect(&page, &ScreenshotHistoryPageWidget::editRequested, &page,
-                     [&editedRecordId](const QString& recordId) {
-                         editedRecordId = recordId;
-                     });
+                     [&editedRecordId](const QString& recordId) { editedRecordId = recordId; });
     require(editButton != nullptr && deleteButton != nullptr &&
                 editButton->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Text &&
                 editButton->accentRole() == adqt::widgets::AdButton::AccentRole::Primary &&
@@ -507,8 +501,7 @@ void screenshotHistoryLifecycleAndIdentityDiff() {
                     deleteButton->mapTo(initialRow, QPoint()).x(),
             "history Edit must be a primary text action placed before Delete");
     editButton->click();
-    require(editedRecordId == record.id,
-            "history Edit did not emit the selected record ID");
+    require(editedRecordId == record.id, "history Edit did not emit the selected record ID");
 
     source.notifyChanged();
     source.notifyChanged();
@@ -544,8 +537,8 @@ void screenshotHistoryEmptyToPopulatedGeometryIsStable() {
     page.resize(760, 520);
     page.show();
     flushEvents();
-    auto* container = page.findChild<PageContainerWidget*>(
-        QStringLiteral("screenshotHistoryPageContainer"));
+    auto* container =
+        page.findChild<PageContainerWidget*>(QStringLiteral("screenshotHistoryPageContainer"));
     auto* content = container != nullptr ? container->contentWidget() : nullptr;
     auto* entries = page.findChild<QWidget*>(QStringLiteral("screenshotHistoryEntries"));
     auto* scroll = container != nullptr ? container->scrollArea() : nullptr;
@@ -590,8 +583,8 @@ void screenshotHistoryEmptyToPopulatedGeometryIsStable() {
     auto* initiallyPopulatedContent = initiallyPopulatedContainer != nullptr
                                           ? initiallyPopulatedContainer->contentWidget()
                                           : nullptr;
-    auto* initiallyPopulatedEntries = initiallyPopulatedPage.findChild<QWidget*>(
-        QStringLiteral("screenshotHistoryEntries"));
+    auto* initiallyPopulatedEntries =
+        initiallyPopulatedPage.findChild<QWidget*>(QStringLiteral("screenshotHistoryEntries"));
     require(initiallyPopulatedContent != nullptr && initiallyPopulatedEntries != nullptr,
             "initially populated history geometry test could not find its content");
     const int initiallyPopulatedContentHeight = initiallyPopulatedContent->height();
@@ -608,40 +601,39 @@ void screenshotHistoryPageUsesRepositoryAndAntDesignComponents() {
     auto& repository = snow_shot::storage::ApplicationStorage::instance().captureHistory();
     require(repository.requestClear().get().success, "history test setup must clear storage");
     const QDateTime today = QDateTime::currentDateTimeUtc();
-    require(repository
-                .publish(historyDraft(
-                    today.addSecs(-1),
-                    snow_shot::storage::CaptureHistorySource::CopiedToClipboard))
+    require(
+        repository
+                .publish(historyDraft(today.addSecs(-1),
+                                      snow_shot::storage::CaptureHistorySource::CopiedToClipboard))
                 .get()
                 .storage.success &&
-                repository
-                    .publish(historyDraft(
-                        today, snow_shot::storage::CaptureHistorySource::PinnedToScreen))
-                    .get()
-                    .storage.success,
-            "history fixtures must publish");
+            repository
+                .publish(
+                    historyDraft(today, snow_shot::storage::CaptureHistorySource::PinnedToScreen))
+                .get()
+                .storage.success,
+        "history fixtures must publish");
 
     ScreenshotHistoryPageWidget page;
     page.resize(760, 520);
     page.show();
     flushEvents();
 
-    auto* sourceFilter = page.findChild<adqt::widgets::AdSelect*>(
-        QStringLiteral("screenshotHistorySourceFilter"));
+    auto* sourceFilter =
+        page.findChild<adqt::widgets::AdSelect*>(QStringLiteral("screenshotHistorySourceFilter"));
     auto* dateRangeFilter = page.findChild<adqt::widgets::AdDateRangePicker*>(
         QStringLiteral("screenshotHistoryDateRangeFilter"));
-    auto* pagination = page.findChild<adqt::widgets::AdPagination*>(
-        QStringLiteral("screenshotHistoryPagination"));
-    auto* deleteAll = page.findChild<adqt::widgets::AdButton*>(
-        QStringLiteral("screenshotHistoryDeleteAll"));
-    auto* refresh = page.findChild<adqt::widgets::AdButton*>(
-        QStringLiteral("screenshotHistoryRefresh"));
+    auto* pagination =
+        page.findChild<adqt::widgets::AdPagination*>(QStringLiteral("screenshotHistoryPagination"));
+    auto* deleteAll =
+        page.findChild<adqt::widgets::AdButton*>(QStringLiteral("screenshotHistoryDeleteAll"));
+    auto* refresh =
+        page.findChild<adqt::widgets::AdButton*>(QStringLiteral("screenshotHistoryRefresh"));
     auto* title = page.findChild<QLabel*>(QStringLiteral("screenshotHistoryTitle"));
-    auto* countLabel =
-        page.findChild<QLabel*>(QStringLiteral("screenshotHistoryCountLabel"));
+    auto* countLabel = page.findChild<QLabel*>(QStringLiteral("screenshotHistoryCountLabel"));
     auto* filters = page.findChild<QWidget*>(QStringLiteral("screenshotHistoryFilters"));
-    auto* historyContainer = page.findChild<PageContainerWidget*>(
-        QStringLiteral("screenshotHistoryPageContainer"));
+    auto* historyContainer =
+        page.findChild<PageContainerWidget*>(QStringLiteral("screenshotHistoryPageContainer"));
     auto* confirmation = page.findChild<adqt::widgets::AdPopconfirm*>(
         QStringLiteral("screenshotHistoryDeleteAllConfirm"));
     auto* displayDescription =
@@ -675,9 +667,8 @@ void screenshotHistoryPageUsesRepositoryAndAntDesignComponents() {
             "history page must expose filters below its title plus management, carousels, and "
             "pagination");
 
-    const auto metric = snow_shot::presentation::styles::ThemeManager::instance()
-                            .themeColorScheme()
-                            .metricAlias;
+    const auto metric =
+        snow_shot::presentation::styles::ThemeManager::instance().themeColorScheme().metricAlias;
     require(title->font().pixelSize() == metric.fontSizeHeading4 &&
                 title->font().weight() == QFont::DemiBold &&
                 countLabel->font().pixelSize() == metric.fontSize,
@@ -686,8 +677,8 @@ void screenshotHistoryPageUsesRepositoryAndAntDesignComponents() {
     FakeRuntimeBindings shortcutBindings;
     SettingsPageWidget shortcutPage(settings::builtInSettingsCatalog(),
                                     QStringLiteral("quick-functions"), shortcutBindings);
-    auto* resetButton = shortcutPage.findChild<adqt::widgets::AdButton*>(
-        QStringLiteral("sectionResetButton"));
+    auto* resetButton =
+        shortcutPage.findChild<adqt::widgets::AdButton*>(QStringLiteral("sectionResetButton"));
     require(resetButton != nullptr && deleteAll->size() == resetButton->size() &&
                 refresh->size() == resetButton->size() &&
                 deleteAll->buttonStyle() == resetButton->buttonStyle() &&
@@ -740,9 +731,8 @@ void screenshotHistorySurvivesSidebarWidthTransitions() {
     require(repository.requestClear().get().success,
             "history collapse test setup must clear storage");
     require(repository
-                .publish(historyDraft(
-                    QDateTime::currentDateTimeUtc(),
-                    snow_shot::storage::CaptureHistorySource::CopiedToClipboard))
+                .publish(historyDraft(QDateTime::currentDateTimeUtc(),
+                                      snow_shot::storage::CaptureHistorySource::CopiedToClipboard))
                 .get()
                 .storage.success,
             "history collapse test fixture must publish");
@@ -763,9 +753,7 @@ void screenshotHistorySurvivesSidebarWidthTransitions() {
     contentLayout->setSpacing(0);
     auto* header = new MainContentHeaderWidget(
         builtInCatalog,
-        snow_shot::presentation::styles::ThemeManager::instance()
-            .themeColorScheme()
-            .metricAlias,
+        snow_shot::presentation::styles::ThemeManager::instance().themeColorScheme().metricAlias,
         contentShell);
     auto* content = new ContentCardWidget(builtInCatalog, shortcutManager, contentShell);
     contentLayout->addWidget(header, 0);
@@ -780,10 +768,10 @@ void screenshotHistorySurvivesSidebarWidthTransitions() {
     flushEvents();
 
     auto* tabs = header->findChild<adqt::widgets::AdTabs*>(QStringLiteral("mainSectionTabs"));
-    auto* historyPage = content->findChild<ScreenshotHistoryPageWidget*>(
-        QStringLiteral("screenshotHistoryPage"));
-    require(tabs != nullptr && tabs->count() == 0 && tabs->isHidden() &&
-                historyPage != nullptr && historyPage->totalCount() == 1,
+    auto* historyPage =
+        content->findChild<ScreenshotHistoryPageWidget*>(QStringLiteral("screenshotHistoryPage"));
+    require(tabs != nullptr && tabs->count() == 0 && tabs->isHidden() && historyPage != nullptr &&
+                historyPage->totalCount() == 1,
             "history route must remove its empty section tabs before responsive layout changes");
 
     sidebar->setCollapsed(true);
@@ -804,11 +792,9 @@ void screenshotHistorySurvivesSidebarWidthTransitions() {
 void allPagesShareBaseContainerSpacingAndScrollbar() {
     FakeRuntimeBindings bindings;
     const auto& builtInCatalog = settings::builtInSettingsCatalog();
-    const auto metric = snow_shot::presentation::styles::ThemeManager::instance()
-                            .themeColorScheme()
-                            .metricAlias;
-    SettingsPageWidget settingsPage(builtInCatalog, QStringLiteral("interface-settings"),
-                                    bindings);
+    const auto metric =
+        snow_shot::presentation::styles::ThemeManager::instance().themeColorScheme().metricAlias;
+    SettingsPageWidget settingsPage(builtInCatalog, QStringLiteral("interface-settings"), bindings);
     ScreenshotHistoryPageWidget historyPage;
 
     auto* settingsContainer = settingsPage.findChild<PageContainerWidget*>(
@@ -854,13 +840,20 @@ settings::SettingsCatalog expandedCatalog() {
         {QStringLiteral("light"), text("Light")},
         {QStringLiteral("dark"), text("Dark")},
     };
-    pages.push_back({QStringLiteral("extra-page"), QStringLiteral("/extra"), text("Extra Page"),
+    pages.push_back({QStringLiteral("extra-page"),
+                     QStringLiteral("/extra"),
+                     text("Extra Page"),
                      text("Extra page description"),
-                     {{QStringLiteral("extra-section"), text("Extra Section"),
-                       text("Extra section description"), settings::SettingsSectionReset::None,
-                       {{QStringLiteral("extra.item"), text("Extra Item"),
-                         text("Extra item description"), {},
-                         QStringLiteral("interface/theme_mode"), select}}}}});
+                     {{QStringLiteral("extra-section"),
+                       text("Extra Section"),
+                       text("Extra section description"),
+                       settings::SettingsSectionReset::None,
+                       {{QStringLiteral("extra.item"),
+                         text("Extra Item"),
+                         text("Extra item description"),
+                         {},
+                         QStringLiteral("interface/theme_mode"),
+                         select}}}}});
     QVector<settings::SettingsNavigationNode> navigation = builtIn.navigation();
     navigation.push_back(settings::SettingsNavigationPageDefinition{
         QStringLiteral("nav.extra-page"), QStringLiteral("extra-page"),
@@ -894,11 +887,11 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
     auto* language = interfacePage.findChild<adqt::widgets::AdSelect*>(
         QStringLiteral("settings-control-interface-language"));
     require(theme != nullptr && language != nullptr && theme->options().size() == 3 &&
-                language->options().size() == 2 && theme->currentValue() == QStringLiteral("system") &&
+                language->options().size() == 2 &&
+                theme->currentValue() == QStringLiteral("system") &&
                 language->currentValue() == QStringLiteral("en_US"),
             "select renderers must use catalog options and binding values");
-    require(!theme->accessibleName().isEmpty() &&
-                !theme->accessibleDescription().isEmpty() &&
+    require(!theme->accessibleName().isEmpty() && !theme->accessibleDescription().isEmpty() &&
                 !language->accessibleName().isEmpty(),
             "generated controls must expose catalog accessibility metadata");
 
@@ -906,14 +899,12 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
         QStringLiteral("settings-section-list-interface-settings-general"));
     auto* screenshotActions = quick.findChild<QWidget*>(
         QStringLiteral("settings-section-list-quick-functions-screenshot"));
-    auto* themeRow = interfacePage.findChild<QWidget*>(
-        QStringLiteral("settings-item-interface-theme"));
-    auto* languageRow = interfacePage.findChild<QWidget*>(
-        QStringLiteral("settings-item-interface-language"));
-    const int settingItemSpacing =
-        snow_shot::presentation::styles::ThemeManager::instance()
-            .themeColorScheme()
-            .metricAlias.padding;
+    auto* themeRow =
+        interfacePage.findChild<QWidget*>(QStringLiteral("settings-item-interface-theme"));
+    auto* languageRow =
+        interfacePage.findChild<QWidget*>(QStringLiteral("settings-item-interface-language"));
+    const auto settingMetrics =
+        snow_shot::presentation::styles::ThemeManager::instance().themeColorScheme().metricAlias;
     const auto contentHeight = [](const QWidget* row) {
         int height = 0;
         if (row != nullptr && row->layout() != nullptr) {
@@ -929,17 +920,45 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                 generalList->layout()->count() == 2 && screenshotActions != nullptr &&
                 screenshotActions->layout() != nullptr &&
                 screenshotActions->layout()->count() == 7 &&
-                generalList->layout()->spacing() == settingItemSpacing &&
+                generalList->layout()->spacing() == settingMetrics.paddingLG &&
+                screenshotActions->layout()->spacing() == settingMetrics.padding &&
                 themeRow != nullptr && themeRow->layout() != nullptr &&
                 themeRow->layout()->contentsMargins().top() == 0 &&
                 themeRow->layout()->contentsMargins().bottom() == 0 &&
-                themeRow->height() == contentHeight(themeRow) &&
-                languageRow != nullptr && languageRow->height() == contentHeight(languageRow),
+                themeRow->height() == contentHeight(themeRow) && languageRow != nullptr &&
+                languageRow->height() == contentHeight(languageRow),
             "quick actions and settings must use list spacing without divider components");
 
+    auto* trayIconRadio = interfacePage.findChild<adqt::widgets::AdRadio*>(
+        QStringLiteral("settings-control-interface-tray-icon"));
+    auto* trayIconRow =
+        interfacePage.findChild<QWidget*>(QStringLiteral("settings-item-interface-tray-icon"));
+    const auto trayIconRadios = trayIconRadio != nullptr && trayIconRadio->parentWidget() != nullptr
+                                    ? trayIconRadio->parentWidget()->findChildren<adqt::widgets::AdRadio*>()
+                                    : QList<adqt::widgets::AdRadio*>();
+    int rightmostRadioEdge = 0;
+    int leftmostRadioEdge = 0;
+    if (!trayIconRadios.isEmpty() && trayIconRow != nullptr) {
+        leftmostRadioEdge = trayIconRadios.constFirst()->mapTo(
+                                trayIconRow, QPoint(0, 0))
+                                .x();
+        for (const auto* radio : trayIconRadios) {
+            rightmostRadioEdge = std::max(
+                rightmostRadioEdge,
+                radio->mapTo(trayIconRow, QPoint(radio->width() - 1, 0)).x());
+        }
+    }
+    require(trayIconRadio != nullptr && trayIconRow != nullptr &&
+                trayIconRadios.size() > 1 && rightmostRadioEdge == trayIconRow->contentsRect().right() &&
+                std::all_of(trayIconRadios.cbegin(), trayIconRadios.cend(),
+                            [trayIconRow, leftmostRadioEdge](const auto* radio) {
+                                return radio->mapTo(trayIconRow, QPoint(0, 0)).x() ==
+                                       leftmostRadioEdge;
+                            }),
+            "radio group must align to the right while its controls share a left edge");
+
     theme->setCurrentValue(QStringLiteral("light"));
-    require(bindings.selectValue(settings::SettingsSelectBinding::Theme) ==
-                QStringLiteral("light"),
+    require(bindings.selectValue(settings::SettingsSelectBinding::Theme) == QStringLiteral("light"),
             "accepted select writes must flow through runtime bindings");
     bindings.acceptWrites = false;
     theme->setCurrentValue(QStringLiteral("dark"));
@@ -956,7 +975,7 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
             "application priority must resolve its stored value to the labeled selected option");
     applicationPriority->setCurrentValue(QStringLiteral("high"));
     require(bindings.selectValue(settings::SettingsSelectBinding::ApplicationPriority) ==
-                QStringLiteral("high") &&
+                    QStringLiteral("high") &&
                 applicationPriority->currentText() == QStringLiteral("High") &&
                 applicationPriority->selectedModelIndexes().size() == 1,
             "application priority changes must update both its label and dropdown selection");
@@ -992,35 +1011,32 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
         QStringLiteral("settings-control-screenshot-smart-selection"));
     require(smartSelection != nullptr && smartSelection->isChecked(),
             "Smart Selection must render as an enabled switch by default");
-    require(retention->minimum() == 1 && retention->maximum() == 365 &&
-                entries->minimum() == 1 && entries->maximum() == 1000 &&
-                disk->minimum() == 128 && disk->maximum() == 10240,
+    require(retention->minimum() == 1 && retention->maximum() == 365 && entries->minimum() == 1 &&
+                entries->maximum() == 1000 && disk->minimum() == 128 && disk->maximum() == 10240,
             "integer constraints must come from ConfigurationSchema metadata");
     historySwitch->setChecked(false);
     smartSelection->setChecked(false);
     retention->setValue(30);
     require(!bindings.switchValue(settings::SettingsSwitchBinding::HistoryEnabled) &&
                 !bindings.switchValue(settings::SettingsSwitchBinding::SmartSelection) &&
-                bindings.integerValue(
-                    settings::SettingsIntegerBinding::HistoryRetentionDays) == 30,
+                bindings.integerValue(settings::SettingsIntegerBinding::HistoryRetentionDays) == 30,
             "generated switch and integer controls must submit changes through runtime bindings");
 
     auto* historyHeader = storagePage.findChild<SectionHeaderWidget*>(
         QStringLiteral("settings-section-storage-and-privacy-history"));
     auto* statusHeader = storagePage.findChild<SectionHeaderWidget*>(
         QStringLiteral("settings-section-storage-and-privacy-storage-status"));
-    require(historyHeader != nullptr && statusHeader != nullptr &&
-                historyHeader->layout()->contentsMargins().top() ==
-                    historyHeader->layout()->contentsMargins().bottom() &&
-                statusHeader->layout()->contentsMargins().top() ==
-                    statusHeader->layout()->contentsMargins().bottom() &&
-                historyHeader->findChild<adqt::widgets::AdButton*>(
-                    QStringLiteral("sectionResetButton"))
-                    ->isVisible() &&
-                statusHeader->findChild<adqt::widgets::AdButton*>(
-                    QStringLiteral("sectionResetButton"))
-                    ->isHidden(),
-            "section headers must use equal vertical spacing and catalog reset visibility");
+    require(
+        historyHeader != nullptr && statusHeader != nullptr &&
+            historyHeader->layout()->contentsMargins().top() ==
+                historyHeader->layout()->contentsMargins().bottom() &&
+            statusHeader->layout()->contentsMargins().top() ==
+                statusHeader->layout()->contentsMargins().bottom() &&
+            historyHeader->findChild<adqt::widgets::AdButton*>(QStringLiteral("sectionResetButton"))
+                ->isVisible() &&
+            statusHeader->findChild<adqt::widgets::AdButton*>(QStringLiteral("sectionResetButton"))
+                ->isHidden(),
+        "section headers must use equal vertical spacing and catalog reset visibility");
     const int switchApplyCountBeforeHistoryReset = bindings.switchApplyCount;
     require(QMetaObject::invokeMethod(historyHeader, "resetRequested", Qt::DirectConnection) &&
                 bindings.resetRequested == settings::SettingsSectionReset::HistoryPolicy &&
@@ -1037,11 +1053,11 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
 
     bindings.setStorageState(false, true);
     flushEvents();
-    auto* historyReset = historyHeader->findChild<adqt::widgets::AdButton*>(
-        QStringLiteral("sectionResetButton"));
-    require(!historySwitch->isEnabled() && !retention->isEnabled() &&
-                !entries->isEnabled() && !disk->isEnabled() && clear->busy() &&
-                !clear->isEnabled() && historyReset != nullptr && !historyReset->isEnabled(),
+    auto* historyReset =
+        historyHeader->findChild<adqt::widgets::AdButton*>(QStringLiteral("sectionResetButton"));
+    require(!historySwitch->isEnabled() && !retention->isEnabled() && !entries->isEnabled() &&
+                !disk->isEnabled() && clear->busy() && !clear->isEnabled() &&
+                historyReset != nullptr && !historyReset->isEnabled(),
             "read-only and busy binding state must resynchronize generated history controls");
     bindings.setStorageState(true, false);
     flushEvents();
@@ -1052,10 +1068,10 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                              ? status->findChild<adqt::widgets::AdDescriptions*>(
                                    QStringLiteral("settings-storage-status-descriptions"))
                              : nullptr;
-    auto* entryCount = storagePage.findChild<QLabel*>(
-        QStringLiteral("settings-status-value-entries"));
-    auto* diskUsage = storagePage.findChild<QLabel*>(
-        QStringLiteral("settings-status-value-disk-usage"));
+    auto* entryCount =
+        storagePage.findChild<QLabel*>(QStringLiteral("settings-status-value-entries"));
+    auto* diskUsage =
+        storagePage.findChild<QLabel*>(QStringLiteral("settings-status-value-disk-usage"));
     QLabel* entriesLabel = nullptr;
     if (descriptions != nullptr) {
         const auto labels = descriptions->findChildren<QLabel*>();
@@ -1067,10 +1083,9 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
             }
         }
     }
-    const int descriptionFontSize =
-        snow_shot::presentation::styles::ThemeManager::instance()
-            .themeColorScheme()
-            .metricAlias.fontSize;
+    const int descriptionFontSize = snow_shot::presentation::styles::ThemeManager::instance()
+                                        .themeColorScheme()
+                                        .metricAlias.fontSize;
     require(status != nullptr && descriptions != nullptr && descriptions->column() == 1 &&
                 descriptions->count() == 5 && entryCount != nullptr &&
                 entryCount->text() == QStringLiteral("2") && diskUsage != nullptr &&
@@ -1090,10 +1105,10 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
     require(bindings.actionTriggered,
             "confirmed action rows must invoke their runtime action binding");
 
-    auto* screenshot = quick.findChild<ShortcutKeyRow*>(
-        QStringLiteral("settings-item-quick-screenshot"));
-    auto* screenshotDelay = quick.findChild<ShortcutKeyRow*>(
-        QStringLiteral("settings-item-quick-screenshot-delay"));
+    auto* screenshot =
+        quick.findChild<ShortcutKeyRow*>(QStringLiteral("settings-item-quick-screenshot"));
+    auto* screenshotDelay =
+        quick.findChild<ShortcutKeyRow*>(QStringLiteral("settings-item-quick-screenshot-delay"));
     bool delayTitleIsRendered = false;
     if (screenshotDelay != nullptr) {
         for (const QLabel* label : screenshotDelay->findChildren<QLabel*>()) {
@@ -1114,8 +1129,8 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
         QPoint(0, 120), Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
     QCoreApplication::sendEvent(screenshotDelay, &increaseDelay);
     require(screenshotDelay->delaySeconds() == 4 &&
-                bindings.integerValue(
-                    settings::SettingsIntegerBinding::ScreenshotDelaySeconds) == 4,
+                bindings.integerValue(settings::SettingsIntegerBinding::ScreenshotDelaySeconds) ==
+                    4,
             "delay-row wheel adjustments must persist through runtime bindings");
     settings::SettingsCommand command;
     bool commandEmitted = false;
@@ -1125,18 +1140,15 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                          commandEmitted = true;
                      });
     screenshot->click();
-    require(commandEmitted &&
-                command.kind == settings::SettingsCommandKind::CaptureScreenshot,
+    require(commandEmitted && command.kind == settings::SettingsCommandKind::CaptureScreenshot,
             "shortcut row clicks must emit their configured command");
 
     PageTranslator translator;
-    require(QCoreApplication::installTranslator(&translator),
-            "page translator must install");
+    require(QCoreApplication::installTranslator(&translator), "page translator must install");
     QEvent languageChange(QEvent::LanguageChange);
     QCoreApplication::sendEvent(&interfacePage, &languageChange);
     require(theme->accessibleName() == QStringLiteral("Localized Theme") &&
-                theme->options().constFirst().label ==
-                    QStringLiteral("Localized System Theme"),
+                theme->options().constFirst().label == QStringLiteral("Localized System Theme"),
             "generated controls and options must retranslate catalog metadata");
     QCoreApplication::removeTranslator(&translator);
     QCoreApplication::sendEvent(&interfacePage, &languageChange);
@@ -1179,8 +1191,7 @@ void quickActionCommandsDispatchThroughContentCard() {
         {QStringLiteral("quick-open-capture-history"), Action::OpenCaptureHistory},
     };
     for (const auto& [objectId, action] : genericActions) {
-        auto* row = content.findChild<ShortcutKeyRow*>(
-            QStringLiteral("settings-item-") + objectId);
+        auto* row = content.findChild<ShortcutKeyRow*>(QStringLiteral("settings-item-") + objectId);
         require(row != nullptr, "every generic quick action must render a shortcut row");
         row->click();
         require(!requestedActions.isEmpty() && requestedActions.constLast() == action,
@@ -1189,22 +1200,22 @@ void quickActionCommandsDispatchThroughContentCard() {
     require(requestedActions.size() == genericActions.size() && screenshotRequests == 0,
             "generic quick actions must use only the typed quick-action signal");
 
-    auto* screenshot = content.findChild<ShortcutKeyRow*>(
-        QStringLiteral("settings-item-quick-screenshot"));
+    auto* screenshot =
+        content.findChild<ShortcutKeyRow*>(QStringLiteral("settings-item-quick-screenshot"));
     require(screenshot != nullptr, "the standard screenshot action must render");
     screenshot->click();
     require(screenshotRequests == 1 && requestedActions.size() == genericActions.size(),
             "the standard screenshot command must preserve its dedicated signal");
 
-    auto* openSettings = content.findChild<ShortcutKeyRow*>(
-        QStringLiteral("settings-item-quick-open-interface-settings"));
-    require(openSettings != nullptr, "Open Interface Settings must render");
-    openSettings->click();
+    require(content.findChild<ShortcutKeyRow*>(
+                QStringLiteral("settings-item-quick-open-interface-settings")) == nullptr,
+            "Open Interface Settings must not render in Quick Functions");
+    content.showInterfaceSettings();
     require(content.currentLocation() ==
-                settings::SettingsLocation{QStringLiteral("interface-settings"),
-                                           QStringLiteral("general"), {}} &&
+                    settings::SettingsLocation{
+                        QStringLiteral("interface-settings"), QStringLiteral("general"), {}} &&
                 requestedActions.size() == genericActions.size() && screenshotRequests == 1,
-            "navigation shortcut commands must navigate without emitting execution signals");
+            "the external settings action must navigate without emitting execution signals");
 }
 
 void actionsMayExecuteWithoutConfirmation() {
@@ -1213,27 +1224,33 @@ void actionsMayExecuteWithoutConfirmation() {
     action.buttonText = text("Run action");
     action.iconFactory = []() { return adqt::icons::antd::outlined::Rest(); };
     const settings::SettingsCatalog catalog(
-        {{QStringLiteral("actions"), QStringLiteral("/actions"), text("Actions"),
+        {{QStringLiteral("actions"),
+          QStringLiteral("/actions"),
+          text("Actions"),
           text("Actions page"),
-          {{QStringLiteral("commands"), text("Commands"), text("Action commands"),
+          {{QStringLiteral("commands"),
+            text("Commands"),
+            text("Action commands"),
             settings::SettingsSectionReset::None,
-            {{QStringLiteral("action.direct"), text("Direct action"),
-              text("Execute immediately"), {}, {}, action}}}}}},
+            {{QStringLiteral("action.direct"),
+              text("Direct action"),
+              text("Execute immediately"),
+              {},
+              {},
+              action}}}}}},
         {settings::SettingsNavigationPageDefinition{
             QStringLiteral("nav.actions"), QStringLiteral("actions"),
             []() { return adqt::icons::antd::outlined::Appstore(); }}},
-        {QStringLiteral("actions"), QStringLiteral("commands"),
-         QStringLiteral("action.direct")});
+        {QStringLiteral("actions"), QStringLiteral("commands"), QStringLiteral("action.direct")});
     require(catalog.validationErrors().isEmpty(),
             "an action without confirmation metadata must be valid");
 
     SettingsPageWidget page(catalog, QStringLiteral("actions"), bindings);
-    auto* button = page.findChild<adqt::widgets::AdButton*>(
-        QStringLiteral("settings-control-action-direct"));
+    auto* button =
+        page.findChild<adqt::widgets::AdButton*>(QStringLiteral("settings-control-action-direct"));
     require(button != nullptr, "an action without confirmation must render");
     button->click();
-    require(bindings.actionTriggered &&
-                page.findChild<adqt::widgets::AdModal*>() == nullptr,
+    require(bindings.actionTriggered && page.findChild<adqt::widgets::AdModal*>() == nullptr,
             "an action without confirmation must execute directly");
 }
 
@@ -1255,9 +1272,9 @@ void catalogExpansionUpdatesAllConsumers() {
 
     auto* stack = content.findChild<QStackedWidget*>();
     auto* menu = sidebar.findChild<adqt::widgets::AdNavigationMenu*>();
-    auto* search = header.findChild<ApplicationSearchWidget*>(
-        QStringLiteral("globalTopSearchBar"));
-    auto* searchSelect = search != nullptr ? search->findChild<adqt::widgets::AdSelect*>() : nullptr;
+    auto* search = header.findChild<ApplicationSearchWidget*>(QStringLiteral("globalTopSearchBar"));
+    auto* searchSelect =
+        search != nullptr ? search->findChild<adqt::widgets::AdSelect*>() : nullptr;
     require(stack != nullptr && stack->count() == 7,
             "route stack must add catalog pages automatically");
     require(content.findChild<ScreenshotHistoryPageWidget*>(
@@ -1282,8 +1299,8 @@ void catalogExpansionUpdatesAllConsumers() {
     auto* tabs = header.findChild<adqt::widgets::AdTabs*>(QStringLiteral("mainSectionTabs"));
     require(content.currentRoute() == QStringLiteral("/extra") &&
                 content.currentLocation() ==
-                    settings::SettingsLocation{QStringLiteral("extra-page"),
-                                               QStringLiteral("extra-section"), {}} &&
+                    settings::SettingsLocation{
+                        QStringLiteral("extra-page"), QStringLiteral("extra-section"), {}} &&
                 content.findChild<SettingsPageWidget*>(
                     QStringLiteral("settings-page-extra-page")) != nullptr &&
                 content.findChild<adqt::widgets::AdSelect*>(
@@ -1361,53 +1378,94 @@ void sectionTabsAndScrollingStaySynchronized() {
 void drawingToolbarEditorPersistsDropsAndRestoresRejectedChanges() {
     FakeRuntimeBindings runtime;
     DrawingToolbarEditorSettingsWidget editor(runtime);
-    editor.resize(960, 240);
+    editor.resize(960, 320);
     editor.show();
     flushEvents();
 
-    QWidget* hiddenZone = editor.findChild<QWidget*>(
-        QStringLiteral("settings-drawing-toolbar-hidden-zone"));
-    QWidget* visibleZone = editor.findChild<QWidget*>(
-        QStringLiteral("settings-drawing-toolbar-visible-zone"));
-    require(hiddenZone != nullptr && visibleZone != nullptr,
-            "drawing toolbar editor should expose visible and hidden drop zones");
+    QWidget* surface =
+        editor.findChild<QWidget*>(QStringLiteral("settings-drawing-toolbar-surface"));
+    QWidget* hiddenZone =
+        editor.findChild<QWidget*>(QStringLiteral("settings-drawing-toolbar-hidden-zone"));
+    auto* hiddenTitle =
+        editor.findChild<QLabel*>(QStringLiteral("settings-drawing-toolbar-hidden-title"));
+    const auto drawingButtons = editor.findChildren<adqt::widgets::AdButton*>(
+        QRegularExpression(QStringLiteral("^settings-drawing-toolbar-item-")));
+    const auto metric =
+        snow_shot::presentation::styles::ThemeManager::instance().themeColorScheme().metricAlias;
+    require(surface != nullptr && hiddenZone != nullptr && hiddenTitle != nullptr &&
+                hiddenTitle->font().pixelSize() == metric.fontSizeLG &&
+                hiddenTitle->font().weight() == QFont::DemiBold && drawingButtons.size() == 11 &&
+                editor.findChild<adqt::widgets::AdButton*>(
+                    QStringLiteral("settings-drawing-toolbar-item-highlighter")) != nullptr &&
+                editor.findChild<adqt::widgets::AdButton*>(
+                    QStringLiteral("settings-drawing-toolbar-item-pen-highlight")) == nullptr &&
+                editor.findChild<adqt::widgets::AdButton*>(
+                    QStringLiteral("settings-drawing-toolbar-item-rectangle-highlight")) == nullptr &&
+                editor.findChildren<adqt::widgets::AdPopover*>().isEmpty(),
+            "drawing toolbar settings should use themed hidden-title typography and expose one "
+            "generic Highlighter Tool among eleven direct tools");
 
-    const auto drop = [](QWidget* zone, const QString& itemId, const QPointF& position) {
+    const auto drop = [](QWidget* target, const QString& itemId, const QPointF& position) {
         QMimeData mimeData;
         mimeData.setData("application/x-snow-shot-toolbar-item", itemId.toUtf8());
         QDragEnterEvent enter(position.toPoint(), Qt::MoveAction, &mimeData, Qt::LeftButton,
                               Qt::NoModifier);
-        QApplication::sendEvent(zone, &enter);
+        QApplication::sendEvent(target, &enter);
         QDropEvent event(position, Qt::MoveAction, &mimeData, Qt::LeftButton, Qt::NoModifier);
-        QApplication::sendEvent(zone, &event);
+        QApplication::sendEvent(target, &event);
+        flushEvents();
         return event.isAccepted();
     };
 
-    require(drop(hiddenZone, QStringLiteral("shape"), QPointF(8, 20)) &&
-                runtime.toolbarLayout().hidden.contains(QStringLiteral("shape")),
-            "dropping a visible tool into the hidden zone should persist it");
-    require(drop(visibleZone, QStringLiteral("shape"), QPointF(1, 20)) &&
-                !runtime.toolbarLayout().hidden.contains(QStringLiteral("shape")) &&
-                runtime.toolbarLayout().order.constFirst() == QStringLiteral("shape"),
-            "dropping a hidden tool at the visible start should show and reorder it");
+    QWidget* shapePosition =
+        editor.findChild<QWidget*>(QStringLiteral("settings-drawing-toolbar-position-0"));
+    require(shapePosition != nullptr,
+            "drawing toolbar editor should expose stable position widgets");
+    const QPoint stackAboveShape =
+        shapePosition->mapTo(surface, QPoint(shapePosition->width() / 2, 0));
+    require(drop(surface, QStringLiteral("watermark"), stackAboveShape) &&
+                runtime.toolbarLayout().positions.constFirst() ==
+                    QStringList{QStringLiteral("watermark"), QStringLiteral("shape")},
+            "dropping any drawing tool above another should stack it in that position");
+
+    shapePosition =
+        editor.findChild<QWidget*>(QStringLiteral("settings-drawing-toolbar-position-0"));
+    require(shapePosition != nullptr && shapePosition->height() > 32,
+            "stacked drawing tools should render as vertical direct buttons");
+    const QPoint unstackAtEnd(surface->width() - 2, surface->height() - 20);
+    require(drop(surface, QStringLiteral("watermark"), unstackAtEnd) &&
+                runtime.toolbarLayout().positions.constFirst() ==
+                    QStringList{QStringLiteral("shape")} &&
+                runtime.toolbarLayout().positions.constLast() ==
+                    QStringList{QStringLiteral("watermark")},
+            "dropping a stacked tool beside the toolbar should unstack it into a position");
+
+    require(drop(hiddenZone, QStringLiteral("watermark"), hiddenZone->rect().center()) &&
+                runtime.toolbarLayout().hidden ==
+                    QStringList{QStringLiteral("watermark")} &&
+                std::none_of(runtime.toolbarLayout().positions.cbegin(),
+                             runtime.toolbarLayout().positions.cend(),
+                             [](const QStringList& position) {
+                                 return position.contains(QStringLiteral("watermark"));
+                             }),
+            "dropping a visible tool into the hidden well should remove its toolbar position");
+    auto* hiddenWatermark = editor.findChild<adqt::widgets::AdButton*>(
+        QStringLiteral("settings-drawing-toolbar-item-watermark"));
+    require(hiddenWatermark != nullptr && hiddenWatermark->parentWidget() == hiddenZone &&
+                hiddenWatermark->isVisibleTo(&editor),
+            "hidden tools should remain directly visible and draggable in settings");
+
+    require(drop(surface, QStringLiteral("watermark"), unstackAtEnd) &&
+                runtime.toolbarLayout().hidden.isEmpty() &&
+                runtime.toolbarLayout().positions.constLast() ==
+                    QStringList{QStringLiteral("watermark")},
+            "dragging a hidden tool back to the preview should restore its toolbar position");
 
     const snow_shot::storage::ScreenshotToolbarLayout accepted = runtime.toolbarLayout();
     runtime.acceptWrites = false;
-    require(drop(hiddenZone, QStringLiteral("shape"), QPointF(8, 20)) &&
-                runtime.toolbarLayout() == accepted,
+    require(drop(hiddenZone, QStringLiteral("watermark"), hiddenZone->rect().center()) &&
+                runtime.toolbarLayout() == accepted && hiddenWatermark->parentWidget() != hiddenZone,
             "rejected toolbar persistence should leave the prior layout intact");
-
-    auto* arrowLine = editor.findChild<QWidget*>(
-        QStringLiteral("settings-drawing-toolbar-item-arrow-line"));
-    auto* popover = arrowLine != nullptr
-                        ? arrowLine->findChild<adqt::widgets::AdPopover*>(
-                              QStringLiteral("settings-drawing-toolbar-popover-arrow-line"))
-                        : nullptr;
-    require(popover != nullptr &&
-                popover->placement() == adqt::widgets::AdPopover::Placement::Top &&
-                popover->popupLayerMode() ==
-                    adqt::widgets::AdPopover::PopupLayerMode::QtTool,
-            "collapsed toolbar groups should open above the editor in a tool popup");
 }
 } // namespace
 

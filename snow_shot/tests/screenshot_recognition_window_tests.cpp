@@ -7,6 +7,7 @@
 #include "theme/theme_manager.h"
 #include "widgets/input_text_edit.h"
 #include "widgets/scroll_area.h"
+#include "widgets/spin.h"
 
 #include <QApplication>
 #include <QClipboard>
@@ -14,6 +15,7 @@
 #include <QFrame>
 #include <QFocusEvent>
 #include <QGuiApplication>
+#include <QGraphicsItem>
 #include <QGraphicsView>
 #include <QImage>
 #include <QKeyEvent>
@@ -397,6 +399,19 @@ void recognitionWindowUsesOrdinaryQtWindowBehavior() {
                 editableDocument.defaultFont().pixelSize() == themeFontSize,
             "the OCR text editor should use the theme standard font size");
 
+    window.showTextEditor(&editableDocument, true, true);
+    QApplication::processEvents();
+    auto* translationSpin = window.findChild<adqt::widgets::AdSpin*>(
+        QStringLiteral("screenshotOcrTranslationSpin"));
+    require(textEditor->isReadOnly() && translationSpin != nullptr &&
+                translationSpin->isVisible() && translationSpin->spinning(),
+            "streaming translation should make the editor read-only and show its spinner");
+    window.setTextEditorStreaming(false);
+    QApplication::processEvents();
+    require(!textEditor->isReadOnly() && !translationSpin->isVisible() &&
+                !translationSpin->spinning(),
+            "translation completion should restore editing and hide the spinner");
+
     textEditedCalls = 0;
     textEditedCalls = 0;
     window.hideTextEditor();
@@ -589,6 +604,75 @@ void recognitionWindowUsesOrdinaryQtWindowBehavior() {
     window.hide();
     QApplication::processEvents();
 }
+
+void shortRecognitionWindowPreservesExactSelectionGeometryAcrossModes() {
+    QScreen* screen = QGuiApplication::primaryScreen();
+    require(screen != nullptr, "a primary screen is required");
+
+    constexpr int selectionWidth = 260;
+    constexpr int selectionHeight = 24;
+    const QRect selectionGeometry(screen->geometry().topLeft() + QPoint(40, 40),
+                                  QSize(selectionWidth, selectionHeight));
+    const QRectF canvasSelection(QPointF(), QSizeF(selectionWidth, selectionHeight));
+
+    QWidget overlayHost;
+    overlayHost.setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
+    overlayHost.setGeometry(screen->geometry());
+    overlayHost.show();
+
+    ScreenshotRecognitionWindow window(ScreenshotRecognitionWindowActions{});
+    require(window.present(ScreenshotRecognitionWindow::Config{
+                screen,
+                &overlayHost,
+                selectionGeometry,
+                canvasSelection,
+            }),
+            "a short recognition selection should be presentable");
+
+    auto presentation = std::make_shared<ScreenshotOcrPresentation>();
+    presentation->selection = canvasSelection.toAlignedRect();
+    presentation->filledImage =
+        QImage(presentation->selection.size(), QImage::Format_RGBA8888);
+    presentation->filledImage.fill(Qt::white);
+    ScreenshotOcrLine line;
+    line.text = QStringLiteral("Short OCR");
+    line.foreground = Qt::black;
+    line.quad = QPolygonF({
+        QPointF(70.0, 4.0),
+        QPointF(190.0, 4.0),
+        QPointF(190.0, 20.0),
+        QPointF(70.0, 20.0),
+    });
+    presentation->lines.push_back(line);
+    presentation->prepareForRendering();
+    window.setOcrPresentation(presentation);
+    QApplication::processEvents();
+
+    auto* textLayer =
+        window.findChild<QGraphicsView*>(QStringLiteral("snowShotOcrTextLayer"));
+    require(window.geometry() == selectionGeometry && textLayer != nullptr &&
+                textLayer->geometry() == window.rect(),
+            "OCR display mode must not enlarge a short screenshot selection");
+    const QList<QGraphicsItem*> textItems = textLayer->scene()->items();
+    require(textItems.size() == 1 &&
+                std::abs(textItems.constFirst()->sceneBoundingRect().center().y() -
+                         selectionHeight / 2.0) < 0.5,
+            "OCR text must retain its canvas vertical position in a short selection");
+
+    QTextDocument document;
+    document.setPlainText(QStringLiteral("Editable short OCR text"));
+    window.showTextEditor(&document);
+    QApplication::processEvents();
+
+    auto* editorContainer =
+        window.findChild<QWidget*>(QStringLiteral("screenshotOcrEditorContainer"));
+    auto* editor = window.findChild<QTextEdit*>(QStringLiteral("screenshotOcrEditor"));
+    require(window.geometry() == selectionGeometry && editorContainer != nullptr &&
+                editorContainer->geometry() == window.rect() && editor != nullptr &&
+                editor->geometry() == editorContainer->rect(),
+            "edit mode must remain exactly within a short screenshot selection");
+    window.hideTextEditor();
+}
 void qrContentsUseStrictRichTextLinksAndPreserveOrder() {
     QScreen* screen = QGuiApplication::primaryScreen();
     require(screen != nullptr, "a primary screen is required");
@@ -673,6 +757,7 @@ int main(int argc, char** argv) {
     embeddedRecognitionWindowPreservesParentSurfaceWithVisibleTextLayer();
     recognitionWindowCanExtendBeyondItsDpiScreen();
     recognitionWindowUsesOrdinaryQtWindowBehavior();
+    shortRecognitionWindowPreservesExactSelectionGeometryAcrossModes();
     qrContentsUseStrictRichTextLinksAndPreserveOrder();
     return 0;
 }

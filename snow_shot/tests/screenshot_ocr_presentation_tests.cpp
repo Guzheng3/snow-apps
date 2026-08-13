@@ -292,6 +292,31 @@ void textEditingHistoryIgnoresEditorLayoutFormatting() {
             "redo should restore the text edit and reverse command availability");
 }
 
+void translationHistoryEstablishesSuccessfulAndPartialBaselines() {
+    ScreenshotOcrTextEditingSession session(QString{});
+    session.replaceTextWithoutHistory(QStringLiteral("streamed translation"));
+    require(session.text() == QStringLiteral("streamed translation") && !session.canUndo() &&
+                !session.canRedo(),
+            "streaming updates should not create one undo entry per chunk");
+
+    session.establishBaseline(QStringLiteral("streamed translation"));
+    require(session.originalText() == QStringLiteral("streamed translation") &&
+                !session.canUndo() && !session.canRedo(),
+            "a completed translation should become the independent reset baseline");
+    require(session.replaceText(QStringLiteral("edited translation")) && session.canUndo(),
+            "a completed translation should become editable with its own history");
+    require(session.reset() && session.text() == QStringLiteral("streamed translation"),
+            "translation Reset should restore the exact successful result");
+
+    session.replaceTextWithoutHistory(QStringLiteral("partial retry"));
+    session.establishHistory(QStringLiteral("partial retry"));
+    require(session.text() == QStringLiteral("partial retry") && !session.canUndo() &&
+                session.originalText() == QStringLiteral("streamed translation"),
+            "a failed partial stream should be editable without replacing the last successful baseline");
+    require(session.replaceText(QStringLiteral("partial retry fixed")) && session.canUndo(),
+            "a partial translation should gain independent edit history after streaming stops");
+}
+
 void tableDocumentPreservesSpansAndExportsCoveredCoordinates() {
     const ScreenshotTableDocument document = ScreenshotTableDocument::fromHtml(QStringLiteral(
         "<table><tr><th rowspan=\"2\">Group</th><th colspan=\"2\">Values</th></tr>"
@@ -358,6 +383,7 @@ int main(int argc, char** argv) {
     textEditingHistoryPreservesNativeEditsAndAtomicTransforms();
     textEditingHistoryInvalidatesRedoBranchesAndSurvivesReentry();
     textEditingHistoryIgnoresEditorLayoutFormatting();
+    translationHistoryEstablishesSuccessfulAndPartialBaselines();
     tableDocumentPreservesSpansAndExportsCoveredCoordinates();
     tableDocumentMergeSplitClearAndValidationPolicies();
     return 0;

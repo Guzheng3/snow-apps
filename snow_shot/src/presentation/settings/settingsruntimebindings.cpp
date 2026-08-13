@@ -451,7 +451,7 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
                    accepted;
         return accepted;
     }
-    case SettingsSectionReset::OpenSettingsShortcuts: {
+    case SettingsSectionReset::OtherShortcuts: {
         bool accepted = true;
         const auto resetShortcut = [this, &accepted](GlobalShortcutAction action,
                                                       const QString& key) {
@@ -461,8 +461,6 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
                       QStringLiteral("global_shortcuts/show_or_hide_main_window"));
         resetShortcut(GlobalShortcutAction::OpenCaptureHistory,
                       QStringLiteral("global_shortcuts/open_capture_history"));
-        resetShortcut(GlobalShortcutAction::OpenSettings,
-                      QStringLiteral("global_shortcuts/open_settings"));
         return accepted;
     }
     case SettingsSectionReset::GeneralSettings: {

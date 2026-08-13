@@ -6,12 +6,14 @@
 #include "theme/theme_manager.h"
 #include "widgets/input_text_edit.h"
 #include "widgets/scroll_area.h"
+#include "widgets/spin.h"
 
 #include <QApplication>
 #include <QClipboard>
 #include <QFocusEvent>
 #include <QFrame>
 #include <QKeyEvent>
+#include <QLayout>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QResizeEvent>
@@ -92,6 +94,10 @@ ScreenshotRecognitionWindow::ScreenshotRecognitionWindow(
     setMouseTracking(true);
 
     m_stack->setContentsMargins(0, 0, 0, 0);
+    // This window is an exact overlay for the screenshot selection. Child pages such as
+    // QGraphicsView and AdTextEdit have useful standalone minimum size hints, but those hints
+    // must never enlarge the overlay and desynchronize it from the selected pixels.
+    m_stack->setSizeConstraint(QLayout::SetNoConstraint);
     m_stack->setStackingMode(QStackedLayout::StackOne);
     m_stack->addWidget(m_textLayer);
     m_textLayer->setAttribute(Qt::WA_TransparentForMouseEvents, true);
@@ -246,7 +252,8 @@ void ScreenshotRecognitionWindow::commitActiveTableEdit() {
     }
 }
 
-void ScreenshotRecognitionWindow::showTextEditor(QTextDocument* document) {
+void ScreenshotRecognitionWindow::showTextEditor(QTextDocument* document, bool readOnly,
+                                                 bool streaming) {
     if (document == nullptr) {
         return;
     }
@@ -268,6 +275,11 @@ void ScreenshotRecognitionWindow::showTextEditor(QTextDocument* document) {
         m_textEditor->setAcceptRichText(false);
         m_textEditor->installEventFilter(this);
         editorLayout->addWidget(editor);
+        m_textEditorSpin = new adqt::widgets::AdSpin(m_textEditorContainer);
+        m_textEditorSpin->setObjectName(QStringLiteral("screenshotOcrTranslationSpin"));
+        m_textEditorSpin->setSizeClass(adqt::widgets::AdSpin::SizeClass::Small);
+        m_textEditorSpin->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+        m_textEditorSpin->hide();
         applyTextEditorContainerBackground(m_textEditorContainer);
         connect(&adqt::theme::ThemeManager::instance(), &adqt::theme::ThemeManager::themeChanged,
                 m_textEditorContainer, [container = m_textEditorContainer]() {
@@ -279,6 +291,7 @@ void ScreenshotRecognitionWindow::showTextEditor(QTextDocument* document) {
     }
     const QSignalBlocker blocker(m_textEditor);
     m_textEditor->setDocument(document);
+    m_textEditor->setReadOnly(readOnly);
     const adqt::theme::ThemeMapToken theme =
         adqt::theme::ThemeManager::instance().resolveTheme(m_textEditor);
     QFont editorFont = theme.appFont.family().isEmpty() ? m_textEditor->font() : theme.appFont;
@@ -286,7 +299,24 @@ void ScreenshotRecognitionWindow::showTextEditor(QTextDocument* document) {
     m_textEditor->setFont(editorFont);
     document->setDefaultFont(editorFont);
     m_stack->setCurrentWidget(m_textEditorContainer);
-    static_cast<adqt::widgets::AdTextEdit*>(m_textEditor)->focusEditor();
+    setTextEditorStreaming(streaming);
+    if (!readOnly) {
+        static_cast<adqt::widgets::AdTextEdit*>(m_textEditor)->focusEditor();
+    }
+}
+
+void ScreenshotRecognitionWindow::setTextEditorStreaming(bool streaming) {
+    if (m_textEditor != nullptr) {
+        m_textEditor->setReadOnly(streaming);
+    }
+    if (m_textEditorSpin != nullptr) {
+        m_textEditorSpin->setSpinning(streaming);
+        m_textEditorSpin->setVisible(streaming);
+        if (streaming) {
+            updateTextEditorSpinGeometry();
+            m_textEditorSpin->raise();
+        }
+    }
 }
 
 void ScreenshotRecognitionWindow::hideTextEditor() {
@@ -303,6 +333,7 @@ void ScreenshotRecognitionWindow::hideTextEditor() {
     delete m_textEditorContainer;
     m_textEditorContainer = nullptr;
     m_textEditor = nullptr;
+    m_textEditorSpin = nullptr;
     m_stack->setCurrentWidget(m_textLayer);
 }
 
@@ -469,6 +500,7 @@ void ScreenshotRecognitionWindow::paintEvent(QPaintEvent* event) {
 void ScreenshotRecognitionWindow::resizeEvent(QResizeEvent* event) {
     QWidget::resizeEvent(event);
     synchronizeTextLayer();
+    updateTextEditorSpinGeometry();
 }
 
 bool ScreenshotRecognitionWindow::eventFilter(QObject* watched, QEvent* event) {
@@ -554,4 +586,15 @@ void ScreenshotRecognitionWindow::synchronizeTextLayer() {
     if (m_textLayer != nullptr) {
         m_textLayer->synchronize(canvasToLocalTransform(), rect());
     }
+}
+
+void ScreenshotRecognitionWindow::updateTextEditorSpinGeometry() {
+    if (m_textEditorContainer == nullptr || m_textEditorSpin == nullptr) {
+        return;
+    }
+    const QSize spinSize = m_textEditorSpin->sizeHint().expandedTo(QSize(20, 20));
+    constexpr int margin = 12;
+    m_textEditorSpin->setGeometry(m_textEditorContainer->width() - spinSize.width() - margin,
+                                  m_textEditorContainer->height() - spinSize.height() - margin,
+                                  spinSize.width(), spinSize.height());
 }

@@ -37,7 +37,8 @@ bool insertUnique(QSet<QString>* values, const QString& value) {
 
 class CatalogTranslator final : public QTranslator {
   public:
-    QString translate(const char* context, const char* sourceText, const char*, int) const override {
+    QString translate(const char* context, const char* sourceText, const char*,
+                      int) const override {
         if (QString::fromLatin1(context) != QStringLiteral("SettingsCatalog")) {
             return {};
         }
@@ -68,22 +69,19 @@ void builtInCatalogIsCompleteAndValid() {
         require(!page.id.isEmpty() && !page.route.isEmpty() && page.title.isValid() &&
                     page.description.isValid(),
                 "page metadata must be complete");
-        require(insertUnique(
-                    &objectNames,
-                    settings::generatedObjectName(QStringLiteral("settings-page"), page.id)),
+        require(insertUnique(&objectNames, settings::generatedObjectName(
+                                               QStringLiteral("settings-page"), page.id)),
                 "generated page object names must be unique");
         for (const auto& section : page.sections) {
             itemCount += section.items.size();
-            require(insertUnique(&objectNames,
-                                 settings::generatedObjectName(
-                                     QStringLiteral("settings-section"),
-                                     QStringLiteral("%1-%2").arg(page.id, section.id))),
-                    "generated section object names must be unique");
+            require(
+                insertUnique(&objectNames, settings::generatedObjectName(
+                                               QStringLiteral("settings-section"),
+                                               QStringLiteral("%1-%2").arg(page.id, section.id))),
+                "generated section object names must be unique");
             for (const auto& item : section.items) {
-                require(insertUnique(
-                            &objectNames,
-                            settings::generatedObjectName(QStringLiteral("settings-item"),
-                                                          item.id)),
+                require(insertUnique(&objectNames, settings::generatedObjectName(
+                                                       QStringLiteral("settings-item"), item.id)),
                         "generated item object names must be unique");
                 if (!item.configurationKey.isEmpty()) {
                     require(storage::ConfigurationSchema::entry(item.configurationKey) != nullptr,
@@ -92,14 +90,15 @@ void builtInCatalogIsCompleteAndValid() {
             }
         }
     }
-    require(sectionCount == 13 && itemCount == 36,
-            "catalog must contain the expected thirteen sections and thirty-six items");
+    require(sectionCount == 13 && itemCount == 35,
+            "catalog must contain the expected thirteen sections and thirty-five items");
     const auto* functionPage = catalog.page(QStringLiteral("function-settings"));
-    const auto* smartSelection = catalog.item(
-        {QStringLiteral("function-settings"), QStringLiteral("screenshot-settings"),
-         QStringLiteral("screenshot.smart-selection")});
-    require(functionPage != nullptr && functionPage->route ==
-                QStringLiteral("/settings/functionSettings") && smartSelection != nullptr &&
+    const auto* smartSelection =
+        catalog.item({QStringLiteral("function-settings"), QStringLiteral("screenshot-settings"),
+                      QStringLiteral("screenshot.smart-selection")});
+    require(functionPage != nullptr &&
+                functionPage->route == QStringLiteral("/settings/functionSettings") &&
+                smartSelection != nullptr &&
                 smartSelection->configurationKey ==
                     QStringLiteral("screenshot_selection/smart_selection") &&
                 std::get<settings::SettingsSwitchDefinition>(smartSelection->payload).binding ==
@@ -124,18 +123,30 @@ void builtInCatalogIsCompleteAndValid() {
                 interfacePage->sections.at(3).id == QStringLiteral("pin-to-screen") &&
                 interfacePage->sections.at(4).id == QStringLiteral("tray"),
             "Interface Settings must expose Screenshot, Toolbar, Pin to Screen, and Tray");
-    const auto* toolbarSize = catalog.item(
-        {QStringLiteral("interface-settings"), QStringLiteral("interface-screenshot"),
-         QStringLiteral("interface.screenshot.toolbar-size")});
-    const auto* toolbarEditor = catalog.item(
-        {QStringLiteral("interface-settings"), QStringLiteral("toolbar"),
-         QStringLiteral("interface.toolbar.drawing-toolbar-editor")});
-    const auto* trayIcon = catalog.item(
-        {QStringLiteral("interface-settings"), QStringLiteral("tray"),
-         QStringLiteral("interface.tray.icon")});
+    const auto* toolbarSize =
+        catalog.item({QStringLiteral("interface-settings"), QStringLiteral("interface-screenshot"),
+                      QStringLiteral("interface.screenshot.toolbar-size")});
+    const auto* toolbarEditor =
+        catalog.item({QStringLiteral("interface-settings"), QStringLiteral("toolbar"),
+                      QStringLiteral("interface.toolbar.drawing-toolbar-editor")});
+    const auto& toolbarSection = interfacePage->sections.at(2);
+    const auto* trayIcon =
+        catalog.item({QStringLiteral("interface-settings"), QStringLiteral("tray"),
+                      QStringLiteral("interface.tray.icon")});
     require(toolbarSize != nullptr && toolbarEditor != nullptr && trayIcon != nullptr &&
                 toolbarSize->configurationKey == QStringLiteral("screenshot_ui/toolbar_size") &&
                 toolbarEditor->configurationKey == QStringLiteral("screenshot_toolbar/layout") &&
+                toolbarSection.title.translated() == QStringLiteral("Drawing toolbar") &&
+                toolbarSection.searchDescription.translated() ==
+                    QStringLiteral("Position and stack drawing tools on the screenshot toolbar") &&
+                toolbarEditor->title.translated() == QStringLiteral("Drawing toolbar settings") &&
+                toolbarEditor->description.translated() ==
+                    QStringLiteral("Drag drawing tools to reorder them or stack them in the same "
+                                   "toolbar position.") &&
+                toolbarEditor->aliases.size() == 2 &&
+                toolbarEditor->aliases.at(0).translated() == QStringLiteral("Tool positions") &&
+                toolbarEditor->aliases.at(1).translated() ==
+                    QStringLiteral("Stack drawing tools") &&
                 trayIcon->configurationKey == QStringLiteral("tray/icon") &&
                 std::get<settings::SettingsRadioDefinition>(trayIcon->payload).options.size() == 6,
             "new Interface Settings controls must retain their schema contracts");
@@ -144,7 +155,8 @@ void builtInCatalogIsCompleteAndValid() {
         storage::ConfigurationSchema::entry(QStringLiteral("capture_history/retention_days"));
     const auto* shortcuts =
         storage::ConfigurationSchema::entry(QStringLiteral("global_shortcuts/screenshot"));
-    require(retention != nullptr && retention->valueKind == storage::ConfigurationValueKind::Integer &&
+    require(retention != nullptr &&
+                retention->valueKind == storage::ConfigurationValueKind::Integer &&
                 retention->integerRange.has_value() && retention->integerRange->minimum == 1 &&
                 retention->integerRange->maximum == 365,
             "integer schema metadata must expose renderer constraints");
@@ -195,16 +207,14 @@ void quickFunctionShortcutsHaveStableContracts() {
         {Action::OpenCaptureHistory, "other", "quick.open-capture-history",
          "global_shortcuts/open_capture_history",
          settings::SettingsCommandKind::ExecuteQuickAction},
-        {Action::OpenSettings, "other", "quick.open-interface-settings",
-         "global_shortcuts/open_settings", settings::SettingsCommandKind::Navigate},
     };
 
     const settings::SettingsCatalog& catalog = settings::builtInSettingsCatalog();
     QSet<Action> actions;
     for (const ShortcutExpectation& expectation : expectations) {
-        const settings::SettingsLocation location{
-            QStringLiteral("quick-functions"), QString::fromLatin1(expectation.sectionId),
-            QString::fromLatin1(expectation.itemId)};
+        const settings::SettingsLocation location{QStringLiteral("quick-functions"),
+                                                  QString::fromLatin1(expectation.sectionId),
+                                                  QString::fromLatin1(expectation.itemId)};
         const auto* item = catalog.item(location);
         require(item != nullptr, "every quick-function shortcut item must exist");
         require(item->configurationKey == QString::fromLatin1(expectation.configurationKey),
@@ -231,31 +241,26 @@ void quickFunctionShortcutsHaveStableContracts() {
         }
     }
 
-    require(actions.size() == expectations.size() && expectations.size() == 12,
-            "the quick-functions catalog must expose all twelve shortcut actions exactly once");
-    const auto openSettings = catalog.commandForShortcut(Action::OpenSettings);
-    require(openSettings.has_value() &&
-                openSettings->location ==
-                    settings::SettingsLocation{QStringLiteral("interface-settings"),
-                                               QStringLiteral("general"), {}},
-            "Open Settings must retain its structured Interface Settings destination");
+    require(actions.size() == expectations.size() && expectations.size() == 11,
+            "the quick-functions catalog must expose all eleven shortcut actions exactly once");
+    require(!catalog.commandForShortcut(Action::OpenSettings).has_value(),
+            "Open Interface Settings must not appear in Quick Functions");
 
     const auto* delaySchema =
         storage::ConfigurationSchema::entry(QStringLiteral("screenshot/delay_seconds"));
     require(delaySchema != nullptr &&
                 delaySchema->valueKind == storage::ConfigurationValueKind::Integer &&
                 delaySchema->defaultValue.toInt() == 3 && delaySchema->integerRange.has_value() &&
-                delaySchema->integerRange->minimum == 1 &&
-                delaySchema->integerRange->maximum == 10,
+                delaySchema->integerRange->minimum == 1 && delaySchema->integerRange->maximum == 10,
             "delayed screenshots must use the persisted 3-second default and 1-10 second range");
 
-    const auto* ocrItem = catalog.item({QStringLiteral("quick-functions"),
-                                        QStringLiteral("screenshot"),
-                                        QStringLiteral("quick.screenshot-ocr")});
-    const auto* ocrShortcut = ocrItem != nullptr
-                                  ? std::get_if<settings::SettingsShortcutActionDefinition>(
-                                        &ocrItem->payload)
-                                  : nullptr;
+    const auto* ocrItem =
+        catalog.item({QStringLiteral("quick-functions"), QStringLiteral("screenshot"),
+                      QStringLiteral("quick.screenshot-ocr")});
+    const auto* ocrShortcut =
+        ocrItem != nullptr
+            ? std::get_if<settings::SettingsShortcutActionDefinition>(&ocrItem->payload)
+            : nullptr;
     require(ocrShortcut != nullptr && ocrShortcut->iconFactory &&
                 ocrShortcut->iconFactory() ==
                     snow_shot::presentation::icons::custom::outlined::ToolRecognizeText(),
@@ -265,21 +270,22 @@ void quickFunctionShortcutsHaveStableContracts() {
         catalog.section(QStringLiteral("quick-functions"), QStringLiteral("screen-recording"));
     require(recordingSection != nullptr && recordingSection->title.source != nullptr &&
                 QString::fromLatin1(recordingSection->title.source) ==
-                    QStringLiteral("Screen Recording") && recordingSection->items.size() == 2,
+                    QStringLiteral("Screen Recording") &&
+                recordingSection->items.size() == 2,
             "Screen Recording must expose exactly its two quick actions");
 
-    const auto* videoRecord = catalog.item({QStringLiteral("quick-functions"),
-                                            QStringLiteral("screen-recording"),
-                                            QStringLiteral("quick.video-record")});
-    const auto* videoRecordCopy = catalog.item({QStringLiteral("quick-functions"),
-                                                QStringLiteral("screen-recording"),
-                                                QStringLiteral("quick.video-record-copy")});
-    const auto* showOrHide = catalog.item({QStringLiteral("quick-functions"),
-                                           QStringLiteral("other"),
-                                           QStringLiteral("quick.show-or-hide-main-window")});
-    const auto* openHistory = catalog.item({QStringLiteral("quick-functions"),
-                                            QStringLiteral("other"),
-                                            QStringLiteral("quick.open-capture-history")});
+    const auto* videoRecord =
+        catalog.item({QStringLiteral("quick-functions"), QStringLiteral("screen-recording"),
+                      QStringLiteral("quick.video-record")});
+    const auto* videoRecordCopy =
+        catalog.item({QStringLiteral("quick-functions"), QStringLiteral("screen-recording"),
+                      QStringLiteral("quick.video-record-copy")});
+    const auto* showOrHide =
+        catalog.item({QStringLiteral("quick-functions"), QStringLiteral("other"),
+                      QStringLiteral("quick.show-or-hide-main-window")});
+    const auto* openHistory =
+        catalog.item({QStringLiteral("quick-functions"), QStringLiteral("other"),
+                      QStringLiteral("quick.open-capture-history")});
     const auto shortcutPayload = [](const settings::SettingsItemDefinition* item) {
         return item != nullptr
                    ? std::get_if<settings::SettingsShortcutActionDefinition>(&item->payload)
@@ -305,14 +311,14 @@ void quickFunctionShortcutsHaveStableContracts() {
             "recording toggle must use the exact screenshot-copy icon");
     require(showOrHide != nullptr && showOrHide->title.source != nullptr &&
                 QString::fromLatin1(showOrHide->title.source) ==
-                    QStringLiteral("Show/Hide Main Window") && showOrHideShortcut != nullptr &&
-                showOrHideShortcut->iconFactory &&
+                    QStringLiteral("Show/Hide Main Window") &&
+                showOrHideShortcut != nullptr && showOrHideShortcut->iconFactory &&
                 showOrHideShortcut->iconFactory() == adqt::icons::antd::outlined::Appstore(),
             "Show/Hide Main Window must use the Appstore outlined icon");
     require(openHistory != nullptr && openHistory->title.source != nullptr &&
                 QString::fromLatin1(openHistory->title.source) ==
-                    QStringLiteral("Screenshot History") && openHistoryShortcut != nullptr &&
-                openHistoryShortcut->iconFactory &&
+                    QStringLiteral("Screenshot History") &&
+                openHistoryShortcut != nullptr && openHistoryShortcut->iconFactory &&
                 openHistoryShortcut->iconFactory() == adqt::icons::antd::outlined::History(),
             "Screenshot History must use the History outlined icon");
 }
@@ -320,18 +326,18 @@ void quickFunctionShortcutsHaveStableContracts() {
 void structuredFallbackIsDeterministic() {
     const settings::SettingsCatalog& catalog = settings::builtInSettingsCatalog();
     require(catalog.resolveLocation({QStringLiteral("interface-settings"), {}, {}}) ==
-                settings::SettingsLocation{QStringLiteral("interface-settings"),
-                                           QStringLiteral("general"), {}},
+                settings::SettingsLocation{
+                    QStringLiteral("interface-settings"), QStringLiteral("general"), {}},
             "page locations must reveal their first section");
     require(catalog.resolveLocation({QStringLiteral("storage-and-privacy"),
                                      QStringLiteral("missing"), QStringLiteral("missing")}) ==
-                settings::SettingsLocation{QStringLiteral("storage-and-privacy"),
-                                           QStringLiteral("history"), {}},
+                settings::SettingsLocation{
+                    QStringLiteral("storage-and-privacy"), QStringLiteral("history"), {}},
             "invalid section and item locations must fall back within their page");
     require(catalog.resolveLocation({QStringLiteral("storage-and-privacy"),
                                      QStringLiteral("history"), QStringLiteral("missing")}) ==
-                settings::SettingsLocation{QStringLiteral("storage-and-privacy"),
-                                           QStringLiteral("history"), {}},
+                settings::SettingsLocation{
+                    QStringLiteral("storage-and-privacy"), QStringLiteral("history"), {}},
             "invalid item locations must retain their valid section");
     require(catalog.resolveLocation({QStringLiteral("missing"), {}, {}}) ==
                 catalog.defaultLocation(),
@@ -347,18 +353,19 @@ void invalidCatalogReportsAllConformanceErrors() {
     QVector<settings::SettingsNavigationNode> navigation = builtIn.navigation();
 
     pages[3].route = pages[0].route;
-    pages[3].sections[0].items[0].configurationKey =
-        QStringLiteral("interface/language");
+    pages[3].sections[0].items[0].configurationKey = QStringLiteral("interface/language");
     pages[3].sections[0].items[1].id = QStringLiteral("interface-theme");
     pages[4].sections[0].items[1].configurationKey = QStringLiteral("missing/key");
-    auto& custom = std::get<settings::SettingsCustomDefinition>(
-        pages[4].sections[1].items[0].payload);
+    auto& custom =
+        std::get<settings::SettingsCustomDefinition>(pages[4].sections[1].items[0].payload);
     custom.renderer = static_cast<settings::SettingsCustomRenderer>(999);
-    pages.push_back({QStringLiteral("empty-page"), QStringLiteral("relative-route"),
-                     text("Empty Page"), text("Empty page description"), {}});
+    pages.push_back({QStringLiteral("empty-page"),
+                     QStringLiteral("relative-route"),
+                     text("Empty Page"),
+                     text("Empty page description"),
+                     {}});
 
-    auto* group =
-        std::get_if<settings::SettingsNavigationGroupDefinition>(&navigation[2]);
+    auto* group = std::get_if<settings::SettingsNavigationGroupDefinition>(&navigation[2]);
     require(group != nullptr, "built-in Settings navigation group must exist");
     group->pages[0].pageId = QStringLiteral("missing-page");
 
@@ -388,8 +395,8 @@ void invalidCatalogReportsAllConformanceErrors() {
 
 void searchIndexIsGeneratedAndRanked() {
     settings::SettingsSearchIndex index(settings::builtInSettingsCatalog());
-    require(index.entries().size() == 55 && index.search(QString()).size() == 55,
-            "search must generate all fifty-five catalog nodes in catalog order");
+    require(index.entries().size() == 54 && index.search(QString()).size() == 54,
+            "search must generate all fifty-four catalog nodes in catalog order");
 
     int pages = 0;
     int sections = 0;
@@ -398,6 +405,10 @@ void searchIndexIsGeneratedAndRanked() {
     for (const auto& entry : index.entries()) {
         require(!entry.id.isEmpty() && insertUnique(&ids, entry.id),
                 "generated search ids must be stable and unique");
+        require(!entry.title.contains(QStringLiteral("%1")) &&
+                    !entry.description.contains(QStringLiteral("%1")) &&
+                    !entry.path.contains(QStringLiteral("%1")),
+                "search display fields must never expose unresolved placeholders");
         switch (entry.kind) {
         case settings::SettingsSearchNodeKind::Page:
             ++pages;
@@ -412,20 +423,17 @@ void searchIndexIsGeneratedAndRanked() {
             break;
         }
     }
-    require(pages == 6 && sections == 13 && items == 36,
+    require(pages == 6 && sections == 13 && items == 35,
             "search node counts must match catalog page, section, and item counts");
 
     const auto theme = index.search(QStringLiteral("theme"));
     require(!theme.isEmpty() && theme.constFirst().id == QStringLiteral("item:interface.theme"),
             "exact item titles must rank ahead of descriptions and paths");
-    const auto alias = index.search(QStringLiteral("preferences"));
-    require(!alias.isEmpty() &&
-                alias.constFirst().location.itemId ==
-                    QStringLiteral("quick.open-interface-settings"),
-            "configured aliases must be indexed");
+    require(index.search(QStringLiteral("preferences")).isEmpty(),
+            "removed quick functions must not remain in search");
     const auto option = index.search(QStringLiteral("dark"));
-    require(!option.isEmpty() && option.constFirst().location.itemId ==
-                                     QStringLiteral("interface.theme"),
+    require(!option.isEmpty() &&
+                option.constFirst().location.itemId == QStringLiteral("interface.theme"),
             "select option labels must be indexed");
     const auto multipleTokens = index.search(QStringLiteral("storage error"));
     require(!multipleTokens.isEmpty() &&
@@ -433,13 +441,26 @@ void searchIndexIsGeneratedAndRanked() {
             "every query token must match an indexed field");
     require(index.search(QStringLiteral("storage nonexistent-token")).isEmpty(),
             "a query must be rejected when any token does not match");
+    const auto drawingToolbar = index.search(QStringLiteral("stack drawing tools"));
+    require(!drawingToolbar.isEmpty() &&
+                drawingToolbar.constFirst().location.itemId ==
+                    QStringLiteral("interface.toolbar.drawing-toolbar-editor"),
+            "drawing toolbar position and stack terminology must be indexed");
+
+    index.setRuntimeValues({7});
+    const auto delayedScreenshot = index.search(QStringLiteral("delay 7s"));
+    require(!delayedScreenshot.isEmpty() &&
+                delayedScreenshot.constFirst().id ==
+                    QStringLiteral("item:quick.screenshot-delay") &&
+                delayedScreenshot.constFirst().title == QStringLiteral("Delay 7s to Execute") &&
+                !delayedScreenshot.constFirst().title.contains(QStringLiteral("%1")),
+            "search must resolve runtime placeholders before indexing and displaying item titles");
 }
 
 void searchIndexRebuildsLocalizedFields() {
     settings::SettingsSearchIndex index(settings::builtInSettingsCatalog());
     CatalogTranslator translator;
-    require(QCoreApplication::installTranslator(&translator),
-            "test translator must install");
+    require(QCoreApplication::installTranslator(&translator), "test translator must install");
     index.rebuild();
     require(!index.search(QStringLiteral("localized theme")).isEmpty() &&
                 index.search(QStringLiteral("localized theme")).constFirst().id ==
@@ -473,15 +494,21 @@ void addingCatalogNodesAutomaticallyExpandsSearch() {
         QStringLiteral("/extra"),
         text("Extra Page"),
         text("Extra page description"),
-        {{QStringLiteral("extra-section"), text("Extra Section"),
-          text("Extra section description"), settings::SettingsSectionReset::None,
-          {{QStringLiteral("extra.item"), text("Extra Item"),
-            text("Extra item description"), {}, QStringLiteral("interface/theme_mode"),
+        {{QStringLiteral("extra-section"),
+          text("Extra Section"),
+          text("Extra section description"),
+          settings::SettingsSectionReset::None,
+          {{QStringLiteral("extra.item"),
+            text("Extra Item"),
+            text("Extra item description"),
+            {},
+            QStringLiteral("interface/theme_mode"),
             select}}}},
     });
     QVector<settings::SettingsNavigationNode> navigation = builtIn.navigation();
     navigation.push_back(settings::SettingsNavigationPageDefinition{
-        QStringLiteral("nav.extra-page"), QStringLiteral("extra-page"),
+        QStringLiteral("nav.extra-page"),
+        QStringLiteral("extra-page"),
         []() { return adqt::icons::antd::outlined::Appstore(); },
     });
     const settings::SettingsCatalog expanded(std::move(pages), std::move(navigation),
@@ -489,7 +516,7 @@ void addingCatalogNodesAutomaticallyExpandsSearch() {
     require(expanded.validationErrors().isEmpty(),
             "a normal additional catalog page must validate without consumer changes");
     settings::SettingsSearchIndex index(expanded);
-    require(index.entries().size() == 58 &&
+    require(index.entries().size() == 57 &&
                 index.search(QStringLiteral("extra item")).constFirst().location ==
                     settings::SettingsLocation{QStringLiteral("extra-page"),
                                                QStringLiteral("extra-section"),

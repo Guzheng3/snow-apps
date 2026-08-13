@@ -45,6 +45,21 @@ bool ScreenshotOcrTextEditingSession::reset() {
     return replaceText(m_originalText);
 }
 
+void ScreenshotOcrTextEditingSession::establishBaseline(const QString& text) {
+    m_originalText = text;
+    establishHistory(text);
+}
+
+void ScreenshotOcrTextEditingSession::establishHistory(const QString& text) {
+    m_history = {text};
+    m_historyIndex = 0;
+    applyText(text);
+}
+
+void ScreenshotOcrTextEditingSession::replaceTextWithoutHistory(const QString& text) {
+    applyText(text);
+}
+
 void ScreenshotOcrTextEditingSession::recordCurrentText() {
     if (m_applying) {
         return;

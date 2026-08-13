@@ -6,6 +6,7 @@
 #include "snow_shot/presentation/screenshottypes.h"
 
 #include <QColor>
+#include <QPointer>
 #include <QPoint>
 #include <QRectF>
 
@@ -81,6 +82,7 @@ class ScreenshotOverlayCanvasPresenter final {
 
   private:
     OverlayFactory m_ensureOverlay;
+    mutable QPointer<ScreenshotOverlayWindow> m_guideLineOwner;
 };
 
 #endif // SNOW_SHOT_PRESENTATION_SCREENSHOTOVERLAYCANVASPRESENTER_H

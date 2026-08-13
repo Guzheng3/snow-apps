@@ -370,6 +370,8 @@ void adjustableDelayUsesWheelAndClampsRange() {
 
     auto* shortcutButton =
         row.findChild<adqt::widgets::AdButton*>(QStringLiteral("shortcutKeyButton"));
+    auto* delayTitleLabel = row.findChild<QLabel*>(QStringLiteral("delayTitleLabel"));
+    auto* delayUnderline = row.findChild<QWidget*>(QStringLiteral("delaySecondsHoverUnderline"));
     bool titleShowsDefaultDelay = false;
     for (const QLabel* label : row.findChildren<QLabel*>()) {
         if (label->text() == QStringLiteral("Delay 3s to Execute")) {
@@ -377,11 +379,14 @@ void adjustableDelayUsesWheelAndClampsRange() {
             break;
         }
     }
-    require(shortcutButton != nullptr && row.delaySeconds() == 3 && titleShowsDefaultDelay &&
+    require(shortcutButton != nullptr && delayTitleLabel != nullptr && delayUnderline != nullptr &&
+                row.delaySeconds() == 3 && titleShowsDefaultDelay &&
                 row.toolTip() == QStringLiteral("Delay: 3 seconds") &&
-                row.cursor().shape() == Qt::SplitVCursor &&
-                shortcutButton->cursor().shape() == Qt::SplitVCursor,
-            "adjustable delay rows must render the default value and advertise vertical scrolling");
+                row.cursor().shape() == Qt::PointingHandCursor &&
+                delayTitleLabel->cursor().shape() == Qt::SplitVCursor &&
+                shortcutButton->cursor().shape() != Qt::SplitVCursor &&
+                !delayUnderline->isVisible(),
+            "only the delay title must advertise vertical scrolling before hover");
 
     const auto sendWheel = [](QWidget* target, int angleDelta) {
         const QPoint localPoint = target->rect().center();
@@ -389,35 +394,53 @@ void adjustableDelayUsesWheelAndClampsRange() {
                           QPoint(0, angleDelta), Qt::NoButton, Qt::NoModifier,
                           Qt::NoScrollPhase, false);
         QCoreApplication::sendEvent(target, &event);
-        require(event.isAccepted(), "adjustable delay rows must consume handled wheel events");
+        return event.isAccepted();
     };
 
     sendWheel(&row, 120);
-    require(row.delaySeconds() == 4 && persistedDelay == 4 && setterCalls == 1 &&
-                changeSignals == 1,
-            "scrolling up on the delay row must persist and publish a one-second increment");
+    require(row.delaySeconds() == 3 && persistedDelay == 3 && setterCalls == 0 &&
+                changeSignals == 0,
+            "scrolling outside the delay title must not change the configured delay");
 
     sendWheel(shortcutButton, 120);
-    require(row.delaySeconds() == 5 && persistedDelay == 5 && setterCalls == 2 &&
-                changeSignals == 2,
-            "scrolling over the nested shortcut button must adjust the same persisted delay");
+    require(row.delaySeconds() == 3 && persistedDelay == 3 && setterCalls == 0 &&
+                changeSignals == 0,
+            "scrolling over the shortcut button must not change the configured delay");
+
+    require(sendWheel(delayTitleLabel, 120),
+            "the delay title must consume handled wheel events");
+    require(row.delaySeconds() == 4 && persistedDelay == 4 && setterCalls == 1 &&
+                changeSignals == 1,
+            "scrolling over the delay title must persist and publish a one-second increment");
+
+    QEvent enterEvent(QEvent::Enter);
+    QCoreApplication::sendEvent(delayTitleLabel, &enterEvent);
+    require(delayUnderline->isVisible() && delayUnderline->height() == 2 &&
+                delayUnderline->property("highlightColor").value<QColor>() ==
+                    scheme.map.presetColorHover.value(QStringLiteral("blue"),
+                                                      scheme.map.colorPrimaryHover),
+            "hovering the delay title must show a blue underline below the seconds value");
+    QEvent leaveEvent(QEvent::Leave);
+    QCoreApplication::sendEvent(delayTitleLabel, &leaveEvent);
+    require(!delayUnderline->isVisible(),
+            "leaving the delay title must hide the seconds underline");
 
     acceptWrites = false;
-    sendWheel(&row, -120);
-    require(row.delaySeconds() == 5 && persistedDelay == 5 && setterCalls == 3 &&
-                changeSignals == 2,
+    sendWheel(delayTitleLabel, -120);
+    require(row.delaySeconds() == 4 && persistedDelay == 4 && setterCalls == 2 &&
+                changeSignals == 1,
             "a rejected delay write must leave the displayed and persisted values unchanged");
     acceptWrites = true;
 
     row.setDelaySeconds(100);
     const int callsAtUpperBound = setterCalls;
-    sendWheel(&row, 120);
+    sendWheel(delayTitleLabel, 120);
     require(row.delaySeconds() == 10 && setterCalls == callsAtUpperBound,
             "delay values and upward wheel input must clamp at ten seconds");
 
     row.setDelaySeconds(-100);
     const int callsAtLowerBound = setterCalls;
-    sendWheel(&row, -120);
+    sendWheel(delayTitleLabel, -120);
     require(row.delaySeconds() == 1 && setterCalls == callsAtLowerBound,
             "delay values and downward wheel input must clamp at one second");
 }

@@ -507,6 +507,107 @@ void cursorAndMonitorGuideLinesUseDashedAndSolidPixels() {
     }
 }
 
+qint64 regionArea(const QRegion& region) {
+    qint64 area = 0;
+    for (const QRect& rect : region) {
+        area += static_cast<qint64>(rect.width()) * rect.height();
+    }
+    return area;
+}
+
+void cursorGuideLineMovementInvalidatesOnlyChangedAxes() {
+    const QRect viewport(0, 0, 640, 480);
+    const QColor cursorColor(220, 30, 40);
+    const QColor monitorColor(30, 80, 220);
+    const QRegion horizontalMovementDamage =
+        planScreenshotGuideLineDamage(viewport, QPoint(100, 120), cursorColor, monitorColor,
+                                      QPoint(104, 120), cursorColor, monitorColor);
+
+    require(!horizontalMovementDamage.isEmpty(),
+            "moving a visible cursor guide horizontally should repaint");
+    require(horizontalMovementDamage.contains(QPoint(100, 20)) &&
+                horizontalMovementDamage.contains(QPoint(104, 20)),
+            "horizontal cursor movement must repaint the old and new vertical guides");
+    require(!horizontalMovementDamage.contains(QPoint(20, 120)),
+            "horizontal cursor movement must not repaint the unchanged horizontal guide");
+    require(!horizontalMovementDamage.contains(QPoint(viewport.width() / 2, 20)) &&
+                !horizontalMovementDamage.contains(QPoint(20, viewport.height() / 2)),
+            "cursor movement must not invalidate unchanged monitor-center guide strips");
+    require(regionArea(horizontalMovementDamage) <
+                static_cast<qint64>(viewport.width()) * viewport.height() / 20,
+            "horizontal cursor movement must repaint only narrow vertical strips");
+
+    const QRegion verticalMovementDamage =
+        planScreenshotGuideLineDamage(viewport, QPoint(104, 120), cursorColor, monitorColor,
+                                      QPoint(104, 125), cursorColor, monitorColor);
+
+    require(!verticalMovementDamage.isEmpty(),
+            "moving a visible cursor guide vertically should repaint");
+    require(verticalMovementDamage.contains(QPoint(20, 120)) &&
+                verticalMovementDamage.contains(QPoint(20, 125)),
+            "vertical cursor movement must repaint the old and new horizontal guides");
+    require(!verticalMovementDamage.contains(QPoint(104, 20)),
+            "vertical cursor movement must not repaint the unchanged vertical guide");
+    require(regionArea(verticalMovementDamage) <
+                static_cast<qint64>(viewport.width()) * viewport.height() / 20,
+            "vertical cursor movement must repaint only narrow horizontal strips");
+}
+
+void hiddenAndSamePixelCursorMovementDoesNotRepaintGuideLines() {
+    SnowCanvasWidget canvas;
+    canvas.resize(640, 480);
+    ScreenshotCanvasRenderer renderer(canvas);
+    const QColor cursorColor(220, 30, 40);
+    const QColor monitorColor(30, 80, 220);
+    renderer.setGuideLines(QPointF(100.1, 120.1), Qt::transparent, monitorColor);
+    resetGuideLineRenderDiagnosticsForCurrentThread();
+    renderer.setGuideLines(QPointF(420.9, 310.9), Qt::transparent, monitorColor);
+    const ScreenshotGuideLineRenderDiagnostics monitorOnlyDiagnostics =
+        guideLineRenderDiagnosticsForCurrentThread();
+    require(monitorOnlyDiagnostics.updateRequests == 0 &&
+                monitorOnlyDiagnostics.requestedDamagePixels == 0,
+            "cursor motion must not repaint a monitor-center-only guide");
+
+    renderer.setGuideLines(QPointF(100.1, 120.1), cursorColor, monitorColor);
+    resetGuideLineRenderDiagnosticsForCurrentThread();
+    renderer.setGuideLines(QPointF(100.9, 120.9), cursorColor, monitorColor);
+    const ScreenshotGuideLineRenderDiagnostics samePixelDiagnostics =
+        guideLineRenderDiagnosticsForCurrentThread();
+    require(samePixelDiagnostics.updateRequests == 0 &&
+                samePixelDiagnostics.requestedDamagePixels == 0,
+            "subpixel cursor motion within one painted pixel must not repaint guide lines");
+}
+
+void cursorGuideLineDamageCoversChangedPixelsAtFractionalDprs() {
+    constexpr std::array<qreal, 4> devicePixelRatios{1.0, 1.25, 1.5, 1.75};
+    const QColor cursorColor(220, 30, 40);
+    const QColor monitorColor(30, 80, 220);
+
+    for (const qreal devicePixelRatio : devicePixelRatios) {
+        SnowCanvasWidget canvas;
+        canvas.resize(240, 180);
+        canvas.setClearBackgroundEnabled(false);
+        require(canvas.setViewportCamera(0.0, 0.0, 1.0),
+                "the fractional-DPR guide test should initialize the camera");
+
+        ScreenshotCanvasRenderer renderer(canvas);
+        canvas.setCustomRenderer(&renderer);
+        renderer.setGuideLines(QPointF(40.1, 50.1), cursorColor, monitorColor);
+        const QImage previous = renderCanvas(canvas, devicePixelRatio);
+
+        renderer.setGuideLines(QPointF(43.8, 54.7), cursorColor, monitorColor);
+        const QRegion dirty =
+            planScreenshotGuideLineDamage(canvas.rect(), QPoint(40, 50), cursorColor, monitorColor,
+                                          QPoint(43, 54), cursorColor, monitorColor);
+
+        require(!dirty.isEmpty(), "fractional-DPR cursor guide movement should request damage");
+        const QImage next = renderCanvas(canvas, devicePixelRatio);
+        requireChangedPixelsCoveredByDirtyRegion(
+            previous, next, dirty, "fractional-DPR guide damage must cover every changed pixel");
+        canvas.setCustomRenderer(nullptr);
+    }
+}
+
 void colorPickerCenterGuidesLeaveTheSampleUntouched() {
     QImage image(25, 25, QImage::Format_RGBA8888);
     image.fill(Qt::transparent);
@@ -2582,6 +2683,9 @@ int main(int argc, char** argv) {
         shortcutHintStagesUseTheExactRequiredLines();
         configurableSelectionMaskUsesRequestedPixels();
         cursorAndMonitorGuideLinesUseDashedAndSolidPixels();
+        cursorGuideLineMovementInvalidatesOnlyChangedAxes();
+        hiddenAndSamePixelCursorMovementDoesNotRepaintGuideLines();
+        cursorGuideLineDamageCoversChangedPixelsAtFractionalDprs();
         colorPickerCenterGuidesLeaveTheSampleUntouched();
         onlyTheInputOverlayOwnsGuideLines();
         guideLinesInitializeFromGlobalCursorPosition();
@@ -2657,6 +2761,9 @@ int main(int argc, char** argv) {
     shortcutHintStagesUseTheExactRequiredLines();
     configurableSelectionMaskUsesRequestedPixels();
     cursorAndMonitorGuideLinesUseDashedAndSolidPixels();
+    cursorGuideLineMovementInvalidatesOnlyChangedAxes();
+    hiddenAndSamePixelCursorMovementDoesNotRepaintGuideLines();
+    cursorGuideLineDamageCoversChangedPixelsAtFractionalDprs();
     colorPickerCenterGuidesLeaveTheSampleUntouched();
     onlyTheInputOverlayOwnsGuideLines();
     guideLinesInitializeFromGlobalCursorPosition();

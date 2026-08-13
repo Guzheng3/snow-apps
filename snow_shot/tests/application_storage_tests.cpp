@@ -97,93 +97,158 @@ void defaultsAndTypedRoundTrip() {
     const QJsonObject root = readObject(config);
     const QJsonObject history = root.value(QStringLiteral("capture_history")).toObject();
     const QJsonObject screenshotUi = root.value(QStringLiteral("screenshot_ui")).toObject();
+    const QJsonObject toolbarLayout = root.value(QStringLiteral("screenshot_toolbar"))
+                                          .toObject()
+                                          .value(QStringLiteral("layout"))
+                                          .toObject();
+    const QJsonArray toolbarPositions = toolbarLayout.value(QStringLiteral("positions")).toArray();
     const QJsonObject tray = root.value(QStringLiteral("tray")).toObject();
-    require(root.value(QStringLiteral("storage"))
-                        .toObject()
-                        .value(QStringLiteral("schema_version"))
-                        .toInt() == 1 &&
-                root.value(QStringLiteral("screenshot_selection"))
+    require(
+        root.value(QStringLiteral("storage"))
                     .toObject()
-                    .value(QStringLiteral("smart_selection"))
-                    .toBool() &&
-                history.value(QStringLiteral("enabled")).toBool() &&
-                history.value(QStringLiteral("retention_days")).toInt() == 7 &&
-                history.value(QStringLiteral("max_entries")).toInt() == 100 &&
-                history.value(QStringLiteral("max_disk_mib")).toInt() == 1024 &&
-                screenshotUi.value(QStringLiteral("toolbar_size")).toString() ==
-                    QStringLiteral("normal") &&
-                screenshotUi.value(QStringLiteral("selection_transition_animation")).toBool() &&
-                screenshotUi.value(QStringLiteral("selection_mask_color")).toString() ==
-                    QStringLiteral("#00000080") &&
-                screenshotUi.value(QStringLiteral("shortcut_hint_opacity")).toInt() == 100 &&
-                tray.value(QStringLiteral("enabled")).toBool() &&
-                tray.value(QStringLiteral("icon")).toString() == QStringLiteral("default") &&
-                tray.value(QStringLiteral("custom_icon")).toString().isEmpty() &&
-                !history.contains(QStringLiteral("records")),
-            "schema-v1 defaults are incomplete");
+                    .value(QStringLiteral("schema_version"))
+                    .toInt() == 1 &&
+            root.value(QStringLiteral("screenshot_selection"))
+                .toObject()
+                .value(QStringLiteral("smart_selection"))
+                .toBool() &&
+            history.value(QStringLiteral("enabled")).toBool() &&
+            history.value(QStringLiteral("retention_days")).toInt() == 7 &&
+            history.value(QStringLiteral("max_entries")).toInt() == 100 &&
+            history.value(QStringLiteral("max_disk_mib")).toInt() == 1024 &&
+            screenshotUi.value(QStringLiteral("toolbar_size")).toString() ==
+                QStringLiteral("normal") &&
+            screenshotUi.value(QStringLiteral("selection_transition_animation")).toBool() &&
+            screenshotUi.value(QStringLiteral("selection_mask_color")).toString() ==
+                QStringLiteral("#00000080") &&
+            screenshotUi.value(QStringLiteral("shortcut_hint_opacity")).toInt() == 100 &&
+            toolbarLayout.size() == 2 &&
+            toolbarLayout.value(QStringLiteral("hidden")).toArray().isEmpty() &&
+            toolbarPositions ==
+                QJsonArray{
+                    QJsonArray{QStringLiteral("shape")},
+                    QJsonArray{QStringLiteral("line"), QStringLiteral("arrow")},
+                    QJsonArray{QStringLiteral("free-draw")},
+                    QJsonArray{QStringLiteral("spotlight"),
+                               QStringLiteral("highlighter")},
+                    QJsonArray{QStringLiteral("text")},
+                    QJsonArray{QStringLiteral("serial-number")},
+                    QJsonArray{QStringLiteral("filter")},
+                    QJsonArray{QStringLiteral("eraser")},
+                    QJsonArray{QStringLiteral("watermark")},
+                } &&
+            tray.value(QStringLiteral("enabled")).toBool() &&
+            tray.value(QStringLiteral("icon")).toString() == QStringLiteral("default") &&
+            tray.value(QStringLiteral("custom_icon")).toString().isEmpty() &&
+            !history.contains(QStringLiteral("records")),
+        "schema-v1 defaults are incomplete");
     require(readBytes(config).endsWith('\n'), "configuration has no final newline");
 
-    require(store.setValues({
-                {QStringLiteral("interface/theme_mode"), QStringLiteral("DARK")},
-                {QStringLiteral("interface/language"), QStringLiteral("zh-CN")},
-                {QStringLiteral("capture_history/retention_days"), 30},
-                {QStringLiteral("capture_history/max_entries"), 250},
-                {QStringLiteral("capture_history/max_disk_mib"), 2048},
-                {QStringLiteral("screenshot_selection/smart_selection"), false},
-                {QStringLiteral("screenshot_ui/selection_mask_color"),
-                 QStringLiteral(" #12ab34cd ")},
-                {QStringLiteral("screenshot_ui/shortcut_hint_opacity"), 42},
-                {QStringLiteral("tray/icon"), QStringLiteral("snow-dark")},
-            }) &&
-                store.flushNow().success,
-            "typed configuration mutation failed");
+    require(
+        store.setValues({
+            {QStringLiteral("interface/theme_mode"), QStringLiteral("DARK")},
+            {QStringLiteral("interface/language"), QStringLiteral("zh-CN")},
+            {QStringLiteral("capture_history/retention_days"), 30},
+            {QStringLiteral("capture_history/max_entries"), 250},
+            {QStringLiteral("capture_history/max_disk_mib"), 2048},
+            {QStringLiteral("screenshot_selection/smart_selection"), false},
+            {QStringLiteral("screenshot_ui/selection_mask_color"), QStringLiteral(" #12ab34cd ")},
+            {QStringLiteral("screenshot_ui/shortcut_hint_opacity"), 42},
+            {QStringLiteral("tray/icon"), QStringLiteral("snow-dark")},
+        }) &&
+            store.flushNow().success,
+        "typed configuration mutation failed");
     storage::ConfigurationStore reloaded(config, true, true, 60000);
-    require(reloaded.value(QStringLiteral("interface/theme_mode")).toString() ==
-                    QStringLiteral("dark") &&
-                reloaded.value(QStringLiteral("interface/language")).toString() ==
-                    QStringLiteral("zh_CN") &&
-                reloaded.value(QStringLiteral("capture_history/retention_days")).toInt() == 30 &&
-                !reloaded.value(QStringLiteral("screenshot_selection/smart_selection")).toBool() &&
-                reloaded.value(QStringLiteral("screenshot_ui/selection_mask_color")).toString() ==
-                    QStringLiteral("#12AB34CD") &&
-                reloaded.value(QStringLiteral("screenshot_ui/shortcut_hint_opacity")).toInt() == 42 &&
-                reloaded.value(QStringLiteral("tray/icon")).toString() ==
-                    QStringLiteral("snow-dark"),
-            "typed values did not normalize and round-trip");
+    require(
+        reloaded.value(QStringLiteral("interface/theme_mode")).toString() ==
+                QStringLiteral("dark") &&
+            reloaded.value(QStringLiteral("interface/language")).toString() ==
+                QStringLiteral("zh_CN") &&
+            reloaded.value(QStringLiteral("capture_history/retention_days")).toInt() == 30 &&
+            !reloaded.value(QStringLiteral("screenshot_selection/smart_selection")).toBool() &&
+            reloaded.value(QStringLiteral("screenshot_ui/selection_mask_color")).toString() ==
+                QStringLiteral("#12AB34CD") &&
+            reloaded.value(QStringLiteral("screenshot_ui/shortcut_hint_opacity")).toInt() == 42 &&
+            reloaded.value(QStringLiteral("tray/icon")).toString() == QStringLiteral("snow-dark"),
+        "typed values did not normalize and round-trip");
 }
 
 void screenshotUiSchemaRepairsStructuredValues() {
     const auto validColor = storage::ConfigurationSchema::normalize(
-        QStringLiteral("screenshot_ui/cursor_guide_line_color"),
-        QStringLiteral("#abcdef80"));
+        QStringLiteral("screenshot_ui/cursor_guide_line_color"), QStringLiteral("#abcdef80"));
     require(validColor.valid && validColor.changed &&
                 validColor.value.toString() == QStringLiteral("#ABCDEF80"),
             "RGBA colors were not normalized canonically");
     require(!storage::ConfigurationSchema::normalize(
-                     QStringLiteral("screenshot_ui/cursor_guide_line_color"),
-                     QStringLiteral("#ABCDEF"))
-                     .valid,
+                 QStringLiteral("screenshot_ui/cursor_guide_line_color"), QStringLiteral("#ABCDEF"))
+                 .valid,
             "RGBA color schema accepted an incomplete value");
 
     const QJsonObject malformedLayout{
-        {QStringLiteral("order"),
-         QJsonArray{QStringLiteral("shape"), QStringLiteral("move"),
-                    QStringLiteral("shape"), QStringLiteral("unknown")}},
+        {QStringLiteral("positions"),
+         QJsonArray{
+             QJsonArray{QStringLiteral("watermark"), QStringLiteral("shape"),
+                        QStringLiteral("unknown"), QStringLiteral("watermark")},
+             QJsonArray{QStringLiteral("line"), QStringLiteral("shape")},
+             QStringLiteral("not-a-position"),
+             QJsonArray{QStringLiteral("rectangle-highlight"),
+                        QStringLiteral("pen-highlight")},
+         }},
         {QStringLiteral("hidden"),
-         QJsonArray{QStringLiteral("move"), QStringLiteral("unknown"),
-                    QStringLiteral("shape")}},
+         QJsonArray{QStringLiteral("shape"), QStringLiteral("arrow"),
+                    QStringLiteral("free-draw"), QStringLiteral("pen-highlight"),
+                    QStringLiteral("arrow")}},
     };
     const auto normalized = storage::ConfigurationSchema::normalize(
         QStringLiteral("screenshot_toolbar/layout"), malformedLayout);
     const QJsonObject layout = normalized.value.toObject();
-    const QJsonArray order = layout.value(QStringLiteral("order")).toArray();
-    const QJsonArray hidden = layout.value(QStringLiteral("hidden")).toArray();
-    require(normalized.valid && normalized.changed && order.size() == 17 &&
-                order.at(0).toString() == QStringLiteral("shape") &&
-                order.at(1).toString() == QStringLiteral("move") &&
-                order.at(2).toString() == QStringLiteral("select") &&
-                hidden == QJsonArray{QStringLiteral("shape"), QStringLiteral("move")},
-            "toolbar layout normalization did not repair order and hidden membership");
+    const QJsonArray positions = layout.value(QStringLiteral("positions")).toArray();
+    require(
+        normalized.valid && normalized.changed && layout.size() == 2 &&
+            positions ==
+                QJsonArray{
+                    QJsonArray{QStringLiteral("watermark"), QStringLiteral("shape")},
+                    QJsonArray{QStringLiteral("line")},
+                    QJsonArray{QStringLiteral("highlighter")},
+                    QJsonArray{QStringLiteral("spotlight")},
+                    QJsonArray{QStringLiteral("text")},
+                    QJsonArray{QStringLiteral("serial-number")},
+                    QJsonArray{QStringLiteral("filter")},
+                    QJsonArray{QStringLiteral("eraser")},
+                } &&
+            layout.value(QStringLiteral("hidden")).toArray() ==
+                QJsonArray{QStringLiteral("arrow"), QStringLiteral("free-draw")},
+        "toolbar layout normalization did not preserve hidden nested membership");
+
+    const QJsonObject legacyLayout{
+        {QStringLiteral("order"),
+         QJsonArray{QStringLiteral("move"), QStringLiteral("highlight"), QStringLiteral("shape"),
+                    QStringLiteral("arrow-line"), QStringLiteral("watermark"),
+                    QStringLiteral("highlight")}},
+        {QStringLiteral("hidden"),
+         QJsonArray{QStringLiteral("highlight"), QStringLiteral("arrow-line"),
+                    QStringLiteral("watermark"), QStringLiteral("free-draw")}},
+    };
+    const auto migrated = storage::ConfigurationSchema::normalize(
+        QStringLiteral("screenshot_toolbar/layout"), legacyLayout);
+    require(migrated.valid && migrated.changed &&
+                migrated.value.toObject() ==
+                    QJsonObject{
+                        {QStringLiteral("positions"),
+                         QJsonArray{
+                             QJsonArray{QStringLiteral("shape")},
+                             QJsonArray{QStringLiteral("text")},
+                             QJsonArray{QStringLiteral("serial-number")},
+                             QJsonArray{QStringLiteral("filter")},
+                             QJsonArray{QStringLiteral("eraser")},
+                         }},
+                        {QStringLiteral("hidden"),
+                         QJsonArray{QStringLiteral("spotlight"),
+                                    QStringLiteral("highlighter"),
+                                    QStringLiteral("line"), QStringLiteral("arrow"),
+                                    QStringLiteral("watermark"),
+                                    QStringLiteral("free-draw")}}},
+            "legacy hidden toolbar groups were not migrated into hidden drawing entries");
 }
 
 void screenshotUiAdaptersRoundTripTypedValues() {
@@ -203,13 +268,60 @@ void screenshotUiAdaptersRoundTripTypedValues() {
             "typed RGBA settings did not round-trip");
 
     storage::ScreenshotToolbarLayout layout;
-    layout.order = {QStringLiteral("shape"), QStringLiteral("move")};
-    layout.hidden = {QStringLiteral("move")};
+    layout.positions = {
+        {QStringLiteral("watermark"), QStringLiteral("shape"), QStringLiteral("watermark"),
+         QStringLiteral("unknown")},
+        {QStringLiteral("line")},
+        {QStringLiteral("rectangle-highlight")},
+        {QStringLiteral("shape")},
+    };
+    layout.hidden = {QStringLiteral("shape"), QStringLiteral("arrow"),
+                     QStringLiteral("free-draw"), QStringLiteral("pen-highlight"),
+                     QStringLiteral("arrow")};
     const storage::ScreenshotToolbarSettings toolbar;
-    require(toolbar.setLayout(layout) && toolbar.layout().order.size() == 17 &&
-                toolbar.layout().order.constFirst() == QStringLiteral("shape") &&
-                toolbar.layout().hidden == QStringList{QStringLiteral("move")},
-            "typed toolbar layout did not pass through schema repair");
+    const QVector<QStringList> expectedPositions{
+        {QStringLiteral("watermark"), QStringLiteral("shape")},
+        {QStringLiteral("line")},
+        {QStringLiteral("highlighter")},
+        {QStringLiteral("spotlight")},
+        {QStringLiteral("text")},
+        {QStringLiteral("serial-number")},
+        {QStringLiteral("filter")},
+        {QStringLiteral("eraser")},
+    };
+    const storage::ScreenshotToolbarLayout expectedLayout{
+        expectedPositions,
+        {QStringLiteral("arrow"), QStringLiteral("free-draw")},
+    };
+    require(toolbar.setLayout(layout) && toolbar.layout() == expectedLayout,
+            "typed toolbar layout did not preserve normalized visible and hidden entries");
+}
+
+void screenshotTranslationSettingsRoundTripSupportedValues() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "failed to create translation settings directory");
+    const QString executable = QDir(temporary.path()).filePath(QStringLiteral("bin"));
+    require(QDir().mkpath(executable), "failed to create translation settings executable directory");
+    static_cast<void>(initialize(executable, temporary.path()));
+
+    const storage::ScreenshotTranslationSettings translation;
+    require(translation.configuration() ==
+                storage::ScreenshotTranslationConfiguration{QStringLiteral("auto"), {}, {}},
+            "translation settings should default to Auto source and runtime-derived target/model");
+    const storage::ScreenshotTranslationConfiguration selected{
+        QStringLiteral("ja"), QStringLiteral("zh-Hant"), QStringLiteral("model-a")};
+    require(translation.setConfiguration(selected) && translation.configuration() == selected,
+            "translation language and model selections should persist together");
+
+    const auto unsupportedTarget = storage::ConfigurationSchema::normalize(
+        QStringLiteral("screenshot_translation/target_language"), QStringLiteral("auto"));
+    require(!unsupportedTarget.valid,
+            "Auto Detect should be accepted only for the source translation language");
+    const auto normalizedSource = storage::ConfigurationSchema::normalize(
+        QStringLiteral("screenshot_translation/source_language"), QStringLiteral(" ZH-HANS "));
+    require(normalizedSource.valid && normalizedSource.changed &&
+                normalizedSource.value.toString() == QStringLiteral("zh-Hans"),
+            "translation language codes should normalize to their canonical persisted form");
 }
 
 void smartSelectionAccessorAndSignal() {
@@ -443,6 +555,7 @@ int main(int argc, char** argv) {
     defaultsAndTypedRoundTrip();
     screenshotUiSchemaRepairsStructuredValues();
     screenshotUiAdaptersRoundTripTypedValues();
+    screenshotTranslationSettingsRoundTripSupportedValues();
     smartSelectionAccessorAndSignal();
     unknownFieldsArePreserved();
     malformedConfigurationIsCopiedAndReplaced();
