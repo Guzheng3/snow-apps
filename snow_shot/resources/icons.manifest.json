@@ -256,9 +256,9 @@
     },
     {
       "variant": "outlined",
-      "symbol": "RecordVideo",
-      "name": "record-video",
-      "source": "../src/presentation/components/icons/resources/record-video.svg",
+      "symbol": "RecordScreen",
+      "name": "record-screen",
+      "source": "../src/presentation/components/icons/resources/record-screen.svg",
       "colorModel": "monochrome",
       "fit": "contain"
     },
@@ -299,6 +299,14 @@
       "symbol": "RecordingStop",
       "name": "recording-stop",
       "source": "../src/presentation/components/icons/resources/recording-stop.svg",
+      "colorModel": "monochrome",
+      "fit": "contain"
+    },
+    {
+      "variant": "outlined",
+      "symbol": "Save",
+      "name": "save",
+      "source": "../src/presentation/components/icons/resources/save.svg",
       "colorModel": "monochrome",
       "fit": "contain"
     },

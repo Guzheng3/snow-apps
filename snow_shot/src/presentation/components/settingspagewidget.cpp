@@ -26,6 +26,7 @@
 #include <QAbstractButton>
 #include <QEvent>
 #include <QFileDialog>
+#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QLabel>
@@ -149,6 +150,10 @@ class SettingsPageWidget::Impl {
             runtimeSection.header->setObjectName(settings::generatedObjectName(
                 QStringLiteral("settings-section"),
                 QStringLiteral("%1-%2").arg(page->id, sectionDefinition.id)));
+            if (page->id == QStringLiteral("hotkey-settings")) {
+                runtimeSection.header->setPresentation(
+                    SectionHeaderWidget::Presentation::FormGroup);
+            }
             runtimeSection.header->setResetVisible(
                 sectionDefinition.reset != settings::SettingsSectionReset::None);
             contentLayout->addWidget(runtimeSection.header);
@@ -161,13 +166,29 @@ class SettingsPageWidget::Impl {
             list->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
             auto* listLayout = new QVBoxLayout(list);
             listLayout->setContentsMargins(0, 0, 0, 0);
-            listLayout->setSpacing(page->id == QStringLiteral("quick-functions")
-                                       ? metric.padding
-                                       : metric.paddingLG);
+            const bool compactShortcutGrid = page->id == QStringLiteral("hotkey-settings") &&
+                                             sectionDefinition.id ==
+                                                 QStringLiteral("drawing-shortcuts");
+            listLayout->setSpacing(compactShortcutGrid
+                                       ? 0
+                                       : (page->id == QStringLiteral("quick-functions")
+                                              ? metric.padding
+                                              : metric.paddingLG));
 
-            for (const settings::SettingsItemDefinition& itemDefinition :
-                 sectionDefinition.items) {
-                buildItem(itemDefinition, list, listLayout);
+            QGridLayout* shortcutGrid = nullptr;
+            if (compactShortcutGrid) {
+                shortcutGrid = new QGridLayout;
+                shortcutGrid->setContentsMargins(0, 0, 0, 0);
+                shortcutGrid->setHorizontalSpacing(metric.marginLG);
+                shortcutGrid->setVerticalSpacing(metric.marginLG);
+                shortcutGrid->setColumnStretch(0, 1);
+                shortcutGrid->setColumnStretch(1, 1);
+                listLayout->addLayout(shortcutGrid);
+            }
+
+            for (int itemIndex = 0; itemIndex < sectionDefinition.items.size(); ++itemIndex) {
+                buildItem(sectionDefinition.items.at(itemIndex), list, listLayout, shortcutGrid,
+                          itemIndex);
             }
             contentLayout->addWidget(list);
         }
@@ -187,9 +208,18 @@ class SettingsPageWidget::Impl {
     }
 
     void buildItem(const settings::SettingsItemDefinition& definition, QWidget* list,
-                   QVBoxLayout* listLayout) {
+                   QVBoxLayout* listLayout, QGridLayout* shortcutGrid = nullptr,
+                   int itemIndex = 0) {
         RuntimeItem runtime;
         runtime.definition = &definition;
+
+        const auto addItemWidget = [listLayout, shortcutGrid, itemIndex](QWidget* widget) {
+            if (shortcutGrid != nullptr) {
+                shortcutGrid->addWidget(widget, itemIndex / 2, itemIndex % 2);
+            } else {
+                listLayout->addWidget(widget);
+            }
+        };
 
         std::visit(
             [&](const auto& payload) {
@@ -204,7 +234,7 @@ class SettingsPageWidget::Impl {
                     runtime.anchor = settings_ui::createSettingItemRow(
                         list, colorScheme.metricAlias, &runtime.title, &runtime.description, select,
                         settings::generatedObjectName(QStringLiteral("settings-item"), definition.id));
-                    listLayout->addWidget(runtime.anchor);
+                    addItemWidget(runtime.anchor);
                     connect(select, &adqt::widgets::AdSelect::currentValueChanged, &q,
                             [this, itemId = definition.id](const QVariant& value) {
                                 applySelectValue(itemId, value);
@@ -223,7 +253,7 @@ class SettingsPageWidget::Impl {
                         list, colorScheme.metricAlias, &runtime.title, &runtime.description,
                         control, settings::generatedObjectName(QStringLiteral("settings-item"),
                                                                definition.id));
-                    listLayout->addWidget(runtime.anchor);
+                    addItemWidget(runtime.anchor);
                     connect(control, &adqt::widgets::AdMultiSelect::selectedValuesChanged, &q,
                             [this, binding = payload.binding](const QVariantList& value) {
                                 if (!synchronizingValues &&
@@ -240,7 +270,7 @@ class SettingsPageWidget::Impl {
                     runtime.anchor = settings_ui::createSettingItemRow(
                         list, colorScheme.metricAlias, &runtime.title, &runtime.description, control,
                         settings::generatedObjectName(QStringLiteral("settings-item"), definition.id));
-                    listLayout->addWidget(runtime.anchor);
+                    addItemWidget(runtime.anchor);
                     connect(control, &QAbstractButton::toggled, &q,
                             [this, binding = payload.binding](bool checked) {
                                 applySwitchValue(binding, checked);
@@ -265,7 +295,7 @@ class SettingsPageWidget::Impl {
                     runtime.anchor = settings_ui::createSettingItemRow(
                         list, colorScheme.metricAlias, &runtime.title, &runtime.description, control,
                         settings::generatedObjectName(QStringLiteral("settings-item"), definition.id));
-                    listLayout->addWidget(runtime.anchor);
+                    addItemWidget(runtime.anchor);
                     connect(control, &adqt::widgets::AdInputNumber::valueChanged, &q,
                             [this, binding = payload.binding](double value) {
                                 applyIntegerValue(binding, static_cast<int>(value));
@@ -301,7 +331,7 @@ class SettingsPageWidget::Impl {
                         container,
                         settings::generatedObjectName(QStringLiteral("settings-item"),
                                                       definition.id));
-                    listLayout->addWidget(runtime.anchor);
+                    addItemWidget(runtime.anchor);
                     connect(control, &adqt::widgets::AdSlider::valueChanged, &q,
                             [this, binding = payload.binding, valueLabel,
                              suffix = payload.suffix](double value) {
@@ -340,7 +370,7 @@ class SettingsPageWidget::Impl {
                         control,
                         settings::generatedObjectName(QStringLiteral("settings-item"),
                                                       definition.id));
-                    listLayout->addWidget(runtime.anchor);
+                    addItemWidget(runtime.anchor);
                     connect(control, &adqt::widgets::AdColorPicker::valueChanged, &q,
                             [this, binding = payload.binding](
                                 const adqt::widgets::AdColorValue& value) {
@@ -389,7 +419,7 @@ class SettingsPageWidget::Impl {
                         container,
                         settings::generatedObjectName(QStringLiteral("settings-item"),
                                                       definition.id));
-                    listLayout->addWidget(runtime.anchor);
+                    addItemWidget(runtime.anchor);
                     connect(group, &adqt::widgets::AdRadioButtonGroup::checkedIdChanged, &q,
                             [this, binding = payload.binding,
                              values = runtime.radioValues](int id) {
@@ -413,7 +443,7 @@ class SettingsPageWidget::Impl {
                         control,
                         settings::generatedObjectName(QStringLiteral("settings-item"),
                                                       definition.id));
-                    listLayout->addWidget(runtime.anchor);
+                    addItemWidget(runtime.anchor);
                     connect(control, &adqt::widgets::AdSearchEdit::editingFinished, &q,
                             [this, control, binding = payload.binding]() {
                                 if (!synchronizingValues &&
@@ -480,7 +510,7 @@ class SettingsPageWidget::Impl {
                     runtime.shortcutControl = control;
                     runtime.focusTarget = control;
                     runtime.anchor = control;
-                    listLayout->addWidget(control);
+                    addItemWidget(control);
                     connect(control, &ShortcutKeyRow::clicked, &q,
                             [this, command = payload.command]() { emit q.commandRequested(command); });
                     connect(control, &ShortcutKeyRow::shortcutsChanged, &q,
@@ -508,7 +538,7 @@ class SettingsPageWidget::Impl {
                     config.shortcuts = shortcuts;
                     config.registrationState = displayState;
                     config.rowState = QStringLiteral("normal");
-                    config.useStableBorder = true;
+                    config.useStableBorder = false;
                     config.maxShortcutCount = 2;
                     config.shortcutValidator =
                         [this, toolId = payload.toolId](const QString& shortcut) {
@@ -517,13 +547,15 @@ class SettingsPageWidget::Impl {
                     config.showRegistrationStatus = false;
                     config.validationScope =
                         ShortcutKeyRowConfig::ValidationScope::DrawingShortcut;
+                    config.presentation =
+                        ShortcutKeyRowConfig::Presentation::CompactFormField;
                     auto* control = new ShortcutKeyRow(config, metric, mainWindowMetric, list);
                     control->setObjectName(settings::generatedObjectName(
                         QStringLiteral("settings-item"), definition.id));
                     runtime.shortcutControl = control;
                     runtime.focusTarget = control;
                     runtime.anchor = control;
-                    listLayout->addWidget(control);
+                    addItemWidget(control);
                     connect(control, &ShortcutKeyRow::shortcutsChanged, &q,
                             [this, toolId = payload.toolId](const QStringList& next) {
                                 if (!runtimeBindings.applyLocalShortcuts(toolId, next)) {
@@ -547,7 +579,7 @@ class SettingsPageWidget::Impl {
                     runtime.anchor = settings_ui::createSettingItemRow(
                         list, colorScheme.metricAlias, &runtime.title, &runtime.description, control,
                         settings::generatedObjectName(QStringLiteral("settings-item"), definition.id));
-                    listLayout->addWidget(runtime.anchor);
+                    addItemWidget(runtime.anchor);
                     connect(control, &QAbstractButton::clicked, &q,
                             [this, itemId = definition.id]() { triggerAction(itemId); });
                 } else if constexpr (std::is_same_v<Payload,
@@ -563,7 +595,7 @@ class SettingsPageWidget::Impl {
                     runtime.customControl = control;
                     runtime.anchor = control;
                     runtime.focusTarget = control;
-                    listLayout->addWidget(control);
+                    addItemWidget(control);
                 }
             },
             definition.payload);

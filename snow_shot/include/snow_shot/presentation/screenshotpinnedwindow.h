@@ -51,6 +51,7 @@ class ScreenshotRecognitionSessionController;
 class ScreenshotPinnedEditController;
 class ScreenshotPinnedCopyService;
 class ScreenshotPinnedNativeGeometryController;
+class QTextDocument;
 
 class ScreenshotPinnedWindow final : public QWidget {
     Q_OBJECT
@@ -76,6 +77,8 @@ class ScreenshotPinnedWindow final : public QWidget {
         QScreen* screen = nullptr;
         bool enableEditing = true;
         bool automaticTextRecognition = true;
+        std::shared_ptr<QTextDocument> formattedTextDocument;
+        QString formattedPlainText;
         ScreenshotOcrRecognitionPort* recognition = nullptr;
         ScreenshotQrRecognitionPort* qrRecognition = nullptr;
         SnowShotApiClient* tableRecognition = nullptr;
@@ -227,6 +230,8 @@ class ScreenshotPinnedWindow final : public QWidget {
     QTransform m_imageTransform;
     std::shared_ptr<ScreenshotOcrPresentation> m_originalOcrPresentation;
     std::shared_ptr<ScreenshotOcrPresentation> m_displayOcrPresentation;
+    std::shared_ptr<QTextDocument> m_formattedTextDocument;
+    QString m_formattedPlainText;
     QPointer<ScreenshotOcrRecognitionPort> m_recognition;
     QPointer<ScreenshotQrRecognitionPort> m_qrRecognition;
     QPointer<SnowShotApiClient> m_tableRecognition;
@@ -246,6 +251,7 @@ class ScreenshotPinnedWindow final : public QWidget {
     int m_quarterTurns = 0;
     bool m_ocrReady = false;
     bool m_ocrSupported = false;
+    bool m_formattedTextAvailable = false;
     bool m_ocrMode = false;
     bool m_automaticTextRecognition = true;
     bool m_editingEnabled = true;

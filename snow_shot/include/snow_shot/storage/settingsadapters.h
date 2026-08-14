@@ -55,16 +55,18 @@ class ShortcutSettings final {
     bool setScreenshotFullScreen(const QStringList& shortcuts) const;
     [[nodiscard]] QStringList screenshotFocusedWindow() const;
     bool setScreenshotFocusedWindow(const QStringList& shortcuts) const;
-    [[nodiscard]] QStringList videoRecord() const;
-    bool setVideoRecord(const QStringList& shortcuts) const;
-    [[nodiscard]] QStringList videoRecordCopy() const;
-    bool setVideoRecordCopy(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList screenRecord() const;
+    bool setScreenRecord(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList screenRecordCopy() const;
+    bool setScreenRecordCopy(const QStringList& shortcuts) const;
     [[nodiscard]] QStringList showOrHideMainWindow() const;
     bool setShowOrHideMainWindow(const QStringList& shortcuts) const;
     [[nodiscard]] QStringList openCaptureHistory() const;
     bool setOpenCaptureHistory(const QStringList& shortcuts) const;
     [[nodiscard]] QStringList openSettings() const;
     bool setOpenSettings(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList pinClipboardContent() const;
+    bool setPinClipboardContent(const QStringList& shortcuts) const;
 };
 
 class GlobalShortcutSettings final {
@@ -165,8 +167,8 @@ class RecordingSettings final {
     bool setMicrophoneEnabled(bool enabled) const;
     [[nodiscard]] bool systemAudioEnabled() const;
     bool setSystemAudioEnabled(bool enabled) const;
-    [[nodiscard]] QString videoClarity() const;
-    bool setVideoClarity(const QString& clarity) const;
+    [[nodiscard]] QString screenRecordingClarity() const;
+    bool setScreenRecordingClarity(const QString& clarity) const;
     [[nodiscard]] int frameRate() const;
     bool setFrameRate(int frameRate) const;
     [[nodiscard]] QString animatedImageClarity() const;

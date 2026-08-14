@@ -3,6 +3,7 @@
 #include "snowimageqtcodec.h"
 
 #include <QClipboard>
+#include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QMimeData>
@@ -14,15 +15,16 @@ namespace {
 QString filterForFormat(ScreenshotImageFileFormat format) {
     switch (format) {
     case ScreenshotImageFileFormat::Png:
-        return QStringLiteral("PNG image (*.png)");
+        return QCoreApplication::translate("ScreenshotImageFileService", "PNG image (*.png)");
     case ScreenshotImageFileFormat::Jpeg:
-        return QStringLiteral("JPEG image (*.jpg *.jpeg)");
+        return QCoreApplication::translate("ScreenshotImageFileService",
+                                           "JPEG image (*.jpg *.jpeg)");
     case ScreenshotImageFileFormat::Webp:
-        return QStringLiteral("WebP image (*.webp)");
+        return QCoreApplication::translate("ScreenshotImageFileService", "WebP image (*.webp)");
     case ScreenshotImageFileFormat::Jxl:
-        return QStringLiteral("JPEG XL image (*.jxl)");
+        return QCoreApplication::translate("ScreenshotImageFileService", "JPEG XL image (*.jxl)");
     case ScreenshotImageFileFormat::Avif:
-        return QStringLiteral("AVIF image (*.avif)");
+        return QCoreApplication::translate("ScreenshotImageFileService", "AVIF image (*.avif)");
     }
     return {};
 }
@@ -42,6 +44,10 @@ QString collisionSafePath(const QString& directory, const QString& baseName,
 QString ScreenshotImageFileService::suggestedBaseName(const QDateTime& timestamp) {
     return QStringLiteral("SnowShot_%1").arg(
         timestamp.toString(QStringLiteral("yyyy-MM-dd_HH-mm-ss")));
+}
+
+QString ScreenshotImageFileService::dialogFilter(ScreenshotImageFileFormat format) {
+    return filterForFormat(format);
 }
 
 QString ScreenshotImageFileService::saveDialogFilter() {

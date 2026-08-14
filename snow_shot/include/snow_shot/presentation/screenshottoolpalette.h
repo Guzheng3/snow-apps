@@ -107,7 +107,7 @@ class ScreenshotToolPalette final : public QWidget {
         bool showQrTool = false;
         bool showScrollingScreenshotTool = false;
         bool showSaveButton = false;
-        bool showVideoRecordButton = false;
+        bool showScreenRecordButton = false;
         bool showRecordingControls = false;
         bool showTrailingDragHandle = false;
         bool enableStyleToolbar = true;
@@ -235,7 +235,7 @@ class ScreenshotToolPalette final : public QWidget {
     void scrollingScreenshotRequested();
     void saveRequested();
     void scrollingRecognitionModeChanged(ScreenshotScrollingRecognitionMode mode);
-    void videoRecordRequested();
+    void screenRecordRequested();
     void serialNumberDecrementRequested();
     void serialNumberIncrementRequested();
     void serialNumberCreateTextRequested();
@@ -324,7 +324,6 @@ class ScreenshotToolPalette final : public QWidget {
     bool setSecondaryToolbarVisibility(bool actionToolbarVisible, bool styleToolbarVisible);
     void updateSelectionActionAvailability(bool hasSelection);
     void updateHistoryActionAvailability();
-    void updateDrawingToolAvailability();
     void updateScrollingRecognitionButtons();
     void updateSelectionOpacityIcon();
     void refreshThemeDependentIcons();
@@ -475,7 +474,7 @@ class ScreenshotToolPalette final : public QWidget {
     QWidget* m_scrollingRecognitionControls = nullptr;
     adqt::widgets::AdButton* m_scrollingVerticalButton = nullptr;
     adqt::widgets::AdButton* m_scrollingHorizontalButton = nullptr;
-    adqt::widgets::AdButton* m_videoRecordButton = nullptr;
+    adqt::widgets::AdButton* m_screenRecordButton = nullptr;
     adqt::widgets::AdButton* m_recordStartButton = nullptr;
     adqt::widgets::AdButton* m_recordStopButton = nullptr;
     adqt::widgets::AdButton* m_recordPauseButton = nullptr;

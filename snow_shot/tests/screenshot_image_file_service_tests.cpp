@@ -10,6 +10,7 @@
 #include <QMimeData>
 #include <QTemporaryDir>
 #include <QTimeZone>
+#include <QTranslator>
 #include <QUrl>
 
 #include <cstdlib>
@@ -34,6 +35,24 @@ QImage image() {
     return result;
 }
 
+class SaveDialogTranslator final : public QTranslator {
+  public:
+    QString translate(const char* context, const char* sourceText, const char*,
+                      int) const override {
+        if (QString::fromLatin1(context) != QStringLiteral("ScreenshotImageFileService")) {
+            return {};
+        }
+        const QString source = QString::fromUtf8(sourceText);
+        if (source == QStringLiteral("PNG image (*.png)")) {
+            return QStringLiteral("PNG localized (*.png)");
+        }
+        if (source == QStringLiteral("JPEG image (*.jpg *.jpeg)")) {
+            return QStringLiteral("JPEG localized (*.jpg *.jpeg)");
+        }
+        return {};
+    }
+};
+
 void namingAndFormatSelection() {
     const QDateTime timestamp(QDate(2026, 8, 14), QTime(9, 7, 6), QTimeZone::UTC);
     require(ScreenshotImageFileService::suggestedBaseName(timestamp) ==
@@ -46,6 +65,25 @@ void namingAndFormatSelection() {
                 QStringLiteral("capture.unknown"), QStringLiteral("JPEG image (*.jpg *.jpeg)")) ==
                 ScreenshotImageFileFormat::Jpeg,
             "an unrecognized suffix should defer to the selected save-dialog filter");
+
+    SaveDialogTranslator translator;
+    require(QCoreApplication::installTranslator(&translator),
+            "save-dialog translator must install");
+    const QString localizedPng =
+        ScreenshotImageFileService::dialogFilter(ScreenshotImageFileFormat::Png);
+    const QString localizedJpeg =
+        ScreenshotImageFileService::dialogFilter(ScreenshotImageFileFormat::Jpeg);
+    require(localizedPng == QStringLiteral("PNG localized (*.png)") &&
+                localizedJpeg == QStringLiteral("JPEG localized (*.jpg *.jpeg)") &&
+                ScreenshotImageFileService::saveDialogFilter().startsWith(
+                    localizedPng + QStringLiteral(";;") + localizedJpeg),
+            "save-dialog format descriptions must use the active application translator");
+    require(ScreenshotImageFileService::formatForDialogSelection(QStringLiteral("capture.unknown"),
+                                                                 localizedJpeg) ==
+                ScreenshotImageFileFormat::Jpeg,
+            "localized save-dialog filters must still resolve to their image format");
+    QCoreApplication::removeTranslator(&translator);
+
     require(ScreenshotImageFileService::normalizedPath(QStringLiteral("capture.unknown"),
                                                        ScreenshotImageFileFormat::Png) ==
                 QStringLiteral("capture.png"),

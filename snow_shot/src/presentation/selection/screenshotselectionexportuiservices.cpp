@@ -24,7 +24,8 @@ void applyPinRuntimeSettings(ScreenshotPinnedWindow::Config* config) {
     }
     const snow_shot::storage::PinToScreenSettings settings;
     config->mouseWheelZoomMode = settings.mouseWheelZoomMode();
-    config->automaticTextRecognition = settings.automaticTextRecognition();
+    config->automaticTextRecognition = config->formattedTextDocument == nullptr &&
+                                       settings.automaticTextRecognition();
 }
 } // namespace
 
@@ -182,13 +183,18 @@ bool ScreenshotSelectionExportUiServices::presentPinnedSelection(
     config.recognition = m_recognition;
     config.qrRecognition = m_qrRecognition;
     config.tableRecognition = m_tableRecognition;
+    config.formattedTextDocument.reset();
+    config.formattedPlainText.clear();
     applyPinRuntimeSettings(&config);
     return presentPinnedWindowAndSynchronize(pinnedWindow, config, m_showMainWindowRequested);
 }
 
 bool ScreenshotSelectionExportUiServices::presentPinnedImage(const QImage& image, QScreen* screen,
                                                              const QRect& nativeGeometry,
-                                                             const QSize& fullResolutionScaleBasis) {
+                                                             const QSize& fullResolutionScaleBasis,
+                                                             std::shared_ptr<QTextDocument>
+                                                                 formattedTextDocument,
+                                                             const QString& formattedPlainText) {
     SNOW_SHOT_PIN_PERF_SCOPE("ui.present_pinned_image");
     if (image.isNull() || screen == nullptr || nativeGeometry.isEmpty()) {
         return false;
@@ -218,6 +224,8 @@ bool ScreenshotSelectionExportUiServices::presentPinnedImage(const QImage& image
                                  (std::max)(1, config.fullResolutionScaleBasis.width());
     config.screen = screen;
     config.enableEditing = true;
+    config.formattedTextDocument = std::move(formattedTextDocument);
+    config.formattedPlainText = formattedPlainText;
     config.recognition = m_recognition;
     config.qrRecognition = m_qrRecognition;
     config.tableRecognition = m_tableRecognition;

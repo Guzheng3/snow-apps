@@ -1,4 +1,4 @@
-#include "videorecordinggeometry.h"
+#include "screenrecordinggeometry.h"
 
 #include <cmath>
 
@@ -12,7 +12,7 @@ qreal validScale(qreal scale) {
 } // namespace
 
 namespace snow_shot::presentation::recording {
-VideoRecordingAreaFrameGeometry videoRecordingAreaFrameGeometry(const QRectF& logicalRegion,
+ScreenRecordingAreaFrameGeometry screenRecordingAreaFrameGeometry(const QRectF& logicalRegion,
                                                                 qreal physicalScale) {
     if (!logicalRegion.isValid() || logicalRegion.isEmpty()) {
         return {};
@@ -27,7 +27,7 @@ VideoRecordingAreaFrameGeometry videoRecordingAreaFrameGeometry(const QRectF& lo
     const QRectF frameRect =
         selectionRect.adjusted(-borderWidth, -borderWidth, borderWidth, borderWidth);
 
-    return VideoRecordingAreaFrameGeometry{
+    return ScreenRecordingAreaFrameGeometry{
         windowGeometry,
         frameRect,
         selectionRect,
@@ -35,7 +35,7 @@ VideoRecordingAreaFrameGeometry videoRecordingAreaFrameGeometry(const QRectF& lo
     };
 }
 
-QRect videoRecordingCompatibleCaptureRegion(const QRect& selectedPhysicalRegion,
+QRect screenRecordingCompatibleCaptureRegion(const QRect& selectedPhysicalRegion,
                                             const QRect& physicalBounds) {
     if (!selectedPhysicalRegion.isValid() || selectedPhysicalRegion.isEmpty()) {
         return {};
@@ -61,7 +61,7 @@ QRect videoRecordingCompatibleCaptureRegion(const QRect& selectedPhysicalRegion,
     return captureRegion;
 }
 
-QSize videoRecordingMaximumSizeForClarity(const QString& clarity) {
+QSize screenRecordingMaximumSizeForClarity(const QString& clarity) {
     if (clarity == QStringLiteral("4k")) {
         return {3840, 2160};
     }
@@ -77,7 +77,7 @@ QSize videoRecordingMaximumSizeForClarity(const QString& clarity) {
     return {1920, 1080};
 }
 
-QSize videoRecordingOrientedMaximumSize(const QSize& maximumSize, const QSize& captureSize) {
+QSize screenRecordingOrientedMaximumSize(const QSize& maximumSize, const QSize& captureSize) {
     const bool maximumIsLandscape = maximumSize.width() > maximumSize.height();
     const bool maximumIsPortrait = maximumSize.height() > maximumSize.width();
     const bool captureIsLandscape = captureSize.width() > captureSize.height();

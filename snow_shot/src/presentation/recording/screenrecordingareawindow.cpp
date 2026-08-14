@@ -1,7 +1,7 @@
-#include "snow_shot/presentation/videorecordingareawindow.h"
+#include "snow_shot/presentation/screenrecordingareawindow.h"
 
 #include "snow_shot/presentation/screenshotgeometry.h"
-#include "videorecordinggeometry.h"
+#include "screenrecordinggeometry.h"
 
 #include <QPainter>
 #include <QPaintEvent>
@@ -13,7 +13,7 @@ constexpr QColor kRecordingColor(0xf5, 0x22, 0x2d);
 constexpr QColor kPausedColor(0xfa, 0xad, 0x14);
 } // namespace
 
-VideoRecordingAreaWindow::VideoRecordingAreaWindow(QWidget* parent)
+ScreenRecordingAreaWindow::ScreenRecordingAreaWindow(QWidget* parent)
     : QWidget(parent, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint |
                           Qt::WindowDoesNotAcceptFocus | Qt::MSWindowsFixedSizeDialogHint |
                           Qt::NoDropShadowWindowHint) {
@@ -24,7 +24,7 @@ VideoRecordingAreaWindow::VideoRecordingAreaWindow(QWidget* parent)
     setFocusPolicy(Qt::NoFocus);
 }
 
-void VideoRecordingAreaWindow::setPhysicalRegion(const QRect& region) {
+void ScreenRecordingAreaWindow::setPhysicalRegion(const QRect& region) {
     if (!region.isValid() || region.isEmpty()) {
         return;
     }
@@ -34,18 +34,18 @@ void VideoRecordingAreaWindow::setPhysicalRegion(const QRect& region) {
         ScreenshotGeometryMapper::logicalRectFForPhysicalRect(region, screen);
     const qreal scale = screen != nullptr ? screen->devicePixelRatio() : 1.0;
     const auto frameGeometry =
-        snow_shot::presentation::recording::videoRecordingAreaFrameGeometry(logicalRegion, scale);
+        snow_shot::presentation::recording::screenRecordingAreaFrameGeometry(logicalRegion, scale);
     m_frameRect = frameGeometry.frameRect;
     m_selectionRect = frameGeometry.selectionRect;
     setGeometry(frameGeometry.windowGeometry);
     update();
 }
 
-QRect VideoRecordingAreaWindow::physicalRegion() const {
+QRect ScreenRecordingAreaWindow::physicalRegion() const {
     return m_physicalRegion;
 }
 
-void VideoRecordingAreaWindow::setRecordingState(ScreenshotToolPalette::RecordingState state) {
+void ScreenRecordingAreaWindow::setRecordingState(ScreenshotToolPalette::RecordingState state) {
     if (m_state == state) {
         return;
     }
@@ -53,7 +53,7 @@ void VideoRecordingAreaWindow::setRecordingState(ScreenshotToolPalette::Recordin
     update();
 }
 
-void VideoRecordingAreaWindow::paintEvent(QPaintEvent* event) {
+void ScreenRecordingAreaWindow::paintEvent(QPaintEvent* event) {
     Q_UNUSED(event);
     QColor color = kIdleColor;
     if (m_state == ScreenshotToolPalette::RecordingState::Recording) {

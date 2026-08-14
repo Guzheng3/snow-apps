@@ -27,13 +27,14 @@ class ScreenshotController : public QObject {
     void captureAndCopySelection();
     void captureCurrentMonitor();
     void captureFocusedWindow();
-    void captureAndStartVideoRecording();
-    void startOrStopVideoRecordingAndCopy();
+    void captureAndStartScreenRecording();
+    void startOrStopScreenRecordingAndCopy();
     void editHistoryRecord(const QString& recordId);
     void cancelCapture();
     void copySelectionToClipboard();
     void pinSelectionToScreen();
-    void startVideoRecording();
+    void pinClipboardContentToScreen();
+    void startScreenRecording();
     void setMoveTool();
     void setSelectTool();
     void setShapeTool();

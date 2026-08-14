@@ -146,7 +146,7 @@ class NoOpToolbarCommands final : public ScreenshotToolbarCommandSink {
     void pinSelectionToScreen() override {}
     void cancelCapture() override {}
     void copySelectionToClipboard() override {}
-    void startVideoRecording() override {}
+    void startScreenRecording() override {}
     void setShapeStyleFromToolbar(const SnowCanvasShapeStyle&, quint32,
                                   SnowCanvasShapeKind) override {}
     void setTextStyleFromToolbar(const SnowCanvasTextStyle&) override {}
@@ -661,7 +661,7 @@ void styleToolChangesKeepThePresetWindowSize() {
     options.showSerialNumberTool = true;
     options.showOcrTool = true;
     options.showScrollingScreenshotTool = true;
-    options.showVideoRecordButton = true;
+    options.showScreenRecordButton = true;
     options.separatorBeforeShape = true;
     options.separatorAfterArrow = true;
     options.actions = ScreenshotToolPalette::PinAction | ScreenshotToolPalette::CancelAction |

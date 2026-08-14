@@ -40,7 +40,7 @@ ScreenshotToolPalette::Options screenshotToolbarOptions() {
     options.showOcrTool = true;
     options.showTableTool = true;
     options.showQrTool = true;
-    options.showVideoRecordButton = true;
+    options.showScreenRecordButton = true;
     options.showScrollingScreenshotTool = true;
     options.showSaveButton = true;
     options.separatorBeforeShape = true;
@@ -224,8 +224,8 @@ void ScreenshotToolbarWindow::connectToolCommands(ScreenshotToolPalette& toolPal
 }
 
 void ScreenshotToolbarWindow::connectActionCommands(ScreenshotToolPalette& toolPalette) {
-    connect(&toolPalette, &ScreenshotToolPalette::videoRecordRequested, this,
-            [this]() { m_commands.startVideoRecording(); });
+    connect(&toolPalette, &ScreenshotToolPalette::screenRecordRequested, this,
+            [this]() { m_commands.startScreenRecording(); });
     connect(&toolPalette, &ScreenshotToolPalette::pinRequested, this,
             [this]() { m_commands.pinSelectionToScreen(); });
     connect(&toolPalette, &ScreenshotToolPalette::saveRequested, this,

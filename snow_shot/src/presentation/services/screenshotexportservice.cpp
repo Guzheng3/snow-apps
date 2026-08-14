@@ -163,11 +163,13 @@ class ScreenshotExportWorker final : public QObject {
         return image;
     }
 
-    ScreenshotClipboardPayload prepareSelectionClipboard(
+    ScreenshotSelectionClipboardResult prepareSelectionClipboard(
         const QByteArray& documentSession, const QRect& selection,
         const ScreenshotResultStyle& style, const QList<CanvasExportSource>& sources) {
-        return ScreenshotClipboardService::prepareImage(
-            renderSelection(documentSession, selection, style, sources));
+        ScreenshotSelectionClipboardResult result;
+        result.image = renderSelection(documentSession, selection, style, sources);
+        result.payload = ScreenshotClipboardService::prepareImage(result.image);
+        return result;
     }
 
   private:
@@ -311,7 +313,7 @@ bool ScreenshotExportService::requestSelectionClipboard(
          callback = std::move(callback)]() mutable {
             snow_shot::presentation::clipboard_perf::duration(
                 "export.worker_queue_delay", workerQueueTimer.elapsedNanoseconds());
-            auto payload = std::make_shared<ScreenshotClipboardPayload>(
+            auto result = std::make_shared<ScreenshotSelectionClipboardResult>(
                 worker->prepareSelectionClipboard(documentSession, selection, style, sources));
             if (guardedReceiver.isNull() || guardedCompletionContext.isNull()) {
                 SNOW_SHOT_CLIPBOARD_PERF_COUNTER("export.failure.receiver_destroyed", 1);
@@ -320,14 +322,14 @@ bool ScreenshotExportService::requestSelectionClipboard(
             const snow_shot::presentation::clipboard_perf::Stopwatch callbackQueueTimer;
             const bool callbackScheduled = QMetaObject::invokeMethod(
                 guardedCompletionContext,
-                [guardedReceiver, guardedCompletionContext, payload,
+                [guardedReceiver, guardedCompletionContext, result,
                  callback = std::move(callback), requestTimer, callbackQueueTimer]() mutable {
                     snow_shot::presentation::clipboard_perf::duration(
                         "export.callback_queue_delay", callbackQueueTimer.elapsedNanoseconds());
                     snow_shot::presentation::clipboard_perf::duration(
                         "export.request_to_result", requestTimer.elapsedNanoseconds());
                     if (!guardedReceiver.isNull() && !guardedCompletionContext.isNull()) {
-                        callback(std::move(*payload));
+                        callback(std::move(*result));
                     }
                 },
                 Qt::QueuedConnection);

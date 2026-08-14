@@ -673,6 +673,48 @@ void shortRecognitionWindowPreservesExactSelectionGeometryAcrossModes() {
             "edit mode must remain exactly within a short screenshot selection");
     window.hideTextEditor();
 }
+
+void formattedClipboardTextUsesASelectableQtDocument() {
+    QScreen* screen = QGuiApplication::primaryScreen();
+    require(screen != nullptr, "a primary screen is required");
+
+    QWidget host;
+    host.resize(360, 160);
+    host.show();
+    ScreenshotRecognitionWindow window(
+        ScreenshotRecognitionWindowActions{}, &host,
+        ScreenshotRecognitionWindow::PresentationMode::EmbeddedChild);
+    require(window.present(ScreenshotRecognitionWindow::Config{
+                screen,
+                &host,
+                host.rect(),
+                QRectF(QPointF(), QSizeF(host.size())),
+                ScreenshotRecognitionWindow::PresentationMode::EmbeddedChild,
+            }),
+            "the formatted clipboard recognition surface should present");
+
+    auto document = std::make_shared<QTextDocument>();
+    document->setHtml(QStringLiteral("<p><b>Formatted</b> clipboard text</p>"));
+    window.showFormattedText(document);
+    QApplication::processEvents();
+
+    auto* browser =
+        window.findChild<QTextBrowser*>(QStringLiteral("screenshotClipboardText"));
+    const Qt::TextInteractionFlags selectionFlags =
+        Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard;
+    require(browser != nullptr && browser->isVisible() && browser->isReadOnly() &&
+                browser->document() == document.get() &&
+                (browser->textInteractionFlags() & selectionFlags) == selectionFlags &&
+                !browser->openLinks() && !browser->openExternalLinks(),
+            "formatted clipboard text should retain its Qt document and allow direct selection");
+    require(browser->toPlainText().contains(QStringLiteral("Formatted clipboard text")),
+            "the selectable clipboard surface should preserve document text");
+
+    window.clearFormattedText();
+    require(window.findChild<QTextBrowser*>(QStringLiteral("screenshotClipboardText")) == nullptr,
+            "leaving formatted-text mode should remove its selectable surface");
+}
+
 void qrContentsUseStrictRichTextLinksAndPreserveOrder() {
     QScreen* screen = QGuiApplication::primaryScreen();
     require(screen != nullptr, "a primary screen is required");
@@ -758,6 +800,7 @@ int main(int argc, char** argv) {
     recognitionWindowCanExtendBeyondItsDpiScreen();
     recognitionWindowUsesOrdinaryQtWindowBehavior();
     shortRecognitionWindowPreservesExactSelectionGeometryAcrossModes();
+    formattedClipboardTextUsesASelectableQtDocument();
     qrContentsUseStrictRichTextLinksAndPreserveOrder();
     return 0;
 }

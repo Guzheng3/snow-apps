@@ -110,11 +110,25 @@ ScreenshotRecognitionSessionController::~ScreenshotRecognitionSessionController(
 
 void ScreenshotRecognitionSessionController::setTarget(ScreenshotRecognitionTarget target) {
     if (target.key == m_target.key && target.canvasRect == m_target.canvasRect &&
-        target.image.cacheKey() == m_target.image.cacheKey()) {
+        target.image.cacheKey() == m_target.image.cacheKey() &&
+        target.formattedTextDocument == m_target.formattedTextDocument &&
+        target.formattedPlainText == m_target.formattedPlainText) {
         return;
     }
     invalidate();
     m_target = std::move(target);
+    if (m_target.hasFormattedText()) {
+        TextCacheEntry entry;
+        entry.formatted = true;
+        entry.formattedDocument = m_target.formattedTextDocument;
+        const QString original = m_target.formattedPlainText.isEmpty()
+                                      ? entry.formattedDocument->toPlainText()
+                                      : m_target.formattedPlainText;
+        entry.editingSession = std::make_shared<ScreenshotOcrTextEditingSession>(original);
+        connect(entry.editingSession->document(), &QTextDocument::contentsChanged, this,
+                [this, key = m_target.key]() { handleTextDocumentChanged(key); });
+        m_textCache.insert(m_target.key, std::move(entry));
+    }
 }
 
 bool ScreenshotRecognitionSessionController::hasTarget() const {
@@ -163,8 +177,13 @@ void ScreenshotRecognitionSessionController::activate(Mode mode) {
         const auto cached = m_textCache.constFind(m_target.key);
         if (cached != m_textCache.cend()) {
             m_textCacheKey = m_target.key;
-            m_presentation = cached->presentation;
-            applyPresentation(m_presentation);
+            if (cached->formatted) {
+                m_presentation.reset();
+                applyFormattedText(cached->formattedDocument);
+            } else {
+                m_presentation = cached->presentation;
+                applyPresentation(m_presentation);
+            }
             emit textResultChanged(true);
             if (cached->editing) {
                 m_editing = true;
@@ -407,7 +426,12 @@ void ScreenshotRecognitionSessionController::endTextEditing() {
     if (content() != nullptr) {
         content()->hideTextEditor();
     }
-    applyPresentation(m_presentation);
+    const auto entry = m_textCache.value(m_textCacheKey);
+    if (entry.formatted) {
+        applyFormattedText(entry.formattedDocument);
+    } else {
+        applyPresentation(m_presentation);
+    }
     emit textEditingChanged(false);
     updateTextState();
 }
@@ -1074,6 +1098,7 @@ void ScreenshotRecognitionSessionController::ensureContent() {
 void ScreenshotRecognitionSessionController::clearContent() {
     if (m_content != nullptr) {
         m_content->clearOcrPresentation();
+        m_content->clearFormattedText();
         m_content->clearTableSession();
         m_content->clearQrContents();
     }
@@ -1125,6 +1150,16 @@ void ScreenshotRecognitionSessionController::handleTextDocumentChanged(const QSt
         emit textDraftChanged(session->text());
     }
     updateTextState();
+}
+
+void ScreenshotRecognitionSessionController::applyFormattedText(
+    const std::shared_ptr<QTextDocument>& document) {
+    ensureContent();
+    if (m_actions.applyFormattedText) {
+        m_actions.applyFormattedText(document);
+    } else if (content() != nullptr) {
+        content()->showFormattedText(document);
+    }
 }
 
 void ScreenshotRecognitionSessionController::handleTranslationDocumentChanged(

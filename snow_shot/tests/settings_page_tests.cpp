@@ -37,6 +37,7 @@
 #include <QCoreApplication>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLayout>
@@ -98,14 +99,14 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
              QStringLiteral("pin")},
             {settings::SettingsSelectBinding::PinMouseWheelZoomMode,
              QStringLiteral("mouse_position")},
-            {settings::SettingsSelectBinding::VideoClarity, QStringLiteral("1080p")},
-            {settings::SettingsSelectBinding::VideoFrameRate, 30},
+            {settings::SettingsSelectBinding::ScreenRecordingClarity, QStringLiteral("1080p")},
+            {settings::SettingsSelectBinding::ScreenRecordingFrameRate, 30},
             {settings::SettingsSelectBinding::AnimatedImageClarity,
              QStringLiteral("1080p")},
             {settings::SettingsSelectBinding::AnimatedImageFrameRate, 10},
             {settings::SettingsSelectBinding::AnimatedImageFormat, QStringLiteral("gif")},
-            {settings::SettingsSelectBinding::VideoEncoder, QStringLiteral("h264")},
-            {settings::SettingsSelectBinding::VideoEncodingPreset,
+            {settings::SettingsSelectBinding::ScreenRecordingEncoder, QStringLiteral("h264")},
+            {settings::SettingsSelectBinding::ScreenRecordingEncodingPreset,
              QStringLiteral("veryfast")},
             {settings::SettingsSelectBinding::TrayLeftClickAction,
              QStringLiteral("screenshot")},
@@ -115,7 +116,7 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
             {settings::SettingsSwitchBinding::ScreenshotCopyImageFileToClipboard, false},
             {settings::SettingsSwitchBinding::PinAutomaticTextRecognition, true},
             {settings::SettingsSwitchBinding::PinAutoResizeWindow, true},
-            {settings::SettingsSwitchBinding::VideoHideToolbarInRecording, true},
+            {settings::SettingsSwitchBinding::ScreenRecordingHideToolbar, true},
             {settings::SettingsSwitchBinding::DisableHotkeysOnFocusedFullscreen, false},
             {settings::SettingsSwitchBinding::AutoStartAtBoot, false},
         };
@@ -993,41 +994,59 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
         QStringLiteral("settings-control-screenshot-double-click-action"));
     auto* middleClickAction = functionPage.findChild<adqt::widgets::AdSelect*>(
         QStringLiteral("settings-control-screenshot-middle-mouse-button-action"));
-    auto* videoClarity = functionPage.findChild<adqt::widgets::AdSelect*>(
-        QStringLiteral("settings-control-video-recording-video-clarity"));
-    auto* videoFrameRate = functionPage.findChild<adqt::widgets::AdSelect*>(
-        QStringLiteral("settings-control-video-recording-frame-rate"));
+    auto* screenRecordingClarity = functionPage.findChild<adqt::widgets::AdSelect*>(
+        QStringLiteral("settings-control-screen-recording-clarity"));
+    auto* screenRecordingFrameRate = functionPage.findChild<adqt::widgets::AdSelect*>(
+        QStringLiteral("settings-control-screen-recording-frame-rate"));
     auto* animatedFormat = functionPage.findChild<adqt::widgets::AdSelect*>(
-        QStringLiteral("settings-control-video-recording-animated-image-format"));
-    auto* drawingExclusions = interfacePage.findChild<adqt::widgets::AdMultiSelect*>(
+        QStringLiteral("settings-control-screen-recording-animated-image-format"));
+    auto* drawingExclusions = functionPage.findChild<adqt::widgets::AdMultiSelect*>(
         QStringLiteral("settings-control-drawing-quick-selection-disabled-tools"));
-    auto* pinZoomMode = interfacePage.findChild<adqt::widgets::AdSelect*>(
+    auto* pinZoomMode = functionPage.findChild<adqt::widgets::AdSelect*>(
         QStringLiteral("settings-control-pin-to-screen-mouse-wheel-zoom-mode"));
-    auto* trayLeftClick = interfacePage.findChild<adqt::widgets::AdSelect*>(
+    auto* pinAutomaticOcr = functionPage.findChild<adqt::widgets::AdSwitch*>(
+        QStringLiteral("settings-control-pin-to-screen-automatic-text-recognition"));
+    auto* pinAutoResize = functionPage.findChild<adqt::widgets::AdSwitch*>(
+        QStringLiteral("settings-control-pin-to-screen-auto-resize-window"));
+    auto* trayLeftClick = functionPage.findChild<adqt::widgets::AdSelect*>(
         QStringLiteral("settings-control-tray-left-click-action"));
     require(ocrAction != nullptr && ocrAction->options().size() == 6 &&
                 doubleClickAction != nullptr && doubleClickAction->options().size() == 4 &&
                 middleClickAction != nullptr && middleClickAction->options().size() == 4 &&
-                videoClarity != nullptr && videoClarity->options().size() == 5 &&
-                videoFrameRate != nullptr && videoFrameRate->options().size() == 7 &&
+                screenRecordingClarity != nullptr && screenRecordingClarity->options().size() == 5 &&
+                screenRecordingFrameRate != nullptr && screenRecordingFrameRate->options().size() == 7 &&
                 animatedFormat != nullptr && animatedFormat->options().size() == 3 &&
                 drawingExclusions != nullptr && drawingExclusions->options().size() == 13 &&
                 pinZoomMode != nullptr && pinZoomMode->options().size() == 6 &&
+                pinAutomaticOcr != nullptr && pinAutoResize != nullptr &&
                 trayLeftClick != nullptr && trayLeftClick->options().size() == 2,
             "new select and multi-select controls must render every advertised option");
+    require(interfacePage.findChild<adqt::widgets::AdMultiSelect*>(
+                 QStringLiteral("settings-control-drawing-quick-selection-disabled-tools")) ==
+                nullptr &&
+                interfacePage.findChild<adqt::widgets::AdSelect*>(
+                    QStringLiteral("settings-control-pin-to-screen-mouse-wheel-zoom-mode")) ==
+                nullptr &&
+                interfacePage.findChild<adqt::widgets::AdSelect*>(
+                    QStringLiteral("settings-control-tray-left-click-action")) == nullptr,
+            "moved controls must no longer render on Interface Settings");
 
     ocrAction->setCurrentValue(QStringLiteral("copy_text"));
-    videoFrameRate->setCurrentValue(83);
+    screenRecordingFrameRate->setCurrentValue(83);
     pinZoomMode->setCurrentValue(QStringLiteral("top_right"));
+    pinAutomaticOcr->setChecked(false);
+    pinAutoResize->setChecked(false);
     trayLeftClick->setCurrentValue(QStringLiteral("show_main_window"));
     drawingExclusions->setSelectedValues(
         {QStringLiteral("free-draw"), QStringLiteral("pen-filter")});
     require(bindings.selectValue(settings::SettingsSelectBinding::ScreenshotOcrAction) ==
                     QStringLiteral("copy_text") &&
-                bindings.selectValue(settings::SettingsSelectBinding::VideoFrameRate).toInt() ==
+                bindings.selectValue(settings::SettingsSelectBinding::ScreenRecordingFrameRate).toInt() ==
                     83 &&
                 bindings.selectValue(settings::SettingsSelectBinding::PinMouseWheelZoomMode) ==
                     QStringLiteral("top_right") &&
+                !bindings.switchValue(settings::SettingsSwitchBinding::PinAutomaticTextRecognition) &&
+                !bindings.switchValue(settings::SettingsSwitchBinding::PinAutoResizeWindow) &&
                 bindings.selectValue(settings::SettingsSelectBinding::TrayLeftClickAction) ==
                     QStringLiteral("show_main_window") &&
                 bindings.multiSelectValue(
@@ -1047,6 +1066,49 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                                 return status != nullptr && status->isHidden();
                             }),
             "Hotkey Settings must render nine local drawing shortcut rows without global status");
+    const auto settingMetrics =
+        snow_shot::presentation::styles::ThemeManager::instance().themeColorScheme().metricAlias;
+    auto* drawingShortcutList = hotkeyPage.findChild<QWidget*>(
+        QStringLiteral("settings-section-list-hotkey-settings-drawing-shortcuts"));
+    auto* drawingShortcutGrid =
+        drawingShortcutList != nullptr && drawingShortcutList->layout() != nullptr &&
+                drawingShortcutList->layout()->count() == 1
+            ? qobject_cast<QGridLayout*>(drawingShortcutList->layout()->itemAt(0)->layout())
+            : nullptr;
+    auto* drawingShortcutHeader = hotkeyPage.findChild<SectionHeaderWidget*>(
+        QStringLiteral("settings-section-hotkey-settings-drawing-shortcuts"));
+    const QMargins drawingHeaderMargins =
+        drawingShortcutHeader != nullptr && drawingShortcutHeader->layout() != nullptr
+            ? drawingShortcutHeader->layout()->contentsMargins()
+            : QMargins();
+    require(drawingShortcutGrid != nullptr && drawingShortcutGrid->count() == 9 &&
+                drawingShortcutGrid->columnCount() == 2 && drawingShortcutGrid->rowCount() == 5 &&
+                drawingShortcutGrid->horizontalSpacing() == settingMetrics.marginLG &&
+                drawingShortcutGrid->verticalSpacing() == settingMetrics.marginLG &&
+                drawingShortcutHeader != nullptr && drawingHeaderMargins.top() == 0 &&
+                drawingHeaderMargins.bottom() == settingMetrics.margin &&
+                std::all_of(drawingShortcutRows.cbegin(), drawingShortcutRows.cend(),
+                            [&settingMetrics](const ShortcutKeyRow* row) {
+                                const auto* label =
+                                    row != nullptr
+                                        ? row->findChild<QLabel*>(
+                                              QStringLiteral("shortcutTitleLabel"))
+                                        : nullptr;
+                                const auto* button =
+                                    row != nullptr
+                                        ? row->findChild<adqt::widgets::AdButton*>(
+                                              QStringLiteral("shortcutKeyButton"))
+                                        : nullptr;
+                                return row != nullptr &&
+                                       row->height() == settingMetrics.controlHeight &&
+                                       row->cursor().shape() == Qt::ArrowCursor && label != nullptr &&
+                                       label->text().endsWith(QLatin1Char(':')) && button != nullptr &&
+                                       button->buttonStyle() ==
+                                           adqt::widgets::AdButton::ButtonStyle::Outline &&
+                                       button->accentRole() ==
+                                           adqt::widgets::AdButton::AccentRole::Neutral;
+                            }),
+            "Drawing shortcuts must match the reference two-column Ant form presentation");
 
     auto* generalList = interfacePage.findChild<QWidget*>(
         QStringLiteral("settings-section-list-interface-settings-general"));
@@ -1056,8 +1118,6 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
         interfacePage.findChild<QWidget*>(QStringLiteral("settings-item-interface-theme"));
     auto* languageRow =
         interfacePage.findChild<QWidget*>(QStringLiteral("settings-item-interface-language"));
-    const auto settingMetrics =
-        snow_shot::presentation::styles::ThemeManager::instance().themeColorScheme().metricAlias;
     const auto contentHeight = [](const QWidget* row) {
         int height = 0;
         if (row != nullptr && row->layout() != nullptr) {
@@ -1338,10 +1398,11 @@ void quickActionCommandsDispatchThroughContentCard() {
         {QStringLiteral("quick-screenshot-copy"), Action::ScreenshotCopy},
         {QStringLiteral("quick-screenshot-full-screen"), Action::ScreenshotFullScreen},
         {QStringLiteral("quick-screenshot-focused-window"), Action::ScreenshotFocusedWindow},
-        {QStringLiteral("quick-video-record"), Action::VideoRecord},
-        {QStringLiteral("quick-video-record-copy"), Action::VideoRecordCopy},
+        {QStringLiteral("quick-screen-record"), Action::ScreenRecord},
+        {QStringLiteral("quick-screen-record-copy"), Action::ScreenRecordCopy},
         {QStringLiteral("quick-show-or-hide-main-window"), Action::ShowOrHideMainWindow},
         {QStringLiteral("quick-open-capture-history"), Action::OpenCaptureHistory},
+        {QStringLiteral("quick-pin-clipboard-content"), Action::PinClipboardContent},
     };
     for (const auto& [objectId, action] : genericActions) {
         auto* row = content.findChild<ShortcutKeyRow*>(QStringLiteral("settings-item-") + objectId);

@@ -16,7 +16,7 @@ ScreenshotSelectionExportWorkflow::ScreenshotSelectionExportWorkflow(
     : m_context(context) {}
 
 bool ScreenshotSelectionExportWorkflow::copySelectionToClipboard(ResultValidator validator,
-                                                                  Completion completion) {
+                                                                  CopyCompletion completion) {
     const QRect selection = m_context.selection.pixelSelection();
     if (selection.width() < 1 || selection.height() < 1) {
         return false;
@@ -25,20 +25,20 @@ bool ScreenshotSelectionExportWorkflow::copySelectionToClipboard(ResultValidator
     return m_context.imageComposer.requestSelectionClipboard(
         selection, resultStyle(m_context.selection), &m_context.callbackContext,
             [this, validator = std::move(validator),
-         completion = std::move(completion)](ScreenshotClipboardPayload payload) mutable {
+         completion = std::move(completion)](ScreenshotSelectionClipboardResult result) mutable {
             if (validator && !validator()) {
                 if (completion) {
-                    completion(false);
+                    completion(false, {});
                 }
                 return;
             }
-            const bool success = payload.isValid() &&
-                                 m_context.destination.publishClipboard(std::move(payload));
+            const bool success = result.isValid() &&
+                                 m_context.destination.publishClipboard(std::move(result.payload));
             if (success) {
                 persistCurrentSelectionParams();
             }
             if (completion) {
-                completion(success);
+                completion(success, success ? std::move(result.image) : QImage{});
             }
         });
 }

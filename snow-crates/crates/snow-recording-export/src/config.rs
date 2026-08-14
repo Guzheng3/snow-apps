@@ -76,6 +76,19 @@ impl ExportFormat {
         matches!(self, Self::Gif | Self::Apng | Self::Webp)
     }
 
+    /// Returns the conventional filename extension for the selected output
+    /// container. Callers that construct export paths should use this rather
+    /// than assuming every export is an MP4.
+    pub const fn file_extension(self) -> &'static str {
+        match self {
+            Self::Mp4 => "mp4",
+            Self::Avi => "avi",
+            Self::Gif => "gif",
+            Self::Apng => "apng",
+            Self::Webp => "webp",
+        }
+    }
+
     pub const fn requires_even_dimensions(self) -> bool {
         matches!(self, Self::Mp4 | Self::Avi)
     }
@@ -240,7 +253,7 @@ impl ExportRequest {
 
 #[cfg(test)]
 mod tests {
-    use super::ExportRequest;
+    use super::{ExportFormat, ExportRequest};
 
     #[test]
     fn export_request_requires_complete_resolution_caps() {
@@ -250,5 +263,15 @@ mod tests {
 
         request.maximum_height = Some(1080);
         assert!(request.validate().is_ok());
+    }
+
+    #[test]
+    fn animated_formats_have_distinct_extensions() {
+        assert!(ExportFormat::Gif.is_animated_image());
+        assert!(ExportFormat::Apng.is_animated_image());
+        assert!(ExportFormat::Webp.is_animated_image());
+        assert_eq!(ExportFormat::Gif.file_extension(), "gif");
+        assert_eq!(ExportFormat::Apng.file_extension(), "apng");
+        assert_eq!(ExportFormat::Webp.file_extension(), "webp");
     }
 }

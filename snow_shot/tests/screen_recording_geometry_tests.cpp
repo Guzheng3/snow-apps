@@ -1,4 +1,4 @@
-#include "presentation/recording/videorecordinggeometry.h"
+#include "presentation/recording/screenrecordinggeometry.h"
 #include "snow_shot/presentation/screenshotgeometry.h"
 
 #include <QGuiApplication>
@@ -21,8 +21,8 @@ void require(bool condition, const char* message) {
 
 void recordingFrameStaysOutsideTheSelection(qreal scale) {
     const QRectF selection(300.4, 200.8, 641.2, 359.6);
-    const recording::VideoRecordingAreaFrameGeometry geometry =
-        recording::videoRecordingAreaFrameGeometry(selection, scale);
+    const recording::ScreenRecordingAreaFrameGeometry geometry =
+        recording::screenRecordingAreaFrameGeometry(selection, scale);
 
     require(QRectF(geometry.windowGeometry).contains(selection),
             "recording frame window should contain the complete selection");
@@ -160,7 +160,7 @@ void toolbarRemainsInsideTheAvailableScreen() {
 void encoderCompatibilityNeverShrinksTheSelection() {
     const QRect bounds(0, 0, 1920, 1080);
     const QRect oddSelection(100, 80, 641, 359);
-    const QRect expanded = recording::videoRecordingCompatibleCaptureRegion(oddSelection, bounds);
+    const QRect expanded = recording::screenRecordingCompatibleCaptureRegion(oddSelection, bounds);
     require(expanded.contains(oddSelection),
             "encoder-compatible capture region should retain every selected pixel");
     require(expanded.width() == 642 && expanded.height() == 360,
@@ -170,7 +170,7 @@ void encoderCompatibilityNeverShrinksTheSelection() {
 
     const QRect edgeSelection(1279, 721, 641, 359);
     const QRect edgeExpanded =
-        recording::videoRecordingCompatibleCaptureRegion(edgeSelection, bounds);
+        recording::screenRecordingCompatibleCaptureRegion(edgeSelection, bounds);
     require(edgeExpanded.contains(edgeSelection),
             "screen-edge capture expansion should retain every selected pixel");
     require(edgeExpanded.right() == bounds.right() && edgeExpanded.bottom() == bounds.bottom(),
@@ -180,37 +180,37 @@ void encoderCompatibilityNeverShrinksTheSelection() {
 }
 
 void claritySettingsMapToMaximumOutputSizes() {
-    require(recording::videoRecordingMaximumSizeForClarity(QStringLiteral("4k")) ==
+    require(recording::screenRecordingMaximumSizeForClarity(QStringLiteral("4k")) ==
                 QSize(3840, 2160),
             "4K clarity should cap output at 3840x2160");
-    require(recording::videoRecordingMaximumSizeForClarity(QStringLiteral("2k")) ==
+    require(recording::screenRecordingMaximumSizeForClarity(QStringLiteral("2k")) ==
                 QSize(2560, 1440),
             "2K clarity should cap output at 2560x1440");
-    require(recording::videoRecordingMaximumSizeForClarity(QStringLiteral("1080p")) ==
+    require(recording::screenRecordingMaximumSizeForClarity(QStringLiteral("1080p")) ==
                 QSize(1920, 1080),
             "1080p clarity should cap output at 1920x1080");
-    require(recording::videoRecordingMaximumSizeForClarity(QStringLiteral("720p")) ==
+    require(recording::screenRecordingMaximumSizeForClarity(QStringLiteral("720p")) ==
                 QSize(1280, 720),
             "720p clarity should cap output at 1280x720");
-    require(recording::videoRecordingMaximumSizeForClarity(QStringLiteral("480p")) ==
+    require(recording::screenRecordingMaximumSizeForClarity(QStringLiteral("480p")) ==
                 QSize(854, 480),
             "480p clarity should use an encoder-compatible 16:9 size");
-    require(recording::videoRecordingMaximumSizeForClarity(QStringLiteral("invalid")) ==
+    require(recording::screenRecordingMaximumSizeForClarity(QStringLiteral("invalid")) ==
                 QSize(1920, 1080),
             "invalid clarity should use the persisted setting's 1080p default");
 }
 
 void clarityBoundsFollowCaptureOrientation() {
-    require(recording::videoRecordingOrientedMaximumSize(QSize(1920, 1080), QSize(1080, 1920)) ==
+    require(recording::screenRecordingOrientedMaximumSize(QSize(1920, 1080), QSize(1080, 1920)) ==
                 QSize(1080, 1920),
             "portrait captures should transpose landscape clarity bounds");
-    require(recording::videoRecordingOrientedMaximumSize(QSize(1920, 1080), QSize(1920, 1080)) ==
+    require(recording::screenRecordingOrientedMaximumSize(QSize(1920, 1080), QSize(1920, 1080)) ==
                 QSize(1920, 1080),
             "landscape captures should retain landscape clarity bounds");
-    require(recording::videoRecordingOrientedMaximumSize(QSize(1080, 1920), QSize(1920, 1080)) ==
+    require(recording::screenRecordingOrientedMaximumSize(QSize(1080, 1920), QSize(1920, 1080)) ==
                 QSize(1920, 1080),
             "landscape captures should transpose portrait bounds");
-    require(recording::videoRecordingOrientedMaximumSize(QSize(1920, 1080), QSize(1000, 1000)) ==
+    require(recording::screenRecordingOrientedMaximumSize(QSize(1920, 1080), QSize(1000, 1000)) ==
                 QSize(1920, 1080),
             "square captures should retain the configured orientation");
 }

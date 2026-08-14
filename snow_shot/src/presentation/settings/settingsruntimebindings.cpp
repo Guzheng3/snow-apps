@@ -147,9 +147,9 @@ QVariant BuiltInSettingsRuntimeBindings::selectValue(SettingsSelectBinding bindi
         return storage::ScreenshotSettings().middleMouseButtonAction();
     case SettingsSelectBinding::PinMouseWheelZoomMode:
         return storage::PinToScreenSettings().mouseWheelZoomMode();
-    case SettingsSelectBinding::VideoClarity:
-        return storage::RecordingSettings().videoClarity();
-    case SettingsSelectBinding::VideoFrameRate:
+    case SettingsSelectBinding::ScreenRecordingClarity:
+        return storage::RecordingSettings().screenRecordingClarity();
+    case SettingsSelectBinding::ScreenRecordingFrameRate:
         return storage::RecordingSettings().frameRate();
     case SettingsSelectBinding::AnimatedImageClarity:
         return storage::RecordingSettings().animatedImageClarity();
@@ -157,9 +157,9 @@ QVariant BuiltInSettingsRuntimeBindings::selectValue(SettingsSelectBinding bindi
         return storage::RecordingSettings().animatedImageFrameRate();
     case SettingsSelectBinding::AnimatedImageFormat:
         return storage::RecordingSettings().animatedImageFormat();
-    case SettingsSelectBinding::VideoEncoder:
+    case SettingsSelectBinding::ScreenRecordingEncoder:
         return storage::RecordingSettings().encoder();
-    case SettingsSelectBinding::VideoEncodingPreset:
+    case SettingsSelectBinding::ScreenRecordingEncodingPreset:
         return storage::RecordingSettings().encodingPreset();
     case SettingsSelectBinding::TrayLeftClickAction:
         return storage::TraySettings().leftClickAction();
@@ -227,9 +227,9 @@ bool BuiltInSettingsRuntimeBindings::applySelectValue(SettingsSelectBinding bind
         return storage::ScreenshotSettings().setMiddleMouseButtonAction(value.toString());
     case SettingsSelectBinding::PinMouseWheelZoomMode:
         return storage::PinToScreenSettings().setMouseWheelZoomMode(value.toString());
-    case SettingsSelectBinding::VideoClarity:
-        return storage::RecordingSettings().setVideoClarity(value.toString());
-    case SettingsSelectBinding::VideoFrameRate:
+    case SettingsSelectBinding::ScreenRecordingClarity:
+        return storage::RecordingSettings().setScreenRecordingClarity(value.toString());
+    case SettingsSelectBinding::ScreenRecordingFrameRate:
         return storage::RecordingSettings().setFrameRate(value.toInt());
     case SettingsSelectBinding::AnimatedImageClarity:
         return storage::RecordingSettings().setAnimatedImageClarity(value.toString());
@@ -237,9 +237,9 @@ bool BuiltInSettingsRuntimeBindings::applySelectValue(SettingsSelectBinding bind
         return storage::RecordingSettings().setAnimatedImageFrameRate(value.toInt());
     case SettingsSelectBinding::AnimatedImageFormat:
         return storage::RecordingSettings().setAnimatedImageFormat(value.toString());
-    case SettingsSelectBinding::VideoEncoder:
+    case SettingsSelectBinding::ScreenRecordingEncoder:
         return storage::RecordingSettings().setEncoder(value.toString());
-    case SettingsSelectBinding::VideoEncodingPreset:
+    case SettingsSelectBinding::ScreenRecordingEncodingPreset:
         return storage::RecordingSettings().setEncodingPreset(value.toString());
     case SettingsSelectBinding::TrayLeftClickAction:
         return storage::TraySettings().setLeftClickAction(value.toString());
@@ -271,7 +271,7 @@ bool BuiltInSettingsRuntimeBindings::switchValue(SettingsSwitchBinding binding) 
         return storage::PinToScreenSettings().automaticTextRecognition();
     case SettingsSwitchBinding::PinAutoResizeWindow:
         return storage::PinToScreenSettings().autoResizeWindow();
-    case SettingsSwitchBinding::VideoHideToolbarInRecording:
+    case SettingsSwitchBinding::ScreenRecordingHideToolbar:
         return storage::RecordingSettings().hideToolbarInRecording();
     case SettingsSwitchBinding::DisableHotkeysOnFocusedFullscreen:
         return storage::GlobalShortcutSettings().disableOnFocusedFullscreenWindow();
@@ -324,7 +324,7 @@ bool BuiltInSettingsRuntimeBindings::applySwitchValue(SettingsSwitchBinding bind
     if (binding == SettingsSwitchBinding::PinAutoResizeWindow) {
         return storage::PinToScreenSettings().setAutoResizeWindow(value);
     }
-    if (binding == SettingsSwitchBinding::VideoHideToolbarInRecording) {
+    if (binding == SettingsSwitchBinding::ScreenRecordingHideToolbar) {
         return storage::RecordingSettings().setHideToolbarInRecording(value);
     }
     if (binding == SettingsSwitchBinding::DisableHotkeysOnFocusedFullscreen) {
@@ -349,7 +349,7 @@ bool BuiltInSettingsRuntimeBindings::applySwitchValue(SettingsSwitchBinding bind
     case SettingsSwitchBinding::ScreenshotCopyImageFileToClipboard:
     case SettingsSwitchBinding::PinAutomaticTextRecognition:
     case SettingsSwitchBinding::PinAutoResizeWindow:
-    case SettingsSwitchBinding::VideoHideToolbarInRecording:
+    case SettingsSwitchBinding::ScreenRecordingHideToolbar:
     case SettingsSwitchBinding::DisableHotkeysOnFocusedFullscreen:
     case SettingsSwitchBinding::AutoStartAtBoot:
         return false;
@@ -644,6 +644,8 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
                       QStringLiteral("global_shortcuts/show_or_hide_main_window"));
         resetShortcut(GlobalShortcutAction::OpenCaptureHistory,
                       QStringLiteral("global_shortcuts/open_capture_history"));
+        resetShortcut(GlobalShortcutAction::PinClipboardContent,
+                      QStringLiteral("global_shortcuts/pin_clipboard_content"));
         return accepted;
     }
     case SettingsSectionReset::GeneralSettings: {
@@ -682,9 +684,6 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
                });
     case SettingsSectionReset::ScreenshotInterfaceSettings:
         return storage::ApplicationStorage::instance().configuration().setValues({
-            {QStringLiteral("screenshot_ui/toolbar_size"),
-             storage::ConfigurationSchema::defaultValue(
-                 QStringLiteral("screenshot_ui/toolbar_size"))},
             {QStringLiteral("screenshot_ui/selection_transition_animation"),
              storage::ConfigurationSchema::defaultValue(
                  QStringLiteral("screenshot_ui/selection_transition_animation"))},
@@ -707,11 +706,19 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
              storage::ConfigurationSchema::defaultValue(
                  QStringLiteral("screenshot_ui/color_picker_center_guide_line_color"))},
         });
+    case SettingsSectionReset::Toolbar:
+        return storage::ApplicationStorage::instance().configuration().setValue(
+            QStringLiteral("screenshot_ui/toolbar_size"),
+            storage::ConfigurationSchema::defaultValue(
+                QStringLiteral("screenshot_ui/toolbar_size")));
     case SettingsSectionReset::DrawingToolbar:
         return storage::ApplicationStorage::instance().configuration().setValues({
             {QStringLiteral("screenshot_toolbar/layout"),
              storage::ConfigurationSchema::defaultValue(
                  QStringLiteral("screenshot_toolbar/layout"))},
+        });
+    case SettingsSectionReset::DrawingQuickSelection:
+        return storage::ApplicationStorage::instance().configuration().setValues({
             {QStringLiteral("drawing/quick_selection_disabled_tools"),
              storage::ConfigurationSchema::defaultValue(
                  QStringLiteral("drawing/quick_selection_disabled_tools"))},
@@ -733,6 +740,9 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
             {QStringLiteral("pin_to_screen/border_color"),
              storage::ConfigurationSchema::defaultValue(
                  QStringLiteral("pin_to_screen/border_color"))},
+        });
+    case SettingsSectionReset::PinToScreenBehavior:
+        return storage::ApplicationStorage::instance().configuration().setValues({
             {QStringLiteral("pin_to_screen/mouse_wheel_zoom_mode"),
              storage::ConfigurationSchema::defaultValue(
                  QStringLiteral("pin_to_screen/mouse_wheel_zoom_mode"))},
@@ -751,36 +761,39 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
              storage::ConfigurationSchema::defaultValue(QStringLiteral("tray/icon"))},
             {QStringLiteral("tray/custom_icon"),
              storage::ConfigurationSchema::defaultValue(QStringLiteral("tray/custom_icon"))},
+        });
+    case SettingsSectionReset::TrayBehavior:
+        return storage::ApplicationStorage::instance().configuration().setValues({
             {QStringLiteral("tray/left_click_action"),
              storage::ConfigurationSchema::defaultValue(
                  QStringLiteral("tray/left_click_action"))},
         });
-    case SettingsSectionReset::VideoRecording:
+    case SettingsSectionReset::ScreenRecording:
         return storage::ApplicationStorage::instance().configuration().setValues({
-            {QStringLiteral("video_recording/video_clarity"),
+            {QStringLiteral("screen_recording/clarity"),
              storage::ConfigurationSchema::defaultValue(
-                 QStringLiteral("video_recording/video_clarity"))},
-            {QStringLiteral("video_recording/frame_rate"),
+                 QStringLiteral("screen_recording/clarity"))},
+            {QStringLiteral("screen_recording/frame_rate"),
              storage::ConfigurationSchema::defaultValue(
-                 QStringLiteral("video_recording/frame_rate"))},
-            {QStringLiteral("video_recording/animated_image_clarity"),
+                 QStringLiteral("screen_recording/frame_rate"))},
+            {QStringLiteral("screen_recording/animated_image_clarity"),
              storage::ConfigurationSchema::defaultValue(
-                 QStringLiteral("video_recording/animated_image_clarity"))},
-            {QStringLiteral("video_recording/animated_image_frame_rate"),
+                 QStringLiteral("screen_recording/animated_image_clarity"))},
+            {QStringLiteral("screen_recording/animated_image_frame_rate"),
              storage::ConfigurationSchema::defaultValue(
-                 QStringLiteral("video_recording/animated_image_frame_rate"))},
-            {QStringLiteral("video_recording/animated_image_format"),
+                 QStringLiteral("screen_recording/animated_image_frame_rate"))},
+            {QStringLiteral("screen_recording/animated_image_format"),
              storage::ConfigurationSchema::defaultValue(
-                 QStringLiteral("video_recording/animated_image_format"))},
-            {QStringLiteral("video_recording/encoder"),
+                 QStringLiteral("screen_recording/animated_image_format"))},
+            {QStringLiteral("screen_recording/encoder"),
              storage::ConfigurationSchema::defaultValue(
-                 QStringLiteral("video_recording/encoder"))},
-            {QStringLiteral("video_recording/encoding_preset"),
+                 QStringLiteral("screen_recording/encoder"))},
+            {QStringLiteral("screen_recording/encoding_preset"),
              storage::ConfigurationSchema::defaultValue(
-                 QStringLiteral("video_recording/encoding_preset"))},
-            {QStringLiteral("video_recording/hide_toolbar_in_recording"),
+                 QStringLiteral("screen_recording/encoding_preset"))},
+            {QStringLiteral("screen_recording/hide_toolbar_in_recording"),
              storage::ConfigurationSchema::defaultValue(
-                 QStringLiteral("video_recording/hide_toolbar_in_recording"))},
+                 QStringLiteral("screen_recording/hide_toolbar_in_recording"))},
         });
     case SettingsSectionReset::GlobalHotkeys:
         return storage::GlobalShortcutSettings().setDisableOnFocusedFullscreenWindow(

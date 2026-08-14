@@ -26,7 +26,7 @@
     <message>
         <location filename="../include/snow_shot/presentation/screenshottoolbarlayoutmodel.h" line="60"/>
         <source>Highlighter Tool</source>
-        <translation>高亮工具</translation>
+        <translation>高亮</translation>
     </message>
     <message>
         <location filename="../include/snow_shot/presentation/screenshottoolbarlayoutmodel.h" line="63"/>
@@ -1145,7 +1145,7 @@
     <message>
         <location filename="../src/presentation/tools/screenshottoolpalette.cpp" line="78"/>
         <source>Highlighter Tool</source>
-        <translation>高亮工具</translation>
+        <translation>高亮</translation>
     </message>
     <message>
         <location filename="../src/presentation/tools/screenshottoolpalette.cpp" line="81"/>
@@ -1184,8 +1184,8 @@
     </message>
     <message>
         <location filename="../src/presentation/tools/screenshottoolpalette.cpp" line="88"/>
-        <source>Record video</source>
-        <translation>录制视频</translation>
+        <source>Record screen</source>
+        <translation>录制屏幕</translation>
     </message>
     <message>
         <location filename="../src/presentation/tools/screenshottoolpalette.cpp" line="89"/>
@@ -1366,12 +1366,12 @@
     <message>
         <location filename="../src/presentation/tools/screenshottoolpalette.cpp" line="61"/>
         <source>Rectangle Highlighter Tool</source>
-        <translation>矩形高亮工具</translation>
+        <translation>矩形高亮</translation>
     </message>
     <message>
         <location filename="../src/presentation/tools/screenshottoolpalette.cpp" line="79"/>
         <source>Pen Highlighter Tool</source>
-        <translation>画笔高亮工具</translation>
+        <translation>画笔高亮</translation>
     </message>
     <message>
         <location filename="../src/presentation/tools/screenshottoolpalette.cpp" line="80"/>
@@ -2268,23 +2268,23 @@
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="150"/>
-        <source>Record video</source>
-        <translation>录制视频</translation>
+        <source>Record screen</source>
+        <translation>录制屏幕</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="151"/>
-        <source>Video recording</source>
-        <translation>视频录制</translation>
+        <source>Screen recording</source>
+        <translation>屏幕录制</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="159"/>
-        <source>Start Recording / Stop Recording and Copy Video</source>
-        <translation>开始录制 / 停止录制并复制视频</translation>
+        <source>Start Screen Recording / Stop and Copy Video</source>
+        <translation>开始屏幕录制 / 停止并复制视频</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="160"/>
-        <source>Start recording, or stop and copy the current video</source>
-        <translation>开始录制，或停止并复制当前视频</translation>
+        <source>Start a screen recording, or stop and copy the current video</source>
+        <translation>开始屏幕录制，或停止并复制当前视频</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="161"/>
@@ -2363,13 +2363,23 @@
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="241"/>
-        <source>Choose the size of the screenshot drawing toolbar</source>
-        <translation>选择截图绘制工具栏的大小</translation>
+        <source>Choose the size of the screenshot, pinned, and recording toolbars</source>
+        <translation>选择截图、固定到屏幕和屏幕录制工具栏的大小</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="243"/>
         <source>Screenshot toolbar</source>
         <translation>截图工具栏</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="244"/>
+        <source>Pinned toolbar</source>
+        <translation>固定到屏幕工具栏</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="245"/>
+        <source>Recording toolbar</source>
+        <translation>屏幕录制工具栏</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="251"/>
@@ -2562,6 +2572,26 @@
         <translation>MSAA</translation>
     </message>
     <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="433"/>
+        <source>Pin Clipboard Content to Screen</source>
+        <translation>将剪贴板内容固定到屏幕</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="434"/>
+        <source>Pin an image, formatted text, or HTML from the clipboard to the screen</source>
+        <translation>将剪贴板中的图像、格式化文本或 HTML 固定到屏幕</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="436"/>
+        <source>Clipboard content</source>
+        <translation>剪贴板内容</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="437"/>
+        <source>Pin clipboard</source>
+        <translation>固定剪贴板</translation>
+    </message>
+    <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="449"/>
         <source>Auto execute after text recognition</source>
         <translation>文本识别后自动执行</translation>
@@ -2665,7 +2695,7 @@
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="532"/>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="774"/>
         <source>Shape tool</source>
-        <translation>形状工具</translation>
+        <translation>图形</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="533"/>
@@ -2885,13 +2915,13 @@
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="671"/>
-        <source>Video clarity</source>
-        <translation>视频清晰度</translation>
+        <source>Screen recording clarity</source>
+        <translation>屏幕录制清晰度</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="672"/>
         <source>Scale recordings that exceed the selected maximum resolution</source>
-        <translation>缩放超过所选最大分辨率的录制视频</translation>
+        <translation>缩放超过所选最大分辨率的录制屏幕</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="678"/>
@@ -2900,8 +2930,8 @@
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="679"/>
-        <source>Set the video recording frame rate</source>
-        <translation>设置视频录制帧率</translation>
+        <source>Set the screen recording frame rate</source>
+        <translation>设置屏幕录制帧率</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="684"/>
@@ -2980,28 +3010,28 @@
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="720"/>
-        <source>ultrafast</source>
-        <translation>ultrafast</translation>
+        <source>Ultra fast</source>
+        <translation>极速</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="721"/>
-        <source>veryfast</source>
-        <translation>veryfast</translation>
+        <source>Very fast</source>
+        <translation>非常快</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="722"/>
-        <source>medium</source>
-        <translation>medium</translation>
+        <source>Medium</source>
+        <translation>中等</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="723"/>
-        <source>veryslow</source>
-        <translation>veryslow</translation>
+        <source>Very slow</source>
+        <translation>非常慢</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="724"/>
-        <source>placebo</source>
-        <translation>placebo</translation>
+        <source>Maximum compression</source>
+        <translation>极致压缩</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="727"/>
@@ -3011,7 +3041,7 @@
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="728"/>
         <source>Exclude the screen recording toolbar from captured video</source>
-        <translation>录制视频时不捕获屏幕录制工具栏</translation>
+        <translation>录制屏幕时不捕获屏幕录制工具栏</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="738"/>
@@ -3141,13 +3171,13 @@
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="939"/>
-        <source>Video Recording</source>
-        <translation>视频录制</translation>
+        <source>Screen Recording</source>
+        <translation>屏幕录制</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="940"/>
-        <source>Video and animated image export settings</source>
-        <translation>视频和动图导出设置</translation>
+        <source>Screen recording and animated image export settings</source>
+        <translation>屏幕录制和动图导出设置</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="947"/>
@@ -3179,6 +3209,16 @@
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="972"/>
         <source>Screenshot interface and visual guidance settings</source>
         <translation>截图界面和视觉辅助设置</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="1043"/>
+        <source>Toolbar</source>
+        <translation>工具栏</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="1044"/>
+        <source>Configure the screenshot, pinned, and recording toolbars</source>
+        <translation>配置截图、固定到屏幕和屏幕录制工具栏</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="981"/>
@@ -3722,21 +3762,49 @@ Change the shortcut and try again</source>
     </message>
 </context>
 <context>
-    <name>VideoRecordingController</name>
+    <name>ScreenRecordingController</name>
     <message>
-        <location filename="../src/presentation/recording/videorecordingcontroller.cpp" line="287"/>
+        <location filename="../src/presentation/recording/screenrecordingcontroller.cpp" line="287"/>
         <source>Unable to create the recording directories</source>
         <translation>无法创建录制目录</translation>
     </message>
     <message>
-        <location filename="../src/presentation/recording/videorecordingcontroller.cpp" line="536"/>
-        <source>Video recording</source>
-        <translation>视频录制</translation>
+        <location filename="../src/presentation/recording/screenrecordingcontroller.cpp" line="536"/>
+        <source>Screen recording</source>
+        <translation>屏幕录制</translation>
     </message>
     <message>
-        <location filename="../src/presentation/recording/videorecordingcontroller.cpp" line="537"/>
+        <location filename="../src/presentation/recording/screenrecordingcontroller.cpp" line="537"/>
         <source>The recording operation failed</source>
         <translation>录制操作失败</translation>
+    </message>
+</context>
+<context>
+    <name>ScreenshotImageFileService</name>
+    <message>
+        <location filename="../src/presentation/services/screenshotimagefileservice.cpp" line="18"/>
+        <source>PNG image (*.png)</source>
+        <translation>PNG 图像 (*.png)</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/services/screenshotimagefileservice.cpp" line="21"/>
+        <source>JPEG image (*.jpg *.jpeg)</source>
+        <translation>JPEG 图像 (*.jpg *.jpeg)</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/services/screenshotimagefileservice.cpp" line="24"/>
+        <source>WebP image (*.webp)</source>
+        <translation>WebP 图像 (*.webp)</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/services/screenshotimagefileservice.cpp" line="27"/>
+        <source>JPEG XL image (*.jxl)</source>
+        <translation>JPEG XL 图像 (*.jxl)</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/services/screenshotimagefileservice.cpp" line="30"/>
+        <source>AVIF image (*.avif)</source>
+        <translation>AVIF 图像 (*.avif)</translation>
     </message>
 </context>
 </TS>

@@ -107,6 +107,7 @@ ScreenshotOcrController::ScreenshotOcrController(ScreenshotOcrControllerContext 
                 m_presentation = std::move(presentation);
                 applyOcrBackgroundToOverlays(m_presentation);
             },
+            [](std::shared_ptr<QTextDocument>) {},
             [this]() { clearOcrBackgroundFromOverlays(); },
             [](bool) {},
             [this](int mode) {

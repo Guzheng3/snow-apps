@@ -90,6 +90,7 @@ struct IsolatedSettings {
             {directory.path(), directory.path(), 8000}));
         snow_shot::storage::ShortcutSettings().setScreenshot({});
         snow_shot::storage::ShortcutSettings().setOpenSettings({});
+        snow_shot::storage::ShortcutSettings().setPinClipboardContent({});
         snow_shot::storage::GlobalShortcutSettings()
             .setDisableOnFocusedFullscreenWindow(false);
     }
@@ -224,11 +225,13 @@ void everyQuickActionHasIndependentPersistenceAndRegistration() {
         {shortcuts::GlobalShortcutAction::ScreenshotCopy, QStringLiteral("Ctrl+Alt+5")},
         {shortcuts::GlobalShortcutAction::ScreenshotFullScreen, QStringLiteral("Ctrl+Alt+6")},
         {shortcuts::GlobalShortcutAction::ScreenshotFocusedWindow, QStringLiteral("Ctrl+Alt+7")},
-        {shortcuts::GlobalShortcutAction::VideoRecord, QStringLiteral("Ctrl+Alt+8")},
-        {shortcuts::GlobalShortcutAction::VideoRecordCopy, QStringLiteral("Ctrl+Alt+9")},
+        {shortcuts::GlobalShortcutAction::ScreenRecord, QStringLiteral("Ctrl+Alt+8")},
+        {shortcuts::GlobalShortcutAction::ScreenRecordCopy, QStringLiteral("Ctrl+Alt+9")},
         {shortcuts::GlobalShortcutAction::ShowOrHideMainWindow, QStringLiteral("Ctrl+Alt+A")},
         {shortcuts::GlobalShortcutAction::OpenCaptureHistory, QStringLiteral("Ctrl+Alt+B")},
         {shortcuts::GlobalShortcutAction::OpenSettings, QStringLiteral("Ctrl+Alt+C")},
+        {shortcuts::GlobalShortcutAction::PinClipboardContent,
+         QStringLiteral("Ctrl+Alt+D")},
     };
 
     {

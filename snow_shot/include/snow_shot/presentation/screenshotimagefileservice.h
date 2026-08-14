@@ -32,6 +32,7 @@ class ScreenshotImageFileService final {
   public:
     [[nodiscard]] static QString suggestedBaseName(
         const QDateTime& timestamp = QDateTime::currentDateTime());
+    [[nodiscard]] static QString dialogFilter(ScreenshotImageFileFormat format);
     [[nodiscard]] static QString saveDialogFilter();
     [[nodiscard]] static QString automaticDirectory();
     [[nodiscard]] static QStringList automaticDirectories();

@@ -37,10 +37,19 @@ struct ScreenshotPinnedSelectionRequest {
     }
 };
 
+struct ScreenshotSelectionClipboardResult {
+    QImage image;
+    ScreenshotClipboardPayload payload;
+
+    [[nodiscard]] bool isValid() const {
+        return !image.isNull() && !image.size().isEmpty() && payload.isValid();
+    }
+};
+
 class ScreenshotSelectionImageComposerPort {
   public:
     using ImageCallback = std::function<void(QImage)>;
-    using ClipboardCallback = std::function<void(ScreenshotClipboardPayload)>;
+    using ClipboardCallback = std::function<void(ScreenshotSelectionClipboardResult)>;
     using PinRequestCallback = std::function<void(ScreenshotPinnedSelectionRequest)>;
 
     virtual ~ScreenshotSelectionImageComposerPort() = default;

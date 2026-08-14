@@ -12,6 +12,7 @@ class ScreenshotOcrRecognitionPort;
 class ScreenshotQrRecognitionPort;
 class SnowShotApiClient;
 class ScreenshotPinnedWindowPool;
+class QTextDocument;
 
 class ScreenshotSelectionExportUiServices final : public ScreenshotSelectionExportDestinationPort {
   public:
@@ -26,7 +27,9 @@ class ScreenshotSelectionExportUiServices final : public ScreenshotSelectionExpo
     void setClipboardImage(const QImage& image);
     [[nodiscard]] bool presentPinnedImage(const QImage& image, QScreen* screen,
                                           const QRect& nativeGeometry,
-                                          const QSize& fullResolutionScaleBasis = {});
+                                          const QSize& fullResolutionScaleBasis = {},
+                                          std::shared_ptr<QTextDocument> formattedTextDocument = {},
+                                          const QString& formattedPlainText = {});
     [[nodiscard]] bool
     presentPinnedSelection(const ScreenshotPinnedSelectionRequest& request) override;
 

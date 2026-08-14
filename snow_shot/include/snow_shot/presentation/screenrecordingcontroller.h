@@ -1,5 +1,5 @@
-#ifndef SNOW_SHOT_PRESENTATION_VIDEORECORDINGCONTROLLER_H
-#define SNOW_SHOT_PRESENTATION_VIDEORECORDINGCONTROLLER_H
+#ifndef SNOW_SHOT_PRESENTATION_SCREENRECORDINGCONTROLLER_H
+#define SNOW_SHOT_PRESENTATION_SCREENRECORDINGCONTROLLER_H
 
 #include "snow_shot/presentation/screenshottoolpalette.h"
 
@@ -8,12 +8,12 @@
 
 #include <memory>
 
-class VideoRecordingController final : public QObject {
+class ScreenRecordingController final : public QObject {
     Q_OBJECT
 
   public:
-    explicit VideoRecordingController(QObject* parent = nullptr);
-    ~VideoRecordingController() override;
+    explicit ScreenRecordingController(QObject* parent = nullptr);
+    ~ScreenRecordingController() override;
 
     void open(const QRect& physicalRegion);
     bool isOpen() const;
@@ -26,4 +26,4 @@ class VideoRecordingController final : public QObject {
     std::unique_ptr<Impl> m_impl;
 };
 
-#endif // SNOW_SHOT_PRESENTATION_VIDEORECORDINGCONTROLLER_H
+#endif // SNOW_SHOT_PRESENTATION_SCREENRECORDINGCONTROLLER_H

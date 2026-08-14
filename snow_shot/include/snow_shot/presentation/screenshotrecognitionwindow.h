@@ -69,6 +69,8 @@ class ScreenshotRecognitionWindow final : public QWidget {
 
     void setOcrPresentation(std::shared_ptr<ScreenshotOcrPresentation> presentation);
     void clearOcrPresentation();
+    void showFormattedText(std::shared_ptr<QTextDocument> document);
+    void clearFormattedText();
 
     void setTableSession(std::shared_ptr<ScreenshotTableEditingSession> session);
     void clearTableSession();
@@ -113,6 +115,8 @@ class ScreenshotRecognitionWindow final : public QWidget {
     QTextEdit* m_textEditor = nullptr;
     adqt::widgets::AdSpin* m_textEditorSpin = nullptr;
     QTextBrowser* m_qrBrowser = nullptr;
+    QTextBrowser* m_formattedTextBrowser = nullptr;
+    std::shared_ptr<QTextDocument> m_formattedTextDocument;
     ScreenshotTableEditor* m_tableEditor = nullptr;
     QRectF m_canvasSelection;
     PresentationMode m_presentationMode = PresentationMode::TopLevelWindow;

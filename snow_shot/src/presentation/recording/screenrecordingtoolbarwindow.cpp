@@ -1,8 +1,8 @@
-#include "snow_shot/presentation/videorecordingtoolbarwindow.h"
+#include "snow_shot/presentation/screenrecordingtoolbarwindow.h"
 
 #include "snow_shot/presentation/screenshotgeometry.h"
 #include "snow_shot/presentation/screenshottoolpalette.h"
-#include "videorecordinggeometry.h"
+#include "screenrecordinggeometry.h"
 
 #include <QScreen>
 
@@ -21,13 +21,13 @@ ScreenshotToolPalette::Options recordingToolbarOptions() {
 }
 } // namespace
 
-VideoRecordingToolbarWindow::VideoRecordingToolbarWindow(QWidget* parent)
+ScreenRecordingToolbarWindow::ScreenRecordingToolbarWindow(QWidget* parent)
     : ScreenshotFloatingToolPaletteWindow(recordingToolbarOptions(), parent) {
     setAttribute(Qt::WA_DeleteOnClose, false);
     prepareForDisplay();
 }
 
-void VideoRecordingToolbarWindow::placeForPhysicalRegion(const QRect& physicalRegion) {
+void ScreenRecordingToolbarWindow::placeForPhysicalRegion(const QRect& physicalRegion) {
     if (!physicalRegion.isValid() || physicalRegion.isEmpty()) {
         return;
     }
@@ -39,7 +39,7 @@ void VideoRecordingToolbarWindow::placeForPhysicalRegion(const QRect& physicalRe
     const QRect physicalBounds = ScreenshotGeometryMapper::physicalRectForScreen(*screen);
     const QRectF logicalRegion =
         ScreenshotGeometryMapper::logicalRectFForPhysicalRect(physicalRegion, screen);
-    const QRect anchorRegion = snow_shot::presentation::recording::videoRecordingAreaFrameGeometry(
+    const QRect anchorRegion = snow_shot::presentation::recording::screenRecordingAreaFrameGeometry(
                                    logicalRegion, screen->devicePixelRatio())
                                    .windowGeometry;
     setPlacementContext(screen, logicalBounds, physicalBounds);

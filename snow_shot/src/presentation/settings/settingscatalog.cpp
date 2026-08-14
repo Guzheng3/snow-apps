@@ -142,25 +142,25 @@ SettingsItemDefinition screenshotFocusedWindowItem() {
         []() { return custom_outlined_icons::ScreenshotFocusedWindow(); });
 }
 
-SettingsItemDefinition videoRecordItem() {
+SettingsItemDefinition screenRecordItem() {
     return quickActionItem(
-        QStringLiteral("quick.video-record"),
+        QStringLiteral("quick.screen-record"),
         QT_TRANSLATE_NOOP("SettingsCatalog", "Screen Recording"),
         QT_TRANSLATE_NOOP("SettingsCatalog", "Start a screen recording from a confirmed selection"),
-        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Record video")),
-         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Video recording"))},
-        GlobalShortcutAction::VideoRecord, QStringLiteral("global_shortcuts/video_record"),
-        []() { return custom_outlined_icons::RecordVideo(); });
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Record screen")),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screen recording"))},
+        GlobalShortcutAction::ScreenRecord, QStringLiteral("global_shortcuts/screen_record"),
+        []() { return custom_outlined_icons::RecordScreen(); });
 }
 
-SettingsItemDefinition videoRecordCopyItem() {
+SettingsItemDefinition screenRecordCopyItem() {
     return quickActionItem(
-        QStringLiteral("quick.video-record-copy"),
-        QT_TRANSLATE_NOOP("SettingsCatalog", "Start Recording / Stop Recording and Copy Video"),
-        QT_TRANSLATE_NOOP("SettingsCatalog", "Start recording, or stop and copy the current video"),
+        QStringLiteral("quick.screen-record-copy"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Start Screen Recording / Stop and Copy Video"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Start a screen recording, or stop and copy the current video"),
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Copy video")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Recording toggle"))},
-        GlobalShortcutAction::VideoRecordCopy, QStringLiteral("global_shortcuts/video_record_copy"),
+        GlobalShortcutAction::ScreenRecordCopy, QStringLiteral("global_shortcuts/screen_record_copy"),
         []() { return custom_outlined_icons::ScreenshotCopy(); });
 }
 
@@ -239,8 +239,11 @@ SettingsItemDefinition screenshotToolbarSizeItem() {
     return {QStringLiteral("interface.screenshot.toolbar-size"),
             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Toolbar size")),
             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
-                                           "Choose the size of the screenshot drawing toolbar")),
-            {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screenshot toolbar"))},
+                                           "Choose the size of the screenshot, pinned, and "
+                                           "recording toolbars")),
+            {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screenshot toolbar")),
+             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Pinned toolbar")),
+             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Recording toolbar"))},
             QStringLiteral("screenshot_ui/toolbar_size"),
             payload};
 }
@@ -422,6 +425,19 @@ SettingsItemDefinition smartSelectionItem() {
         QStringLiteral("screenshot_selection/smart_selection"),
         SettingsSwitchDefinition{SettingsSwitchBinding::SmartSelection},
     };
+}
+
+SettingsItemDefinition pinClipboardContentItem() {
+    return quickActionItem(
+        QStringLiteral("quick.pin-clipboard-content"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Pin Clipboard Content to Screen"),
+        QT_TRANSLATE_NOOP("SettingsCatalog",
+                          "Pin an image, formatted text, or HTML from the clipboard to the screen"),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Clipboard content")),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Pin clipboard"))},
+        GlobalShortcutAction::PinClipboardContent,
+        QStringLiteral("global_shortcuts/pin_clipboard_content"),
+        []() { return custom_outlined_icons::PinToScreen(); });
 }
 
 SettingsItemDefinition fixedSelectItem(
@@ -664,71 +680,76 @@ QVector<SettingsOptionDefinition> frameRateOptions(std::initializer_list<int> fr
     return options;
 }
 
-QVector<SettingsItemDefinition> videoRecordingItems() {
+QVector<SettingsItemDefinition> screenRecordingItems() {
     return {
         fixedSelectItem(
-            QStringLiteral("video-recording.video-clarity"),
-            QT_TRANSLATE_NOOP("SettingsCatalog", "Video clarity"),
+            QStringLiteral("screen-recording.clarity"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Screen recording clarity"),
             QT_TRANSLATE_NOOP("SettingsCatalog",
                               "Scale recordings that exceed the selected maximum resolution"),
-            QStringLiteral("video_recording/video_clarity"),
-            SettingsSelectBinding::VideoClarity, clarityOptions(true)),
+            QStringLiteral("screen_recording/clarity"),
+            SettingsSelectBinding::ScreenRecordingClarity, clarityOptions(true)),
         fixedSelectItem(
-            QStringLiteral("video-recording.frame-rate"),
+            QStringLiteral("screen-recording.frame-rate"),
             QT_TRANSLATE_NOOP("SettingsCatalog", "Frame rate"),
-            QT_TRANSLATE_NOOP("SettingsCatalog", "Set the video recording frame rate"),
-            QStringLiteral("video_recording/frame_rate"),
-            SettingsSelectBinding::VideoFrameRate, frameRateOptions({10, 15, 24, 30, 60, 120, 83})),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Set the screen recording frame rate"),
+            QStringLiteral("screen_recording/frame_rate"),
+            SettingsSelectBinding::ScreenRecordingFrameRate, frameRateOptions({10, 15, 24, 30, 60, 120, 83})),
         fixedSelectItem(
-            QStringLiteral("video-recording.animated-image-clarity"),
+            QStringLiteral("screen-recording.animated-image-clarity"),
             QT_TRANSLATE_NOOP("SettingsCatalog", "Animated image clarity"),
             QT_TRANSLATE_NOOP("SettingsCatalog",
                               "Set the maximum resolution of exported animated images"),
-            QStringLiteral("video_recording/animated_image_clarity"),
+            QStringLiteral("screen_recording/animated_image_clarity"),
             SettingsSelectBinding::AnimatedImageClarity, clarityOptions(false)),
         fixedSelectItem(
-            QStringLiteral("video-recording.animated-image-frame-rate"),
+            QStringLiteral("screen-recording.animated-image-frame-rate"),
             QT_TRANSLATE_NOOP("SettingsCatalog", "Animated image frame rate"),
             QT_TRANSLATE_NOOP("SettingsCatalog",
                               "Set the frame rate of exported animated images"),
-            QStringLiteral("video_recording/animated_image_frame_rate"),
+            QStringLiteral("screen_recording/animated_image_frame_rate"),
             SettingsSelectBinding::AnimatedImageFrameRate, frameRateOptions({10, 15, 24})),
         fixedSelectItem(
-            QStringLiteral("video-recording.animated-image-format"),
+            QStringLiteral("screen-recording.animated-image-format"),
             QT_TRANSLATE_NOOP("SettingsCatalog", "Animated image format"),
             QT_TRANSLATE_NOOP("SettingsCatalog",
                               "Choose the format used to export animated images"),
-            QStringLiteral("video_recording/animated_image_format"),
+            QStringLiteral("screen_recording/animated_image_format"),
             SettingsSelectBinding::AnimatedImageFormat,
             {{QStringLiteral("gif"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "GIF"))},
              {QStringLiteral("apng"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "APNG"))},
              {QStringLiteral("webp"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "WebP"))}}),
         fixedSelectItem(
-            QStringLiteral("video-recording.encoder"),
+            QStringLiteral("screen-recording.encoder"),
             QT_TRANSLATE_NOOP("SettingsCatalog", "Encoder"),
             QT_TRANSLATE_NOOP("SettingsCatalog", "Choose the video encoder"),
-            QStringLiteral("video_recording/encoder"), SettingsSelectBinding::VideoEncoder,
+            QStringLiteral("screen_recording/encoder"), SettingsSelectBinding::ScreenRecordingEncoder,
             {{QStringLiteral("h264"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "H.264"))},
              {QStringLiteral("h265"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "H.265"))}}),
         fixedSelectItem(
-            QStringLiteral("video-recording.encoding-preset"),
+            QStringLiteral("screen-recording.encoding-preset"),
             QT_TRANSLATE_NOOP("SettingsCatalog", "Encoding preset"),
             QT_TRANSLATE_NOOP("SettingsCatalog",
                               "Balance encoding speed against compression efficiency"),
-            QStringLiteral("video_recording/encoding_preset"),
-            SettingsSelectBinding::VideoEncodingPreset,
-            {{QStringLiteral("ultrafast"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "ultrafast"))},
-             {QStringLiteral("veryfast"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "veryfast"))},
-             {QStringLiteral("medium"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "medium"))},
-             {QStringLiteral("veryslow"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "veryslow"))},
-             {QStringLiteral("placebo"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "placebo"))}}),
+            QStringLiteral("screen_recording/encoding_preset"),
+            SettingsSelectBinding::ScreenRecordingEncodingPreset,
+            {{QStringLiteral("ultrafast"),
+              settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Ultra fast"))},
+             {QStringLiteral("veryfast"),
+              settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Very fast"))},
+             {QStringLiteral("medium"),
+              settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Medium"))},
+             {QStringLiteral("veryslow"),
+              settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Very slow"))},
+             {QStringLiteral("placebo"),
+              settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Maximum compression"))}}),
         switchItem(
-            QStringLiteral("video-recording.hide-toolbar"),
+            QStringLiteral("screen-recording.hide-toolbar"),
             QT_TRANSLATE_NOOP("SettingsCatalog", "Hide toolbar in recording"),
             QT_TRANSLATE_NOOP("SettingsCatalog",
                               "Exclude the screen recording toolbar from captured video"),
-            QStringLiteral("video_recording/hide_toolbar_in_recording"),
-            SettingsSwitchBinding::VideoHideToolbarInRecording),
+            QStringLiteral("screen_recording/hide_toolbar_in_recording"),
+            SettingsSwitchBinding::ScreenRecordingHideToolbar),
     };
 }
 
@@ -892,8 +913,8 @@ QVector<SettingsPageDefinition> builtInPages() {
                                                    "Screen recording shortcuts and actions")),
                     SettingsSectionReset::None,
                     {
-                        videoRecordItem(),
-                        videoRecordCopyItem(),
+                        screenRecordItem(),
+                        screenRecordCopyItem(),
                     },
                 },
                 {
@@ -905,6 +926,7 @@ QVector<SettingsPageDefinition> builtInPages() {
                     {
                         showOrHideMainWindowItem(),
                         openCaptureHistoryItem(),
+                        pinClipboardContentItem(),
                     },
                 },
             },
@@ -935,12 +957,37 @@ QVector<SettingsPageDefinition> builtInPages() {
                      screenshotAutoSaveAfterCopyItem(), screenshotCopyFileItem()},
                 },
                 {
-                    QStringLiteral("video-recording"),
-                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Video Recording")),
+                    QStringLiteral("pin-to-screen-settings"),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Pin to Screen")),
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
-                                                   "Video and animated image export settings")),
-                    SettingsSectionReset::VideoRecording,
-                    videoRecordingItems(),
+                                                   "Pinned screenshot window appearance settings")),
+                    SettingsSectionReset::PinToScreenBehavior,
+                    {pinZoomModeItem(), pinAutomaticOcrItem(), pinAutoResizeItem()},
+                },
+                {
+                    QStringLiteral("drawing-settings"),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Drawing")),
+                    settingsText(QT_TRANSLATE_NOOP(
+                        "SettingsCatalog",
+                        "Configure drawing tools and the screenshot drawing toolbar")),
+                    SettingsSectionReset::DrawingQuickSelection,
+                    {drawingQuickSelectionItem()},
+                },
+                {
+                    QStringLiteral("screen-recording"),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screen Recording")),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                                   "Screen recording and animated image export settings")),
+                    SettingsSectionReset::ScreenRecording,
+                    screenRecordingItems(),
+                },
+                {
+                    QStringLiteral("tray-settings"),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Tray")),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                                   "System tray availability and icon settings")),
+                    SettingsSectionReset::TrayBehavior,
+                    {trayLeftClickItem()},
                 },
                 {
                     QStringLiteral("global-hotkeys"),
@@ -973,7 +1020,6 @@ QVector<SettingsPageDefinition> builtInPages() {
                         "SettingsCatalog", "Screenshot interface and visual guidance settings")),
                     SettingsSectionReset::ScreenshotInterfaceSettings,
                     {
-                        screenshotToolbarSizeItem(),
                         selectionTransitionAnimationItem(),
                         colorPickerDisplayModeItem(),
                         screenshotColorItem(
@@ -1014,13 +1060,22 @@ QVector<SettingsPageDefinition> builtInPages() {
                     },
                 },
                 {
+                    QStringLiteral("toolbar"),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Toolbar")),
+                    settingsText(QT_TRANSLATE_NOOP(
+                        "SettingsCatalog",
+                        "Configure the screenshot, pinned, and recording toolbars")),
+                    SettingsSectionReset::Toolbar,
+                    {screenshotToolbarSizeItem()},
+                },
+                {
                     QStringLiteral("drawing"),
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Drawing")),
                     settingsText(QT_TRANSLATE_NOOP(
                         "SettingsCatalog",
                         "Configure drawing tools and the screenshot drawing toolbar")),
                     SettingsSectionReset::DrawingToolbar,
-                    {drawingToolbarEditorItem(), drawingQuickSelectionItem()},
+                    {drawingToolbarEditorItem()},
                 },
                 {
                     QStringLiteral("pin-to-screen"),
@@ -1028,8 +1083,7 @@ QVector<SettingsPageDefinition> builtInPages() {
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
                                                    "Pinned screenshot window appearance settings")),
                     SettingsSectionReset::PinToScreen,
-                    {pinBorderColorItem(), pinZoomModeItem(), pinAutomaticOcrItem(),
-                     pinAutoResizeItem()},
+                    {pinBorderColorItem()},
                 },
                 {
                     QStringLiteral("tray"),
@@ -1037,8 +1091,7 @@ QVector<SettingsPageDefinition> builtInPages() {
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
                                                    "System tray availability and icon settings")),
                     SettingsSectionReset::Tray,
-                    {trayEnabledItem(), trayLeftClickItem(), trayIconItem(),
-                     trayCustomIconItem()},
+                    {trayEnabledItem(), trayIconItem(), trayCustomIconItem()},
                 },
             },
         },
@@ -1177,6 +1230,11 @@ QVector<SettingsNavigationNode> builtInNavigation() {
             []() { return outlined_icons::Function(); },
         },
         {
+            QStringLiteral("nav.hotkey-settings"),
+            QString::fromLatin1(HOTKEY_PAGE_ID),
+            []() { return custom_outlined_icons::Keyboard(); },
+        },
+        {
             QStringLiteral("nav.storage-and-privacy"),
             QString::fromLatin1(STORAGE_PAGE_ID),
             []() { return outlined_icons::Lock(); },
@@ -1187,12 +1245,8 @@ QVector<SettingsNavigationNode> builtInNavigation() {
             []() { return outlined_icons::Control(); },
         },
     };
-    SettingsNavigationPageDefinition hotkeys;
-    hotkeys.id = QStringLiteral("nav.hotkey-settings");
-    hotkeys.pageId = QString::fromLatin1(HOTKEY_PAGE_ID);
-    hotkeys.iconFactory = []() { return custom_outlined_icons::Keyboard(); };
 
-    return {quick, history, settingsGroup, hotkeys};
+    return {quick, history, settingsGroup};
 }
 
 QString locationText(const SettingsLocation& location) {
@@ -1226,16 +1280,18 @@ QString shortcutConfigurationKey(GlobalShortcutAction action) {
         return QStringLiteral("global_shortcuts/screenshot_full_screen");
     case GlobalShortcutAction::ScreenshotFocusedWindow:
         return QStringLiteral("global_shortcuts/screenshot_focused_window");
-    case GlobalShortcutAction::VideoRecord:
-        return QStringLiteral("global_shortcuts/video_record");
-    case GlobalShortcutAction::VideoRecordCopy:
-        return QStringLiteral("global_shortcuts/video_record_copy");
+    case GlobalShortcutAction::ScreenRecord:
+        return QStringLiteral("global_shortcuts/screen_record");
+    case GlobalShortcutAction::ScreenRecordCopy:
+        return QStringLiteral("global_shortcuts/screen_record_copy");
     case GlobalShortcutAction::ShowOrHideMainWindow:
         return QStringLiteral("global_shortcuts/show_or_hide_main_window");
     case GlobalShortcutAction::OpenCaptureHistory:
         return QStringLiteral("global_shortcuts/open_capture_history");
     case GlobalShortcutAction::OpenSettings:
         return QStringLiteral("global_shortcuts/open_settings");
+    case GlobalShortcutAction::PinClipboardContent:
+        return QStringLiteral("global_shortcuts/pin_clipboard_content");
     }
     return {};
 }
@@ -1469,28 +1525,28 @@ QStringList SettingsCatalog::validationErrors() const {
                     case SettingsSelectBinding::PinMouseWheelZoomMode:
                         expectedKey = QStringLiteral("pin_to_screen/mouse_wheel_zoom_mode");
                         break;
-                    case SettingsSelectBinding::VideoClarity:
-                        expectedKey = QStringLiteral("video_recording/video_clarity");
+                    case SettingsSelectBinding::ScreenRecordingClarity:
+                        expectedKey = QStringLiteral("screen_recording/clarity");
                         break;
-                    case SettingsSelectBinding::VideoFrameRate:
-                        expectedKey = QStringLiteral("video_recording/frame_rate");
+                    case SettingsSelectBinding::ScreenRecordingFrameRate:
+                        expectedKey = QStringLiteral("screen_recording/frame_rate");
                         break;
                     case SettingsSelectBinding::AnimatedImageClarity:
                         expectedKey =
-                            QStringLiteral("video_recording/animated_image_clarity");
+                            QStringLiteral("screen_recording/animated_image_clarity");
                         break;
                     case SettingsSelectBinding::AnimatedImageFrameRate:
                         expectedKey =
-                            QStringLiteral("video_recording/animated_image_frame_rate");
+                            QStringLiteral("screen_recording/animated_image_frame_rate");
                         break;
                     case SettingsSelectBinding::AnimatedImageFormat:
-                        expectedKey = QStringLiteral("video_recording/animated_image_format");
+                        expectedKey = QStringLiteral("screen_recording/animated_image_format");
                         break;
-                    case SettingsSelectBinding::VideoEncoder:
-                        expectedKey = QStringLiteral("video_recording/encoder");
+                    case SettingsSelectBinding::ScreenRecordingEncoder:
+                        expectedKey = QStringLiteral("screen_recording/encoder");
                         break;
-                    case SettingsSelectBinding::VideoEncodingPreset:
-                        expectedKey = QStringLiteral("video_recording/encoding_preset");
+                    case SettingsSelectBinding::ScreenRecordingEncodingPreset:
+                        expectedKey = QStringLiteral("screen_recording/encoding_preset");
                         break;
                     case SettingsSelectBinding::TrayLeftClickAction:
                         expectedKey = QStringLiteral("tray/left_click_action");
@@ -1569,9 +1625,9 @@ QStringList SettingsCatalog::validationErrors() const {
                     case SettingsSwitchBinding::PinAutoResizeWindow:
                         expectedKey = QStringLiteral("pin_to_screen/auto_resize_window");
                         break;
-                    case SettingsSwitchBinding::VideoHideToolbarInRecording:
+                    case SettingsSwitchBinding::ScreenRecordingHideToolbar:
                         expectedKey =
-                            QStringLiteral("video_recording/hide_toolbar_in_recording");
+                            QStringLiteral("screen_recording/hide_toolbar_in_recording");
                         break;
                     case SettingsSwitchBinding::DisableHotkeysOnFocusedFullscreen:
                         expectedKey = QStringLiteral(

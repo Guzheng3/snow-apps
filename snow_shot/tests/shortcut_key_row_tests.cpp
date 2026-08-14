@@ -391,6 +391,56 @@ void drawingRecorderUsesLocalValidationLanguage() {
             "drawing shortcut conflicts must use local validation and accessibility wording");
 }
 
+void compactFormPresentationMatchesReferenceKeyButton() {
+    const styles::ThemeColorScheme scheme = styles::ThemeManager::instance().themeColorScheme();
+    const auto mainWindowMetric = styles::buildMainWindowComponentMetricToken(scheme);
+
+    ShortcutKeyRowConfig config;
+    config.title = QStringLiteral("Shape tool");
+    config.shortcuts = {QStringLiteral("Ctrl+Shift+S")};
+    config.showRegistrationStatus = false;
+    config.validationScope = ShortcutKeyRowConfig::ValidationScope::DrawingShortcut;
+    config.presentation = ShortcutKeyRowConfig::Presentation::CompactFormField;
+
+    ShortcutKeyRow row(config, scheme.metricAlias, mainWindowMetric);
+    row.resize(360, row.height());
+    row.show();
+    QApplication::processEvents();
+
+    auto* titleLabel = row.findChild<QLabel*>(QStringLiteral("shortcutTitleLabel"));
+    auto* shortcutButton =
+        row.findChild<adqt::widgets::AdButton*>(QStringLiteral("shortcutKeyButton"));
+    require(titleLabel != nullptr && titleLabel->text() == QStringLiteral("Shape tool:") &&
+                titleLabel->font().pixelSize() == scheme.metricAlias.fontSize &&
+                titleLabel->font().weight() == QFont::Normal && shortcutButton != nullptr &&
+                row.height() == scheme.metricAlias.controlHeight &&
+                row.cursor().shape() == Qt::ArrowCursor &&
+                shortcutButton->buttonStyle() ==
+                    adqt::widgets::AdButton::ButtonStyle::Outline &&
+                shortcutButton->accentRole() ==
+                    adqt::widgets::AdButton::AccentRole::Neutral &&
+                shortcutButton->text() == QStringLiteral("Ctrl+Shift+S"),
+            "configured compact shortcuts must match the reference inline form control");
+
+    const QString originalText = shortcutButton->text();
+    shortcutButton->setText(QString(256, QLatin1Char('W')));
+    const int longWidth = shortcutButton->sizeHint().width();
+    shortcutButton->setText(QString(100, QLatin1Char('W')));
+    const int cappedWidth = shortcutButton->sizeHint().width();
+    shortcutButton->setText(originalText);
+    require(longWidth == cappedWidth,
+            "compact shortcut values must use the reference 100px text cap");
+
+    row.setRegistrationState({});
+    QApplication::processEvents();
+    require(shortcutButton->text().isEmpty() &&
+                shortcutButton->accentRole() ==
+                    adqt::widgets::AdButton::AccentRole::Danger &&
+                shortcutButton->property("registrationStatus").toInt() ==
+                    static_cast<int>(shortcuts::GlobalShortcutStatus::Unset),
+            "unset compact shortcuts must use the reference icon-only danger button");
+}
+
 void adjustableDelayUsesWheelAndClampsRange() {
     const styles::ThemeColorScheme scheme = styles::ThemeManager::instance().themeColorScheme();
     const auto mainWindowMetric = styles::buildMainWindowComponentMetricToken(scheme);
@@ -502,6 +552,7 @@ int main(int argc, char** argv) {
     statusPresentationUsesSemanticTokens();
     recorderAcceptsOnlyBackendSupportedShortcuts();
     drawingRecorderUsesLocalValidationLanguage();
+    compactFormPresentationMatchesReferenceKeyButton();
     adjustableDelayUsesWheelAndClampsRange();
     return 0;
 }

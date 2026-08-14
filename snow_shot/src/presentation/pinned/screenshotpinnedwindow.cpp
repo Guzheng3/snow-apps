@@ -57,6 +57,7 @@
 #include <QShowEvent>
 #include <QSizePolicy>
 #include <QTimer>
+#include <QTextDocument>
 #include <QVariantAnimation>
 #include <QVBoxLayout>
 #include <QWheelEvent>
@@ -1020,7 +1021,13 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
     m_ocrSupported = screenshotOcrImageWithinPixelLimit(m_originalPixelSize);
     m_ocrReady = false;
     m_ocrMode = false;
-    m_automaticTextRecognition = config.automaticTextRecognition;
+    m_formattedTextDocument = config.formattedTextDocument;
+    m_formattedPlainText = config.formattedPlainText;
+    if (m_formattedTextDocument != nullptr && m_formattedPlainText.isEmpty()) {
+        m_formattedPlainText = m_formattedTextDocument->toPlainText();
+    }
+    m_formattedTextAvailable = m_formattedTextDocument != nullptr;
+    m_automaticTextRecognition = !m_formattedTextAvailable && config.automaticTextRecognition;
     m_editingEnabled = config.enableEditing;
     m_mouseWheelZoomMode = config.mouseWheelZoomMode;
     m_imageTransform.reset();
@@ -1175,6 +1182,11 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
             [this](std::shared_ptr<ScreenshotOcrPresentation> presentation) {
                 Q_UNUSED(presentation);
             },
+            [this](std::shared_ptr<QTextDocument> document) {
+                if (m_recognitionContent != nullptr) {
+                    m_recognitionContent->showFormattedText(std::move(document));
+                }
+            },
             [this]() {
                 if (m_screenshotRenderer != nullptr) {
                     m_screenshotRenderer->clearOcrPresentation();
@@ -1289,14 +1301,15 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
                 refreshContextMenu();
                 if (m_editController != nullptr && m_editController->toolbarWindow() != nullptr) {
                     if (ScreenshotToolPalette* toolbar = m_editController->toolbarWindow()->palette()) {
-                        toolbar->setOcrEnabled(m_ocrSupported && m_recognition != nullptr);
+                        toolbar->setOcrEnabled(m_formattedTextAvailable ||
+                                               (m_ocrSupported && m_recognition != nullptr));
                     }
                 }
             });
     if (!m_originalImage.isNull()) {
         m_recognitionSession->setTarget(ScreenshotRecognitionTarget{
             QStringLiteral("pinned:%1").arg(reinterpret_cast<quintptr>(this)), m_originalImage,
-            m_canvasSourceRect});
+            m_canvasSourceRect, m_formattedTextDocument, m_formattedPlainText});
     }
     SNOW_SHOT_PIN_PERF_MILESTONE("window.recognition_session_ready");
     SNOW_SHOT_PIN_PERF_MILESTONE("window.pinned_toolbar_deferred");
@@ -1948,7 +1961,8 @@ void ScreenshotPinnedWindow::refreshContextMenu() {
                                                 ScreenshotRecognitionSessionController::Mode::Text)
                                         ? tr("Recognizing text")
                                  : tr("Display Text Recognition Results")));
-        m_ocrAction->setEnabled(m_ocrSupported && m_recognition != nullptr);
+        m_ocrAction->setEnabled(m_formattedTextAvailable ||
+                                (m_ocrSupported && m_recognition != nullptr));
         const QSignalBlocker blocker(m_ocrAction);
         m_ocrAction->setChecked(activeText);
     }
@@ -2115,7 +2129,7 @@ bool ScreenshotPinnedWindow::ensureMaterializedImage() {
     if (m_recognitionSession != nullptr) {
         m_recognitionSession->setTarget(ScreenshotRecognitionTarget{
             QStringLiteral("pinned:%1").arg(reinterpret_cast<quintptr>(this)), m_originalImage,
-            m_canvasSourceRect});
+            m_canvasSourceRect, m_formattedTextDocument, m_formattedPlainText});
     }
     SNOW_SHOT_PIN_PERF_COUNTER("materialization.count", 1);
     SNOW_SHOT_PIN_PERF_COUNTER("materialization.bytes", m_originalImage.sizeInBytes());
@@ -2190,7 +2204,8 @@ void ScreenshotPinnedWindow::ensureEditController() {
             connect(toolbar, &ScreenshotToolPalette::serialNumberRequested, this,
                     leaveRecognition);
             connect(toolbar, &ScreenshotToolPalette::confirmRequested, this, leaveRecognition);
-            toolbar->setOcrEnabled(m_ocrSupported && m_recognition != nullptr);
+            toolbar->setOcrEnabled(m_formattedTextAvailable ||
+                                   (m_ocrSupported && m_recognition != nullptr));
             toolbar->setTableEnabled(m_tableRecognition != nullptr);
             toolbar->setQrEnabled(m_qrRecognition != nullptr);
         }
@@ -2292,7 +2307,8 @@ void ScreenshotPinnedWindow::updateRecognitionToolbarState() {
         return;
     }
     if (ScreenshotToolPalette* toolbar = m_editController->toolbarWindow()->palette()) {
-        toolbar->setOcrEnabled(m_ocrSupported && m_recognition != nullptr);
+        toolbar->setOcrEnabled(m_formattedTextAvailable ||
+                               (m_ocrSupported && m_recognition != nullptr));
         toolbar->setTableEnabled(m_tableRecognition != nullptr);
         toolbar->setQrEnabled(m_qrRecognition != nullptr);
         toolbar->setOcrBusy(m_recognitionSession->busy(

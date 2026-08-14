@@ -191,11 +191,18 @@ void textAndHighlightStrokeWidthTriggersUseSharedPreviewButton() {
             "configured width-color editors should share picker and trigger metrics");
 }
 
+bool tooltipMatches(const QString& actual, const QString& expected) {
+    return actual == expected ||
+           (actual.startsWith(expected + QStringLiteral(" (")) && actual.endsWith(')'));
+}
+
 QWidget* controlWithTooltip(ScreenshotToolPalette& palette, const char* tooltip) {
     const QString expected = QString::fromUtf8(tooltip);
     const QList<QWidget*> controls = palette.findChildren<QWidget*>();
     for (QWidget* control : controls) {
-        if (control != nullptr && control->toolTip() == expected) {
+        if (control != nullptr &&
+            (tooltipMatches(control->toolTip(), expected) ||
+             control->property("snowShotDrawingShortcutTooltipSource").toString() == expected)) {
             return control;
         }
     }
@@ -253,7 +260,7 @@ adqt::widgets::AdColorPicker* colorPickerWithAccessibleName(ScreenshotToolPalett
 QWidget* popupControlWithTooltip(const char* tooltip) {
     const QString expected = QString::fromUtf8(tooltip);
     for (QWidget* control : QApplication::allWidgets()) {
-        if (control != nullptr && control->toolTip() == expected) {
+        if (control != nullptr && tooltipMatches(control->toolTip(), expected)) {
             return control;
         }
     }
@@ -301,7 +308,7 @@ void clickPopoverStyleControl(adqt::widgets::AdPopover* popover, const char* too
 
     const QString expected = QString::fromUtf8(tooltip);
     for (QWidget* control : content->findChildren<QWidget*>()) {
-        if (control != nullptr && control->toolTip() == expected) {
+        if (control != nullptr && tooltipMatches(control->toolTip(), expected)) {
             auto* button = qobject_cast<adqt::widgets::AdButton*>(control);
             require(button != nullptr, "arrow popup option should be a button");
             button->click();
@@ -319,7 +326,7 @@ adqt::widgets::AdButton* popoverButtonWithTooltip(adqt::widgets::AdPopover* popo
 
     const QString expected = QString::fromUtf8(tooltip);
     for (QWidget* control : popover->contentWidget()->findChildren<QWidget*>()) {
-        if (control != nullptr && control->toolTip() == expected) {
+        if (control != nullptr && tooltipMatches(control->toolTip(), expected)) {
             return qobject_cast<adqt::widgets::AdButton*>(control);
         }
     }
@@ -350,7 +357,7 @@ void requireControlActive(ScreenshotToolPalette& palette, const char* tooltip,
             message);
 }
 
-void scrollingScreenshotDisablesUnavailableTools() {
+void scrollingScreenshotKeepsDrawingToolsAvailable() {
     ScreenshotToolPalette::Options options;
     options.showMoveTool = true;
     options.showSelectTool = true;
@@ -366,39 +373,46 @@ void scrollingScreenshotDisablesUnavailableTools() {
     options.showOcrTool = true;
     options.showTableTool = true;
     options.showScrollingScreenshotTool = true;
-    options.showVideoRecordButton = true;
+    options.showScreenRecordButton = true;
     options.enableStyleToolbar = false;
     options.actions = ScreenshotToolPalette::PinAction | ScreenshotToolPalette::CancelAction |
                       ScreenshotToolPalette::CopyAction;
 
     ScreenshotToolPalette palette(options);
-    const char* const disabledDuringScrolling[] = {
+    const char* const drawingTools[] = {
         "Select elements", "Shape",  "Arrow",  "Line",      "Pen", "Text",
         "Serial number",   "Filter", "Eraser", "Watermark",
     };
     const char* const enabledDuringScrolling[] = {
         "Edit selection", "Text recognition", "Table recognition", "Scrolling screenshot",
-        "Record video",   "Pin to screen",    "Cancel screenshot", "Copy to clipboard",
+        "Record screen",   "Pin to screen",    "Cancel screenshot", "Copy to clipboard",
     };
 
-    requireControlsEnabled(palette, disabledDuringScrolling, std::size(disabledDuringScrolling),
+    requireControlsEnabled(palette, drawingTools, std::size(drawingTools),
                            true, "restricted tools should start enabled");
     requireControlsEnabled(palette, enabledDuringScrolling, std::size(enabledDuringScrolling), true,
                            "available scrolling controls should start enabled");
 
     palette.setScrollingScreenshotMode(true);
     require(palette.scrollingScreenshotMode(), "palette should enter scrolling screenshot mode");
-    requireControlsEnabled(palette, disabledDuringScrolling, std::size(disabledDuringScrolling),
-                           false, "scrolling screenshot mode should disable restricted tools");
+    requireControlsEnabled(palette, drawingTools, std::size(drawingTools), true,
+                           "scrolling screenshot mode should keep drawing tools enabled");
     requireControlsEnabled(
         palette, enabledDuringScrolling, std::size(enabledDuringScrolling), true,
         "scrolling screenshot mode should keep navigation and result controls enabled");
 
+    auto* shapeButton =
+        qobject_cast<adqt::widgets::AdButton*>(controlWithTooltip(palette, "Shape"));
+    require(shapeButton != nullptr, "shape tool should remain clickable during scrolling capture");
+    shapeButton->click();
+    require(palette.activeToolForTests() == ScreenshotToolPalette::Tool::Shape,
+            "clicking a drawing tool should switch directly from scrolling capture to that tool");
+
     palette.setScrollingScreenshotMode(false);
     require(!palette.scrollingScreenshotMode(), "palette should leave scrolling screenshot mode");
-    requireControlsEnabled(palette, disabledDuringScrolling, std::size(disabledDuringScrolling),
+    requireControlsEnabled(palette, drawingTools, std::size(drawingTools),
                            true,
-                           "leaving scrolling screenshot mode should restore restricted tools");
+                           "leaving scrolling screenshot mode should preserve drawing tools");
     requireControlsEnabled(palette, enabledDuringScrolling, std::size(enabledDuringScrolling), true,
                            "leaving scrolling screenshot mode should preserve available controls");
 }
@@ -420,7 +434,7 @@ void screenshotToolbarUsesCanonicalOrderAndSectionSeparators() {
     options.showWatermarkTool = true;
     options.showOcrTool = true;
     options.showTableTool = true;
-    options.showVideoRecordButton = true;
+    options.showScreenRecordButton = true;
     options.showScrollingScreenshotTool = true;
     options.separatorAfterSelect = true;
     options.separatorBeforeShape = true;
@@ -434,17 +448,17 @@ void screenshotToolbarUsesCanonicalOrderAndSectionSeparators() {
     const QStringList expected{
         QStringLiteral("Edit selection"),
         QStringLiteral("Select elements"),
-        QStringLiteral("Shape"),
-        QStringLiteral("Arrow"),
-        QStringLiteral("Pen"),
-        QStringLiteral("Highlighter Tool"),
-        QStringLiteral("Text"),
-        QStringLiteral("Serial number"),
-        QStringLiteral("Filter"),
-        QStringLiteral("Eraser"),
-        QStringLiteral("Watermark"),
+        QStringLiteral("Shape (1, S)"),
+        QStringLiteral("Arrow (2, A)"),
+        QStringLiteral("Pen (3, P)"),
+        QStringLiteral("Highlighter Tool (4, H)"),
+        QStringLiteral("Text (5, T)"),
+        QStringLiteral("Serial number (6, N)"),
+        QStringLiteral("Filter (7, F)"),
+        QStringLiteral("Eraser (8, E)"),
+        QStringLiteral("Watermark (9, W)"),
         QStringLiteral("Table recognition"),
-        QStringLiteral("Record video"),
+        QStringLiteral("Record screen"),
         QStringLiteral("Pin to screen"),
         QStringLiteral("Text recognition"),
         QStringLiteral("Scrolling screenshot"),
@@ -778,7 +792,7 @@ void arrowAndLineRemainDirectWhenConfiguredIndividually() {
     ScreenshotToolPalette arrowPalette(arrowOptions);
     const QList<adqt::widgets::AdButton*> arrowButtons = mainToolbarButtons(arrowPalette);
     require(arrowButtons.size() == 1 &&
-                arrowButtons.constFirst()->toolTip() == QStringLiteral("Arrow") &&
+                arrowButtons.constFirst()->toolTip() == QStringLiteral("Arrow (2, A)") &&
                 popoverForTrigger(arrowButtons.constFirst()) == nullptr,
             "Arrow should remain a direct button when Line is unavailable");
 
@@ -1086,7 +1100,7 @@ void ocrToolReplacesSelectionActionToolbarContents() {
             "Edit should return to its inactive state after text editing exits");
 }
 
-void recognitionToolsDisableDrawingTools() {
+void recognitionToolsKeepDrawingToolsAvailable() {
     ScreenshotToolPalette::Options options;
     options.showMoveTool = true;
     options.showSelectTool = true;
@@ -1111,20 +1125,23 @@ void recognitionToolsDisableDrawingTools() {
     };
 
     palette.setActiveTool(ScreenshotToolPalette::Tool::Ocr);
-    requireControlsEnabled(palette, drawingTools, std::size(drawingTools), false,
-                           "text recognition should disable drawing tools");
+    requireControlsEnabled(palette, drawingTools, std::size(drawingTools), true,
+                           "text recognition should keep drawing tools enabled");
 
     palette.setActiveTool(ScreenshotToolPalette::Tool::Table);
-    requireControlsEnabled(palette, drawingTools, std::size(drawingTools), false,
-                           "table recognition should keep drawing tools disabled");
+    requireControlsEnabled(palette, drawingTools, std::size(drawingTools), true,
+                           "table recognition should keep drawing tools enabled");
 
     palette.setActiveTool(ScreenshotToolPalette::Tool::Qr);
-    requireControlsEnabled(palette, drawingTools, std::size(drawingTools), false,
-                           "QR recognition should keep drawing tools disabled");
-
-    palette.setActiveTool(ScreenshotToolPalette::Tool::Move);
     requireControlsEnabled(palette, drawingTools, std::size(drawingTools), true,
-                           "leaving recognition should restore drawing tools");
+                           "QR recognition should keep drawing tools enabled");
+
+    auto* shapeButton =
+        qobject_cast<adqt::widgets::AdButton*>(controlWithTooltip(palette, "Shape"));
+    require(shapeButton != nullptr, "shape tool should remain clickable during recognition");
+    shapeButton->click();
+    require(palette.activeToolForTests() == ScreenshotToolPalette::Tool::Shape,
+            "clicking a drawing tool should switch directly from recognition to that tool");
 }
 
 void tableToolExposesStructureActionsAndOwnHistoryState() {
@@ -5137,8 +5154,8 @@ int main(int argc, char** argv) {
     }
     numericStrokeWidthPreviewUsesLineWithinPreviewBounds();
     textAndHighlightStrokeWidthTriggersUseSharedPreviewButton();
-    scrollingScreenshotDisablesUnavailableTools();
-    recognitionToolsDisableDrawingTools();
+    scrollingScreenshotKeepsDrawingToolsAvailable();
+    recognitionToolsKeepDrawingToolsAvailable();
     scrollingScreenshotExposesAxisRecognitionModes();
     screenshotToolbarUsesCanonicalOrderAndSectionSeparators();
     configurableToolbarLayoutSupportsArbitraryPopoverGroups();

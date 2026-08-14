@@ -564,6 +564,7 @@ set(PROJECT_HEADERS
     include/snow_shot/presentation/screenshotcaptureworkflow.h
     include/snow_shot/presentation/screenshotcaptureworkflowports.h
     include/snow_shot/presentation/screenshotcanvasrenderer.h
+    include/snow_shot/presentation/screenshotclipboardcontent.h
     include/snow_shot/presentation/screenshotclipboardservice.h
     include/snow_shot/presentation/screenshotresultcompositor.h
     include/snow_shot/presentation/screenshotselectionshadowrenderer.h
@@ -638,9 +639,9 @@ set(PROJECT_HEADERS
     include/snow_shot/presentation/screenshottypes.h
     include/snow_shot/presentation/screenshotuipreferences.h
     include/snow_shot/presentation/screenshotwindowcapture.h
-    include/snow_shot/presentation/videorecordingareawindow.h
-    include/snow_shot/presentation/videorecordingcontroller.h
-    include/snow_shot/presentation/videorecordingtoolbarwindow.h
+    include/snow_shot/presentation/screenrecordingareawindow.h
+    include/snow_shot/presentation/screenrecordingcontroller.h
+    include/snow_shot/presentation/screenrecordingtoolbarwindow.h
     include/snow_shot/presentation/styles/mainwindowcomponenttoken.h
     include/snow_shot/presentation/styles/buttonborder.h
     include/snow_shot/presentation/styles/floatingcontroltoolbarstyle.h
@@ -669,6 +670,7 @@ set(PROJECT_CXX_SOURCES
     src/presentation/capture/screenshotscrollingcapturecontroller.cpp
     src/presentation/capture/screenshotscrollingthumbnailwidget.cpp
     src/presentation/services/screenshotcolorpickercontroller.cpp
+    src/presentation/services/screenshotclipboardcontent.cpp
     src/presentation/services/screenshotclipboardservice.cpp
     src/network/snowshotapiclient.cpp
     src/presentation/services/screenshotcolorpickerwidget.cpp
@@ -738,10 +740,10 @@ set(PROJECT_CXX_SOURCES
     src/presentation/tools/screenshottoolpalette.cpp
     src/presentation/tools/screenshottoolpalettehost.cpp
     src/presentation/toolbar/screenshottoolbarwindow.cpp
-    src/presentation/recording/videorecordingareawindow.cpp
-    src/presentation/recording/videorecordingcontroller.cpp
-    src/presentation/recording/videorecordinggeometry.cpp
-    src/presentation/recording/videorecordingtoolbarwindow.cpp
+    src/presentation/recording/screenrecordingareawindow.cpp
+    src/presentation/recording/screenrecordingcontroller.cpp
+    src/presentation/recording/screenrecordinggeometry.cpp
+    src/presentation/recording/screenrecordingtoolbarwindow.cpp
     src/presentation/styles/floatingcontroltoolbarstyle.cpp
 )
 
@@ -1612,14 +1614,39 @@ if(SNOW_SHOT_BUILD_TESTS)
         ENVIRONMENT_MODIFICATION
             "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
+
+    add_executable(snow-shot-clipboard-content-tests
+        tests/screenshot_clipboard_content_tests.cpp
+        include/snow_shot/presentation/screenshotclipboardcontent.h
+        src/presentation/services/screenshotclipboardcontent.cpp
+    )
+    target_include_directories(snow-shot-clipboard-content-tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/image"
+    )
+    target_link_libraries(snow-shot-clipboard-content-tests PRIVATE
+        snow_shot_image_codec
+        Qt6::Widgets
+    )
+    add_test(NAME snow-shot-clipboard-content-tests
+             COMMAND snow-shot-clipboard-content-tests)
+    set_tests_properties(snow-shot-clipboard-content-tests PROPERTIES
+        ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
     add_test(
         NAME snow-shot-pinned-recognition-priority-tests
         COMMAND snow-shot-pinned-window-tests --recognition-priority-only
+    )
+    add_test(
+        NAME snow-shot-pinned-clipboard-content-tests
+        COMMAND snow-shot-pinned-window-tests --clipboard-content-only
     )
     set_tests_properties(
         snow-shot-pinned-window-tests
         snow-shot-pinned-recognition-provider-loss-tests
         snow-shot-pinned-recognition-priority-tests
+        snow-shot-pinned-clipboard-content-tests
         PROPERTIES
         RUN_SERIAL TRUE
         TIMEOUT 90
@@ -2102,23 +2129,23 @@ if(SNOW_SHOT_BUILD_TESTS)
             "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
 
-    add_executable(snow-shot-video-recording-geometry-tests
-        tests/video_recording_geometry_tests.cpp
+    add_executable(snow-shot-screen-recording-geometry-tests
+        tests/screen_recording_geometry_tests.cpp
         src/presentation/core/screenshotgeometry.cpp
-        src/presentation/recording/videorecordinggeometry.cpp
+        src/presentation/recording/screenrecordinggeometry.cpp
     )
-    target_include_directories(snow-shot-video-recording-geometry-tests PRIVATE
+    target_include_directories(snow-shot-screen-recording-geometry-tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
     )
-    target_link_libraries(snow-shot-video-recording-geometry-tests PRIVATE
+    target_link_libraries(snow-shot-screen-recording-geometry-tests PRIVATE
         Qt6::Widgets
     )
     add_test(
-        NAME snow-shot-video-recording-geometry-tests
-        COMMAND snow-shot-video-recording-geometry-tests
+        NAME snow-shot-screen-recording-geometry-tests
+        COMMAND snow-shot-screen-recording-geometry-tests
     )
-    set_tests_properties(snow-shot-video-recording-geometry-tests PROPERTIES
+    set_tests_properties(snow-shot-screen-recording-geometry-tests PROPERTIES
         ENVIRONMENT
             "QT_QPA_PLATFORM=offscreen;QT_QPA_PLATFORM_PLUGIN_PATH=$<TARGET_FILE_DIR:Qt6::QOffscreenIntegrationPlugin>;QT_SCALE_FACTOR=1.25"
         ENVIRONMENT_MODIFICATION

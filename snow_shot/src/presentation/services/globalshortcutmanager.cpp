@@ -25,7 +25,7 @@ namespace {
 constexpr int MAX_SHORTCUTS_PER_ACTION = 2;
 constexpr int FIRST_REGISTRATION_ID = 0x2200;
 constexpr int LAST_REGISTRATION_ID = 0xBFFF;
-constexpr std::size_t ACTION_COUNT = 12;
+constexpr std::size_t ACTION_COUNT = 13;
 
 constexpr std::array<GlobalShortcutAction, ACTION_COUNT> ALL_ACTIONS = {
     GlobalShortcutAction::Screenshot,
@@ -35,11 +35,12 @@ constexpr std::array<GlobalShortcutAction, ACTION_COUNT> ALL_ACTIONS = {
     GlobalShortcutAction::ScreenshotCopy,
     GlobalShortcutAction::ScreenshotFullScreen,
     GlobalShortcutAction::ScreenshotFocusedWindow,
-    GlobalShortcutAction::VideoRecord,
-    GlobalShortcutAction::VideoRecordCopy,
+    GlobalShortcutAction::ScreenRecord,
+    GlobalShortcutAction::ScreenRecordCopy,
     GlobalShortcutAction::ShowOrHideMainWindow,
     GlobalShortcutAction::OpenCaptureHistory,
     GlobalShortcutAction::OpenSettings,
+    GlobalShortcutAction::PinClipboardContent,
 };
 
 int actionIndex(GlobalShortcutAction action) {
@@ -58,9 +59,9 @@ int actionIndex(GlobalShortcutAction action) {
         return 5;
     case GlobalShortcutAction::ScreenshotFocusedWindow:
         return 6;
-    case GlobalShortcutAction::VideoRecord:
+    case GlobalShortcutAction::ScreenRecord:
         return 7;
-    case GlobalShortcutAction::VideoRecordCopy:
+    case GlobalShortcutAction::ScreenRecordCopy:
         return 8;
     case GlobalShortcutAction::ShowOrHideMainWindow:
         return 9;
@@ -68,6 +69,8 @@ int actionIndex(GlobalShortcutAction action) {
         return 10;
     case GlobalShortcutAction::OpenSettings:
         return 11;
+    case GlobalShortcutAction::PinClipboardContent:
+        return 12;
     }
     return 0;
 }
@@ -547,16 +550,18 @@ QStringList persistedShortcuts(const snow_shot::storage::ShortcutSettings& setti
         return settings.screenshotFullScreen();
     case GlobalShortcutAction::ScreenshotFocusedWindow:
         return settings.screenshotFocusedWindow();
-    case GlobalShortcutAction::VideoRecord:
-        return settings.videoRecord();
-    case GlobalShortcutAction::VideoRecordCopy:
-        return settings.videoRecordCopy();
+    case GlobalShortcutAction::ScreenRecord:
+        return settings.screenRecord();
+    case GlobalShortcutAction::ScreenRecordCopy:
+        return settings.screenRecordCopy();
     case GlobalShortcutAction::ShowOrHideMainWindow:
         return settings.showOrHideMainWindow();
     case GlobalShortcutAction::OpenCaptureHistory:
         return settings.openCaptureHistory();
     case GlobalShortcutAction::OpenSettings:
         return settings.openSettings();
+    case GlobalShortcutAction::PinClipboardContent:
+        return settings.pinClipboardContent();
     }
     return {};
 }
@@ -578,16 +583,18 @@ bool persistShortcuts(const snow_shot::storage::ShortcutSettings& settings,
         return settings.setScreenshotFullScreen(shortcuts);
     case GlobalShortcutAction::ScreenshotFocusedWindow:
         return settings.setScreenshotFocusedWindow(shortcuts);
-    case GlobalShortcutAction::VideoRecord:
-        return settings.setVideoRecord(shortcuts);
-    case GlobalShortcutAction::VideoRecordCopy:
-        return settings.setVideoRecordCopy(shortcuts);
+    case GlobalShortcutAction::ScreenRecord:
+        return settings.setScreenRecord(shortcuts);
+    case GlobalShortcutAction::ScreenRecordCopy:
+        return settings.setScreenRecordCopy(shortcuts);
     case GlobalShortcutAction::ShowOrHideMainWindow:
         return settings.setShowOrHideMainWindow(shortcuts);
     case GlobalShortcutAction::OpenCaptureHistory:
         return settings.setOpenCaptureHistory(shortcuts);
     case GlobalShortcutAction::OpenSettings:
         return settings.setOpenSettings(shortcuts);
+    case GlobalShortcutAction::PinClipboardContent:
+        return settings.setPinClipboardContent(shortcuts);
     }
     return false;
 }

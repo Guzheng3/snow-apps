@@ -9175,6 +9175,90 @@ mod tests {
     }
 
     #[test]
+    fn animated_formats_encode_multiple_frames() {
+        let directory = tempdir().expect("temporary output directory should be available");
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let performance = ExportPerformanceConfig {
+            mode: ExportExecutionMode::SoftwareOnly,
+            ..ExportPerformanceConfig::default()
+        };
+
+        ensure_ffmpeg_initialized().expect("FFmpeg should initialize");
+        eprintln!(
+            "encoders: apng={:?} webp={:?} libwebp_anim={:?}",
+            ffmpeg::encoder::find_by_name("apng").map(|codec| codec.name().to_string()),
+            ffmpeg::encoder::find(ffmpeg::codec::Id::WEBP).map(|codec| codec.name().to_string()),
+            ffmpeg::encoder::find_by_name("libwebp_anim").map(|codec| codec.name().to_string())
+        );
+
+        for format in [ExportFormat::Apng, ExportFormat::Webp] {
+            let output_path = directory
+                .path()
+                .join(format!("animated-test.{}", format.file_extension()));
+            let result = export_video_generated(
+                &output_path,
+                8,
+                8,
+                2,
+                10,
+                format,
+                VideoCodec::H264,
+                None,
+                8,
+                &VideoEncodeConfig::default(),
+                &performance,
+                &cancel_flag,
+                &None,
+                |index, rgba| {
+                    rgba.fill(if index == 0 { 0x20 } else { 0xE0 });
+                    for alpha in rgba.chunks_exact_mut(4).map(|pixel| &mut pixel[3..4]) {
+                        alpha[0] = 0xFF;
+                    }
+                    Ok(())
+                },
+            )
+            .unwrap_or_else(|error| panic!("{format:?} should encode: {error}"));
+
+            assert!(output_path.is_file());
+            assert!(result.video_encoder.is_some());
+
+            let mut input = ffmpeg::format::input(&output_path)
+                .unwrap_or_else(|error| panic!("{format:?} output should open: {error}"));
+            let stream = input
+                .streams()
+                .best(ffmpeg::media::Type::Video)
+                .unwrap_or_else(|| panic!("{format:?} output should contain video"));
+            let stream_index = stream.index();
+            let context = ffmpeg::codec::context::Context::from_parameters(stream.parameters())
+                .unwrap_or_else(|error| panic!("{format:?} decoder context: {error}"));
+            let mut decoder = context
+                .decoder()
+                .video()
+                .unwrap_or_else(|error| panic!("{format:?} decoder: {error}"));
+            let mut decoded = ffmpeg::frame::Video::empty();
+            let mut frame_count = 0usize;
+            for (packet_stream, packet) in input.packets() {
+                if packet_stream.index() != stream_index {
+                    continue;
+                }
+                decoder
+                    .send_packet(&packet)
+                    .unwrap_or_else(|error| panic!("{format:?} packet decode: {error}"));
+                while decoder.receive_frame(&mut decoded).is_ok() {
+                    frame_count += 1;
+                }
+            }
+            decoder
+                .send_eof()
+                .unwrap_or_else(|error| panic!("{format:?} decoder flush: {error}"));
+            while decoder.receive_frame(&mut decoded).is_ok() {
+                frame_count += 1;
+            }
+            assert_eq!(frame_count, 2, "{format:?} should preserve both frames");
+        }
+    }
+
+    #[test]
     fn output_dimensions_preserve_aspect_ratio_and_do_not_upscale() {
         assert_eq!(
             output_dimensions(3840, 2160, Some(1920), Some(1080), true),

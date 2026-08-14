@@ -158,14 +158,14 @@ class ApplicationController::Impl {
                 controller->captureFocusedWindow();
             }
             break;
-        case presentation::GlobalShortcutAction::VideoRecord:
+        case presentation::GlobalShortcutAction::ScreenRecord:
             if (ScreenshotController* controller = ensureScreenshotController()) {
-                controller->captureAndStartVideoRecording();
+                controller->captureAndStartScreenRecording();
             }
             break;
-        case presentation::GlobalShortcutAction::VideoRecordCopy:
+        case presentation::GlobalShortcutAction::ScreenRecordCopy:
             if (ScreenshotController* controller = ensureScreenshotController()) {
-                controller->startOrStopVideoRecordingAndCopy();
+                controller->startOrStopScreenRecordingAndCopy();
             }
             break;
         case presentation::GlobalShortcutAction::ShowOrHideMainWindow:
@@ -176,6 +176,11 @@ class ApplicationController::Impl {
             break;
         case presentation::GlobalShortcutAction::OpenSettings:
             showInterfaceSettings();
+            break;
+        case presentation::GlobalShortcutAction::PinClipboardContent:
+            if (ScreenshotController* controller = ensureScreenshotController()) {
+                controller->pinClipboardContentToScreen();
+            }
             break;
         }
     }

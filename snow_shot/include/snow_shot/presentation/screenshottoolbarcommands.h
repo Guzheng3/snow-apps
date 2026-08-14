@@ -56,7 +56,7 @@ class ScreenshotToolbarCommandSink {
     virtual void saveSelectionToFile() {}
     virtual void cancelCapture() = 0;
     virtual void copySelectionToClipboard() = 0;
-    virtual void startVideoRecording() = 0;
+    virtual void startScreenRecording() = 0;
     virtual void setShapeStyleFromToolbar(const SnowCanvasShapeStyle& style, quint32 properties,
                                           SnowCanvasShapeKind kind) = 0;
     virtual void setTextStyleFromToolbar(const SnowCanvasTextStyle& style) = 0;

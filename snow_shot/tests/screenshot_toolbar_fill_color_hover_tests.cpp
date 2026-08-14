@@ -69,7 +69,7 @@ class NoOpToolbarCommands final : public ScreenshotToolbarCommandSink {
     void pinSelectionToScreen() override {}
     void cancelCapture() override {}
     void copySelectionToClipboard() override {}
-    void startVideoRecording() override {}
+    void startScreenRecording() override {}
     void setShapeStyleFromToolbar(const SnowCanvasShapeStyle&, quint32,
                                   SnowCanvasShapeKind) override {}
     void setTextStyleFromToolbar(const SnowCanvasTextStyle&) override {}

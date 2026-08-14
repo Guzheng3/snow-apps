@@ -4,6 +4,7 @@
 #include "snow_shot/presentation/screenshotpinnededitcontroller.h"
 #include "snow_shot/presentation/screenshotfloatingtoolpalettewindow.h"
 #include "snow_shot/presentation/screenshotgeometry.h"
+#include "snow_shot/presentation/screenshotrecognitionsessioncontroller.h"
 #include "snow_shot/presentation/screenshottoolpalette.h"
 
 #include "snow_draw_engine_qt/snow_canvas_runtime.h"
@@ -33,6 +34,9 @@
 #include <QScreen>
 #include <QThread>
 #include <QTimer>
+#include <QTextBrowser>
+#include <QTextDocument>
+#include <QTextEdit>
 #include <QVariantAnimation>
 #include <QWheelEvent>
 #include <QWindow>
@@ -1162,6 +1166,68 @@ void pinnedRecognitionPromotesAutomaticPrefetch(SnowCanvasRuntime& sourceRuntime
     closeButton->click();
     require(processUntilDeleted(guardedWindow, 2000),
             "priority pin was not deleted after the test");
+}
+
+void pinnedFormattedClipboardTextSkipsOcrAndSeedsPlainTextEditing(
+    SnowCanvasRuntime& sourceRuntime) {
+    QScreen* screen = QGuiApplication::primaryScreen();
+    require(screen != nullptr, "a primary screen is required");
+
+    FakeOcrRecognition recognition;
+    QImage renderedText(320, 120, QImage::Format_ARGB32_Premultiplied);
+    renderedText.fill(Qt::white);
+    auto document = std::make_shared<QTextDocument>();
+    document->setHtml(QStringLiteral("<p><b>Formatted</b> clipboard text</p>"));
+    const QString plainText = document->toPlainText();
+
+    auto* pinnedWindow = new ScreenshotPinnedWindow(sourceRuntime);
+    QPointer<ScreenshotPinnedWindow> guardedWindow(pinnedWindow);
+    ScreenshotPinnedWindow::Config config;
+    config.nativeGeometry = physicalPinGeometry(*screen, QPoint(60, 60), renderedText.size());
+    config.canvasSourceRect = QRectF(QPointF(), QSizeF(renderedText.size()));
+    config.backgroundImage = renderedText;
+    config.screen = screen;
+    config.recognition = &recognition;
+    config.formattedTextDocument = document;
+    config.formattedPlainText = plainText;
+    require(pinnedWindow->present(config), "formatted clipboard pin presentation failed");
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    require(recognition.nextToken == 0 && recognition.pending.token == 0,
+            "formatted clipboard text must not start automatic OCR");
+
+    auto* menu = pinnedWindow->findChild<adqt::widgets::AdContextMenu*>(
+        QStringLiteral("screenshotPinnedContextMenu"));
+    require(menu != nullptr && menu->actions().size() > 2 &&
+                menu->actions().at(2)->isEnabled(),
+            "formatted clipboard text should expose text selection without an OCR result");
+    menu->actions().at(2)->trigger();
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+
+    auto* browser =
+        pinnedWindow->findChild<QTextBrowser*>(QStringLiteral("screenshotClipboardText"));
+    require(browser != nullptr && browser->isVisible() && browser->document() == document.get() &&
+                browser->toPlainText() == plainText && recognition.nextToken == 0,
+            "text mode should show the original selectable formatted document without OCR");
+
+    auto* session = pinnedWindow->findChild<ScreenshotRecognitionSessionController*>();
+    require(session != nullptr && session->originalText() == plainText,
+            "formatted clipboard text should seed the recognition session with plain text");
+    session->beginTextEditing();
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    auto* editor =
+        pinnedWindow->findChild<QTextEdit*>(QStringLiteral("screenshotOcrEditor"));
+    require(editor != nullptr && editor->toPlainText() == plainText,
+            "editing formatted clipboard text should use its plain-text projection");
+
+    session->endTextEditing();
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    browser = pinnedWindow->findChild<QTextBrowser*>(QStringLiteral("screenshotClipboardText"));
+    require(browser != nullptr && browser->document() == document.get(),
+            "ending plain-text editing should restore the formatted clipboard document");
+
+    pinnedWindow->close();
+    require(processUntilDeleted(guardedWindow, 2000),
+            "formatted clipboard pin was not deleted after the test");
 }
 
 void pinnedAutomaticRecognitionCanBeDisabled(SnowCanvasRuntime& sourceRuntime) {
@@ -2368,6 +2434,10 @@ int main(int argc, char* argv[]) {
             pinnedRecognitionPromotesAutomaticPrefetch(sourceRuntime);
             return 0;
         }
+        if (app.arguments().contains(QStringLiteral("--clipboard-content-only"))) {
+            pinnedFormattedClipboardTextSkipsOcrAndSeedsPlainTextEditing(sourceRuntime);
+            return 0;
+        }
         if (app.arguments().contains(QStringLiteral("--close-after-recognized-text"))) {
             pinnedCloseAfterRecognizedText(sourceRuntime);
             return 0;
@@ -2389,6 +2459,7 @@ int main(int argc, char* argv[]) {
         pinnedAutomaticRecognitionCanBeDisabled(sourceRuntime);
         pinnedCloseAfterRecognizedText(sourceRuntime);
         pinnedRecognitionProviderLossEndsBusyState(sourceRuntime);
+        pinnedFormattedClipboardTextSkipsOcrAndSeedsPlainTextEditing(sourceRuntime);
         pinnedControlsMatchReferenceStyle(sourceRuntime);
         pinnedControlsHideBelowMinimumNativeSize(sourceRuntime);
         pinnedLargeImageRemainsOpenWhenEnteringDrawingMode(sourceRuntime);

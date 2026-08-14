@@ -48,6 +48,36 @@ void insertPath(QJsonObject* root, const QString& path, const QJsonValue& value)
     root->insert(parts[0], group);
 }
 
+void removePath(QJsonObject* root, const QString& path) {
+    const QStringList parts = path.split(u'/');
+    if (root == nullptr || parts.size() != 2 || !root->value(parts[0]).isObject()) {
+        return;
+    }
+    QJsonObject group = root->value(parts[0]).toObject();
+    if (!group.contains(parts[1])) {
+        return;
+    }
+    group.remove(parts[1]);
+    root->insert(parts[0], group);
+}
+
+QString legacyKeyFor(const QString& key) {
+    if (key == QStringLiteral("global_shortcuts/screen_record")) {
+        return QStringLiteral("global_shortcuts/video_record");
+    }
+    if (key == QStringLiteral("global_shortcuts/screen_record_copy")) {
+        return QStringLiteral("global_shortcuts/video_record_copy");
+    }
+    if (!key.startsWith(QStringLiteral("screen_recording/"))) {
+        return {};
+    }
+    if (key == QStringLiteral("screen_recording/clarity")) {
+        return QStringLiteral("video_recording/video_clarity");
+    }
+    return QStringLiteral("video_recording/") +
+           key.mid(QStringLiteral("screen_recording/").size());
+}
+
 bool integerVersion(const QJsonValue& value, int* version) {
     if (!value.isDouble() || !std::isfinite(value.toDouble()) ||
         std::floor(value.toDouble()) != value.toDouble() || value.toDouble() < 1.0 ||
@@ -325,7 +355,13 @@ void ConfigurationStore::load() {
                         continue;
                     }
                     bool present = false;
-                    const QJsonValue raw = valueAtPath(parsedObject, entry.key, &present);
+                    bool migratedLegacy = false;
+                    QJsonValue raw = valueAtPath(parsedObject, entry.key, &present);
+                    const QString legacyKey = legacyKeyFor(entry.key);
+                    if (!present && !legacyKey.isEmpty()) {
+                        raw = valueAtPath(parsedObject, legacyKey, &present);
+                        migratedLegacy = present;
+                    }
                     if (!present) {
                         if (compatibility != ConfigurationCompatibility::FutureVersion) {
                             insertPath(&document, entry.key, entry.defaultValue);
@@ -338,14 +374,20 @@ void ConfigurationStore::load() {
                     if (!normalized.valid) {
                         if (compatibility != ConfigurationCompatibility::FutureVersion) {
                             insertPath(&document, entry.key, entry.defaultValue);
+                            if (migratedLegacy) {
+                                removePath(&document, legacyKey);
+                            }
                             dirty = true;
                         }
                         continue;
                     }
                     loaded.insert(entry.key, normalized.value);
-                    if (normalized.changed &&
-                        compatibility != ConfigurationCompatibility::FutureVersion) {
+                    if (compatibility != ConfigurationCompatibility::FutureVersion &&
+                        (normalized.changed || migratedLegacy)) {
                         insertPath(&document, entry.key, normalized.value);
+                        if (!legacyKey.isEmpty()) {
+                            removePath(&document, legacyKey);
+                        }
                         dirty = true;
                     }
                 }

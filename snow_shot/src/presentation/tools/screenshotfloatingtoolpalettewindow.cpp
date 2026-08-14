@@ -3,6 +3,8 @@
 #include "screenshotfloatingtoolpalettenative.h"
 #include "snow_shot/presentation/screenshotgeometry.h"
 #include "snow_shot/presentation/screenshottoolpalettehost.h"
+#include "snow_shot/storage/applicationstorage.h"
+#include "snow_shot/storage/settingsadapters.h"
 
 #include "screenshottoolbarperfinstrumentation.h"
 
@@ -17,6 +19,7 @@
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QHideEvent>
+#include <QJsonValue>
 #include <QLineEdit>
 #include <QPaintEvent>
 #include <QPainter>
@@ -172,6 +175,18 @@ ScreenshotFloatingToolPaletteWindow::ScreenshotFloatingToolPaletteWindow(
             [this](const QPoint&) { finishPaletteDrag(true); });
     connect(m_paletteHost, &ScreenshotToolPaletteHost::visibleContentChanged, this,
             &ScreenshotFloatingToolPaletteWindow::handlePaletteContentChange);
+
+    const auto applyToolbarSize = [this](const QString& size) {
+        setPaletteScaleMultiplier(size == QStringLiteral("small") ? 0.8 : 1.0);
+    };
+    applyToolbarSize(snow_shot::storage::ScreenshotUiSettings().toolbarSize());
+    auto& configuration = snow_shot::storage::ApplicationStorage::instance().configuration();
+    connect(&configuration, &snow_shot::storage::ConfigurationStore::valueChanged, this,
+            [this, applyToolbarSize](const QString& key, const QJsonValue&) {
+                if (key == QStringLiteral("screenshot_ui/toolbar_size")) {
+                    applyToolbarSize(snow_shot::storage::ScreenshotUiSettings().toolbarSize());
+                }
+            });
 }
 
 ScreenshotFloatingToolPaletteWindow::~ScreenshotFloatingToolPaletteWindow() {}

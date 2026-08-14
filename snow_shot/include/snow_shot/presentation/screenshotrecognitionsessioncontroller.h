@@ -33,10 +33,16 @@ struct ScreenshotRecognitionTarget {
     QString key;
     QImage image;
     QRectF canvasRect;
+    std::shared_ptr<QTextDocument> formattedTextDocument;
+    QString formattedPlainText;
 
     [[nodiscard]] bool isValid() const {
         return !key.isEmpty() && !image.isNull() && canvasRect.isValid() &&
                !canvasRect.isEmpty();
+    }
+
+    [[nodiscard]] bool hasFormattedText() const {
+        return formattedTextDocument != nullptr;
     }
 };
 
@@ -45,6 +51,7 @@ struct ScreenshotRecognitionSessionActions {
     std::function<void()> destroyContent;
     std::function<void(std::shared_ptr<ScreenshotOcrPresentation>)> applyOcrPresentation;
     std::function<void(std::shared_ptr<ScreenshotOcrPresentation>)> applyOcrBackground;
+    std::function<void(std::shared_ptr<QTextDocument>)> applyFormattedText;
     std::function<void()> clearOcrBackground;
     std::function<void(bool)> setRecognitionVisualState;
     std::function<void(int)> setActiveMode;
@@ -121,6 +128,8 @@ class ScreenshotRecognitionSessionController final : public QObject {
     struct TextCacheEntry {
         enum class TranslationStatus { Absent, Streaming, Completed, Failed };
         std::shared_ptr<ScreenshotOcrPresentation> presentation;
+        std::shared_ptr<QTextDocument> formattedDocument;
+        bool formatted = false;
         std::shared_ptr<ScreenshotOcrTextEditingSession> editingSession;
         std::shared_ptr<ScreenshotOcrTextEditingSession> translationSession;
         snow_shot::storage::ScreenshotTranslationConfiguration translationSettings;
@@ -142,6 +151,7 @@ class ScreenshotRecognitionSessionController final : public QObject {
     void ensureContent();
     void clearContent();
     void applyPresentation(const std::shared_ptr<ScreenshotOcrPresentation>& presentation);
+    void applyFormattedText(const std::shared_ptr<QTextDocument>& document);
     void applyTableSession(const std::shared_ptr<ScreenshotTableEditingSession>& session);
     void applyQrContents(const QStringList& contents);
     void handleTextDocumentChanged(const QString& key);

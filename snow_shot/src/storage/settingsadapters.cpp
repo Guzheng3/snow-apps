@@ -197,20 +197,20 @@ bool ShortcutSettings::setScreenshotFocusedWindow(const QStringList& shortcuts) 
                             shortcuts);
 }
 
-QStringList ShortcutSettings::videoRecord() const {
-    return shortcutValue(QStringLiteral("global_shortcuts/video_record"));
+QStringList ShortcutSettings::screenRecord() const {
+    return shortcutValue(QStringLiteral("global_shortcuts/screen_record"));
 }
 
-bool ShortcutSettings::setVideoRecord(const QStringList& shortcuts) const {
-    return setShortcutValue(QStringLiteral("global_shortcuts/video_record"), shortcuts);
+bool ShortcutSettings::setScreenRecord(const QStringList& shortcuts) const {
+    return setShortcutValue(QStringLiteral("global_shortcuts/screen_record"), shortcuts);
 }
 
-QStringList ShortcutSettings::videoRecordCopy() const {
-    return shortcutValue(QStringLiteral("global_shortcuts/video_record_copy"));
+QStringList ShortcutSettings::screenRecordCopy() const {
+    return shortcutValue(QStringLiteral("global_shortcuts/screen_record_copy"));
 }
 
-bool ShortcutSettings::setVideoRecordCopy(const QStringList& shortcuts) const {
-    return setShortcutValue(QStringLiteral("global_shortcuts/video_record_copy"), shortcuts);
+bool ShortcutSettings::setScreenRecordCopy(const QStringList& shortcuts) const {
+    return setShortcutValue(QStringLiteral("global_shortcuts/screen_record_copy"), shortcuts);
 }
 
 QStringList ShortcutSettings::showOrHideMainWindow() const {
@@ -235,6 +235,14 @@ QStringList ShortcutSettings::openSettings() const {
 
 bool ShortcutSettings::setOpenSettings(const QStringList& shortcuts) const {
     return setShortcutValue(QStringLiteral("global_shortcuts/open_settings"), shortcuts);
+}
+
+QStringList ShortcutSettings::pinClipboardContent() const {
+    return shortcutValue(QStringLiteral("global_shortcuts/pin_clipboard_content"));
+}
+
+bool ShortcutSettings::setPinClipboardContent(const QStringList& shortcuts) const {
+    return setShortcutValue(QStringLiteral("global_shortcuts/pin_clipboard_content"), shortcuts);
 }
 
 bool GlobalShortcutSettings::disableOnFocusedFullscreenWindow() const {
@@ -529,84 +537,84 @@ bool ScreenshotUiSettings::setColorPickerCenterGuideLineColor(const QColor& colo
 }
 
 bool RecordingSettings::microphoneEnabled() const {
-    return cache().value(QStringLiteral("video_recording/enable_microphone")).toBool();
+    return cache().value(QStringLiteral("screen_recording/enable_microphone")).toBool();
 }
 
 bool RecordingSettings::setMicrophoneEnabled(bool enabled) const {
-    return cache().setValue(QStringLiteral("video_recording/enable_microphone"), enabled);
+    return cache().setValue(QStringLiteral("screen_recording/enable_microphone"), enabled);
 }
 
 bool RecordingSettings::systemAudioEnabled() const {
-    return cache().value(QStringLiteral("video_recording/enable_system_audio")).toBool();
+    return cache().value(QStringLiteral("screen_recording/enable_system_audio")).toBool();
 }
 
 bool RecordingSettings::setSystemAudioEnabled(bool enabled) const {
-    return cache().setValue(QStringLiteral("video_recording/enable_system_audio"), enabled);
+    return cache().setValue(QStringLiteral("screen_recording/enable_system_audio"), enabled);
 }
 
-QString RecordingSettings::videoClarity() const {
-    return cache().value(QStringLiteral("video_recording/video_clarity")).toString();
+QString RecordingSettings::screenRecordingClarity() const {
+    return cache().value(QStringLiteral("screen_recording/clarity")).toString();
 }
 
-bool RecordingSettings::setVideoClarity(const QString& clarity) const {
-    return cache().setValue(QStringLiteral("video_recording/video_clarity"), clarity);
+bool RecordingSettings::setScreenRecordingClarity(const QString& clarity) const {
+    return cache().setValue(QStringLiteral("screen_recording/clarity"), clarity);
 }
 
 int RecordingSettings::frameRate() const {
-    return cache().value(QStringLiteral("video_recording/frame_rate")).toInt();
+    return cache().value(QStringLiteral("screen_recording/frame_rate")).toInt();
 }
 
 bool RecordingSettings::setFrameRate(int frameRate) const {
-    return cache().setValue(QStringLiteral("video_recording/frame_rate"), frameRate);
+    return cache().setValue(QStringLiteral("screen_recording/frame_rate"), frameRate);
 }
 
 QString RecordingSettings::animatedImageClarity() const {
-    return cache().value(QStringLiteral("video_recording/animated_image_clarity")).toString();
+    return cache().value(QStringLiteral("screen_recording/animated_image_clarity")).toString();
 }
 
 bool RecordingSettings::setAnimatedImageClarity(const QString& clarity) const {
-    return cache().setValue(QStringLiteral("video_recording/animated_image_clarity"), clarity);
+    return cache().setValue(QStringLiteral("screen_recording/animated_image_clarity"), clarity);
 }
 
 int RecordingSettings::animatedImageFrameRate() const {
-    return cache().value(QStringLiteral("video_recording/animated_image_frame_rate")).toInt();
+    return cache().value(QStringLiteral("screen_recording/animated_image_frame_rate")).toInt();
 }
 
 bool RecordingSettings::setAnimatedImageFrameRate(int frameRate) const {
-    return cache().setValue(QStringLiteral("video_recording/animated_image_frame_rate"),
+    return cache().setValue(QStringLiteral("screen_recording/animated_image_frame_rate"),
                             frameRate);
 }
 
 QString RecordingSettings::animatedImageFormat() const {
-    return cache().value(QStringLiteral("video_recording/animated_image_format")).toString();
+    return cache().value(QStringLiteral("screen_recording/animated_image_format")).toString();
 }
 
 bool RecordingSettings::setAnimatedImageFormat(const QString& format) const {
-    return cache().setValue(QStringLiteral("video_recording/animated_image_format"), format);
+    return cache().setValue(QStringLiteral("screen_recording/animated_image_format"), format);
 }
 
 QString RecordingSettings::encoder() const {
-    return cache().value(QStringLiteral("video_recording/encoder")).toString();
+    return cache().value(QStringLiteral("screen_recording/encoder")).toString();
 }
 
 bool RecordingSettings::setEncoder(const QString& encoder) const {
-    return cache().setValue(QStringLiteral("video_recording/encoder"), encoder);
+    return cache().setValue(QStringLiteral("screen_recording/encoder"), encoder);
 }
 
 QString RecordingSettings::encodingPreset() const {
-    return cache().value(QStringLiteral("video_recording/encoding_preset")).toString();
+    return cache().value(QStringLiteral("screen_recording/encoding_preset")).toString();
 }
 
 bool RecordingSettings::setEncodingPreset(const QString& preset) const {
-    return cache().setValue(QStringLiteral("video_recording/encoding_preset"), preset);
+    return cache().setValue(QStringLiteral("screen_recording/encoding_preset"), preset);
 }
 
 bool RecordingSettings::hideToolbarInRecording() const {
-    return cache().value(QStringLiteral("video_recording/hide_toolbar_in_recording")).toBool();
+    return cache().value(QStringLiteral("screen_recording/hide_toolbar_in_recording")).toBool();
 }
 
 bool RecordingSettings::setHideToolbarInRecording(bool hide) const {
-    return cache().setValue(QStringLiteral("video_recording/hide_toolbar_in_recording"), hide);
+    return cache().setValue(QStringLiteral("screen_recording/hide_toolbar_in_recording"), hide);
 }
 
 QString ScreenshotToolbarSettings::arrowLineTool() const {

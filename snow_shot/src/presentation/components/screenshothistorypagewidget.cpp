@@ -4,6 +4,7 @@
 
 #include "snow_shot/presentation/components/pagecontainerwidget.h"
 #include "snow_shot/presentation/components/themedheadericonbutton.h"
+#include "snow_shot/presentation/screenshotclipboardservice.h"
 
 #include "snow_shot/presentation/styles/thememanager.h"
 #include "snow_shot/storage/applicationstorage.h"
@@ -22,6 +23,7 @@
 #include "widgets/scroll_area.h"
 
 #include <QBoxLayout>
+#include <QApplication>
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDateTime>
@@ -166,6 +168,30 @@ class ApplicationStorageHistoryDataSource final : public ScreenshotHistoryPageDa
                     },
                     Qt::QueuedConnection);
             });
+    }
+
+    void requestResultImage(const storage::CaptureHistoryRecord& record,
+                            quint64 generation) override {
+        const QPointer<ApplicationStorageHistoryDataSource> guarded(this);
+        QThreadPool::globalInstance()->start([guarded, record, generation]() {
+            if (guarded == nullptr) {
+                return;
+            }
+            std::optional<QImage> image;
+            auto& applicationStorage = storage::ApplicationStorage::instance();
+            if (applicationStorage.isInitialized()) {
+                image = applicationStorage.captureHistory().loadResultImage(record);
+            }
+            QMetaObject::invokeMethod(
+                guarded,
+                [guarded, generation, recordId = record.id, image = std::move(image)]() mutable {
+                    if (guarded != nullptr) {
+                        emit guarded->resultImageReady(
+                            generation, ScreenshotHistoryResultResolution{recordId, std::move(image)});
+                    }
+                },
+                Qt::QueuedConnection);
+        });
     }
 
     void remove(const QString& id) override {
@@ -346,9 +372,11 @@ class HistoryEntryWidget final : public QFrame {
     HistoryEntryWidget(const storage::CaptureHistoryRecord& record,
                        const std::optional<storage::CaptureHistoryAssetSet>& assets,
                        std::function<void()> editRequested,
+                       std::function<void()> copyRequested,
                        std::function<void()> deleteRequested, QWidget* parent = nullptr)
         : QFrame(parent), m_record(record), m_assets(assets),
           m_editRequested(std::move(editRequested)),
+          m_copyRequested(std::move(copyRequested)),
           m_deleteRequested(std::move(deleteRequested)) {
         setObjectName(QStringLiteral("screenshotHistoryEntry-%1").arg(record.id));
         setFrameShape(QFrame::NoFrame);
@@ -406,6 +434,13 @@ class HistoryEntryWidget final : public QFrame {
         m_editButton->setAccentRole(adqt::widgets::AdButton::AccentRole::Primary);
         m_editButton->setIconRef(outlined_icons::Edit());
         actions->addWidget(m_editButton, 0);
+        m_copyButton = new adqt::widgets::AdButton(details);
+        m_copyButton->setObjectName(QStringLiteral("screenshotHistoryEntryCopy"));
+        m_copyButton->setButtonStyle(adqt::widgets::AdButton::ButtonStyle::Text);
+        m_copyButton->setAccentRole(adqt::widgets::AdButton::AccentRole::Primary);
+        m_copyButton->setIconRef(outlined_icons::Copy());
+        m_copyButton->setVisible(record.result.has_value());
+        actions->addWidget(m_copyButton, 0);
         m_deleteButton = new adqt::widgets::AdButton(details);
         m_deleteButton->setObjectName(QStringLiteral("screenshotHistoryEntryDelete"));
         m_deleteButton->setButtonStyle(adqt::widgets::AdButton::ButtonStyle::Text);
@@ -427,7 +462,13 @@ class HistoryEntryWidget final : public QFrame {
         m_previewModel = new adqt::widgets::AdImageListModel(m_viewer);
         adqt::widgets::AdImageItems previewItems;
         if (assets.has_value()) {
-            previewItems.reserve(assets->displays.size());
+            previewItems.reserve(assets->displays.size() + (assets->result.has_value() ? 1 : 0));
+            if (assets->result.has_value()) {
+                adqt::widgets::AdImageItem item;
+                item.source = assets->result->localFileUrl;
+                item.altText = HistoryEntryWidget::tr("Screenshot result");
+                previewItems.push_back(item);
+            }
             for (const storage::CaptureHistoryDisplayAsset& asset : assets->displays) {
                 adqt::widgets::AdImageItem item;
                 item.source = asset.localFileUrl;
@@ -481,6 +522,12 @@ class HistoryEntryWidget final : public QFrame {
                 m_editRequested();
             }
         });
+        connect(m_copyButton, &QAbstractButton::clicked, this, [this]() {
+            if (m_copyRequested) {
+                m_copyButton->setEnabled(false);
+                m_copyRequested();
+            }
+        });
         connect(m_deleteConfirmation, &adqt::widgets::AdPopconfirm::accepted, this, [this]() {
             if (m_deleteRequested) {
                 m_deleteRequested();
@@ -497,6 +544,12 @@ class HistoryEntryWidget final : public QFrame {
 
     bool matchesAssets(const std::optional<storage::CaptureHistoryAssetSet>& assets) const {
         return m_assets == assets;
+    }
+
+    void setCopyEnabled(bool enabled) {
+        if (m_copyButton != nullptr) {
+            m_copyButton->setEnabled(enabled);
+        }
     }
 
     void applyTheme(const styles::ThemeColorScheme& scheme) {
@@ -541,6 +594,9 @@ class HistoryEntryWidget final : public QFrame {
         m_editButton->setText(HistoryEntryWidget::tr("Edit"));
         m_editButton->setToolTip(HistoryEntryWidget::tr("Edit screenshot history entry"));
         m_editButton->setAccessibleName(HistoryEntryWidget::tr("Edit screenshot history entry"));
+        m_copyButton->setText(HistoryEntryWidget::tr("Copy"));
+        m_copyButton->setToolTip(HistoryEntryWidget::tr("Copy screenshot result"));
+        m_copyButton->setAccessibleName(HistoryEntryWidget::tr("Copy screenshot result"));
         m_deleteButton->setText(HistoryEntryWidget::tr("Delete"));
         m_deleteButton->setToolTip(HistoryEntryWidget::tr("Delete history entry"));
         m_deleteButton->setAccessibleName(HistoryEntryWidget::tr("Delete history entry"));
@@ -584,6 +640,7 @@ class HistoryEntryWidget final : public QFrame {
     storage::CaptureHistoryRecord m_record;
     std::optional<storage::CaptureHistoryAssetSet> m_assets;
     std::function<void()> m_editRequested;
+    std::function<void()> m_copyRequested;
     std::function<void()> m_deleteRequested;
     QBoxLayout* m_layout = nullptr;
     QLabel* m_dateLabel = nullptr;
@@ -591,6 +648,7 @@ class HistoryEntryWidget final : public QFrame {
     QLabel* m_summaryLabel = nullptr;
     QLabel* m_metaLabel = nullptr;
     adqt::widgets::AdButton* m_editButton = nullptr;
+    adqt::widgets::AdButton* m_copyButton = nullptr;
     adqt::widgets::AdButton* m_deleteButton = nullptr;
     adqt::widgets::AdPopconfirm* m_deleteConfirmation = nullptr;
     adqt::widgets::AdCarousel* m_carousel = nullptr;
@@ -754,6 +812,8 @@ ScreenshotHistoryPageWidget::ScreenshotHistoryPageWidget(
             &ScreenshotHistoryPageWidget::handleHistoryChanged);
     connect(m_dataSource, &ScreenshotHistoryPageDataSource::displayAssetsReady, this,
             &ScreenshotHistoryPageWidget::handleDisplayAssetsReady);
+    connect(m_dataSource, &ScreenshotHistoryPageDataSource::resultImageReady, this,
+            &ScreenshotHistoryPageWidget::handleResultImageReady);
     connect(m_dataSource, &ScreenshotHistoryPageDataSource::clearFinished, this,
             [this](bool, const QString&) {
                 m_deleteAllButton->setEnabled(true);
@@ -783,6 +843,8 @@ void ScreenshotHistoryPageWidget::refresh() {
     m_refreshQueued = false;
     m_dirty = false;
     ++m_assetGeneration;
+    ++m_resultGeneration;
+    m_pendingResultRecordId.clear();
     m_resolvedAssets.clear();
     m_records = m_dataSource != nullptr ? m_dataSource->records()
                                         : QVector<storage::CaptureHistoryRecord>{};
@@ -983,6 +1045,7 @@ void ScreenshotHistoryPageWidget::rebuildEntries() {
             delete entry;
             entry = new HistoryEntryWidget(
                 record, assets, [this, id = record.id]() { emit editRequested(id); },
+                [this, record]() { copyEntry(record); },
                 [this, id = record.id]() { removeEntry(id); }, m_entriesHost);
             entry->applyTheme(m_colorScheme);
             m_entryWidgetsById.insert(record.id, entry);
@@ -1008,6 +1071,37 @@ void ScreenshotHistoryPageWidget::handleDisplayAssetsReady(
         m_resolvedAssets.insert(resolution.recordId, resolution.assets);
     }
     rebuildEntries();
+}
+
+void ScreenshotHistoryPageWidget::copyEntry(const storage::CaptureHistoryRecord& record) {
+    if (m_dataSource == nullptr || !record.result.has_value() ||
+        !m_pendingResultRecordId.isEmpty()) {
+        return;
+    }
+    auto* entry = dynamic_cast<HistoryEntryWidget*>(m_entryWidgetsById.value(record.id, nullptr));
+    if (entry == nullptr) {
+        return;
+    }
+    m_pendingResultRecordId = record.id;
+    const quint64 generation = ++m_resultGeneration;
+    m_dataSource->requestResultImage(record, generation);
+}
+
+void ScreenshotHistoryPageWidget::handleResultImageReady(
+    quint64 generation, const ScreenshotHistoryResultResolution& resolution) {
+    if (generation != m_resultGeneration || resolution.recordId != m_pendingResultRecordId) {
+        return;
+    }
+    const QString recordId = m_pendingResultRecordId;
+    m_pendingResultRecordId.clear();
+    auto* entry = dynamic_cast<HistoryEntryWidget*>(m_entryWidgetsById.value(recordId, nullptr));
+    if (entry != nullptr) {
+        entry->setCopyEnabled(true);
+    }
+    if (resolution.image.has_value() && !resolution.image->isNull()) {
+        static_cast<void>(ScreenshotClipboardService::publishImage(
+            QApplication::clipboard(), *resolution.image));
+    }
 }
 
 void ScreenshotHistoryPageWidget::updateEmptyStateMinimumHeight() {

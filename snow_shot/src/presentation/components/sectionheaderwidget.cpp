@@ -23,20 +23,23 @@ SectionHeaderWidget::SectionHeaderWidget(
     QWidget* parent)
     : QFrame(parent), m_title(title), m_titleLabel(new QLabel(title, this)),
       m_resetButton(new ThemedHeaderIconButton(metric, outlined_icons::Reload(), this)),
-      m_resetPopconfirm(new adqt::widgets::AdPopconfirm(this)) {
+      m_resetPopconfirm(new adqt::widgets::AdPopconfirm(this)),
+      m_sectionVerticalMargin(metric.marginMD), m_formBottomMargin(metric.margin) {
     setAutoFillBackground(false);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
-    auto* headerLayout = new QHBoxLayout(this);
-    headerLayout->setContentsMargins(0, metric.marginMD, 0, metric.marginMD);
-    headerLayout->setSpacing(metric.marginXS);
+    m_headerLayout = new QHBoxLayout(this);
+    m_headerLayout->setContentsMargins(0, m_sectionVerticalMargin, 0,
+                                       m_sectionVerticalMargin);
+    m_headerLayout->setSpacing(metric.marginXS);
 
-    headerLayout->addWidget(m_titleLabel);
-    headerLayout->addStretch();
+    m_headerLayout->addWidget(m_titleLabel);
+    m_headerLayout->addStretch();
 
     m_resetButton->setObjectName(QStringLiteral("sectionResetButton"));
     m_resetButton->setToolTip(tr("Reset"));
     m_resetButton->setAccessibleName(tr("Reset"));
-    headerLayout->addWidget(m_resetButton);
+    m_headerLayout->addWidget(m_resetButton);
 
     m_resetPopconfirm->setObjectName(QStringLiteral("sectionResetPopconfirm"));
     m_resetPopconfirm->setSourceWidget(m_resetButton);
@@ -60,6 +63,24 @@ void SectionHeaderWidget::setTitle(const QString& title) {
         m_titleLabel->setText(m_title);
     }
     updateResetConfirmationText();
+}
+
+void SectionHeaderWidget::setPresentation(Presentation presentation) {
+    if (m_presentation == presentation) {
+        return;
+    }
+
+    m_presentation = presentation;
+    if (m_headerLayout != nullptr) {
+        if (m_presentation == Presentation::FormGroup) {
+            m_headerLayout->setContentsMargins(0, 0, 0, m_formBottomMargin);
+        } else {
+            m_headerLayout->setContentsMargins(0, m_sectionVerticalMargin, 0,
+                                               m_sectionVerticalMargin);
+        }
+    }
+    applyTheme(snow_shot::presentation::styles::ThemeManager::instance().themeColorScheme());
+    updateGeometry();
 }
 
 void SectionHeaderWidget::setResetVisible(bool visible) {
@@ -102,7 +123,8 @@ void SectionHeaderWidget::applyTheme(
 
     QFont titleFont = m_titleLabel->font();
     titleFont.setPixelSize(scheme.metricAlias.fontSizeXL);
-    titleFont.setWeight(QFont::Bold);
+    titleFont.setWeight(m_presentation == Presentation::FormGroup ? QFont::DemiBold
+                                                                  : QFont::Bold);
     m_titleLabel->setFont(titleFont);
 
     update();

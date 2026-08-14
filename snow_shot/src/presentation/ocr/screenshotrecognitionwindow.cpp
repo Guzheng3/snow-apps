@@ -114,6 +114,7 @@ ScreenshotRecognitionWindow::ScreenshotRecognitionWindow(
 }
 
 ScreenshotRecognitionWindow::~ScreenshotRecognitionWindow() {
+    clearFormattedText();
     if (m_textEditor != nullptr) {
         const QSignalBlocker blocker(m_textEditor);
         m_textEditor->setDocument(nullptr);
@@ -161,6 +162,7 @@ ScreenshotRecognitionWindow::PresentationMode ScreenshotRecognitionWindow::prese
 void ScreenshotRecognitionWindow::setOcrPresentation(
     std::shared_ptr<ScreenshotOcrPresentation> presentation) {
     hideTextEditor();
+    clearFormattedText();
     clearTableSession();
     clearQrContents();
     m_ocrPresentation = std::move(presentation);
@@ -176,9 +178,56 @@ void ScreenshotRecognitionWindow::clearOcrPresentation() {
     unsetCursor();
 }
 
+void ScreenshotRecognitionWindow::showFormattedText(std::shared_ptr<QTextDocument> document) {
+    if (document == nullptr) {
+        return;
+    }
+    hideTextEditor();
+    clearOcrPresentation();
+    clearTableSession();
+    clearQrContents();
+    if (m_formattedTextBrowser == nullptr) {
+        m_formattedTextBrowser = new QTextBrowser(this);
+        m_formattedTextBrowser->setObjectName(QStringLiteral("screenshotClipboardText"));
+        m_formattedTextBrowser->setFrameStyle(QFrame::NoFrame);
+        m_formattedTextBrowser->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        m_formattedTextBrowser->setContentsMargins(0, 0, 0, 0);
+        m_formattedTextBrowser->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        m_formattedTextBrowser->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        m_formattedTextBrowser->setOpenLinks(false);
+        m_formattedTextBrowser->setOpenExternalLinks(false);
+        m_formattedTextBrowser->setReadOnly(true);
+        m_formattedTextBrowser->setTextInteractionFlags(
+            Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+        m_formattedTextBrowser->setStyleSheet(
+            QStringLiteral("QTextBrowser#screenshotClipboardText { border: none; "
+                           "background: white; padding: 0px; }"));
+        m_formattedTextBrowser->viewport()->setAutoFillBackground(true);
+        m_stack->addWidget(m_formattedTextBrowser);
+    }
+    m_formattedTextDocument = std::move(document);
+    m_formattedTextBrowser->setDocument(m_formattedTextDocument.get());
+    m_stack->setCurrentWidget(m_formattedTextBrowser);
+    m_formattedTextBrowser->setFocus(Qt::OtherFocusReason);
+}
+
+void ScreenshotRecognitionWindow::clearFormattedText() {
+    if (m_formattedTextBrowser == nullptr) {
+        m_formattedTextDocument.reset();
+        return;
+    }
+    m_formattedTextBrowser->setDocument(nullptr);
+    m_stack->removeWidget(m_formattedTextBrowser);
+    delete m_formattedTextBrowser;
+    m_formattedTextBrowser = nullptr;
+    m_formattedTextDocument.reset();
+    m_stack->setCurrentWidget(m_textLayer);
+}
+
 void ScreenshotRecognitionWindow::setTableSession(
     std::shared_ptr<ScreenshotTableEditingSession> session) {
     hideTextEditor();
+    clearFormattedText();
     clearOcrPresentation();
     clearQrContents();
     if (m_tableEditor == nullptr) {
@@ -258,6 +307,7 @@ void ScreenshotRecognitionWindow::showTextEditor(QTextDocument* document, bool r
         return;
     }
     clearOcrPresentation();
+    clearFormattedText();
     clearTableSession();
     clearQrContents();
     if (m_textEditor == nullptr) {
@@ -339,6 +389,7 @@ void ScreenshotRecognitionWindow::hideTextEditor() {
 
 void ScreenshotRecognitionWindow::showQrContents(const QStringList& contents) {
     hideTextEditor();
+    clearFormattedText();
     clearOcrPresentation();
     clearTableSession();
     if (m_qrBrowser == nullptr) {

@@ -1185,8 +1185,8 @@
     </message>
     <message>
         <location filename="../src/presentation/tools/screenshottoolpalette.cpp" line="88"/>
-        <source>Record video</source>
-        <translation>Record video</translation>
+        <source>Record screen</source>
+        <translation>Record screen</translation>
     </message>
     <message>
         <location filename="../src/presentation/tools/screenshottoolpalette.cpp" line="89"/>
@@ -2269,23 +2269,23 @@
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="150"/>
-        <source>Record video</source>
-        <translation>Record video</translation>
+        <source>Record screen</source>
+        <translation>Record screen</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="151"/>
-        <source>Video recording</source>
-        <translation>Video recording</translation>
+        <source>Screen recording</source>
+        <translation>Screen recording</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="159"/>
-        <source>Start Recording / Stop Recording and Copy Video</source>
-        <translation>Start Recording / Stop Recording and Copy Video</translation>
+        <source>Start Screen Recording / Stop and Copy Video</source>
+        <translation>Start Screen Recording / Stop and Copy Video</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="160"/>
-        <source>Start recording, or stop and copy the current video</source>
-        <translation>Start recording, or stop and copy the current video</translation>
+        <source>Start a screen recording, or stop and copy the current video</source>
+        <translation>Start a screen recording, or stop and copy the current video</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="161"/>
@@ -2364,13 +2364,23 @@
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="241"/>
-        <source>Choose the size of the screenshot drawing toolbar</source>
-        <translation>Choose the size of the screenshot drawing toolbar</translation>
+        <source>Choose the size of the screenshot, pinned, and recording toolbars</source>
+        <translation>Choose the size of the screenshot, pinned, and recording toolbars</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="243"/>
         <source>Screenshot toolbar</source>
         <translation>Screenshot toolbar</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="244"/>
+        <source>Pinned toolbar</source>
+        <translation>Pinned toolbar</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="245"/>
+        <source>Recording toolbar</source>
+        <translation>Recording toolbar</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="251"/>
@@ -2561,6 +2571,26 @@
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="421"/>
         <source>MSAA</source>
         <translation>MSAA</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="433"/>
+        <source>Pin Clipboard Content to Screen</source>
+        <translation>Pin Clipboard Content to Screen</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="434"/>
+        <source>Pin an image, formatted text, or HTML from the clipboard to the screen</source>
+        <translation>Pin an image, formatted text, or HTML from the clipboard to the screen</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="436"/>
+        <source>Clipboard content</source>
+        <translation>Clipboard content</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="437"/>
+        <source>Pin clipboard</source>
+        <translation>Pin clipboard</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="449"/>
@@ -2886,8 +2916,8 @@
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="671"/>
-        <source>Video clarity</source>
-        <translation>Video clarity</translation>
+        <source>Screen recording clarity</source>
+        <translation>Screen recording clarity</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="672"/>
@@ -2901,8 +2931,8 @@
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="679"/>
-        <source>Set the video recording frame rate</source>
-        <translation>Set the video recording frame rate</translation>
+        <source>Set the screen recording frame rate</source>
+        <translation>Set the screen recording frame rate</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="684"/>
@@ -2981,28 +3011,28 @@
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="720"/>
-        <source>ultrafast</source>
-        <translation>ultrafast</translation>
+        <source>Ultra fast</source>
+        <translation>Ultra fast</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="721"/>
-        <source>veryfast</source>
-        <translation>veryfast</translation>
+        <source>Very fast</source>
+        <translation>Very fast</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="722"/>
-        <source>medium</source>
-        <translation>medium</translation>
+        <source>Medium</source>
+        <translation>Medium</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="723"/>
-        <source>veryslow</source>
-        <translation>veryslow</translation>
+        <source>Very slow</source>
+        <translation>Very slow</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="724"/>
-        <source>placebo</source>
-        <translation>placebo</translation>
+        <source>Maximum compression</source>
+        <translation>Maximum compression</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="727"/>
@@ -3142,13 +3172,13 @@
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="939"/>
-        <source>Video Recording</source>
-        <translation>Video Recording</translation>
+        <source>Screen Recording</source>
+        <translation>Screen Recording</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="940"/>
-        <source>Video and animated image export settings</source>
-        <translation>Video and animated image export settings</translation>
+        <source>Screen recording and animated image export settings</source>
+        <translation>Screen recording and animated image export settings</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="947"/>
@@ -3180,6 +3210,16 @@
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="972"/>
         <source>Screenshot interface and visual guidance settings</source>
         <translation>Screenshot interface and visual guidance settings</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="1043"/>
+        <source>Toolbar</source>
+        <translation>Toolbar</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="1044"/>
+        <source>Configure the screenshot, pinned, and recording toolbars</source>
+        <translation>Configure the screenshot, pinned, and recording toolbars</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="981"/>
@@ -3723,21 +3763,49 @@ Change the shortcut and try again</translation>
     </message>
 </context>
 <context>
-    <name>VideoRecordingController</name>
+    <name>ScreenRecordingController</name>
     <message>
-        <location filename="../src/presentation/recording/videorecordingcontroller.cpp" line="287"/>
+        <location filename="../src/presentation/recording/screenrecordingcontroller.cpp" line="287"/>
         <source>Unable to create the recording directories</source>
         <translation>Unable to create the recording directories</translation>
     </message>
     <message>
-        <location filename="../src/presentation/recording/videorecordingcontroller.cpp" line="536"/>
-        <source>Video recording</source>
-        <translation>Video recording</translation>
+        <location filename="../src/presentation/recording/screenrecordingcontroller.cpp" line="536"/>
+        <source>Screen recording</source>
+        <translation>Screen recording</translation>
     </message>
     <message>
-        <location filename="../src/presentation/recording/videorecordingcontroller.cpp" line="537"/>
+        <location filename="../src/presentation/recording/screenrecordingcontroller.cpp" line="537"/>
         <source>The recording operation failed</source>
         <translation>The recording operation failed</translation>
+    </message>
+</context>
+<context>
+    <name>ScreenshotImageFileService</name>
+    <message>
+        <location filename="../src/presentation/services/screenshotimagefileservice.cpp" line="18"/>
+        <source>PNG image (*.png)</source>
+        <translation>PNG image (*.png)</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/services/screenshotimagefileservice.cpp" line="21"/>
+        <source>JPEG image (*.jpg *.jpeg)</source>
+        <translation>JPEG image (*.jpg *.jpeg)</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/services/screenshotimagefileservice.cpp" line="24"/>
+        <source>WebP image (*.webp)</source>
+        <translation>WebP image (*.webp)</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/services/screenshotimagefileservice.cpp" line="27"/>
+        <source>JPEG XL image (*.jxl)</source>
+        <translation>JPEG XL image (*.jxl)</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/services/screenshotimagefileservice.cpp" line="30"/>
+        <source>AVIF image (*.avif)</source>
+        <translation>AVIF image (*.avif)</translation>
     </message>
 </context>
 </TS>

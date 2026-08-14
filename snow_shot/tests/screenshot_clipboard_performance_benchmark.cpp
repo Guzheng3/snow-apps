@@ -392,11 +392,11 @@ Sample runExportSample(const Scenario& scenario, ExportFixture& fixture, Collect
     const auto started = std::chrono::steady_clock::now();
     const bool scheduled = fixture.service().requestSelectionClipboard(
         fixture.selection(), scenario.style, &receiver,
-        [&, state, expected](ScreenshotClipboardPayload payload) {
+         [&, state, expected](ScreenshotSelectionClipboardResult result) {
             if (state->cancelled) {
                 return;
             }
-            if (!payload.isValid()) {
+            if (!result.isValid()) {
                 state->sample.error = QStringLiteral("selection export produced an invalid payload");
                 collector.addDuration(state->sample, QStringLiteral("benchmark.end_to_end"),
                                       elapsedNanoseconds(started));
@@ -404,7 +404,7 @@ Sample runExportSample(const Scenario& scenario, ExportFixture& fixture, Collect
                 return;
             }
             const bool published = ScreenshotClipboardService::publish(
-                QApplication::clipboard(), std::move(payload));
+                QApplication::clipboard(), std::move(result.payload));
             collector.addDuration(state->sample, QStringLiteral("benchmark.end_to_end"),
                                   elapsedNanoseconds(started));
             const ValidationResult validation = validateClipboard(expected);

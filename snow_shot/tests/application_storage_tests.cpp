@@ -179,7 +179,7 @@ void newSettingsSchemaDefaultsAndValidationAreComplete() {
     const auto defaultValue = [](const char* key) {
         return storage::ConfigurationSchema::defaultValue(QString::fromLatin1(key));
     };
-    require(!defaultValue("system/auto_start_at_boot").toBool() &&
+    require(defaultValue("system/auto_start_at_boot").toBool() &&
                 !defaultValue("global_shortcuts/disable_on_focused_fullscreen_window").toBool() &&
                 defaultValue("screenshot/auto_execute_after_text_recognition").toString() ==
                     QStringLiteral("no_action") &&
@@ -195,19 +195,19 @@ void newSettingsSchemaDefaultsAndValidationAreComplete() {
                     QStringLiteral("mouse_position") &&
                 defaultValue("pin_to_screen/automatic_text_recognition").toBool() &&
                 defaultValue("pin_to_screen/auto_resize_window").toBool() &&
-                defaultValue("video_recording/video_clarity").toString() ==
+                defaultValue("screen_recording/clarity").toString() ==
                     QStringLiteral("1080p") &&
-                defaultValue("video_recording/frame_rate").toInt() == 30 &&
-                defaultValue("video_recording/animated_image_clarity").toString() ==
+                defaultValue("screen_recording/frame_rate").toInt() == 30 &&
+                defaultValue("screen_recording/animated_image_clarity").toString() ==
                     QStringLiteral("1080p") &&
-                defaultValue("video_recording/animated_image_frame_rate").toInt() == 10 &&
-                defaultValue("video_recording/animated_image_format").toString() ==
+                defaultValue("screen_recording/animated_image_frame_rate").toInt() == 10 &&
+                defaultValue("screen_recording/animated_image_format").toString() ==
                     QStringLiteral("gif") &&
-                defaultValue("video_recording/encoder").toString() ==
+                defaultValue("screen_recording/encoder").toString() ==
                     QStringLiteral("h264") &&
-                defaultValue("video_recording/encoding_preset").toString() ==
+                defaultValue("screen_recording/encoding_preset").toString() ==
                     QStringLiteral("veryfast") &&
-                defaultValue("video_recording/hide_toolbar_in_recording").toBool() &&
+                defaultValue("screen_recording/hide_toolbar_in_recording").toBool() &&
                 defaultValue("tray/left_click_action").toString() ==
                     QStringLiteral("screenshot"),
             "new settings defaults do not match the requested contract");
@@ -265,27 +265,27 @@ void newSettingsSchemaDefaultsAndValidationAreComplete() {
 
     for (const int frameRate : {10, 15, 24, 30, 60, 120, 83}) {
         require(storage::ConfigurationSchema::normalize(
-                    QStringLiteral("video_recording/frame_rate"), frameRate)
+                    QStringLiteral("screen_recording/frame_rate"), frameRate)
                     .valid,
                 "every advertised video frame rate must be accepted");
     }
     for (const int frameRate : {0, 25, 29, 84, 121}) {
         require(!storage::ConfigurationSchema::normalize(
-                     QStringLiteral("video_recording/frame_rate"), frameRate)
+                     QStringLiteral("screen_recording/frame_rate"), frameRate)
                      .valid,
                 "unadvertised video frame rates must be rejected");
     }
     for (const int frameRate : {10, 15, 24}) {
         require(storage::ConfigurationSchema::normalize(
-                    QStringLiteral("video_recording/animated_image_frame_rate"), frameRate)
+                    QStringLiteral("screen_recording/animated_image_frame_rate"), frameRate)
                     .valid,
                 "every advertised animated-image frame rate must be accepted");
     }
     require(!storage::ConfigurationSchema::normalize(
-                 QStringLiteral("video_recording/animated_image_frame_rate"), 30)
+                 QStringLiteral("screen_recording/animated_image_frame_rate"), 30)
                  .valid &&
                 !storage::ConfigurationSchema::normalize(
-                     QStringLiteral("video_recording/frame_rate"), 30.5)
+                     QStringLiteral("screen_recording/frame_rate"), 30.5)
                      .valid,
             "frame-rate settings must reject unsupported and non-integral values");
 
@@ -305,16 +305,16 @@ void newSettingsSchemaDefaultsAndValidationAreComplete() {
          {QStringLiteral("mouse_position"), QStringLiteral("top_left"),
           QStringLiteral("top_right"), QStringLiteral("bottom_left"),
           QStringLiteral("bottom_right"), QStringLiteral("center")}},
-        {QStringLiteral("video_recording/video_clarity"),
+        {QStringLiteral("screen_recording/clarity"),
          {QStringLiteral("4k"), QStringLiteral("2k"), QStringLiteral("1080p"),
           QStringLiteral("720p"), QStringLiteral("480p")}},
-        {QStringLiteral("video_recording/animated_image_clarity"),
+        {QStringLiteral("screen_recording/animated_image_clarity"),
          {QStringLiteral("1080p"), QStringLiteral("720p"), QStringLiteral("480p")}},
-        {QStringLiteral("video_recording/animated_image_format"),
+        {QStringLiteral("screen_recording/animated_image_format"),
          {QStringLiteral("gif"), QStringLiteral("apng"), QStringLiteral("webp")}},
-        {QStringLiteral("video_recording/encoder"),
+        {QStringLiteral("screen_recording/encoder"),
          {QStringLiteral("h264"), QStringLiteral("h265")}},
-        {QStringLiteral("video_recording/encoding_preset"),
+        {QStringLiteral("screen_recording/encoding_preset"),
          {QStringLiteral("ultrafast"), QStringLiteral("veryfast"),
           QStringLiteral("medium"), QStringLiteral("veryslow"), QStringLiteral("placebo")}},
         {QStringLiteral("tray/left_click_action"),
@@ -538,7 +538,7 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
             "invalid pin zoom modes must not replace the stored mode");
 
     const storage::RecordingSettings recording;
-    require(recording.videoClarity() == QStringLiteral("1080p") &&
+    require(recording.screenRecordingClarity() == QStringLiteral("1080p") &&
                 recording.frameRate() == 30 &&
                 recording.animatedImageClarity() == QStringLiteral("1080p") &&
                 recording.animatedImageFrameRate() == 10 &&
@@ -547,14 +547,14 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
                 recording.encodingPreset() == QStringLiteral("veryfast") &&
                 recording.hideToolbarInRecording(),
             "recording adapters must expose requested defaults");
-    require(recording.setVideoClarity(QStringLiteral("2k")) && recording.setFrameRate(83) &&
+    require(recording.setScreenRecordingClarity(QStringLiteral("2k")) && recording.setFrameRate(83) &&
                 recording.setAnimatedImageClarity(QStringLiteral("720p")) &&
                 recording.setAnimatedImageFrameRate(24) &&
                 recording.setAnimatedImageFormat(QStringLiteral("webp")) &&
                 recording.setEncoder(QStringLiteral("h265")) &&
                 recording.setEncodingPreset(QStringLiteral("placebo")) &&
                 recording.setHideToolbarInRecording(false) &&
-                recording.videoClarity() == QStringLiteral("2k") &&
+                recording.screenRecordingClarity() == QStringLiteral("2k") &&
                 recording.frameRate() == 83 &&
                 recording.animatedImageClarity() == QStringLiteral("720p") &&
                 recording.animatedImageFrameRate() == 24 &&
@@ -564,9 +564,9 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
                 !recording.hideToolbarInRecording(),
             "recording adapters must round-trip every requested option");
     require(!recording.setFrameRate(25) && !recording.setAnimatedImageFrameRate(30) &&
-                !recording.setVideoClarity(QStringLiteral("8k")) &&
+                !recording.setScreenRecordingClarity(QStringLiteral("8k")) &&
                 recording.frameRate() == 83 && recording.animatedImageFrameRate() == 24 &&
-                recording.videoClarity() == QStringLiteral("2k"),
+                recording.screenRecordingClarity() == QStringLiteral("2k"),
             "recording adapters must reject unadvertised values atomically");
 
     const storage::TraySettings tray;
@@ -669,6 +669,54 @@ void unknownFieldsArePreserved() {
                         .toArray()
                         .size() == 3,
             "schema-v1 unknown fields were erased");
+}
+
+void legacyRecordingKeysMigrateToScreenRecording() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "failed to create screen-recording migration directory");
+    const QString config = QDir(temporary.path()).filePath(QStringLiteral("config.json"));
+    writeBytes(config,
+               QByteArrayLiteral("{\n"
+                                 "  \"storage\": {\"schema_version\": 1},\n"
+                                 "  \"global_shortcuts\": {\n"
+                                 "    \"video_record\": [\"Ctrl+Alt+8\"],\n"
+                                 "    \"video_record_copy\": [\"Ctrl+Alt+9\"]\n"
+                                 "  },\n"
+                                 "  \"video_recording\": {\n"
+                                 "    \"video_clarity\": \"2k\",\n"
+                                 "    \"frame_rate\": 60,\n"
+                                 "    \"enable_microphone\": true\n"
+                                 "  }\n"
+                                 "}\n"));
+
+    storage::ConfigurationStore store(config, true, true, 60000);
+    require(store.value(QStringLiteral("global_shortcuts/screen_record")).toArray() ==
+                    QJsonArray{QStringLiteral("Ctrl+Alt+8")} &&
+                store.value(QStringLiteral("global_shortcuts/screen_record_copy")).toArray() ==
+                    QJsonArray{QStringLiteral("Ctrl+Alt+9")} &&
+                store.value(QStringLiteral("screen_recording/clarity")).toString() ==
+                    QStringLiteral("2k") &&
+                store.value(QStringLiteral("screen_recording/frame_rate")).toInt() == 60 &&
+                store.value(QStringLiteral("screen_recording/enable_microphone")).toBool(),
+            "legacy recording settings were not exposed through screen-recording keys");
+    require(store.flushNow().success, "failed to flush migrated screen-recording settings");
+
+    const QJsonObject root = readObject(config);
+    const QJsonObject shortcuts = root.value(QStringLiteral("global_shortcuts")).toObject();
+    const QJsonObject screenRecording = root.value(QStringLiteral("screen_recording")).toObject();
+    const QJsonObject legacyRecording = root.value(QStringLiteral("video_recording")).toObject();
+    require(shortcuts.value(QStringLiteral("screen_record")).toArray() ==
+                    QJsonArray{QStringLiteral("Ctrl+Alt+8")} &&
+                shortcuts.value(QStringLiteral("screen_record_copy")).toArray() ==
+                    QJsonArray{QStringLiteral("Ctrl+Alt+9")} &&
+                !shortcuts.contains(QStringLiteral("video_record")) &&
+                !shortcuts.contains(QStringLiteral("video_record_copy")) &&
+                screenRecording.value(QStringLiteral("clarity")).toString() ==
+                    QStringLiteral("2k") &&
+                screenRecording.value(QStringLiteral("frame_rate")).toInt() == 60 &&
+                screenRecording.value(QStringLiteral("enable_microphone")).toBool() &&
+                legacyRecording.isEmpty(),
+            "legacy recording keys were not rewritten canonically");
 }
 
 void malformedConfigurationIsCopiedAndReplaced() {
@@ -862,6 +910,7 @@ int main(int argc, char** argv) {
     newSettingsAdaptersRoundTripAndRejectInvalidValues();
     smartSelectionAccessorAndSignal();
     unknownFieldsArePreserved();
+    legacyRecordingKeysMigrateToScreenRecording();
     malformedConfigurationIsCopiedAndReplaced();
     futureVersionIsReadOnly();
     failedWriteCanBeRetried();

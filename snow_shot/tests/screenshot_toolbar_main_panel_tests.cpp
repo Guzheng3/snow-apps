@@ -356,7 +356,7 @@ void recordingToolbarUsesTheScreenshotMainPanelContract() {
             "recording and screenshot toolbar buttons should share dimensions");
 
     QLabel* duration =
-        recordingToolbar.findChild<QLabel*>(QStringLiteral("videoRecordingDuration"));
+        recordingToolbar.findChild<QLabel*>(QStringLiteral("screenRecordingDuration"));
     require(duration != nullptr, "recording toolbar should expose its duration label");
     require(duration->height() == recordingButtons.constFirst()->height(),
             "recording duration should align with the shared button height");

@@ -1,10 +1,10 @@
-#include "snow_shot/presentation/videorecordingcontroller.h"
+#include "snow_shot/presentation/screenrecordingcontroller.h"
 
 #include "snow_shot/presentation/screenshottoolpalette.h"
 #include "snow_shot/presentation/screenshotgeometry.h"
-#include "snow_shot/presentation/videorecordingareawindow.h"
-#include "snow_shot/presentation/videorecordingtoolbarwindow.h"
-#include "videorecordinggeometry.h"
+#include "snow_shot/presentation/screenrecordingareawindow.h"
+#include "snow_shot/presentation/screenrecordingtoolbarwindow.h"
+#include "screenrecordinggeometry.h"
 #include "snow_shot/storage/settingsadapters.h"
 
 #if defined(Q_OS_WIN) || defined(_WIN32)
@@ -80,19 +80,19 @@ RecordingExportSettings recordingExportSettings(bool animatedImage, const QSize&
 
     if (!animatedImage) {
         result.maximumSize =
-            snow_shot::presentation::recording::videoRecordingMaximumSizeForClarity(
-                settings.videoClarity());
+            snow_shot::presentation::recording::screenRecordingMaximumSizeForClarity(
+                settings.screenRecordingClarity());
         result.maximumSize =
-            snow_shot::presentation::recording::videoRecordingOrientedMaximumSize(
+            snow_shot::presentation::recording::screenRecordingOrientedMaximumSize(
                 result.maximumSize, captureSize);
         result.targetFps = static_cast<uint32_t>(validRecordingFrameRate(settings.frameRate()));
         return result;
     }
 
     result.maximumSize =
-        snow_shot::presentation::recording::videoRecordingMaximumSizeForClarity(
+        snow_shot::presentation::recording::screenRecordingMaximumSizeForClarity(
             settings.animatedImageClarity());
-    result.maximumSize = snow_shot::presentation::recording::videoRecordingOrientedMaximumSize(
+    result.maximumSize = snow_shot::presentation::recording::screenRecordingOrientedMaximumSize(
         result.maximumSize, captureSize);
     result.targetFps =
         static_cast<uint32_t>(validAnimatedImageFrameRate(settings.animatedImageFrameRate()));
@@ -146,8 +146,8 @@ void copyFileToClipboard(const QString& filePath) {
 }
 } // namespace
 
-struct VideoRecordingController::Impl {
-    explicit Impl(VideoRecordingController& owner) : owner(owner) {
+struct ScreenRecordingController::Impl {
+    explicit Impl(ScreenRecordingController& owner) : owner(owner) {
         const snow_shot::storage::RecordingSettings settings;
         microphoneEnabled = settings.microphoneEnabled();
         systemAudioEnabled = settings.systemAudioEnabled();
@@ -207,8 +207,8 @@ struct VideoRecordingController::Impl {
 
         physicalRegion = region;
         updateCaptureRegion();
-        areaWindow = new VideoRecordingAreaWindow();
-        toolbarWindow = new VideoRecordingToolbarWindow();
+        areaWindow = new ScreenRecordingAreaWindow();
+        toolbarWindow = new ScreenRecordingToolbarWindow();
         areaWindow->setAttribute(Qt::WA_DeleteOnClose, false);
         toolbarWindow->setAttribute(Qt::WA_DeleteOnClose, false);
         areaWindow->setPhysicalRegion(region);
@@ -529,18 +529,18 @@ struct VideoRecordingController::Impl {
         QScreen* screen = ScreenshotGeometryMapper::screenForPhysicalRect(physicalRegion);
         const QRect bounds =
             screen != nullptr ? ScreenshotGeometryMapper::physicalRectForScreen(*screen) : QRect();
-        captureRegion = snow_shot::presentation::recording::videoRecordingCompatibleCaptureRegion(
+        captureRegion = snow_shot::presentation::recording::screenRecordingCompatibleCaptureRegion(
             physicalRegion, bounds);
     }
 
     void showError(const QString& message) {
-        QMessageBox::critical(toolbarWindow, tr("Video recording"),
+        QMessageBox::critical(toolbarWindow, tr("Screen recording"),
                               message.isEmpty() ? tr("The recording operation failed") : message);
     }
 
-    VideoRecordingController& owner;
-    VideoRecordingAreaWindow* areaWindow = nullptr;
-    VideoRecordingToolbarWindow* toolbarWindow = nullptr;
+    ScreenRecordingController& owner;
+    ScreenRecordingAreaWindow* areaWindow = nullptr;
+    ScreenRecordingToolbarWindow* toolbarWindow = nullptr;
     SnowCaptureRecordingSession* recordingSession = nullptr;
     QRect physicalRegion;
     QRect captureRegion;
@@ -560,27 +560,27 @@ struct VideoRecordingController::Impl {
     bool toolbarHiddenForCapture = false;
 };
 
-VideoRecordingController::VideoRecordingController(QObject* parent)
+ScreenRecordingController::ScreenRecordingController(QObject* parent)
     : QObject(parent), m_impl(std::make_unique<Impl>(*this)) {}
 
-VideoRecordingController::~VideoRecordingController() = default;
+ScreenRecordingController::~ScreenRecordingController() = default;
 
-void VideoRecordingController::open(const QRect& physicalRegion) {
+void ScreenRecordingController::open(const QRect& physicalRegion) {
     m_impl->open(physicalRegion);
 }
 
-bool VideoRecordingController::isOpen() const {
+bool ScreenRecordingController::isOpen() const {
     return m_impl->isOpen();
 }
 
-bool VideoRecordingController::isRecording() const {
+bool ScreenRecordingController::isRecording() const {
     return m_impl->state != ScreenshotToolPalette::RecordingState::Idle;
 }
 
-void VideoRecordingController::startRecording() {
+void ScreenRecordingController::startRecording() {
     m_impl->start();
 }
 
-void VideoRecordingController::stopRecordingAndCopyVideo() {
+void ScreenRecordingController::stopRecordingAndCopyVideo() {
     m_impl->stop(false, true, false);
 }

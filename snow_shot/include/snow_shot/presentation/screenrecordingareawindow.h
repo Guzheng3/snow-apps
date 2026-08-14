@@ -1,5 +1,5 @@
-#ifndef SNOW_SHOT_PRESENTATION_VIDEORECORDINGAREAWINDOW_H
-#define SNOW_SHOT_PRESENTATION_VIDEORECORDINGAREAWINDOW_H
+#ifndef SNOW_SHOT_PRESENTATION_SCREENRECORDINGAREAWINDOW_H
+#define SNOW_SHOT_PRESENTATION_SCREENRECORDINGAREAWINDOW_H
 
 #include "snow_shot/presentation/screenshottoolpalette.h"
 
@@ -7,11 +7,11 @@
 #include <QRectF>
 #include <QWidget>
 
-class VideoRecordingAreaWindow final : public QWidget {
+class ScreenRecordingAreaWindow final : public QWidget {
     Q_OBJECT
 
   public:
-    explicit VideoRecordingAreaWindow(QWidget* parent = nullptr);
+    explicit ScreenRecordingAreaWindow(QWidget* parent = nullptr);
 
     void setPhysicalRegion(const QRect& region);
     QRect physicalRegion() const;
@@ -27,4 +27,4 @@ class VideoRecordingAreaWindow final : public QWidget {
     ScreenshotToolPalette::RecordingState m_state = ScreenshotToolPalette::RecordingState::Idle;
 };
 
-#endif // SNOW_SHOT_PRESENTATION_VIDEORECORDINGAREAWINDOW_H
+#endif // SNOW_SHOT_PRESENTATION_SCREENRECORDINGAREAWINDOW_H
