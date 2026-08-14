@@ -21,6 +21,7 @@
             "avformat",
             "swresample",
             "swscale",
+            "zlib",
             "webp",
             "x264",
             "x265"

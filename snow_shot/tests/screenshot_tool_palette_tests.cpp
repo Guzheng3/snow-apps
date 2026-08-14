@@ -379,6 +379,13 @@ void scrollingScreenshotKeepsDrawingToolsAvailable() {
                       ScreenshotToolPalette::CopyAction;
 
     ScreenshotToolPalette palette(options);
+    int selectRequestCount = 0;
+    QObject::connect(&palette, &ScreenshotToolPalette::selectRequested,
+                     [&selectRequestCount]() { ++selectRequestCount; });
+    require(palette.activateDrawingShortcut(QStringLiteral("select")) &&
+                palette.activeToolForTests() == ScreenshotToolPalette::Tool::Select &&
+                selectRequestCount == 1,
+            "the Select drawing shortcut must activate the selection tool and request it");
     const char* const drawingTools[] = {
         "Select elements", "Shape",  "Arrow",  "Line",      "Pen", "Text",
         "Serial number",   "Filter", "Eraser", "Watermark",
@@ -447,16 +454,16 @@ void screenshotToolbarUsesCanonicalOrderAndSectionSeparators() {
     const QList<adqt::widgets::AdButton*> buttons = mainToolbarButtons(palette);
     const QStringList expected{
         QStringLiteral("Edit selection"),
-        QStringLiteral("Select elements"),
-        QStringLiteral("Shape (1, S)"),
-        QStringLiteral("Arrow (2, A)"),
+        QStringLiteral("Select elements (V)"),
+        QStringLiteral("Shape (1)"),
+        QStringLiteral("Arrow"),
         QStringLiteral("Pen (3, P)"),
         QStringLiteral("Highlighter Tool (4, H)"),
         QStringLiteral("Text (5, T)"),
         QStringLiteral("Serial number (6, N)"),
         QStringLiteral("Filter (7, F)"),
         QStringLiteral("Eraser (8, E)"),
-        QStringLiteral("Watermark (9, W)"),
+        QStringLiteral("Watermark (9)"),
         QStringLiteral("Table recognition"),
         QStringLiteral("Record screen"),
         QStringLiteral("Pin to screen"),
@@ -792,7 +799,7 @@ void arrowAndLineRemainDirectWhenConfiguredIndividually() {
     ScreenshotToolPalette arrowPalette(arrowOptions);
     const QList<adqt::widgets::AdButton*> arrowButtons = mainToolbarButtons(arrowPalette);
     require(arrowButtons.size() == 1 &&
-                arrowButtons.constFirst()->toolTip() == QStringLiteral("Arrow (2, A)") &&
+                arrowButtons.constFirst()->toolTip() == QStringLiteral("Arrow (2)") &&
                 popoverForTrigger(arrowButtons.constFirst()) == nullptr,
             "Arrow should remain a direct button when Line is unavailable");
 

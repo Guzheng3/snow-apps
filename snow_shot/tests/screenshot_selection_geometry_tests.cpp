@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <optional>
 
 namespace {
 constexpr qreal kMinimumSelectionSize = 10.0;
@@ -176,6 +177,20 @@ void physicalWindowRectIsClippedAndMappedAcrossMonitors() {
     require(geometry.canvasRectForPhysicalRect(displays, offDesktopRect).isEmpty(),
             "a fully off-screen window must produce an empty selection geometry");
 }
+
+void dragAnchorDoesNotReplaceTheActualCursorPosition() {
+    const QRectF selection(10.0, 10.0, 40.0, 40.0);
+    // QRectF selections use half-open bounds, so the bottom-right screenshot
+    // pixel is one unit inside the geometric edge returned by bottomRight().
+    const QPointF cursorPosition(selection.right() - 1.0, selection.bottom() - 1.0);
+    const std::optional<QPointF> anchor = screenshotSelectionDragAnchor(
+        selection, ScreenshotSelectionDragMode::BottomRight, cursorPosition, 10.0);
+
+    require(anchor.has_value() && anchor.value() == selection.bottomRight(),
+            "bottom-right drags should keep the picker sample anchored to the handle");
+    require(cursorPosition != anchor.value(),
+            "a handle anchor must remain distinct from the cursor position used for navigation");
+}
 } // namespace
 
 int main() {
@@ -187,5 +202,6 @@ int main() {
     selectionShadowDefaultsToRequestedColor();
     physicalPointMappingUsesHalfOpenMonitorBounds();
     physicalWindowRectIsClippedAndMappedAcrossMonitors();
+    dragAnchorDoesNotReplaceTheActualCursorPosition();
     return 0;
 }

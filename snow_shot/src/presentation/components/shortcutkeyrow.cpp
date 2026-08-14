@@ -240,6 +240,21 @@ shortcutValidationMessage(const snow_shot::presentation::GlobalShortcutValidatio
                           const QString& attemptedShortcut,
                           ShortcutKeyRowConfig::ValidationScope validationScope) {
     const QString displayShortcut = formatShortcutDisplayText(attemptedShortcut);
+    if (validationScope == ShortcutKeyRowConfig::ValidationScope::ScreenshotShortcut) {
+        if (validation.failureReason ==
+            snow_shot::presentation::GlobalShortcutFailureReason::AlreadyInUse) {
+            return displayShortcut.isEmpty()
+                       ? QObject::tr(
+                             "This key is already assigned to another shortcut, try another key")
+                       : QObject::tr(
+                             "%1 is already assigned to another shortcut, try another key")
+                             .arg(displayShortcut);
+        }
+        return displayShortcut.isEmpty()
+                   ? QObject::tr("This key cannot be used as a screenshot shortcut, try another key")
+                   : QObject::tr("%1 cannot be used as a screenshot shortcut, try another key")
+                         .arg(displayShortcut);
+    }
     if (validationScope == ShortcutKeyRowConfig::ValidationScope::DrawingShortcut) {
         if (validation.failureReason ==
             snow_shot::presentation::GlobalShortcutFailureReason::AlreadyInUse) {
@@ -476,10 +491,13 @@ class ShortcutConfigValidationButton final : public adqt::widgets::AdButton {
           m_info(new InfoTooltipIcon(metric.fontSize, this)) {
         m_info->setObjectName(QStringLiteral("shortcutConfigValidationTooltipTrigger"));
         m_info->setProperty("inlineGap", m_infoGap);
-        m_info->setAccessibleName(
-            validationScope == ShortcutKeyRowConfig::ValidationScope::DrawingShortcut
-                ? QObject::tr("Invalid drawing shortcut")
-                : QObject::tr("Invalid global shortcut"));
+        if (validationScope == ShortcutKeyRowConfig::ValidationScope::ScreenshotShortcut) {
+            m_info->setAccessibleName(QObject::tr("Invalid screenshot shortcut"));
+        } else if (validationScope == ShortcutKeyRowConfig::ValidationScope::DrawingShortcut) {
+            m_info->setAccessibleName(QObject::tr("Invalid drawing shortcut"));
+        } else {
+            m_info->setAccessibleName(QObject::tr("Invalid global shortcut"));
+        }
     }
 
     void setValidationTooltipText(const QString& text) {

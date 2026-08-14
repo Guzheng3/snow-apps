@@ -16,6 +16,7 @@
 #include <QFocusEvent>
 #include <QGuiApplication>
 #include <QGraphicsItem>
+#include <QGraphicsTextItem>
 #include <QGraphicsView>
 #include <QImage>
 #include <QKeyEvent>
@@ -605,6 +606,33 @@ void recognitionWindowUsesOrdinaryQtWindowBehavior() {
     QApplication::processEvents();
 }
 
+QGraphicsTextItem* formattedTextItem(QGraphicsView* layer) {
+    if (layer == nullptr || layer->scene() == nullptr) {
+        return nullptr;
+    }
+    for (QGraphicsItem* item : layer->scene()->items()) {
+        auto* textItem = dynamic_cast<QGraphicsTextItem*>(item);
+        if (textItem != nullptr &&
+            textItem->objectName() == QStringLiteral("screenshotClipboardTextItem")) {
+            return textItem;
+        }
+    }
+    return nullptr;
+}
+
+QRect nonWhitePixelBounds(const QImage& image) {
+    QRect bounds;
+    for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+            const QColor color = image.pixelColor(x, y);
+            if (color.red() < 250 || color.green() < 250 || color.blue() < 250) {
+                bounds = bounds.isNull() ? QRect(x, y, 1, 1) : bounds.united(QRect(x, y, 1, 1));
+            }
+        }
+    }
+    return bounds;
+}
+
 void shortRecognitionWindowPreservesExactSelectionGeometryAcrossModes() {
     QScreen* screen = QGuiApplication::primaryScreen();
     require(screen != nullptr, "a primary screen is required");
@@ -681,6 +709,7 @@ void formattedClipboardTextUsesASelectableQtDocument() {
     QWidget host;
     host.resize(360, 160);
     host.show();
+    const QSizeF canvasSize(host.width() * 2.0, host.height() * 2.0);
     ScreenshotRecognitionWindow window(
         ScreenshotRecognitionWindowActions{}, &host,
         ScreenshotRecognitionWindow::PresentationMode::EmbeddedChild);
@@ -688,30 +717,81 @@ void formattedClipboardTextUsesASelectableQtDocument() {
                 screen,
                 &host,
                 host.rect(),
-                QRectF(QPointF(), QSizeF(host.size())),
+                QRectF(QPointF(), canvasSize),
                 ScreenshotRecognitionWindow::PresentationMode::EmbeddedChild,
+                2.0,
             }),
             "the formatted clipboard recognition surface should present");
 
     auto document = std::make_shared<QTextDocument>();
-    document->setHtml(QStringLiteral("<p><b>Formatted</b> clipboard text</p>"));
+    document->setDocumentMargin(0.0);
+    document->setHtml(QStringLiteral(
+        "<p style=\"font-size: 40px; margin: 0\"><b>Formatted</b> clipboard text</p>"));
+    document->setTextWidth(host.width());
+    QImage canonicalImage(canvasSize.toSize(), QImage::Format_ARGB32_Premultiplied);
+    canonicalImage.setDevicePixelRatio(2.0);
+    canonicalImage.fill(Qt::white);
+    QPainter canonicalPainter(&canonicalImage);
+    canonicalPainter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing |
+                                    QPainter::SmoothPixmapTransform);
+    document->drawContents(&canonicalPainter);
+    canonicalPainter.end();
     window.showFormattedText(document);
     QApplication::processEvents();
 
-    auto* browser =
-        window.findChild<QTextBrowser*>(QStringLiteral("screenshotClipboardText"));
+    auto* textLayer = window.findChild<QGraphicsView*>(QStringLiteral("screenshotClipboardText"));
+    auto* textItem = formattedTextItem(textLayer);
     const Qt::TextInteractionFlags selectionFlags =
         Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard;
-    require(browser != nullptr && browser->isVisible() && browser->isReadOnly() &&
-                browser->document() == document.get() &&
-                (browser->textInteractionFlags() & selectionFlags) == selectionFlags &&
-                !browser->openLinks() && !browser->openExternalLinks(),
+    require(textLayer != nullptr && textLayer->isVisible() && textLayer->isInteractive() &&
+                textItem != nullptr && textItem->document() == document.get() &&
+                (textItem->textInteractionFlags() & selectionFlags) == selectionFlags &&
+                !textItem->openExternalLinks(),
             "formatted clipboard text should retain its Qt document and allow direct selection");
-    require(browser->toPlainText().contains(QStringLiteral("Formatted clipboard text")),
+    require(textItem->toPlainText().contains(QStringLiteral("Formatted clipboard text")),
             "the selectable clipboard surface should preserve document text");
+    require(std::abs(textLayer->transform().m11() - 0.5) < 0.001 &&
+                std::abs(textLayer->transform().m22() - 0.5) < 0.001 &&
+                qFuzzyCompare(textItem->scale(), 2.0),
+            "formatted clipboard text should map canonical image pixels through the canvas "
+            "transform using the owning display DPR");
+
+    textItem->clearFocus();
+    textLayer->clearFocus();
+    QImage dpiImage(canvasSize.toSize(), QImage::Format_ARGB32_Premultiplied);
+    dpiImage.setDevicePixelRatio(2.0);
+    dpiImage.fill(Qt::white);
+    QPainter dpiPainter(&dpiImage);
+    textLayer->render(&dpiPainter, QRectF(QPointF(), QSizeF(textLayer->size())), textLayer->rect());
+    dpiPainter.end();
+    const QRect canonicalBounds = nonWhitePixelBounds(canonicalImage);
+    const QRect dpiBounds = nonWhitePixelBounds(dpiImage);
+    require(canonicalBounds.isValid() && dpiBounds.isValid() &&
+                std::abs(canonicalBounds.left() - dpiBounds.left()) <= 1 &&
+                std::abs(canonicalBounds.top() - dpiBounds.top()) <= 1 &&
+                std::abs(canonicalBounds.width() - dpiBounds.width()) <= 2 &&
+                std::abs(canonicalBounds.height() - dpiBounds.height()) <= 2,
+            "a 2x backing image should reproduce the canonical HTML text size through the "
+            "canvas transform");
+
+    window.resize(180, 80);
+    QApplication::processEvents();
+    require(std::abs(textLayer->transform().m11() - 0.25) < 0.001 &&
+                std::abs(textLayer->transform().m22() - 0.25) < 0.001,
+            "formatted clipboard text should track subsequent canvas zoom changes");
+
+    auto replacement = std::make_shared<QTextDocument>();
+    replacement->setPlainText(QStringLiteral("Replacement formatted text"));
+    window.showFormattedText(replacement);
+    QApplication::processEvents();
+    textLayer = window.findChild<QGraphicsView*>(QStringLiteral("screenshotClipboardText"));
+    textItem = formattedTextItem(textLayer);
+    require(textItem != nullptr && textItem->document() == replacement.get() &&
+                qFuzzyCompare(textItem->scale(), 2.0),
+            "replacing visible formatted text should detach the previous document first");
 
     window.clearFormattedText();
-    require(window.findChild<QTextBrowser*>(QStringLiteral("screenshotClipboardText")) == nullptr,
+    require(window.findChild<QGraphicsView*>(QStringLiteral("screenshotClipboardText")) == nullptr,
             "leaving formatted-text mode should remove its selectable surface");
 }
 

@@ -30,8 +30,8 @@ ScreenshotColorPickerController::ScreenshotColorPickerController(
 
 void ScreenshotColorPickerController::reset() {
     m_overlay = nullptr;
-    m_physicalPoint = QPoint();
-    m_hasPhysicalPoint = false;
+    m_cursorPhysicalPoint = QPoint();
+    m_hasCursorPhysicalPoint = false;
     m_suppressed = false;
 }
 
@@ -79,6 +79,16 @@ void ScreenshotColorPickerController::updateForOverlay(
 
 void ScreenshotColorPickerController::updateAtPhysicalPoint(
     const QPoint& physicalPoint, const ScreenshotColorPickerContext& context, qreal opacity) {
+    updateAtPhysicalPoint(physicalPoint, context, opacity, true);
+}
+
+void ScreenshotColorPickerController::updateAtPhysicalPoint(
+    const QPoint& physicalPoint, const ScreenshotColorPickerContext& context, qreal opacity,
+    bool rememberAsCursor) {
+    if (rememberAsCursor) {
+        rememberCursorPhysicalPoint(physicalPoint);
+    }
+
     if (!enabled(context) || screenshotUiContainsGlobalCursor()) {
         hide();
         return;
@@ -99,8 +109,6 @@ void ScreenshotColorPickerController::updateAtPhysicalPoint(
     m_overlayCoordinator.updateColorPicker(overlay, display->image, display->physicalRect,
                                            physicalPoint, overlayLocalPosition, pickerOpacity);
     m_overlay = overlay;
-    m_physicalPoint = physicalPoint;
-    m_hasPhysicalPoint = true;
 }
 
 void ScreenshotColorPickerController::updateAtCurrentCursor(
@@ -119,10 +127,15 @@ void ScreenshotColorPickerController::updateForSelectionDrag(
         return;
     }
 
+    const QPoint cursorPhysicalPoint = physicalPositionForCanvasPoint(virtualPosition);
     const std::optional<QPointF> anchor =
         screenshotSelectionDragAnchor(context.selectionCanvas, context.dragMode, virtualPosition,
                                       snow_shot::presentation::kScreenshotSelectionMinimumSize);
+    rememberCursorPhysicalPoint(cursorPhysicalPoint);
     if (!anchor.has_value()) {
+        // Manual selection drags have no edge anchor, so sample at the actual
+        // cursor while retaining the same cursor origin used by keyboard moves.
+        updateAtPhysicalPoint(cursorPhysicalPoint, context, 1.0, false);
         return;
     }
 
@@ -138,7 +151,8 @@ void ScreenshotColorPickerController::updateForSelectionDrag(
                                   context.selectionPixels.width() >= 1 &&
                                       context.selectionPixels.height() >= 1,
                                   true,
-                              }));
+                              }),
+                          false);
 }
 
 bool ScreenshotColorPickerController::copyColorToClipboard(
@@ -172,17 +186,47 @@ bool ScreenshotColorPickerController::moveCursor(int dx, int dy,
         return false;
     }
 
-    QPoint nextPoint =
-        m_hasPhysicalPoint ? m_physicalPoint : physicalPositionForLogicalPoint(QCursor::pos());
+    const QPoint currentPoint = m_hasCursorPhysicalPoint
+                                    ? m_cursorPhysicalPoint
+                                    : physicalPositionForLogicalPoint(QCursor::pos());
+    const CapturedDisplayModel* currentDisplay = displayForPhysicalPoint(currentPoint);
+    QPoint nextPoint = currentPoint;
     nextPoint += QPoint(dx, dy);
     nextPoint = m_geometry.clampPhysicalPointToDesktop(nextPoint);
+
+    // The desktop bounds are a bounding rectangle. A multi-monitor desktop can
+    // contain gaps inside that rectangle, so never move into a point that has
+    // no captured display. Otherwise the picker briefly loses its owner and
+    // flickers while Windows resolves the cursor to another monitor.
+    if (displayForPhysicalPoint(nextPoint) == nullptr && currentDisplay != nullptr) {
+        nextPoint = m_geometry.clampPhysicalPointToDisplay(*currentDisplay, nextPoint);
+    }
+
+    if (nextPoint == currentPoint) {
+        rememberCursorPhysicalPoint(currentPoint);
+        if (context.dragging) {
+            updateForSelectionDrag(canvasPositionForPhysicalPoint(currentPoint), context);
+        } else {
+            updateAtPhysicalPoint(currentPoint, context);
+        }
+        return true;
+    }
 
     if (!setPhysicalCursorPosition(nextPoint)) {
         return false;
     }
 
-    updateAtPhysicalPoint(nextPoint, context);
+    if (context.dragging) {
+        updateForSelectionDrag(canvasPositionForPhysicalPoint(nextPoint), context);
+    } else {
+        updateAtPhysicalPoint(nextPoint, context);
+    }
     return true;
+}
+
+void ScreenshotColorPickerController::rememberCursorPhysicalPoint(const QPoint& physicalPoint) {
+    m_cursorPhysicalPoint = physicalPoint;
+    m_hasCursorPhysicalPoint = true;
 }
 
 bool ScreenshotColorPickerController::enabled(const ScreenshotColorPickerContext& context) const {

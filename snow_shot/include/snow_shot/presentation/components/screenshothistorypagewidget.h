@@ -10,6 +10,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QMetaType>
+#include <QSet>
 #include <QVector>
 #include <QWidget>
 
@@ -136,7 +137,7 @@ class ScreenshotHistoryPageWidget final : public QWidget {
     bool m_updatingPagination = false;
     quint64 m_assetGeneration = 0;
     quint64 m_resultGeneration = 0;
-    QString m_pendingResultRecordId;
+    QSet<QString> m_pendingResultRecordIds;
     int m_emptyStateMinimumHeight = 0;
 };
 

@@ -821,6 +821,15 @@ void ScreenshotController::Impl::createOverlayInputPipeline() {
                 });
                 return allowed;
             },
+            [this]() {
+                setMoveTool();
+                if (m_overlayCoordinator != nullptr) {
+                    if (ScreenshotToolbarWindow* toolbar = m_overlayCoordinator->toolbar()) {
+                        toolbar->setActiveTool(ScreenshotToolPalette::Tool::Move);
+                    }
+                }
+                return m_interaction.moveToolActive();
+            },
             [this](const QString& toolId) {
                 ScreenshotToolbarWindow* toolbar =
                     m_overlayCoordinator != nullptr ? m_overlayCoordinator->toolbar() : nullptr;
@@ -1355,18 +1364,19 @@ void ScreenshotController::Impl::setScrollingScreenshotRecognitionMode(
 }
 
 void ScreenshotController::Impl::pinClipboardContentToScreen() {
-    const auto content = ScreenshotClipboardContentReader::read(QApplication::clipboard());
-    if (!content.has_value() || !content->isValid()) {
-        qWarning("Clipboard content could not be pinned");
-        return;
-    }
-
     QScreen* screen = QGuiApplication::screenAt(QCursor::pos());
     if (screen == nullptr) {
         screen = QGuiApplication::primaryScreen();
     }
     if (screen == nullptr) {
         qWarning("No screen is available for clipboard pinning");
+        return;
+    }
+
+    const auto content = ScreenshotClipboardContentReader::read(
+        QApplication::clipboard(), screen->devicePixelRatio());
+    if (!content.has_value() || !content->isValid()) {
+        qWarning("Clipboard content could not be pinned");
         return;
     }
 
@@ -1382,7 +1392,8 @@ void ScreenshotController::Impl::pinClipboardContentToScreen() {
     if (!fit.valid || m_selectionExportUiServices == nullptr ||
         !m_selectionExportUiServices->presentPinnedImage(
                           content->image, screen, fit.nativeGeometry, fit.fullResolutionSize,
-                          content->formattedDocument, content->plainText)) {
+                          content->formattedDocument, content->plainText,
+                          content->formattedTextDevicePixelRatio)) {
         qWarning("Clipboard pin presentation failed");
     }
 }
@@ -1396,13 +1407,20 @@ void ScreenshotController::Impl::saveSelectionToFile() {
         return;
     }
 
-    QString directory = ScreenshotImageFileService::automaticDirectory();
+    const snow_shot::storage::ScreenshotSettings outputSettings;
+    const QStringList candidateDirectories = ScreenshotImageFileService::automaticDirectories(
+        outputSettings.imageSaveDirectory());
+    QString directory = candidateDirectories.isEmpty() ? QString()
+                                                        : candidateDirectories.constFirst();
     if (directory.isEmpty()) {
         directory = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     }
+    static_cast<void>(QDir().mkpath(directory));
     const QString initialPath =
-        QDir(directory).filePath(ScreenshotImageFileService::suggestedBaseName() +
-                                 QStringLiteral(".png"));
+        QDir(directory).filePath(
+            ScreenshotImageFileService::suggestedBaseName(
+                outputSettings.manualSaveFilenameFormat()) +
+            QStringLiteral(".png"));
     QString selectedFilter =
         ScreenshotImageFileService::dialogFilter(ScreenshotImageFileFormat::Png);
     QWidget* parent = m_overlayCoordinator != nullptr ? m_overlayCoordinator->toolbar() : nullptr;
@@ -1651,13 +1669,21 @@ void ScreenshotController::Impl::saveImageForCopy(
         !image.isNull()) {
         historyCandidate->value().resultImage = image;
     }
+    const snow_shot::storage::ScreenshotSettings outputSettings;
+    const QStringList outputDirectories = ScreenshotImageFileService::automaticDirectories(
+        outputSettings.imageSaveDirectory());
+    const ScreenshotImageFileFormat outputFormat =
+        ScreenshotImageFileService::formatForKey(outputSettings.imageFormat());
+    const QString outputFilenameFormat = outputSettings.autoSaveFilenameFormat();
     const QPointer<ScreenshotController> receiver(&owner);
     QThreadPool::globalInstance()->start(
         [receiver, generation, copyFileToClipboard, historySource,
          historyCandidate = std::move(historyCandidate), scrolling,
+         outputDirectories, outputFormat, outputFilenameFormat,
          image = std::move(image)]() mutable {
             const ScreenshotImageFileSaveResult fileResult =
-                ScreenshotImageFileService::saveAutomatically(image);
+                ScreenshotImageFileService::saveAutomatically(
+                    image, outputDirectories, outputFormat, outputFilenameFormat);
             if (receiver.isNull()) {
                 return;
             }

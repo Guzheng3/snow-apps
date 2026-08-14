@@ -65,6 +65,15 @@ class SettingsRuntimeBindings : public QObject {
     [[nodiscard]] virtual bool applyFilePathValue(SettingsFilePathBinding binding,
                                                   const QString& value) = 0;
 
+    [[nodiscard]] virtual QString directoryPathValue(
+        SettingsDirectoryPathBinding binding) const = 0;
+    [[nodiscard]] virtual bool applyDirectoryPathValue(SettingsDirectoryPathBinding binding,
+                                                       const QString& value) = 0;
+
+    [[nodiscard]] virtual QString textValue(SettingsTextBinding binding) const = 0;
+    [[nodiscard]] virtual bool applyTextValue(SettingsTextBinding binding,
+                                              const QString& value) = 0;
+
     [[nodiscard]] virtual storage::ScreenshotToolbarLayout toolbarLayout() const = 0;
     [[nodiscard]] virtual bool
     applyToolbarLayout(const storage::ScreenshotToolbarLayout& layout) = 0;
@@ -75,11 +84,14 @@ class SettingsRuntimeBindings : public QObject {
     validateShortcut(const QString& shortcut) const = 0;
     [[nodiscard]] virtual bool applyShortcuts(GlobalShortcutAction action,
                                               const QStringList& shortcuts) = 0;
-    [[nodiscard]] virtual QStringList localShortcuts(const QString& toolId) const = 0;
+    [[nodiscard]] virtual QStringList localShortcuts(SettingsLocalShortcutScope scope,
+                                                     const QString& shortcutId) const = 0;
     [[nodiscard]] virtual GlobalShortcutValidationResult
-    validateLocalShortcut(const QString& toolId, const QString& shortcut) const = 0;
-    [[nodiscard]] virtual bool applyLocalShortcuts(const QString& toolId,
-                                                  const QStringList& shortcuts) = 0;
+    validateLocalShortcut(SettingsLocalShortcutScope scope, const QString& shortcutId,
+                          const QString& shortcut) const = 0;
+    [[nodiscard]] virtual bool applyLocalShortcuts(SettingsLocalShortcutScope scope,
+                                                   const QString& shortcutId,
+                                                   const QStringList& shortcuts) = 0;
 
     [[nodiscard]] virtual SettingsActionState
     actionState(SettingsActionBinding binding) const = 0;
@@ -125,6 +137,13 @@ class BuiltInSettingsRuntimeBindings final : public SettingsRuntimeBindings {
     [[nodiscard]] QString filePathValue(SettingsFilePathBinding binding) const override;
     [[nodiscard]] bool applyFilePathValue(SettingsFilePathBinding binding,
                                           const QString& value) override;
+    [[nodiscard]] QString directoryPathValue(
+        SettingsDirectoryPathBinding binding) const override;
+    [[nodiscard]] bool applyDirectoryPathValue(SettingsDirectoryPathBinding binding,
+                                               const QString& value) override;
+    [[nodiscard]] QString textValue(SettingsTextBinding binding) const override;
+    [[nodiscard]] bool applyTextValue(SettingsTextBinding binding,
+                                      const QString& value) override;
     [[nodiscard]] storage::ScreenshotToolbarLayout toolbarLayout() const override;
     [[nodiscard]] bool
     applyToolbarLayout(const storage::ScreenshotToolbarLayout& layout) override;
@@ -134,11 +153,14 @@ class BuiltInSettingsRuntimeBindings final : public SettingsRuntimeBindings {
     validateShortcut(const QString& shortcut) const override;
     [[nodiscard]] bool applyShortcuts(GlobalShortcutAction action,
                                       const QStringList& shortcuts) override;
-    [[nodiscard]] QStringList localShortcuts(const QString& toolId) const override;
+    [[nodiscard]] QStringList localShortcuts(SettingsLocalShortcutScope scope,
+                                             const QString& shortcutId) const override;
     [[nodiscard]] GlobalShortcutValidationResult
-    validateLocalShortcut(const QString& toolId, const QString& shortcut) const override;
-    [[nodiscard]] bool applyLocalShortcuts(const QString& toolId,
-                                          const QStringList& shortcuts) override;
+    validateLocalShortcut(SettingsLocalShortcutScope scope, const QString& shortcutId,
+                          const QString& shortcut) const override;
+    [[nodiscard]] bool applyLocalShortcuts(SettingsLocalShortcutScope scope,
+                                           const QString& shortcutId,
+                                           const QStringList& shortcuts) override;
     [[nodiscard]] SettingsActionState
     actionState(SettingsActionBinding binding) const override;
     [[nodiscard]] bool triggerAction(SettingsActionBinding binding) override;

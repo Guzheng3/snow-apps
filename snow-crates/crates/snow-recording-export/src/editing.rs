@@ -9183,14 +9183,6 @@ mod tests {
             ..ExportPerformanceConfig::default()
         };
 
-        ensure_ffmpeg_initialized().expect("FFmpeg should initialize");
-        eprintln!(
-            "encoders: apng={:?} webp={:?} libwebp_anim={:?}",
-            ffmpeg::encoder::find_by_name("apng").map(|codec| codec.name().to_string()),
-            ffmpeg::encoder::find(ffmpeg::codec::Id::WEBP).map(|codec| codec.name().to_string()),
-            ffmpeg::encoder::find_by_name("libwebp_anim").map(|codec| codec.name().to_string())
-        );
-
         for format in [ExportFormat::Apng, ExportFormat::Webp] {
             let output_path = directory
                 .path()

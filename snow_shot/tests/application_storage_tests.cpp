@@ -189,6 +189,14 @@ void newSettingsSchemaDefaultsAndValidationAreComplete() {
                     QStringLiteral("pin") &&
                 !defaultValue("screenshot/auto_save_after_copy").toBool() &&
                 !defaultValue("screenshot/copy_image_file_to_clipboard").toBool() &&
+                QDir::fromNativeSeparators(
+                    defaultValue("screenshot/image_save_directory").toString())
+                    .endsWith(QStringLiteral("/SnowShot")) &&
+                defaultValue("screenshot/image_format").toString() == QStringLiteral("png") &&
+                defaultValue("screenshot/manual_save_filename_format").toString() ==
+                    QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}") &&
+                defaultValue("screenshot/auto_save_filename_format").toString() ==
+                    QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}") &&
                 defaultValue("drawing/quick_selection_disabled_tools").toArray() ==
                     QJsonArray{QStringLiteral("free-draw"), QStringLiteral("pen-filter")} &&
                 defaultValue("pin_to_screen/mouse_wheel_zoom_mode").toString() ==
@@ -208,15 +216,21 @@ void newSettingsSchemaDefaultsAndValidationAreComplete() {
                 defaultValue("screen_recording/encoding_preset").toString() ==
                     QStringLiteral("veryfast") &&
                 defaultValue("screen_recording/hide_toolbar_in_recording").toBool() &&
+                QDir::fromNativeSeparators(
+                    defaultValue("screen_recording/video_save_directory").toString())
+                    .endsWith(QStringLiteral("/SnowShot")) &&
+                defaultValue("screen_recording/video_filename_format").toString() ==
+                    QStringLiteral("SnowShot_Video_{YYYY-MM-DD_HH-mm-ss}") &&
                 defaultValue("tray/left_click_action").toString() ==
                     QStringLiteral("screenshot"),
             "new settings defaults do not match the requested contract");
 
     const QMap<QString, QJsonArray> drawingShortcutDefaults{
+        {QStringLiteral("select"), QJsonArray{QStringLiteral("V")}},
         {QStringLiteral("shape"),
-         QJsonArray{QStringLiteral("1"), QStringLiteral("S")}},
+         QJsonArray{QStringLiteral("1")}},
         {QStringLiteral("arrow"),
-         QJsonArray{QStringLiteral("2"), QStringLiteral("A")}},
+         QJsonArray{QStringLiteral("2")}},
         {QStringLiteral("brush"),
          QJsonArray{QStringLiteral("3"), QStringLiteral("P")}},
         {QStringLiteral("highlight"),
@@ -230,7 +244,7 @@ void newSettingsSchemaDefaultsAndValidationAreComplete() {
         {QStringLiteral("eraser"),
          QJsonArray{QStringLiteral("8"), QStringLiteral("E")}},
         {QStringLiteral("watermark"),
-         QJsonArray{QStringLiteral("9"), QStringLiteral("W")}},
+         QJsonArray{QStringLiteral("9")}},
     };
     for (auto it = drawingShortcutDefaults.cbegin(); it != drawingShortcutDefaults.cend(); ++it) {
         const QString key = QStringLiteral("drawing_shortcuts/") + it.key();
@@ -238,6 +252,26 @@ void newSettingsSchemaDefaultsAndValidationAreComplete() {
         require(entry != nullptr && entry->defaultValue.toArray() == it.value() &&
                     entry->maximumListItems == 2,
                 "drawing shortcut defaults and list limits must remain stable");
+    }
+
+    const QMap<QString, QJsonArray> screenshotShortcutDefaults{
+        {QStringLiteral("move_tool"), QJsonArray{QStringLiteral("M")}},
+        {QStringLiteral("move_cursor_up"),
+         QJsonArray{QStringLiteral("W"), QStringLiteral("Up")}},
+        {QStringLiteral("move_cursor_down"),
+         QJsonArray{QStringLiteral("S"), QStringLiteral("Down")}},
+        {QStringLiteral("move_cursor_left"),
+         QJsonArray{QStringLiteral("A"), QStringLiteral("Left")}},
+        {QStringLiteral("move_cursor_right"),
+         QJsonArray{QStringLiteral("D"), QStringLiteral("Right")}},
+    };
+    for (auto it = screenshotShortcutDefaults.cbegin();
+         it != screenshotShortcutDefaults.cend(); ++it) {
+        const QString key = QStringLiteral("screenshot_shortcuts/") + it.key();
+        const auto* entry = storage::ConfigurationSchema::entry(key);
+        require(entry != nullptr && entry->defaultValue.toArray() == it.value() &&
+                    entry->maximumListItems == 2,
+                "screenshot shortcut defaults and list limits must remain stable");
     }
 
     for (const QString& malformed : {QStringLiteral("Ctrl+K, Ctrl+C"),
@@ -497,7 +531,14 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
     require(screenshot.autoExecuteAfterTextRecognition() == QStringLiteral("no_action") &&
                 screenshot.doubleClickAction() == QStringLiteral("copy") &&
                 screenshot.middleMouseButtonAction() == QStringLiteral("pin") &&
-                !screenshot.autoSaveAfterCopy() && !screenshot.copyImageFileToClipboard(),
+                !screenshot.autoSaveAfterCopy() && !screenshot.copyImageFileToClipboard() &&
+                screenshot.imageFormat() == QStringLiteral("png") &&
+                screenshot.manualSaveFilenameFormat() ==
+                    QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}") &&
+                screenshot.autoSaveFilenameFormat() ==
+                    QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}") &&
+                QDir::fromNativeSeparators(screenshot.imageSaveDirectory())
+                    .endsWith(QStringLiteral("/SnowShot")),
             "screenshot adapters must expose requested defaults");
     require(screenshot.setAutoExecuteAfterTextRecognition(
                 QStringLiteral("quick_copy_text_and_end_screenshot")) &&
@@ -505,13 +546,23 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
                 screenshot.setMiddleMouseButtonAction(QStringLiteral("none")) &&
                 screenshot.setAutoSaveAfterCopy(true) &&
                 screenshot.setCopyImageFileToClipboard(true) &&
+                screenshot.setImageSaveDirectory(QStringLiteral("D:/Captures")) &&
+                screenshot.setImageFormat(QStringLiteral("webp")) &&
+                screenshot.setManualSaveFilenameFormat(QStringLiteral("Manual_{yyyyMMdd}")) &&
+                screenshot.setAutoSaveFilenameFormat(QStringLiteral("Auto_{HHmmss}")) &&
                 screenshot.autoExecuteAfterTextRecognition() ==
                     QStringLiteral("quick_copy_text_and_end_screenshot") &&
                 screenshot.doubleClickAction() == QStringLiteral("save") &&
                 screenshot.middleMouseButtonAction() == QStringLiteral("none") &&
-                screenshot.autoSaveAfterCopy() && screenshot.copyImageFileToClipboard(),
+                screenshot.autoSaveAfterCopy() && screenshot.copyImageFileToClipboard() &&
+                screenshot.imageSaveDirectory() == QStringLiteral("D:/Captures") &&
+                screenshot.imageFormat() == QStringLiteral("webp") &&
+                screenshot.manualSaveFilenameFormat() == QStringLiteral("Manual_{yyyyMMdd}") &&
+                screenshot.autoSaveFilenameFormat() == QStringLiteral("Auto_{HHmmss}"),
             "screenshot adapters must persist every new value type");
     require(!screenshot.setDoubleClickAction(QStringLiteral("unsupported")) &&
+                !screenshot.setImageFormat(QStringLiteral("bmp")) &&
+                !screenshot.setAutoSaveFilenameFormat(QStringLiteral("invalid/name")) &&
                 screenshot.doubleClickAction() == QStringLiteral("save"),
             "invalid screenshot actions must be rejected without changing the stored value");
 
@@ -545,7 +596,11 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
                 recording.animatedImageFormat() == QStringLiteral("gif") &&
                 recording.encoder() == QStringLiteral("h264") &&
                 recording.encodingPreset() == QStringLiteral("veryfast") &&
-                recording.hideToolbarInRecording(),
+                recording.hideToolbarInRecording() &&
+                QDir::fromNativeSeparators(recording.videoSaveDirectory())
+                    .endsWith(QStringLiteral("/SnowShot")) &&
+                recording.videoFilenameFormat() ==
+                    QStringLiteral("SnowShot_Video_{YYYY-MM-DD_HH-mm-ss}"),
             "recording adapters must expose requested defaults");
     require(recording.setScreenRecordingClarity(QStringLiteral("2k")) && recording.setFrameRate(83) &&
                 recording.setAnimatedImageClarity(QStringLiteral("720p")) &&
@@ -554,6 +609,8 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
                 recording.setEncoder(QStringLiteral("h265")) &&
                 recording.setEncodingPreset(QStringLiteral("placebo")) &&
                 recording.setHideToolbarInRecording(false) &&
+                recording.setVideoSaveDirectory(QStringLiteral("D:/Recordings")) &&
+                recording.setVideoFilenameFormat(QStringLiteral("Recording_{yyyyMMdd}")) &&
                 recording.screenRecordingClarity() == QStringLiteral("2k") &&
                 recording.frameRate() == 83 &&
                 recording.animatedImageClarity() == QStringLiteral("720p") &&
@@ -561,10 +618,13 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
                 recording.animatedImageFormat() == QStringLiteral("webp") &&
                 recording.encoder() == QStringLiteral("h265") &&
                 recording.encodingPreset() == QStringLiteral("placebo") &&
-                !recording.hideToolbarInRecording(),
+                !recording.hideToolbarInRecording() &&
+                recording.videoSaveDirectory() == QStringLiteral("D:/Recordings") &&
+                recording.videoFilenameFormat() == QStringLiteral("Recording_{yyyyMMdd}"),
             "recording adapters must round-trip every requested option");
     require(!recording.setFrameRate(25) && !recording.setAnimatedImageFrameRate(30) &&
                 !recording.setScreenRecordingClarity(QStringLiteral("8k")) &&
+                !recording.setVideoFilenameFormat(QStringLiteral("invalid/name")) &&
                 recording.frameRate() == 83 && recording.animatedImageFrameRate() == 24 &&
                 recording.screenRecordingClarity() == QStringLiteral("2k"),
             "recording adapters must reject unadvertised values atomically");
@@ -581,16 +641,52 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
             "tray and global-hotkey adapters must round-trip and validate their settings");
 
     const storage::DrawingShortcutSettings drawingShortcuts;
+    const storage::ScreenshotShortcutSettings screenshotShortcuts;
+    const QMap<QString, QStringList> screenshotDefaults = screenshotShortcuts.allShortcuts();
+    require(screenshotDefaults.size() == 5 &&
+                screenshotShortcuts.moveTool() == QStringList{QStringLiteral("M")} &&
+                screenshotShortcuts.moveCursorUp() ==
+                    QStringList{QStringLiteral("W"), QStringLiteral("Up")} &&
+                screenshotShortcuts.moveCursorDown() ==
+                    QStringList{QStringLiteral("S"), QStringLiteral("Down")} &&
+                screenshotShortcuts.moveCursorLeft() ==
+                    QStringList{QStringLiteral("A"), QStringLiteral("Left")} &&
+                screenshotShortcuts.moveCursorRight() ==
+                    QStringList{QStringLiteral("D"), QStringLiteral("Right")} &&
+                screenshotShortcuts.shortcuts(QStringLiteral("unsupported")).isEmpty() &&
+                !screenshotShortcuts.setShortcuts(QStringLiteral("unsupported"),
+                                                  {QStringLiteral("Q")}),
+            "screenshot shortcut adapter must expose five stable actions and defaults");
+    require(screenshotShortcuts.setMoveTool({QStringLiteral("Alt+M")}) &&
+                screenshotShortcuts.moveTool() == QStringList{QStringLiteral("Alt+M")} &&
+                screenshotShortcuts.setMoveCursorUp({QStringLiteral("Ctrl+Alt+Up")}) &&
+                screenshotShortcuts.moveCursorUp() ==
+                    QStringList{QStringLiteral("Ctrl+Alt+Up")},
+            "screenshot shortcuts must round-trip through the typed adapter");
+    const QMap<QString, QStringList> screenshotBeforeCollision =
+        screenshotShortcuts.allShortcuts();
+    require(!screenshotShortcuts.setMoveCursorRight({QStringLiteral("1")}) &&
+                screenshotShortcuts.allShortcuts() == screenshotBeforeCollision,
+            "screenshot shortcuts must reject keys assigned to drawing tools atomically");
+
     const QMap<QString, QStringList> defaults = drawingShortcuts.allShortcuts();
-    require(defaults.size() == 9 &&
+    require(defaults.size() == 10 &&
+                defaults.value(QStringLiteral("select")) ==
+                    QStringList{QStringLiteral("V")} &&
                 defaults.value(QStringLiteral("shape")) ==
-                    QStringList{QStringLiteral("1"), QStringLiteral("S")} &&
+                    QStringList{QStringLiteral("1")} &&
+                defaults.value(QStringLiteral("arrow")) ==
+                    QStringList{QStringLiteral("2")} &&
                 defaults.value(QStringLiteral("watermark")) ==
-                    QStringList{QStringLiteral("9"), QStringLiteral("W")} &&
+                    QStringList{QStringLiteral("9")} &&
                 drawingShortcuts.shortcuts(QStringLiteral("unsupported")).isEmpty() &&
                 !drawingShortcuts.setShortcuts(QStringLiteral("unsupported"),
                                                {QStringLiteral("Q")}),
-            "drawing shortcut adapter must expose nine stable tools only");
+            "drawing shortcut adapter must expose ten stable tools only");
+
+    require(drawingShortcuts.setSelect({QStringLiteral("Ctrl+Shift+V")}) &&
+                drawingShortcuts.select() == QStringList{QStringLiteral("Ctrl+Shift+V")},
+            "Select drawing shortcuts must round-trip through the typed adapter");
 
     require(drawingShortcuts.setShape({QStringLiteral("Ctrl+Shift+K"),
                                        QStringLiteral("Alt+1")}) &&
@@ -614,7 +710,7 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
     incomplete.remove(QStringLiteral("watermark"));
     require(!drawingShortcuts.setAllShortcutsAtomic(incomplete) &&
                 drawingShortcuts.allShortcuts() == beforeCollision,
-            "atomic drawing shortcut updates must require all nine tools");
+            "atomic drawing shortcut updates must require all ten tools");
 
     QMap<QString, QStringList> emptyAssignment = beforeCollision;
     emptyAssignment.insert(QStringLiteral("shape"), {});
@@ -717,6 +813,53 @@ void legacyRecordingKeysMigrateToScreenRecording() {
                 screenRecording.value(QStringLiteral("enable_microphone")).toBool() &&
                 legacyRecording.isEmpty(),
             "legacy recording keys were not rewritten canonically");
+}
+
+void legacyDrawingAliasesMigrateToScreenshotShortcuts() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "failed to create drawing-shortcut migration directory");
+    const QString config = QDir(temporary.path()).filePath(QStringLiteral("config.json"));
+    writeBytes(config,
+               QByteArrayLiteral("{\n"
+                                 "  \"storage\": {\"schema_version\": 1},\n"
+                                 "  \"drawing_shortcuts\": {\n"
+                                 "    \"shape\": [\"Ctrl+K\", \"S\"],\n"
+                                 "    \"arrow\": [\"2\", \"a\"],\n"
+                                 "    \"brush\": [\"3\", \"P\"],\n"
+                                 "    \"watermark\": [\"w\", \"Alt+9\"]\n"
+                                 "  }\n"
+                                 "}\n"));
+
+    storage::ConfigurationStore store(config, true, true, 60000);
+    require(store.value(QStringLiteral("drawing_shortcuts/shape")).toArray() ==
+                    QJsonArray{QStringLiteral("Ctrl+K")} &&
+                store.value(QStringLiteral("drawing_shortcuts/arrow")).toArray() ==
+                    QJsonArray{QStringLiteral("2")} &&
+                store.value(QStringLiteral("drawing_shortcuts/brush")).toArray() ==
+                    QJsonArray{QStringLiteral("3"), QStringLiteral("P")} &&
+                store.value(QStringLiteral("drawing_shortcuts/watermark")).toArray() ==
+                    QJsonArray{QStringLiteral("Alt+9")} &&
+                store.value(QStringLiteral("screenshot_shortcuts/move_cursor_up")).toArray() ==
+                    QJsonArray{QStringLiteral("W"), QStringLiteral("Up")} &&
+                store.value(QStringLiteral("screenshot_shortcuts/move_cursor_down")).toArray() ==
+                    QJsonArray{QStringLiteral("S"), QStringLiteral("Down")} &&
+                store.value(QStringLiteral("screenshot_shortcuts/move_cursor_left")).toArray() ==
+                    QJsonArray{QStringLiteral("A"), QStringLiteral("Left")},
+            "legacy drawing aliases were not moved to screenshot shortcuts");
+    require(store.flushNow().success, "failed to flush migrated drawing shortcuts");
+
+    const QJsonObject root = readObject(config);
+    const QJsonObject drawing = root.value(QStringLiteral("drawing_shortcuts")).toObject();
+    const QJsonObject screenshot = root.value(QStringLiteral("screenshot_shortcuts")).toObject();
+    require(drawing.value(QStringLiteral("shape")).toArray() ==
+                    QJsonArray{QStringLiteral("Ctrl+K")} &&
+                drawing.value(QStringLiteral("arrow")).toArray() ==
+                    QJsonArray{QStringLiteral("2")} &&
+                drawing.value(QStringLiteral("watermark")).toArray() ==
+                    QJsonArray{QStringLiteral("Alt+9")} &&
+                screenshot.value(QStringLiteral("move_tool")).toArray() ==
+                    QJsonArray{QStringLiteral("M")},
+            "drawing shortcut migration was not persisted canonically");
 }
 
 void malformedConfigurationIsCopiedAndReplaced() {
@@ -911,6 +1054,7 @@ int main(int argc, char** argv) {
     smartSelectionAccessorAndSignal();
     unknownFieldsArePreserved();
     legacyRecordingKeysMigrateToScreenRecording();
+    legacyDrawingAliasesMigrateToScreenshotShortcuts();
     malformedConfigurationIsCopiedAndReplaced();
     futureVersionIsReadOnly();
     failedWriteCanBeRetried();

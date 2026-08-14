@@ -7,9 +7,13 @@
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QMimeData>
+#include <QPalette>
 #include <QPainter>
 #include <QPixmap>
+#include <QTextBlock>
+#include <QTextCharFormat>
 #include <QTextDocument>
+#include <QTextFrame>
 #include <QTextOption>
 #include <QUrl>
 #include <QVariant>
@@ -26,6 +30,7 @@ constexpr int kMaximumRichTextHeight = 32768;
 constexpr qint64 kMaximumRichTextPixels = 64LL * 1024LL * 1024LL;
 constexpr qint64 kMaximumClipboardImagePixels = 64LL * 1000LL * 1000LL;
 constexpr qint64 kMaximumClipboardImageBytes = 256LL * 1024LL * 1024LL;
+constexpr qreal kFormattedTextPadding = 16.0;
 
 class RestrictedTextDocument final : public QTextDocument {
   public:
@@ -86,6 +91,55 @@ QImage normalizedImage(QImage image) {
     return image;
 }
 
+bool isOpaqueSolidBackground(const QBrush& background) {
+    return background.style() == Qt::SolidPattern && background.color().isValid() &&
+           background.color().alpha() == 255;
+}
+
+void preserveHtmlCanvasBackground(QTextDocument* document) {
+    if (document == nullptr || document->rootFrame() == nullptr) {
+        return;
+    }
+
+    QTextFrameFormat rootFormat = document->rootFrame()->frameFormat();
+    if (rootFormat.background().style() != Qt::NoBrush) {
+        return;
+    }
+
+    std::optional<QColor> canvasColor;
+    bool hasVisibleText = false;
+    for (QTextBlock block = document->begin(); block.isValid(); block = block.next()) {
+        const QBrush blockBackground = block.blockFormat().background();
+        for (QTextBlock::iterator iterator = block.begin(); !iterator.atEnd(); ++iterator) {
+            const QTextFragment fragment = iterator.fragment();
+            if (!fragment.isValid() || fragment.text().trimmed().isEmpty()) {
+                continue;
+            }
+            hasVisibleText = true;
+
+            QBrush background = fragment.charFormat().background();
+            if (background.style() == Qt::NoBrush) {
+                background = blockBackground;
+            }
+            if (!isOpaqueSolidBackground(background)) {
+                return;
+            }
+
+            const QColor color = background.color();
+            if (canvasColor.has_value() && color != *canvasColor) {
+                return;
+            }
+            canvasColor = color;
+        }
+    }
+
+    if (!hasVisibleText || !canvasColor.has_value()) {
+        return;
+    }
+    rootFormat.setBackground(*canvasColor);
+    document->rootFrame()->setFrameFormat(rootFormat);
+}
+
 std::optional<ScreenshotClipboardContent> imageContent(QImage image) {
     image = normalizedImage(std::move(image));
     if (image.isNull()) {
@@ -98,15 +152,15 @@ std::optional<ScreenshotClipboardContent> imageContent(QImage image) {
 }
 
 std::optional<ScreenshotClipboardContent> renderTextDocument(
-    std::shared_ptr<QTextDocument> document, QString plainText) {
-    if (document == nullptr) {
+    std::shared_ptr<QTextDocument> document, QString plainText, qreal devicePixelRatio) {
+    if (document == nullptr || !std::isfinite(devicePixelRatio) || devicePixelRatio <= 0.0) {
         return std::nullopt;
     }
 
     QTextOption option = document->defaultTextOption();
     option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
     document->setDefaultTextOption(option);
-    document->setDocumentMargin(0.0);
+    document->setDocumentMargin(kFormattedTextPadding);
     document->setTextWidth(-1.0);
 
     qreal idealWidth = document->idealWidth();
@@ -125,16 +179,27 @@ std::optional<ScreenshotClipboardContent> renderTextDocument(
         return std::nullopt;
     }
     const int height = qCeil(documentSize.height());
+    const qreal physicalWidthValue = std::ceil(width * devicePixelRatio);
+    const qreal physicalHeightValue = std::ceil(height * devicePixelRatio);
     if (height <= 0 || height > kMaximumRichTextHeight ||
-        static_cast<qint64>(width) * static_cast<qint64>(height) > kMaximumRichTextPixels) {
+        physicalWidthValue > std::numeric_limits<int>::max() ||
+        physicalHeightValue > std::numeric_limits<int>::max()) {
+        return std::nullopt;
+    }
+    const QSize physicalSize(static_cast<int>(physicalWidthValue),
+                             static_cast<int>(physicalHeightValue));
+    if (!physicalSize.isValid() || physicalSize.isEmpty() ||
+        static_cast<qint64>(physicalSize.width()) * physicalSize.height() >
+            kMaximumRichTextPixels) {
         return std::nullopt;
     }
 
-    QImage image(QSize(width, height), QImage::Format_ARGB32_Premultiplied);
+    QImage image(physicalSize, QImage::Format_ARGB32_Premultiplied);
     if (image.isNull()) {
         return std::nullopt;
     }
-    image.fill(Qt::white);
+    image.setDevicePixelRatio(devicePixelRatio);
+    image.fill(QGuiApplication::palette().color(QPalette::Base));
     QPainter painter(&image);
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setRenderHint(QPainter::TextAntialiasing, true);
@@ -146,6 +211,7 @@ std::optional<ScreenshotClipboardContent> renderTextDocument(
     result.image = std::move(image);
     result.formattedDocument = std::move(document);
     result.plainText = std::move(plainText);
+    result.formattedTextDevicePixelRatio = devicePixelRatio;
     return result;
 }
 
@@ -161,6 +227,7 @@ std::shared_ptr<QTextDocument> makeDocument(const QString& source, bool html,
             return {};
         }
         document->setHtml(source);
+        preserveHtmlCanvasBackground(document.get());
     } else {
         if (source.isEmpty()) {
             return {};
@@ -224,13 +291,14 @@ std::optional<ScreenshotClipboardContent> readFileImage(const QMimeData* mimeDat
 } // namespace
 
 std::optional<ScreenshotClipboardContent> ScreenshotClipboardContentReader::read(
-    QClipboard* clipboard) {
-    return clipboard == nullptr ? std::nullopt : readMimeData(clipboard->mimeData());
+    QClipboard* clipboard, qreal devicePixelRatio) {
+    return clipboard == nullptr ? std::nullopt
+                                : readMimeData(clipboard->mimeData(), devicePixelRatio);
 }
 
 std::optional<ScreenshotClipboardContent> ScreenshotClipboardContentReader::readMimeData(
-    const QMimeData* mimeData) {
-    if (mimeData == nullptr) {
+    const QMimeData* mimeData, qreal devicePixelRatio) {
+    if (mimeData == nullptr || !std::isfinite(devicePixelRatio) || devicePixelRatio <= 0.0) {
         return std::nullopt;
     }
 
@@ -259,7 +327,8 @@ std::optional<ScreenshotClipboardContent> ScreenshotClipboardContentReader::read
         QString plainText;
         if (auto document = makeDocument(mimeData->html(), true, &plainText);
             document != nullptr) {
-            if (auto result = renderTextDocument(std::move(document), std::move(plainText));
+            if (auto result = renderTextDocument(std::move(document), std::move(plainText),
+                                                 devicePixelRatio);
                 result.has_value()) {
                 return result;
             }
@@ -270,7 +339,8 @@ std::optional<ScreenshotClipboardContent> ScreenshotClipboardContentReader::read
         QString plainText;
         if (auto document = makeDocument(mimeData->text(), false, &plainText);
             document != nullptr) {
-            if (auto result = renderTextDocument(std::move(document), std::move(plainText));
+            if (auto result = renderTextDocument(std::move(document), std::move(plainText),
+                                                 devicePixelRatio);
                 result.has_value()) {
                 return result;
             }

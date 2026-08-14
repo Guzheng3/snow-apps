@@ -89,6 +89,14 @@ class ScreenshotSettings final {
     bool setAutoSaveAfterCopy(bool enabled) const;
     [[nodiscard]] bool copyImageFileToClipboard() const;
     bool setCopyImageFileToClipboard(bool enabled) const;
+    [[nodiscard]] QString imageSaveDirectory() const;
+    bool setImageSaveDirectory(const QString& directory) const;
+    [[nodiscard]] QString imageFormat() const;
+    bool setImageFormat(const QString& format) const;
+    [[nodiscard]] QString manualSaveFilenameFormat() const;
+    bool setManualSaveFilenameFormat(const QString& format) const;
+    [[nodiscard]] QString autoSaveFilenameFormat() const;
+    bool setAutoSaveFilenameFormat(const QString& format) const;
 };
 
 class DrawingSettings final {
@@ -97,10 +105,33 @@ class DrawingSettings final {
     bool setQuickSelectionDisabledTools(const QStringList& tools) const;
 };
 
+class ScreenshotShortcutSettings final {
+  public:
+    [[nodiscard]] static bool isReservedShortcut(const QString& shortcut);
+
+    [[nodiscard]] QStringList moveTool() const;
+    bool setMoveTool(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList moveCursorUp() const;
+    bool setMoveCursorUp(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList moveCursorDown() const;
+    bool setMoveCursorDown(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList moveCursorLeft() const;
+    bool setMoveCursorLeft(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList moveCursorRight() const;
+    bool setMoveCursorRight(const QStringList& shortcuts) const;
+
+    [[nodiscard]] QStringList shortcuts(const QString& actionId) const;
+    bool setShortcuts(const QString& actionId, const QStringList& shortcuts) const;
+    [[nodiscard]] QMap<QString, QStringList> allShortcuts() const;
+    bool setAllShortcutsAtomic(const QMap<QString, QStringList>& shortcutsByAction) const;
+};
+
 class DrawingShortcutSettings final {
   public:
     [[nodiscard]] static bool isReservedShortcut(const QString& shortcut);
 
+    [[nodiscard]] QStringList select() const;
+    bool setSelect(const QStringList& shortcuts) const;
     [[nodiscard]] QStringList shape() const;
     bool setShape(const QStringList& shortcuts) const;
     [[nodiscard]] QStringList arrow() const;
@@ -183,6 +214,10 @@ class RecordingSettings final {
     bool setEncodingPreset(const QString& preset) const;
     [[nodiscard]] bool hideToolbarInRecording() const;
     bool setHideToolbarInRecording(bool hide) const;
+    [[nodiscard]] QString videoSaveDirectory() const;
+    bool setVideoSaveDirectory(const QString& directory) const;
+    [[nodiscard]] QString videoFilenameFormat() const;
+    bool setVideoFilenameFormat(const QString& format) const;
 };
 
 class ScreenshotToolbarSettings final {

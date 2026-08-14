@@ -22,6 +22,7 @@ class QTextDocument;
 class QTextBrowser;
 class QTextEdit;
 class QUrl;
+class ScreenshotFormattedTextLayer;
 class ScreenshotOcrPresentation;
 class ScreenshotOcrTextLayer;
 class ScreenshotTableEditingSession;
@@ -56,6 +57,7 @@ class ScreenshotRecognitionWindow final : public QWidget {
         QRect geometry;
         QRectF canvasSelection;
         PresentationMode presentationMode = PresentationMode::TopLevelWindow;
+        qreal formattedTextDevicePixelRatio = 1.0;
     };
 
     explicit ScreenshotRecognitionWindow(
@@ -115,10 +117,10 @@ class ScreenshotRecognitionWindow final : public QWidget {
     QTextEdit* m_textEditor = nullptr;
     adqt::widgets::AdSpin* m_textEditorSpin = nullptr;
     QTextBrowser* m_qrBrowser = nullptr;
-    QTextBrowser* m_formattedTextBrowser = nullptr;
-    std::shared_ptr<QTextDocument> m_formattedTextDocument;
+    ScreenshotFormattedTextLayer* m_formattedTextLayer = nullptr;
     ScreenshotTableEditor* m_tableEditor = nullptr;
     QRectF m_canvasSelection;
+    qreal m_formattedTextDevicePixelRatio = 1.0;
     PresentationMode m_presentationMode = PresentationMode::TopLevelWindow;
 };
 

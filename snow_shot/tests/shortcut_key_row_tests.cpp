@@ -14,6 +14,7 @@
 #include <QFontMetricsF>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QLayout>
 #include <QString>
 #include <QWheelEvent>
 
@@ -391,7 +392,7 @@ void drawingRecorderUsesLocalValidationLanguage() {
             "drawing shortcut conflicts must use local validation and accessibility wording");
 }
 
-void compactFormPresentationMatchesReferenceKeyButton() {
+void compactTitleAndKeyButtonStylesMatchReference() {
     const styles::ThemeColorScheme scheme = styles::ThemeManager::instance().themeColorScheme();
     const auto mainWindowMetric = styles::buildMainWindowComponentMetricToken(scheme);
 
@@ -414,13 +415,16 @@ void compactFormPresentationMatchesReferenceKeyButton() {
                 titleLabel->font().pixelSize() == scheme.metricAlias.fontSize &&
                 titleLabel->font().weight() == QFont::Normal && shortcutButton != nullptr &&
                 row.height() == scheme.metricAlias.controlHeight &&
-                row.cursor().shape() == Qt::ArrowCursor &&
+                row.cursor().shape() == Qt::ArrowCursor && row.layout() != nullptr &&
+                row.layout()->contentsMargins() == QMargins() &&
+                row.layout()->spacing() == scheme.metricAlias.marginXS &&
                 shortcutButton->buttonStyle() ==
                     adqt::widgets::AdButton::ButtonStyle::Outline &&
                 shortcutButton->accentRole() ==
                     adqt::widgets::AdButton::AccentRole::Neutral &&
+                shortcutButton->height() == scheme.metricAlias.controlHeight &&
                 shortcutButton->text() == QStringLiteral("Ctrl+Shift+S"),
-            "configured compact shortcuts must match the reference inline form control");
+            "compact shortcut titles and key buttons must match the reference presentation");
 
     const QString originalText = shortcutButton->text();
     shortcutButton->setText(QString(256, QLatin1Char('W')));
@@ -548,11 +552,24 @@ void adjustableDelayUsesWheelAndClampsRange() {
 } // namespace
 
 int main(int argc, char** argv) {
+    bool titleAndKeyButtonOnly = false;
+    for (int argumentIndex = 1; argumentIndex < argc; ++argumentIndex) {
+        if (QString::fromLocal8Bit(argv[argumentIndex]) ==
+            QStringLiteral("--title-and-key-button-only")) {
+            titleAndKeyButtonOnly = true;
+        }
+    }
+
     QApplication application(argc, argv);
+    if (titleAndKeyButtonOnly) {
+        compactTitleAndKeyButtonStylesMatchReference();
+        return 0;
+    }
+
     statusPresentationUsesSemanticTokens();
     recorderAcceptsOnlyBackendSupportedShortcuts();
     drawingRecorderUsesLocalValidationLanguage();
-    compactFormPresentationMatchesReferenceKeyButton();
+    compactTitleAndKeyButtonStylesMatchReference();
     adjustableDelayUsesWheelAndClampsRange();
     return 0;
 }

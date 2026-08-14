@@ -79,6 +79,7 @@ class ScreenshotPinnedWindow final : public QWidget {
         bool automaticTextRecognition = true;
         std::shared_ptr<QTextDocument> formattedTextDocument;
         QString formattedPlainText;
+        qreal formattedTextDevicePixelRatio = 1.0;
         ScreenshotOcrRecognitionPort* recognition = nullptr;
         ScreenshotQrRecognitionPort* qrRecognition = nullptr;
         SnowShotApiClient* tableRecognition = nullptr;
@@ -217,6 +218,7 @@ class ScreenshotPinnedWindow final : public QWidget {
     QAction* m_closeAction = nullptr;
     QActionGroup* m_opacityActions = nullptr;
     QActionGroup* m_scaleActions = nullptr;
+    QAction* m_scaleMenuAction = nullptr;
     QAction* m_opacityReadoutAction = nullptr;
     QAction* m_scaleReadoutAction = nullptr;
     QVariantAnimation* m_geometryAnimation = nullptr;
@@ -232,6 +234,7 @@ class ScreenshotPinnedWindow final : public QWidget {
     std::shared_ptr<ScreenshotOcrPresentation> m_displayOcrPresentation;
     std::shared_ptr<QTextDocument> m_formattedTextDocument;
     QString m_formattedPlainText;
+    qreal m_formattedTextDevicePixelRatio = 1.0;
     QPointer<ScreenshotOcrRecognitionPort> m_recognition;
     QPointer<ScreenshotQrRecognitionPort> m_qrRecognition;
     QPointer<SnowShotApiClient> m_tableRecognition;

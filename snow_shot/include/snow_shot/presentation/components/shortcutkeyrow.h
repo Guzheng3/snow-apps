@@ -30,6 +30,7 @@ struct ShortcutKeyRowConfig {
 
     enum class ValidationScope {
         GlobalShortcut,
+        ScreenshotShortcut,
         DrawingShortcut,
     };
 

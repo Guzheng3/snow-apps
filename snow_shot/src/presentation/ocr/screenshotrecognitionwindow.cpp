@@ -12,10 +12,14 @@
 #include <QClipboard>
 #include <QFocusEvent>
 #include <QFrame>
+#include <QGraphicsScene>
+#include <QGraphicsTextItem>
+#include <QGraphicsView>
 #include <QKeyEvent>
 #include <QLayout>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPalette>
 #include <QResizeEvent>
 #include <QScreen>
 #include <QShortcut>
@@ -74,6 +78,103 @@ bool isHttpUrl(const QString& text, QUrl* result = nullptr) {
 }
 }  // namespace
 
+class ScreenshotFormattedTextLayer final : public QGraphicsView {
+  public:
+    explicit ScreenshotFormattedTextLayer(QWidget* parent = nullptr)
+        : QGraphicsView(parent), m_scene(new QGraphicsScene(this)),
+          m_textItem(new QGraphicsTextItem) {
+        setObjectName(QStringLiteral("screenshotClipboardText"));
+        setScene(m_scene);
+        m_scene->addItem(m_textItem);
+        setFrameShape(QFrame::NoFrame);
+        setContentsMargins(0, 0, 0, 0);
+        setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        setAlignment(Qt::AlignLeft | Qt::AlignTop);
+        const QColor background = QGuiApplication::palette().color(QPalette::Base);
+        QPalette layerPalette = palette();
+        layerPalette.setColor(QPalette::Base, background);
+        layerPalette.setColor(QPalette::Window, background);
+        setPalette(layerPalette);
+        viewport()->setPalette(layerPalette);
+        viewport()->setAutoFillBackground(true);
+        setBackgroundBrush(background);
+        setFocusPolicy(Qt::StrongFocus);
+        setInteractive(true);
+        setOptimizationFlag(QGraphicsView::DontSavePainterState, true);
+        setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing |
+                       QPainter::SmoothPixmapTransform);
+        setStyleSheet(
+            QStringLiteral("QGraphicsView#screenshotClipboardText { border: none; }"));
+
+        m_textItem->setObjectName(QStringLiteral("screenshotClipboardTextItem"));
+        m_textItem->setTextInteractionFlags(Qt::TextSelectableByMouse |
+                                            Qt::TextSelectableByKeyboard);
+        m_textItem->setOpenExternalLinks(false);
+        m_textItem->setFlag(QGraphicsItem::ItemIsFocusable, true);
+        m_textItem->setAcceptedMouseButtons(Qt::LeftButton);
+        m_textItem->hide();
+        hide();
+    }
+
+    ~ScreenshotFormattedTextLayer() override {
+        clearDocument();
+    }
+
+    void setDocument(std::shared_ptr<QTextDocument> document, const QRectF& canvasRect,
+                     qreal devicePixelRatio) {
+        clearDocument();
+        if (document == nullptr || !canvasRect.isValid() || canvasRect.isEmpty() ||
+            !std::isfinite(devicePixelRatio) || devicePixelRatio <= 0.0) {
+            return;
+        }
+        m_document = std::move(document);
+        m_canvasRect = canvasRect.normalized();
+        m_textItem->setDocument(m_document.get());
+        m_textItem->setPos(m_canvasRect.topLeft());
+        m_textItem->setScale(devicePixelRatio);
+        m_textItem->show();
+    }
+
+    void clearDocument() {
+        if (m_textItem != nullptr) {
+            m_textItem->clearFocus();
+            m_textItem->hide();
+            m_textItem->setScale(1.0);
+            m_textItem->setDocument(nullptr);
+        }
+        m_document.reset();
+        m_canvasRect = {};
+        hide();
+    }
+
+    void synchronize(const QTransform& canvasToViewTransform, const QRect& viewportRect) {
+        if (m_document == nullptr || m_canvasRect.isEmpty() || viewportRect.isEmpty()) {
+            hide();
+            return;
+        }
+        if (geometry() != viewportRect) {
+            setGeometry(viewportRect);
+        }
+        setSceneRect(m_canvasRect);
+        setTransform(canvasToViewTransform, false);
+        show();
+        raise();
+        viewport()->update();
+    }
+
+    void focusText() {
+        setFocus(Qt::OtherFocusReason);
+        m_textItem->setFocus(Qt::OtherFocusReason);
+    }
+
+  private:
+    QGraphicsScene* m_scene = nullptr;
+    QGraphicsTextItem* m_textItem = nullptr;
+    std::shared_ptr<QTextDocument> m_document;
+    QRectF m_canvasRect;
+};
+
 ScreenshotRecognitionWindow::ScreenshotRecognitionWindow(
     ScreenshotRecognitionWindowActions actions, QWidget* parent,
     PresentationMode presentationMode)
@@ -127,11 +228,14 @@ ScreenshotRecognitionWindow::~ScreenshotRecognitionWindow() {
 bool ScreenshotRecognitionWindow::present(const Config& config) {
     if (config.screen == nullptr || !config.geometry.isValid() || config.geometry.isEmpty() ||
         !config.canvasSelection.isValid() ||
-        config.canvasSelection.isEmpty()) {
+        config.canvasSelection.isEmpty() ||
+        !std::isfinite(config.formattedTextDevicePixelRatio) ||
+        config.formattedTextDevicePixelRatio <= 0.0) {
         return false;
     }
 
     m_canvasSelection = config.canvasSelection.normalized();
+    m_formattedTextDevicePixelRatio = config.formattedTextDevicePixelRatio;
     m_presentationMode = config.presentationMode;
     if (m_presentationMode == PresentationMode::TopLevelWindow) {
         static_cast<void>(winId());
@@ -186,41 +290,25 @@ void ScreenshotRecognitionWindow::showFormattedText(std::shared_ptr<QTextDocumen
     clearOcrPresentation();
     clearTableSession();
     clearQrContents();
-    if (m_formattedTextBrowser == nullptr) {
-        m_formattedTextBrowser = new QTextBrowser(this);
-        m_formattedTextBrowser->setObjectName(QStringLiteral("screenshotClipboardText"));
-        m_formattedTextBrowser->setFrameStyle(QFrame::NoFrame);
-        m_formattedTextBrowser->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        m_formattedTextBrowser->setContentsMargins(0, 0, 0, 0);
-        m_formattedTextBrowser->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        m_formattedTextBrowser->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        m_formattedTextBrowser->setOpenLinks(false);
-        m_formattedTextBrowser->setOpenExternalLinks(false);
-        m_formattedTextBrowser->setReadOnly(true);
-        m_formattedTextBrowser->setTextInteractionFlags(
-            Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-        m_formattedTextBrowser->setStyleSheet(
-            QStringLiteral("QTextBrowser#screenshotClipboardText { border: none; "
-                           "background: white; padding: 0px; }"));
-        m_formattedTextBrowser->viewport()->setAutoFillBackground(true);
-        m_stack->addWidget(m_formattedTextBrowser);
+    if (m_formattedTextLayer == nullptr) {
+        m_formattedTextLayer = new ScreenshotFormattedTextLayer(this);
+        m_stack->addWidget(m_formattedTextLayer);
     }
-    m_formattedTextDocument = std::move(document);
-    m_formattedTextBrowser->setDocument(m_formattedTextDocument.get());
-    m_stack->setCurrentWidget(m_formattedTextBrowser);
-    m_formattedTextBrowser->setFocus(Qt::OtherFocusReason);
+    m_formattedTextLayer->setDocument(std::move(document), m_canvasSelection,
+                                      m_formattedTextDevicePixelRatio);
+    m_stack->setCurrentWidget(m_formattedTextLayer);
+    synchronizeTextLayer();
+    m_formattedTextLayer->focusText();
 }
 
 void ScreenshotRecognitionWindow::clearFormattedText() {
-    if (m_formattedTextBrowser == nullptr) {
-        m_formattedTextDocument.reset();
+    if (m_formattedTextLayer == nullptr) {
         return;
     }
-    m_formattedTextBrowser->setDocument(nullptr);
-    m_stack->removeWidget(m_formattedTextBrowser);
-    delete m_formattedTextBrowser;
-    m_formattedTextBrowser = nullptr;
-    m_formattedTextDocument.reset();
+    m_formattedTextLayer->clearDocument();
+    m_stack->removeWidget(m_formattedTextLayer);
+    delete m_formattedTextLayer;
+    m_formattedTextLayer = nullptr;
     m_stack->setCurrentWidget(m_textLayer);
 }
 
@@ -636,6 +724,9 @@ bool ScreenshotRecognitionWindow::handleRecognitionKeyPress(QKeyEvent* event) {
 void ScreenshotRecognitionWindow::synchronizeTextLayer() {
     if (m_textLayer != nullptr) {
         m_textLayer->synchronize(canvasToLocalTransform(), rect());
+    }
+    if (m_formattedTextLayer != nullptr) {
+        m_formattedTextLayer->synchronize(canvasToLocalTransform(), rect());
     }
 }
 

@@ -9,6 +9,8 @@
 #include <QLocale>
 #include <QRegularExpression>
 #include <QSet>
+#include <QDir>
+#include <QStandardPaths>
 
 #include <algorithm>
 #include <cmath>
@@ -78,6 +80,17 @@ QVector<QStringList> defaultDrawingToolbarPositions() {
 QJsonObject defaultScreenshotToolbarLayout() {
     return {{QStringLiteral("positions"), jsonArray(defaultDrawingToolbarPositions())},
             {QStringLiteral("hidden"), QJsonArray()}};
+}
+
+QString defaultOutputDirectory(QStandardPaths::StandardLocation primary) {
+    QString root = QStandardPaths::writableLocation(primary);
+    if (root.isEmpty()) {
+        root = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    }
+    if (root.isEmpty()) {
+        return {};
+    }
+    return QDir(root).filePath(QStringLiteral("SnowShot"));
 }
 
 const QVector<ConfigurationSchemaEntry> kEntries = {
@@ -228,6 +241,10 @@ const QVector<ConfigurationSchemaEntry> kEntries = {
       QStringLiteral("veryslow"), QStringLiteral("placebo")}},
     {QStringLiteral("screen_recording/hide_toolbar_in_recording"), true,
      ConfigurationValueKind::Boolean},
+    {QStringLiteral("screen_recording/video_save_directory"),
+     defaultOutputDirectory(QStandardPaths::MoviesLocation), ConfigurationValueKind::String},
+    {QStringLiteral("screen_recording/video_filename_format"),
+     QStringLiteral("SnowShot_Video_{YYYY-MM-DD_HH-mm-ss}"), ConfigurationValueKind::String},
     {QStringLiteral("drawing/quick_selection_disabled_tools"),
      QJsonArray{QStringLiteral("free-draw"), QStringLiteral("pen-filter")},
      ConfigurationValueKind::StringList,
@@ -238,11 +255,11 @@ const QVector<ConfigurationSchemaEntry> kEntries = {
       QStringLiteral("rectangle-filter"), QStringLiteral("pen-filter"),
       QStringLiteral("text"), QStringLiteral("serial-number"), QStringLiteral("eraser"),
       QStringLiteral("watermark")}},
-    {QStringLiteral("drawing_shortcuts/shape"),
-     QJsonArray{QStringLiteral("1"), QStringLiteral("S")},
+    {QStringLiteral("drawing_shortcuts/select"), QJsonArray{QStringLiteral("V")},
      ConfigurationValueKind::StringList, std::nullopt, {}, 2},
-    {QStringLiteral("drawing_shortcuts/arrow"),
-     QJsonArray{QStringLiteral("2"), QStringLiteral("A")},
+    {QStringLiteral("drawing_shortcuts/shape"), QJsonArray{QStringLiteral("1")},
+     ConfigurationValueKind::StringList, std::nullopt, {}, 2},
+    {QStringLiteral("drawing_shortcuts/arrow"), QJsonArray{QStringLiteral("2")},
      ConfigurationValueKind::StringList, std::nullopt, {}, 2},
     {QStringLiteral("drawing_shortcuts/brush"),
      QJsonArray{QStringLiteral("3"), QStringLiteral("P")},
@@ -262,8 +279,21 @@ const QVector<ConfigurationSchemaEntry> kEntries = {
     {QStringLiteral("drawing_shortcuts/eraser"),
      QJsonArray{QStringLiteral("8"), QStringLiteral("E")},
      ConfigurationValueKind::StringList, std::nullopt, {}, 2},
-    {QStringLiteral("drawing_shortcuts/watermark"),
-     QJsonArray{QStringLiteral("9"), QStringLiteral("W")},
+    {QStringLiteral("drawing_shortcuts/watermark"), QJsonArray{QStringLiteral("9")},
+     ConfigurationValueKind::StringList, std::nullopt, {}, 2},
+    {QStringLiteral("screenshot_shortcuts/move_tool"), QJsonArray{QStringLiteral("M")},
+     ConfigurationValueKind::StringList, std::nullopt, {}, 2},
+    {QStringLiteral("screenshot_shortcuts/move_cursor_up"),
+     QJsonArray{QStringLiteral("W"), QStringLiteral("Up")},
+     ConfigurationValueKind::StringList, std::nullopt, {}, 2},
+    {QStringLiteral("screenshot_shortcuts/move_cursor_down"),
+     QJsonArray{QStringLiteral("S"), QStringLiteral("Down")},
+     ConfigurationValueKind::StringList, std::nullopt, {}, 2},
+    {QStringLiteral("screenshot_shortcuts/move_cursor_left"),
+     QJsonArray{QStringLiteral("A"), QStringLiteral("Left")},
+     ConfigurationValueKind::StringList, std::nullopt, {}, 2},
+    {QStringLiteral("screenshot_shortcuts/move_cursor_right"),
+     QJsonArray{QStringLiteral("D"), QStringLiteral("Right")},
      ConfigurationValueKind::StringList, std::nullopt, {}, 2},
     {QStringLiteral("screenshot_toolbar/arrow_line_tool"),
      QStringLiteral("arrow"),
@@ -360,6 +390,16 @@ const QVector<ConfigurationSchemaEntry> kEntries = {
      ConfigurationValueKind::Boolean},
     {QStringLiteral("screenshot/copy_image_file_to_clipboard"), false,
      ConfigurationValueKind::Boolean},
+    {QStringLiteral("screenshot/image_save_directory"),
+     defaultOutputDirectory(QStandardPaths::PicturesLocation), ConfigurationValueKind::String},
+    {QStringLiteral("screenshot/image_format"),
+     QStringLiteral("png"), ConfigurationValueKind::String, std::nullopt,
+     {QStringLiteral("png"), QStringLiteral("jpeg"), QStringLiteral("webp"),
+      QStringLiteral("jxl"), QStringLiteral("avif")}},
+    {QStringLiteral("screenshot/manual_save_filename_format"),
+     QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}"), ConfigurationValueKind::String},
+    {QStringLiteral("screenshot/auto_save_filename_format"),
+     QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}"), ConfigurationValueKind::String},
     {QStringLiteral("screenshot_selection/selection_rect_presets"), QJsonArray(),
      ConfigurationValueKind::Structured},
     {QStringLiteral("capture_history/enabled"), true, ConfigurationValueKind::Boolean},
@@ -590,6 +630,25 @@ ConfigurationNormalization normalizeRgbaColor(const QJsonValue& value) {
     return {normalized, true, normalized != original};
 }
 
+bool isFilenameFormatKey(const QString& key) {
+    return key == QStringLiteral("screenshot/manual_save_filename_format") ||
+           key == QStringLiteral("screenshot/auto_save_filename_format") ||
+           key == QStringLiteral("screen_recording/video_filename_format");
+}
+
+ConfigurationNormalization normalizeFilenameFormat(const QJsonValue& value) {
+    if (!value.isString()) {
+        return {};
+    }
+    const QString original = value.toString();
+    const QString normalized = original.trimmed();
+    static const QRegularExpression invalidCharacters(QStringLiteral("[\\\\/:*?\"<>|]"));
+    if (normalized.isEmpty() || invalidCharacters.match(normalized).hasMatch()) {
+        return {};
+    }
+    return {normalized, true, normalized != original};
+}
+
 ConfigurationNormalization normalizeTranslationLanguage(
     const ConfigurationSchemaEntry& schemaEntry, const QJsonValue& value) {
     if (!value.isString()) {
@@ -785,6 +844,9 @@ ConfigurationNormalization ConfigurationSchema::normalize(const QString& key,
     }
     if (isRgbaColorKey(key)) {
         return normalizeRgbaColor(value);
+    }
+    if (isFilenameFormatKey(key)) {
+        return normalizeFilenameFormat(value);
     }
     if (key == QStringLiteral("screenshot_translation/source_language") ||
         key == QStringLiteral("screenshot_translation/target_language")) {

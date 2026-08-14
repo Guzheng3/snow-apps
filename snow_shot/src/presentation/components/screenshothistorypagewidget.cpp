@@ -844,7 +844,7 @@ void ScreenshotHistoryPageWidget::refresh() {
     m_dirty = false;
     ++m_assetGeneration;
     ++m_resultGeneration;
-    m_pendingResultRecordId.clear();
+    m_pendingResultRecordIds.clear();
     m_resolvedAssets.clear();
     m_records = m_dataSource != nullptr ? m_dataSource->records()
                                         : QVector<storage::CaptureHistoryRecord>{};
@@ -1075,25 +1075,26 @@ void ScreenshotHistoryPageWidget::handleDisplayAssetsReady(
 
 void ScreenshotHistoryPageWidget::copyEntry(const storage::CaptureHistoryRecord& record) {
     if (m_dataSource == nullptr || !record.result.has_value() ||
-        !m_pendingResultRecordId.isEmpty()) {
+        m_pendingResultRecordIds.contains(record.id)) {
         return;
     }
     auto* entry = dynamic_cast<HistoryEntryWidget*>(m_entryWidgetsById.value(record.id, nullptr));
     if (entry == nullptr) {
         return;
     }
-    m_pendingResultRecordId = record.id;
-    const quint64 generation = ++m_resultGeneration;
+    m_pendingResultRecordIds.insert(record.id);
+    const quint64 generation = m_resultGeneration;
     m_dataSource->requestResultImage(record, generation);
 }
 
 void ScreenshotHistoryPageWidget::handleResultImageReady(
     quint64 generation, const ScreenshotHistoryResultResolution& resolution) {
-    if (generation != m_resultGeneration || resolution.recordId != m_pendingResultRecordId) {
+    if (generation != m_resultGeneration ||
+        !m_pendingResultRecordIds.contains(resolution.recordId)) {
         return;
     }
-    const QString recordId = m_pendingResultRecordId;
-    m_pendingResultRecordId.clear();
+    const QString recordId = resolution.recordId;
+    m_pendingResultRecordIds.remove(recordId);
     auto* entry = dynamic_cast<HistoryEntryWidget*>(m_entryWidgetsById.value(recordId, nullptr));
     if (entry != nullptr) {
         entry->setCopyEnabled(true);

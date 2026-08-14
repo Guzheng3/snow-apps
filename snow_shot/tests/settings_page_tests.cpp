@@ -21,7 +21,10 @@
 #include "widgets/carousel.h"
 #include "widgets/date_picker.h"
 #include "widgets/descriptions.h"
+#include "widgets/image.h"
+#include "widgets/input_line_edit.h"
 #include "widgets/input_number.h"
+#include "widgets/input_search_edit.h"
 #include "widgets/modal.h"
 #include "widgets/multi_select.h"
 #include "widgets/navigation_menu.h"
@@ -34,6 +37,7 @@
 #include "widgets/tabs.h"
 
 #include <QApplication>
+#include <QClipboard>
 #include <QCoreApplication>
 #include <QDragEnterEvent>
 #include <QDropEvent>
@@ -44,6 +48,7 @@
 #include <QImage>
 #include <QMimeData>
 #include <QScrollBar>
+#include <QSizePolicy>
 #include <QStackedWidget>
 #include <QStandardItemModel>
 #include <QTemporaryDir>
@@ -108,6 +113,7 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
             {settings::SettingsSelectBinding::ScreenRecordingEncoder, QStringLiteral("h264")},
             {settings::SettingsSelectBinding::ScreenRecordingEncodingPreset,
              QStringLiteral("veryfast")},
+            {settings::SettingsSelectBinding::ScreenshotImageFormat, QStringLiteral("png")},
             {settings::SettingsSelectBinding::TrayLeftClickAction,
              QStringLiteral("screenshot")},
         };
@@ -123,16 +129,66 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
         m_multiSelectValues.insert(
             settings::SettingsMultiSelectBinding::DrawingQuickSelectionDisabledTools,
             {QStringLiteral("free-draw"), QStringLiteral("pen-filter")});
+        m_directoryPaths = {
+            {settings::SettingsDirectoryPathBinding::ScreenshotImageDirectory,
+             QStringLiteral("C:/Pictures/SnowShot")},
+            {settings::SettingsDirectoryPathBinding::ScreenRecordingVideoDirectory,
+             QStringLiteral("C:/Videos/SnowShot")},
+        };
+        m_textValues = {
+            {settings::SettingsTextBinding::ScreenshotManualFilenameFormat,
+             QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}")},
+            {settings::SettingsTextBinding::ScreenshotAutoFilenameFormat,
+             QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}")},
+            {settings::SettingsTextBinding::ScreenRecordingVideoFilenameFormat,
+             QStringLiteral("SnowShot_Video_{YYYY-MM-DD_HH-mm-ss}")},
+        };
         m_localShortcuts = {
-            {QStringLiteral("shape"), {QStringLiteral("1"), QStringLiteral("S")}},
-            {QStringLiteral("arrow"), {QStringLiteral("2"), QStringLiteral("A")}},
-            {QStringLiteral("brush"), {QStringLiteral("3"), QStringLiteral("P")}},
-            {QStringLiteral("highlight"), {QStringLiteral("4"), QStringLiteral("H")}},
-            {QStringLiteral("text"), {QStringLiteral("5"), QStringLiteral("T")}},
-            {QStringLiteral("serial_number"), {QStringLiteral("6"), QStringLiteral("N")}},
-            {QStringLiteral("filter"), {QStringLiteral("7"), QStringLiteral("F")}},
-            {QStringLiteral("eraser"), {QStringLiteral("8"), QStringLiteral("E")}},
-            {QStringLiteral("watermark"), {QStringLiteral("9"), QStringLiteral("W")}},
+            {localShortcutKey(settings::SettingsLocalShortcutScope::Screenshot,
+                              QStringLiteral("move_tool")),
+             {QStringLiteral("M")}},
+            {localShortcutKey(settings::SettingsLocalShortcutScope::Screenshot,
+                              QStringLiteral("move_cursor_up")),
+             {QStringLiteral("W"), QStringLiteral("Up")}},
+            {localShortcutKey(settings::SettingsLocalShortcutScope::Screenshot,
+                              QStringLiteral("move_cursor_down")),
+             {QStringLiteral("S"), QStringLiteral("Down")}},
+            {localShortcutKey(settings::SettingsLocalShortcutScope::Screenshot,
+                              QStringLiteral("move_cursor_left")),
+             {QStringLiteral("A"), QStringLiteral("Left")}},
+            {localShortcutKey(settings::SettingsLocalShortcutScope::Screenshot,
+                              QStringLiteral("move_cursor_right")),
+             {QStringLiteral("D"), QStringLiteral("Right")}},
+            {localShortcutKey(settings::SettingsLocalShortcutScope::Drawing,
+                              QStringLiteral("select")),
+             {QStringLiteral("V")}},
+            {localShortcutKey(settings::SettingsLocalShortcutScope::Drawing,
+                              QStringLiteral("shape")),
+             {QStringLiteral("1")}},
+            {localShortcutKey(settings::SettingsLocalShortcutScope::Drawing,
+                              QStringLiteral("arrow")),
+             {QStringLiteral("2")}},
+            {localShortcutKey(settings::SettingsLocalShortcutScope::Drawing,
+                              QStringLiteral("brush")),
+             {QStringLiteral("3"), QStringLiteral("P")}},
+            {localShortcutKey(settings::SettingsLocalShortcutScope::Drawing,
+                              QStringLiteral("highlight")),
+             {QStringLiteral("4"), QStringLiteral("H")}},
+            {localShortcutKey(settings::SettingsLocalShortcutScope::Drawing,
+                              QStringLiteral("text")),
+             {QStringLiteral("5"), QStringLiteral("T")}},
+            {localShortcutKey(settings::SettingsLocalShortcutScope::Drawing,
+                              QStringLiteral("serial_number")),
+             {QStringLiteral("6"), QStringLiteral("N")}},
+            {localShortcutKey(settings::SettingsLocalShortcutScope::Drawing,
+                              QStringLiteral("filter")),
+             {QStringLiteral("7"), QStringLiteral("F")}},
+            {localShortcutKey(settings::SettingsLocalShortcutScope::Drawing,
+                              QStringLiteral("eraser")),
+             {QStringLiteral("8"), QStringLiteral("E")}},
+            {localShortcutKey(settings::SettingsLocalShortcutScope::Drawing,
+                              QStringLiteral("watermark")),
+             {QStringLiteral("9")}},
         };
     }
 
@@ -329,6 +385,33 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
         return true;
     }
 
+    QString directoryPathValue(settings::SettingsDirectoryPathBinding binding) const override {
+        return m_directoryPaths.value(binding);
+    }
+
+    bool applyDirectoryPathValue(settings::SettingsDirectoryPathBinding binding,
+                                 const QString& value) override {
+        if (!acceptWrites) {
+            return false;
+        }
+        m_directoryPaths.insert(binding, value);
+        emit synchronized();
+        return true;
+    }
+
+    QString textValue(settings::SettingsTextBinding binding) const override {
+        return m_textValues.value(binding);
+    }
+
+    bool applyTextValue(settings::SettingsTextBinding binding, const QString& value) override {
+        if (!acceptWrites) {
+            return false;
+        }
+        m_textValues.insert(binding, value);
+        emit synchronized();
+        return true;
+    }
+
     snow_shot::storage::ScreenshotToolbarLayout toolbarLayout() const override {
         return m_toolbarLayout;
     }
@@ -365,20 +448,23 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
         return true;
     }
 
-    QStringList localShortcuts(const QString& toolId) const override {
-        return m_localShortcuts.value(toolId);
+    QStringList localShortcuts(settings::SettingsLocalShortcutScope scope,
+                               const QString& shortcutId) const override {
+        return m_localShortcuts.value(localShortcutKey(scope, shortcutId));
     }
 
     snow_shot::presentation::GlobalShortcutValidationResult
-    validateLocalShortcut(const QString&, const QString& shortcut) const override {
+    validateLocalShortcut(settings::SettingsLocalShortcutScope, const QString&,
+                          const QString& shortcut) const override {
         return {shortcut, true, snow_shot::presentation::GlobalShortcutFailureReason::None};
     }
 
-    bool applyLocalShortcuts(const QString& toolId, const QStringList& shortcuts) override {
+    bool applyLocalShortcuts(settings::SettingsLocalShortcutScope scope, const QString& shortcutId,
+                             const QStringList& shortcuts) override {
         if (!acceptWrites) {
             return false;
         }
-        m_localShortcuts.insert(toolId, shortcuts);
+        m_localShortcuts.insert(localShortcutKey(scope, shortcutId), shortcuts);
         emit synchronized();
         return true;
     }
@@ -411,6 +497,25 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
             m_maxDiskMiB = 1024;
         } else if (reset == settings::SettingsSectionReset::ScreenshotSettings) {
             m_smartSelection = true;
+        } else if (reset == settings::SettingsSectionReset::ScreenshotOutput) {
+            m_directoryPaths.insert(
+                settings::SettingsDirectoryPathBinding::ScreenshotImageDirectory,
+                QStringLiteral("C:/Pictures/SnowShot"));
+            m_selectValues.insert(settings::SettingsSelectBinding::ScreenshotImageFormat,
+                                  QStringLiteral("png"));
+            m_textValues.insert(
+                settings::SettingsTextBinding::ScreenshotManualFilenameFormat,
+                QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}"));
+            m_textValues.insert(
+                settings::SettingsTextBinding::ScreenshotAutoFilenameFormat,
+                QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}"));
+        } else if (reset == settings::SettingsSectionReset::ScreenRecordingOutput) {
+            m_directoryPaths.insert(
+                settings::SettingsDirectoryPathBinding::ScreenRecordingVideoDirectory,
+                QStringLiteral("C:/Videos/SnowShot"));
+            m_textValues.insert(
+                settings::SettingsTextBinding::ScreenRecordingVideoFilenameFormat,
+                QStringLiteral("SnowShot_Video_{YYYY-MM-DD_HH-mm-ss}"));
         }
         emit synchronized();
         return true;
@@ -432,6 +537,14 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
     settings::SettingsSectionReset resetRequested = settings::SettingsSectionReset::None;
 
   private:
+    static QString localShortcutKey(settings::SettingsLocalShortcutScope scope,
+                                    const QString& shortcutId) {
+        return (scope == settings::SettingsLocalShortcutScope::Screenshot
+                    ? QStringLiteral("screenshot:")
+                    : QStringLiteral("drawing:")) +
+               shortcutId;
+    }
+
     QString m_theme = QStringLiteral("system");
     QString m_language = QStringLiteral("en_US");
     QString m_applicationPriority = QStringLiteral("above_normal");
@@ -453,6 +566,8 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
     QHash<settings::SettingsColorBinding, QColor> m_colors;
     QString m_trayIcon = QStringLiteral("default");
     QString m_trayCustomIcon;
+    QHash<settings::SettingsDirectoryPathBinding, QString> m_directoryPaths;
+    QHash<settings::SettingsTextBinding, QString> m_textValues;
     snow_shot::storage::ScreenshotToolbarLayout m_toolbarLayout{
         snow_shot::presentation::toolbar_layout::defaultPositions()};
     snow_shot::storage::StorageStatus m_storageStatus;
@@ -518,6 +633,22 @@ class FakeHistoryDataSource final : public ScreenshotHistoryPageDataSource {
         return assets.value(record.id);
     }
 
+    void requestResultImage(const snow_shot::storage::CaptureHistoryRecord& record,
+                            quint64 generation) override {
+        ++resultRequests;
+        const std::optional<QImage> image =
+            resultImages.contains(record.id)
+                ? std::optional<QImage>{resultImages.value(record.id)}
+                : std::nullopt;
+        QMetaObject::invokeMethod(
+            this,
+            [this, generation, recordId = record.id, image]() {
+                emit resultImageReady(
+                    generation, ScreenshotHistoryResultResolution{recordId, image});
+            },
+            Qt::QueuedConnection);
+    }
+
     void remove(const QString& id) override {
         removedIds.push_back(id);
     }
@@ -533,10 +664,12 @@ class FakeHistoryDataSource final : public ScreenshotHistoryPageDataSource {
 
     mutable int recordsCalls = 0;
     mutable int assetCalls = 0;
+    int resultRequests = 0;
     int clearCalls = 0;
     QVector<QString> removedIds;
     QVector<snow_shot::storage::CaptureHistoryRecord> currentRecords;
     QHash<QString, snow_shot::storage::CaptureHistoryAssetSet> assets;
+    QHash<QString, QImage> resultImages;
 };
 
 void screenshotHistoryLifecycleAndIdentityDiff() {
@@ -548,17 +681,25 @@ void screenshotHistoryLifecycleAndIdentityDiff() {
     record.selection.rectangle = QRect(5, 6, 70, 50);
     record.displays.push_back(
         {QStringLiteral("display-1"), QStringLiteral("Primary"), QSize(100, 80), 128});
+    record.result = CaptureHistoryResultRecord{QSize(70, 50), 96};
     record.totalBytes = 256;
 
     CaptureHistoryAssetSet assetSet;
     assetSet.recordId = record.id;
+    assetSet.result = CaptureHistoryResultAsset{
+        record.id, QSize(70, 50),
+        QUrl::fromLocalFile(QStringLiteral("C:/missing-history-result.png"))};
     assetSet.displays.push_back({record.id, QStringLiteral("display-1"), QStringLiteral("Primary"),
                                  QSize(100, 80),
                                  QUrl::fromLocalFile(QStringLiteral("C:/missing-history.png"))});
 
+    QImage resultImage(QSize(70, 50), QImage::Format_RGBA8888);
+    resultImage.fill(QColor(QStringLiteral("#D4380D")));
+
     FakeHistoryDataSource source;
     source.currentRecords = {record};
     source.assets.insert(record.id, assetSet);
+    source.resultImages.insert(record.id, resultImage);
     ScreenshotHistoryPageWidget page(&source, nullptr);
     page.resize(760, 520);
     require(source.recordsCalls == 0 && source.assetCalls == 0,
@@ -577,21 +718,42 @@ void screenshotHistoryLifecycleAndIdentityDiff() {
     require(initialRow != nullptr, "history activation did not create the visible row");
     auto* editButton = initialRow->findChild<adqt::widgets::AdButton*>(
         QStringLiteral("screenshotHistoryEntryEdit"));
+    auto* copyButton = initialRow->findChild<adqt::widgets::AdButton*>(
+        QStringLiteral("screenshotHistoryEntryCopy"));
     auto* deleteButton = initialRow->findChild<adqt::widgets::AdButton*>(
         QStringLiteral("screenshotHistoryEntryDelete"));
+    const auto previewImages =
+        initialRow->findChildren<adqt::widgets::AdImage*>(QStringLiteral("screenshotHistoryImage"));
     QString editedRecordId;
     QObject::connect(&page, &ScreenshotHistoryPageWidget::editRequested, &page,
                      [&editedRecordId](const QString& recordId) { editedRecordId = recordId; });
-    require(editButton != nullptr && deleteButton != nullptr &&
+    require(editButton != nullptr && copyButton != nullptr && deleteButton != nullptr &&
                 editButton->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Text &&
                 editButton->accentRole() == adqt::widgets::AdButton::AccentRole::Primary &&
                 adqt::icons::describeIcon(editButton->iconRef()).key.name ==
                     QStringLiteral("edit") &&
                 editButton->mapTo(initialRow, QPoint()).x() <
+                    copyButton->mapTo(initialRow, QPoint()).x() &&
+                copyButton->mapTo(initialRow, QPoint()).x() <
                     deleteButton->mapTo(initialRow, QPoint()).x(),
-            "history Edit must be a primary text action placed before Delete");
+            "history actions must place Edit and Copy before Delete");
+    require(previewImages.size() == 2 &&
+                previewImages[0]->altText() == QStringLiteral("Screenshot result") &&
+                previewImages[0]->previewRow() == 0 && previewImages[1]->previewRow() == 1,
+            "history preview must place the screenshot result before display images");
     editButton->click();
     require(editedRecordId == record.id, "history Edit did not emit the selected record ID");
+
+    QApplication::clipboard()->clear();
+    copyButton->click();
+    require(source.resultRequests == 1 && !copyButton->isEnabled(),
+            "history Copy did not start one asynchronous result load");
+    flushEvents();
+    const QImage copiedImage = QApplication::clipboard()->image();
+    require(copyButton->isEnabled() && !copiedImage.isNull() &&
+                copiedImage.size() == resultImage.size() &&
+                copiedImage.pixelColor(4, 5) == resultImage.pixelColor(4, 5),
+            "history Copy did not publish the stored result pixels or re-enable its action");
 
     source.notifyChanged();
     source.notifyChanged();
@@ -609,6 +771,29 @@ void screenshotHistoryLifecycleAndIdentityDiff() {
     page.show();
     flushEvents();
     require(source.recordsCalls == 3, "dirty history metadata was not refreshed on reactivation");
+
+    CaptureHistoryRecord resultLessRecord = record;
+    resultLessRecord.id = QStringLiteral("history-row-without-result");
+    resultLessRecord.result.reset();
+    CaptureHistoryAssetSet resultLessAssets = assetSet;
+    resultLessAssets.recordId = resultLessRecord.id;
+    resultLessAssets.result.reset();
+    resultLessAssets.displays[0].recordId = resultLessRecord.id;
+    FakeHistoryDataSource resultLessSource;
+    resultLessSource.currentRecords = {resultLessRecord};
+    resultLessSource.assets.insert(resultLessRecord.id, resultLessAssets);
+    ScreenshotHistoryPageWidget resultLessPage(&resultLessSource, nullptr);
+    resultLessPage.resize(760, 520);
+    resultLessPage.show();
+    flushEvents();
+    QWidget* resultLessRow = resultLessPage.findChild<QWidget*>(
+        QStringLiteral("screenshotHistoryEntry-history-row-without-result"));
+    auto* resultLessCopy = resultLessRow != nullptr
+                               ? resultLessRow->findChild<adqt::widgets::AdButton*>(
+                                     QStringLiteral("screenshotHistoryEntryCopy"))
+                               : nullptr;
+    require(resultLessCopy != nullptr && resultLessCopy->isHidden(),
+            "history Copy must stay hidden when a record has no stored result image");
 }
 
 void screenshotHistoryEmptyToPopulatedGeometryIsStable() {
@@ -1054,9 +1239,21 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                     QVariantList{QStringLiteral("free-draw"), QStringLiteral("pen-filter")},
             "new select and multi-select values must flow through runtime bindings");
 
-    const auto drawingShortcutRows = hotkeyPage.findChildren<ShortcutKeyRow*>();
-    require(drawingShortcutRows.size() == 9 &&
-                std::all_of(drawingShortcutRows.cbegin(), drawingShortcutRows.cend(),
+    auto* screenshotShortcutList = hotkeyPage.findChild<QWidget*>(
+        QStringLiteral("settings-section-list-hotkey-settings-screenshot-shortcuts"));
+    auto* drawingShortcutList = hotkeyPage.findChild<QWidget*>(
+        QStringLiteral("settings-section-list-hotkey-settings-drawing-shortcuts"));
+    const auto screenshotShortcutRows =
+        screenshotShortcutList != nullptr
+            ? screenshotShortcutList->findChildren<ShortcutKeyRow*>()
+            : QList<ShortcutKeyRow*>{};
+    const auto drawingShortcutRows =
+        drawingShortcutList != nullptr ? drawingShortcutList->findChildren<ShortcutKeyRow*>()
+                                       : QList<ShortcutKeyRow*>{};
+    const auto localShortcutRows = hotkeyPage.findChildren<ShortcutKeyRow*>();
+    require(screenshotShortcutRows.size() == 5 && drawingShortcutRows.size() == 10 &&
+                localShortcutRows.size() == 15 &&
+                std::all_of(localShortcutRows.cbegin(), localShortcutRows.cend(),
                             [](const ShortcutKeyRow* row) {
                                 const auto* status =
                                     row != nullptr
@@ -1065,28 +1262,44 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                                         : nullptr;
                                 return status != nullptr && status->isHidden();
                             }),
-            "Hotkey Settings must render nine local drawing shortcut rows without global status");
+            "Hotkey Settings must render five screenshot and ten drawing shortcut rows without "
+            "global status");
     const auto settingMetrics =
         snow_shot::presentation::styles::ThemeManager::instance().themeColorScheme().metricAlias;
-    auto* drawingShortcutList = hotkeyPage.findChild<QWidget*>(
-        QStringLiteral("settings-section-list-hotkey-settings-drawing-shortcuts"));
+    const auto hasNaturalCategoryTitleHeight = [](const SettingsPageWidget& page) {
+        const auto headers = page.findChildren<SectionHeaderWidget*>();
+        return !headers.isEmpty() &&
+               std::all_of(headers.cbegin(), headers.cend(), [](const SectionHeaderWidget* header) {
+                   return header != nullptr &&
+                          header->sizePolicy().verticalPolicy() == QSizePolicy::Fixed &&
+                          header->height() == header->sizeHint().height();
+               });
+    };
+    require(hasNaturalCategoryTitleHeight(interfacePage) &&
+                hasNaturalCategoryTitleHeight(functionPage) &&
+                hasNaturalCategoryTitleHeight(storagePage),
+            "Interface, Function, and Storage category titles must not absorb spare page height");
+    constexpr int expectedControlWidth = 230;
+    require(theme->width() == expectedControlWidth && language->width() == expectedControlWidth &&
+                drawingExclusions->width() == expectedControlWidth,
+            "settings controls must use the expanded right-column width");
+    auto* screenshotShortcutGrid =
+        screenshotShortcutList != nullptr && screenshotShortcutList->layout() != nullptr &&
+                screenshotShortcutList->layout()->count() == 1
+            ? qobject_cast<QGridLayout*>(screenshotShortcutList->layout()->itemAt(0)->layout())
+            : nullptr;
     auto* drawingShortcutGrid =
         drawingShortcutList != nullptr && drawingShortcutList->layout() != nullptr &&
                 drawingShortcutList->layout()->count() == 1
             ? qobject_cast<QGridLayout*>(drawingShortcutList->layout()->itemAt(0)->layout())
             : nullptr;
-    auto* drawingShortcutHeader = hotkeyPage.findChild<SectionHeaderWidget*>(
-        QStringLiteral("settings-section-hotkey-settings-drawing-shortcuts"));
-    const QMargins drawingHeaderMargins =
-        drawingShortcutHeader != nullptr && drawingShortcutHeader->layout() != nullptr
-            ? drawingShortcutHeader->layout()->contentsMargins()
-            : QMargins();
-    require(drawingShortcutGrid != nullptr && drawingShortcutGrid->count() == 9 &&
+    require(screenshotShortcutGrid != nullptr && screenshotShortcutGrid->count() == 5 &&
+                screenshotShortcutGrid->columnCount() == 2 &&
+                screenshotShortcutGrid->rowCount() == 3 && drawingShortcutGrid != nullptr &&
+                drawingShortcutGrid->count() == 10 &&
                 drawingShortcutGrid->columnCount() == 2 && drawingShortcutGrid->rowCount() == 5 &&
                 drawingShortcutGrid->horizontalSpacing() == settingMetrics.marginLG &&
                 drawingShortcutGrid->verticalSpacing() == settingMetrics.marginLG &&
-                drawingShortcutHeader != nullptr && drawingHeaderMargins.top() == 0 &&
-                drawingHeaderMargins.bottom() == settingMetrics.margin &&
                 std::all_of(drawingShortcutRows.cbegin(), drawingShortcutRows.cend(),
                             [&settingMetrics](const ShortcutKeyRow* row) {
                                 const auto* label =
@@ -1102,13 +1315,16 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                                 return row != nullptr &&
                                        row->height() == settingMetrics.controlHeight &&
                                        row->cursor().shape() == Qt::ArrowCursor && label != nullptr &&
-                                       label->text().endsWith(QLatin1Char(':')) && button != nullptr &&
+                                       label->text().endsWith(QLatin1Char(':')) &&
+                                       label->font().pixelSize() == settingMetrics.fontSize &&
+                                       label->font().weight() == QFont::Normal && button != nullptr &&
                                        button->buttonStyle() ==
                                            adqt::widgets::AdButton::ButtonStyle::Outline &&
                                        button->accentRole() ==
                                            adqt::widgets::AdButton::AccentRole::Neutral;
                             }),
-            "Drawing shortcuts must match the reference two-column Ant form presentation");
+            "Drawing shortcut content must use the reference two-column title and key-button "
+            "presentation without changing the category header or shared page shell");
 
     auto* generalList = interfacePage.findChild<QWidget*>(
         QStringLiteral("settings-section-list-interface-settings-general"));
@@ -1207,6 +1423,58 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
     require(!directMlAcceleration->isEnabled(),
             "Direct ML acceleration must be disabled when the environment is unsupported");
 
+    auto* imageDirectory = storagePage.findChild<adqt::widgets::AdSearchEdit*>(
+        QStringLiteral("settings-control-screenshot-output-image-save-directory"));
+    auto* imageFormat = storagePage.findChild<adqt::widgets::AdSelect*>(
+        QStringLiteral("settings-control-screenshot-output-image-format"));
+    auto* manualFilename = storagePage.findChild<adqt::widgets::AdLineEdit*>(
+        QStringLiteral("settings-control-screenshot-output-manual-filename-format"));
+    auto* autoFilename = storagePage.findChild<adqt::widgets::AdLineEdit*>(
+        QStringLiteral("settings-control-screenshot-output-auto-filename-format"));
+    auto* videoDirectory = storagePage.findChild<adqt::widgets::AdSearchEdit*>(
+        QStringLiteral("settings-control-screen-recording-output-video-save-directory"));
+    auto* videoFilename = storagePage.findChild<adqt::widgets::AdLineEdit*>(
+        QStringLiteral("settings-control-screen-recording-output-video-filename-format"));
+    require(imageDirectory != nullptr && imageFormat != nullptr &&
+                manualFilename != nullptr && autoFilename != nullptr &&
+                videoDirectory != nullptr && videoFilename != nullptr &&
+                imageDirectory->text() == QStringLiteral("C:/Pictures/SnowShot") &&
+                imageDirectory->searchButtonText() == QStringLiteral("Browse") &&
+                imageFormat->options().size() == 5 &&
+                imageFormat->currentValue() == QStringLiteral("png") &&
+                manualFilename->text() ==
+                    QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}") &&
+                autoFilename->text() ==
+                    QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}") &&
+                videoDirectory->text() == QStringLiteral("C:/Videos/SnowShot") &&
+                videoFilename->text() ==
+                    QStringLiteral("SnowShot_Video_{YYYY-MM-DD_HH-mm-ss}"),
+            "Storage and Privacy must render all screenshot and recording output controls");
+
+    imageDirectory->setText(QStringLiteral("D:/Captures"));
+    require(QMetaObject::invokeMethod(imageDirectory, "editingFinished",
+                                      Qt::DirectConnection),
+            "image directory editor did not expose its commit signal");
+    imageFormat->setCurrentValue(QStringLiteral("webp"));
+    manualFilename->setText(QStringLiteral("Manual_{yyyyMMdd_HHmmss}"));
+    require(QMetaObject::invokeMethod(manualFilename, "editingFinished", Qt::DirectConnection),
+            "manual filename editor did not expose its commit signal");
+    videoFilename->setText(QStringLiteral("Recording_{yyyyMMdd_HHmmss}"));
+    require(QMetaObject::invokeMethod(videoFilename, "editingFinished", Qt::DirectConnection),
+            "video filename editor did not expose its commit signal");
+    require(bindings.directoryPathValue(
+                settings::SettingsDirectoryPathBinding::ScreenshotImageDirectory) ==
+                QStringLiteral("D:/Captures") &&
+                bindings.selectValue(settings::SettingsSelectBinding::ScreenshotImageFormat) ==
+                    QStringLiteral("webp") &&
+                bindings.textValue(
+                    settings::SettingsTextBinding::ScreenshotManualFilenameFormat) ==
+                    QStringLiteral("Manual_{yyyyMMdd_HHmmss}") &&
+                bindings.textValue(
+                    settings::SettingsTextBinding::ScreenRecordingVideoFilenameFormat) ==
+                    QStringLiteral("Recording_{yyyyMMdd_HHmmss}"),
+            "output settings must flow through their runtime bindings");
+
     auto* historySwitch = storagePage.findChild<adqt::widgets::AdSwitch*>(
         QStringLiteral("settings-control-history-enabled"));
     auto* retention = storagePage.findChild<adqt::widgets::AdInputNumber*>(
@@ -1237,10 +1505,13 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
 
     auto* historyHeader = storagePage.findChild<SectionHeaderWidget*>(
         QStringLiteral("settings-section-storage-and-privacy-history"));
+    auto* screenshotOutputHeader = storagePage.findChild<SectionHeaderWidget*>(
+        QStringLiteral("settings-section-storage-and-privacy-screenshots"));
     auto* statusHeader = storagePage.findChild<SectionHeaderWidget*>(
         QStringLiteral("settings-section-storage-and-privacy-storage-status"));
     require(
-        historyHeader != nullptr && statusHeader != nullptr &&
+        historyHeader != nullptr && screenshotOutputHeader != nullptr &&
+            statusHeader != nullptr &&
             historyHeader->layout()->contentsMargins().top() ==
                 historyHeader->layout()->contentsMargins().bottom() &&
             statusHeader->layout()->contentsMargins().top() ==
@@ -1249,13 +1520,21 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                 ->isVisible() &&
             statusHeader->findChild<adqt::widgets::AdButton*>(QStringLiteral("sectionResetButton"))
                 ->isHidden(),
-        "section headers must use equal vertical spacing and catalog reset visibility");
+            "section headers must use equal vertical spacing and catalog reset visibility");
     const int switchApplyCountBeforeHistoryReset = bindings.switchApplyCount;
     require(QMetaObject::invokeMethod(historyHeader, "resetRequested", Qt::DirectConnection) &&
                 bindings.resetRequested == settings::SettingsSectionReset::HistoryPolicy &&
                 historySwitch->isChecked() && retention->value() == 7 &&
                 bindings.switchApplyCount == switchApplyCountBeforeHistoryReset,
             "section reset must be catalog-configured and resynchronize all policy controls");
+    require(QMetaObject::invokeMethod(screenshotOutputHeader, "resetRequested",
+                                      Qt::DirectConnection) &&
+                bindings.resetRequested == settings::SettingsSectionReset::ScreenshotOutput &&
+                imageDirectory->text() == QStringLiteral("C:/Pictures/SnowShot") &&
+                imageFormat->currentValue() == QStringLiteral("png") &&
+                manualFilename->text() ==
+                    QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}"),
+            "Screenshot output reset must restore every configured default");
     auto* functionHeader = functionPage.findChild<SectionHeaderWidget*>(
         QStringLiteral("settings-section-function-settings-screenshot-settings"));
     require(functionHeader != nullptr &&
@@ -1270,6 +1549,9 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
         historyHeader->findChild<adqt::widgets::AdButton*>(QStringLiteral("sectionResetButton"));
     require(!historySwitch->isEnabled() && !retention->isEnabled() && !entries->isEnabled() &&
                 !disk->isEnabled() && clear->busy() && !clear->isEnabled() &&
+                !imageDirectory->isEnabled() && !imageFormat->isEnabled() &&
+                !manualFilename->isEnabled() && !videoDirectory->isEnabled() &&
+                !videoFilename->isEnabled() &&
                 historyReset != nullptr && !historyReset->isEnabled(),
             "read-only and busy binding state must resynchronize generated history controls");
     bindings.setStorageState(true, false);
@@ -1525,6 +1807,68 @@ void catalogExpansionUpdatesAllConsumers() {
             "header tabs must follow the current generated page sections");
 }
 
+void generatedSettingsPagesHaveNoSyntheticBottomSpace() {
+    const auto& catalog = settings::builtInSettingsCatalog();
+    FakeRuntimeBindings bindings;
+    const QVector<QSize> pageSizes{{720, 260}, {520, 420}};
+
+    for (const settings::SettingsPageDefinition& definition : catalog.pages()) {
+        if (definition.kind != settings::SettingsPageKind::GeneratedSettings) {
+            continue;
+        }
+
+        require(!definition.sections.isEmpty(),
+                "every generated settings page must have at least one section");
+        for (const QSize& pageSize : pageSizes) {
+            SettingsPageWidget page(catalog, definition.id, bindings);
+            page.resize(pageSize);
+            page.show();
+            flushEvents();
+            flushEvents();
+
+            auto* container = page.findChild<PageContainerWidget*>(
+                settings::generatedObjectName(QStringLiteral("settings-container"),
+                                              definition.id));
+            QWidget* content = container != nullptr ? container->contentWidget() : nullptr;
+            QVBoxLayout* contentLayout = container != nullptr ? container->contentLayout() : nullptr;
+            adqt::widgets::AdScrollArea* scrollArea =
+                container != nullptr ? container->scrollArea() : nullptr;
+            QWidget* lastSectionList = page.findChild<QWidget*>(settings::generatedObjectName(
+                QStringLiteral("settings-section-list"),
+                QStringLiteral("%1-%2")
+                    .arg(definition.id, definition.sections.constLast().id)));
+            require(content != nullptr && contentLayout != nullptr && scrollArea != nullptr &&
+                        scrollArea->viewport() != nullptr &&
+                        scrollArea->verticalScrollBar() != nullptr && lastSectionList != nullptr,
+                    "generated page geometry test could not find its shared layout objects");
+
+            contentLayout->activate();
+            const int lastSectionBottom =
+                lastSectionList->mapTo(content, QPoint(0, 0)).y() + lastSectionList->height();
+            const int naturalContentHeight =
+                lastSectionBottom + contentLayout->contentsMargins().bottom();
+            const int trailingLayoutSlack = content->height() - naturalContentHeight;
+            const int expectedScrollMaximum =
+                std::max(0, content->height() - scrollArea->viewport()->height());
+            QLayoutItem* finalLayoutItem =
+                contentLayout->count() > 0 ? contentLayout->itemAt(contentLayout->count() - 1)
+                                           : nullptr;
+            const auto* syntheticTail = page.findChild<QWidget*>(
+                settings::generatedObjectName(QStringLiteral("settings-section-scroll-space"),
+                                              definition.id));
+
+            require(syntheticTail == nullptr &&
+                        contentLayout->count() ==
+                            static_cast<int>(definition.sections.size()) * 2 &&
+                        finalLayoutItem != nullptr &&
+                        finalLayoutItem->widget() == lastSectionList && trailingLayoutSlack >= 0 &&
+                        trailingLayoutSlack <= contentLayout->contentsMargins().bottom() &&
+                        scrollArea->verticalScrollBar()->maximum() == expectedScrollMaximum,
+                    "a generated settings page exposes scrollable space after its last section");
+        }
+    }
+}
+
 void sectionTabsAndScrollingStaySynchronized() {
     const auto& catalog = settings::builtInSettingsCatalog();
     snow_shot::presentation::GlobalShortcutManager shortcutManager;
@@ -1555,23 +1899,38 @@ void sectionTabsAndScrollingStaySynchronized() {
         QStringLiteral("settings-scroll-storage-and-privacy"));
     auto* storageSection = content.findChild<SectionHeaderWidget*>(
         QStringLiteral("settings-section-storage-and-privacy-storage-status"));
+    auto* storageSectionList = content.findChild<QWidget*>(
+        QStringLiteral("settings-section-list-storage-and-privacy-storage-status"));
     require(tabs != nullptr && scrollArea != nullptr && storageSection != nullptr &&
+                storageSectionList != nullptr &&
                 scrollArea->contentWidget() != nullptr &&
                 scrollArea->verticalScrollBar() != nullptr,
             "section navigation integration must expose tabs, anchors, and a scrollbar");
 
     QScrollBar* scrollBar = scrollArea->verticalScrollBar();
-    const int topInset = scrollArea->contentWidget()->layout()->contentsMargins().top();
+    QWidget* scrollContent = scrollArea->contentWidget();
+    const QMargins contentMargins = scrollContent->layout()->contentsMargins();
+    const int topInset = contentMargins.top();
     const int storageSectionTop =
-        storageSection->mapTo(scrollArea->contentWidget(), QPoint(0, 0)).y();
-    require(scrollBar->maximum() >= storageSectionTop - topInset,
-            "scrollable pages must reserve enough trailing space to align the last section");
+        storageSection->mapTo(scrollContent, QPoint(0, 0)).y();
+    const int storageSectionBottom =
+        storageSectionList->mapTo(scrollContent, QPoint(0, 0)).y() +
+        storageSectionList->height();
+    const int naturalContentHeight = storageSectionBottom + contentMargins.bottom();
+    const int trailingLayoutSlack = scrollContent->height() - naturalContentHeight;
+    const int naturalScrollMaximum =
+        std::max(0, scrollContent->height() - scrollArea->viewport()->height());
+    const int requestedSectionPosition = storageSectionTop - topInset;
+    const int reachableSectionPosition =
+        std::min(requestedSectionPosition, naturalScrollMaximum);
+    require(trailingLayoutSlack >= 0 && trailingLayoutSlack <= contentMargins.bottom() &&
+                scrollBar->maximum() == naturalScrollMaximum,
+            "section navigation must use the page's natural content height without a blank tail");
 
     tabs->tabClicked(QStringLiteral("storage-status"));
     flushEvents();
-    require(scrollBar->value() == storageSectionTop - topInset &&
-                storageSection->mapTo(scrollArea->viewport(), QPoint(0, 0)).y() == topInset,
-            "clicking a tab must top-align its section without an ensure-visible offset");
+    require(scrollBar->value() == reachableSectionPosition,
+            "clicking a tab must scroll its section to the nearest naturally reachable position");
     require(header.currentSection() == QStringLiteral("storage-status") &&
                 content.currentLocation().sectionId == QStringLiteral("storage-status"),
             "tab navigation must keep the header and content location synchronized");
@@ -1582,7 +1941,7 @@ void sectionTabsAndScrollingStaySynchronized() {
                 content.currentLocation().sectionId == QStringLiteral("history"),
             "scrolling back to the first section must select its tab automatically");
 
-    scrollBar->setValue(storageSectionTop - topInset);
+    scrollBar->setValue(scrollBar->maximum());
     flushEvents();
     require(header.currentSection() == QStringLiteral("storage-status") &&
                 content.currentLocation().sectionId == QStringLiteral("storage-status"),
@@ -1685,15 +2044,22 @@ void drawingToolbarEditorPersistsDropsAndRestoresRejectedChanges() {
 
 int main(int argc, char** argv) {
     bool drawingToolbarEditorOnly = false;
+    bool screenshotHistoryOnly = false;
+    bool settingsLayoutOnly = false;
     for (int argumentIndex = 1; argumentIndex < argc; ++argumentIndex) {
         if (QString::fromLocal8Bit(argv[argumentIndex]) ==
             QStringLiteral("--drawing-toolbar-editor-only")) {
             drawingToolbarEditorOnly = true;
-            break;
+        } else if (QString::fromLocal8Bit(argv[argumentIndex]) ==
+                   QStringLiteral("--screenshot-history-only")) {
+            screenshotHistoryOnly = true;
+        } else if (QString::fromLocal8Bit(argv[argumentIndex]) ==
+                   QStringLiteral("--settings-layout-only")) {
+            settingsLayoutOnly = true;
         }
     }
 #if defined(Q_OS_WIN)
-    if (drawingToolbarEditorOnly) {
+    if (drawingToolbarEditorOnly || settingsLayoutOnly) {
         qunsetenv("QT_QPA_PLATFORM");
     } else {
         qputenv("QT_QPA_PLATFORM", "offscreen");
@@ -1717,6 +2083,17 @@ int main(int argc, char** argv) {
         snow_shot::storage::ApplicationStorage::instance().shutdown();
         return 0;
     }
+    if (screenshotHistoryOnly) {
+        screenshotHistoryLifecycleAndIdentityDiff();
+        snow_shot::storage::ApplicationStorage::instance().shutdown();
+        return 0;
+    }
+    if (settingsLayoutOnly) {
+        generatedSettingsPagesHaveNoSyntheticBottomSpace();
+        sectionTabsAndScrollingStaySynchronized();
+        snow_shot::storage::ApplicationStorage::instance().shutdown();
+        return 0;
+    }
 
     generatedPagesRenderEveryItemTypeAndResynchronize();
     quickActionCommandsDispatchThroughContentCard();
@@ -1726,6 +2103,7 @@ int main(int argc, char** argv) {
     screenshotHistoryLifecycleAndIdentityDiff();
     screenshotHistoryEmptyToPopulatedGeometryIsStable();
     catalogExpansionUpdatesAllConsumers();
+    generatedSettingsPagesHaveNoSyntheticBottomSpace();
     sectionTabsAndScrollingStaySynchronized();
     drawingToolbarEditorPersistsDropsAndRestoresRejectedChanges();
 

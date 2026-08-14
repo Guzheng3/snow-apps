@@ -81,6 +81,7 @@ enum class SettingsSelectBinding {
     AnimatedImageFormat,
     ScreenRecordingEncoder,
     ScreenRecordingEncodingPreset,
+    ScreenshotImageFormat,
     TrayLeftClickAction,
 };
 
@@ -179,6 +180,28 @@ struct SettingsFilePathDefinition {
     TranslatableText fileFilter;
 };
 
+enum class SettingsDirectoryPathBinding {
+    ScreenshotImageDirectory,
+    ScreenRecordingVideoDirectory,
+};
+
+struct SettingsDirectoryPathDefinition {
+    SettingsDirectoryPathBinding binding =
+        SettingsDirectoryPathBinding::ScreenshotImageDirectory;
+    TranslatableText buttonText;
+    TranslatableText dialogTitle;
+};
+
+enum class SettingsTextBinding {
+    ScreenshotManualFilenameFormat,
+    ScreenshotAutoFilenameFormat,
+    ScreenRecordingVideoFilenameFormat,
+};
+
+struct SettingsTextDefinition {
+    SettingsTextBinding binding = SettingsTextBinding::ScreenshotManualFilenameFormat;
+};
+
 enum class SettingsShortcutAdjustment {
     None,
     ScreenshotDelaySeconds,
@@ -191,9 +214,15 @@ struct SettingsShortcutActionDefinition {
     SettingsShortcutAdjustment adjustment = SettingsShortcutAdjustment::None;
 };
 
+enum class SettingsLocalShortcutScope {
+    Screenshot,
+    Drawing,
+};
+
 struct SettingsLocalShortcutDefinition {
-    QString toolId;
+    QString shortcutId;
     std::function<adqt::icons::IconRef()> iconFactory;
+    SettingsLocalShortcutScope scope = SettingsLocalShortcutScope::Drawing;
 };
 
 enum class SettingsActionBinding {
@@ -233,6 +262,7 @@ using SettingsItemPayload =
     std::variant<SettingsSelectDefinition, SettingsSwitchDefinition, SettingsIntegerDefinition,
                  SettingsMultiSelectDefinition, SettingsSliderDefinition,
                  SettingsColorDefinition, SettingsRadioDefinition, SettingsFilePathDefinition,
+                 SettingsDirectoryPathDefinition, SettingsTextDefinition,
                  SettingsShortcutActionDefinition, SettingsLocalShortcutDefinition,
                  SettingsActionDefinition, SettingsCustomDefinition>;
 
@@ -252,16 +282,19 @@ enum class SettingsSectionReset {
     GeneralSettings,
     HistoryPolicy,
     ScreenshotSettings,
+    ScreenshotOutput,
     ScreenshotInterfaceSettings,
     Toolbar,
     DrawingToolbar,
     DrawingQuickSelection,
+    ScreenshotEditorShortcuts,
     DrawingShortcuts,
     PinToScreen,
     PinToScreenBehavior,
     Tray,
     TrayBehavior,
     ScreenRecording,
+    ScreenRecordingOutput,
     GlobalHotkeys,
     SystemGeneral,
     SystemSettings,

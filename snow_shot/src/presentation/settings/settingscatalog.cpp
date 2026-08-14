@@ -459,6 +459,91 @@ SettingsItemDefinition switchItem(const QString& id, const char* title,
             SettingsSwitchDefinition{binding}};
 }
 
+SettingsItemDefinition directoryPathItem(const QString& id, const char* title,
+                                         const char* description, const QString& key,
+                                         SettingsDirectoryPathBinding binding,
+                                         const char* dialogTitle) {
+    return {id,
+            settingsText(title),
+            settingsText(description),
+            {},
+            key,
+            SettingsDirectoryPathDefinition{
+                binding,
+                settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Browse")),
+                settingsText(dialogTitle)}};
+}
+
+SettingsItemDefinition textFormatItem(const QString& id, const char* title,
+                                      const char* description, const QString& key,
+                                      SettingsTextBinding binding) {
+    return {id, settingsText(title), settingsText(description), {}, key,
+            SettingsTextDefinition{binding}};
+}
+
+SettingsItemDefinition screenshotImageFormatItem() {
+    return fixedSelectItem(
+        QStringLiteral("screenshot-output.image-format"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Image format"),
+        QT_TRANSLATE_NOOP("SettingsCatalog",
+                          "Choose the format used for automatically saved screenshot files"),
+        QStringLiteral("screenshot/image_format"), SettingsSelectBinding::ScreenshotImageFormat,
+        {{QStringLiteral("png"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "PNG"))},
+         {QStringLiteral("jpeg"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "JPEG"))},
+         {QStringLiteral("webp"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "WebP"))},
+         {QStringLiteral("jxl"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "JPEG XL"))},
+         {QStringLiteral("avif"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "AVIF"))}});
+}
+
+QVector<SettingsItemDefinition> screenshotOutputItems() {
+    return {
+        directoryPathItem(
+            QStringLiteral("screenshot-output.image-save-directory"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Image save directory"),
+            QT_TRANSLATE_NOOP(
+                "SettingsCatalog",
+                "Choose where images are written for automatic save and copy-file actions"),
+            QStringLiteral("screenshot/image_save_directory"),
+            SettingsDirectoryPathBinding::ScreenshotImageDirectory,
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Select image save directory")),
+        screenshotImageFormatItem(),
+        textFormatItem(
+            QStringLiteral("screenshot-output.manual-filename-format"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Manual save screenshot filename format"),
+            QT_TRANSLATE_NOOP(
+                "SettingsCatalog",
+                "Set the generated filename used when saving a screenshot as a file"),
+            QStringLiteral("screenshot/manual_save_filename_format"),
+            SettingsTextBinding::ScreenshotManualFilenameFormat),
+        textFormatItem(
+            QStringLiteral("screenshot-output.auto-filename-format"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Auto-save screenshot filename format"),
+            QT_TRANSLATE_NOOP(
+                "SettingsCatalog",
+                "Set the generated filename used by automatic screenshot file saves"),
+            QStringLiteral("screenshot/auto_save_filename_format"),
+            SettingsTextBinding::ScreenshotAutoFilenameFormat),
+    };
+}
+
+QVector<SettingsItemDefinition> videoOutputItems() {
+    return {
+        directoryPathItem(
+            QStringLiteral("screen-recording-output.video-save-directory"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Video save directory"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Choose where recording output files are written"),
+            QStringLiteral("screen_recording/video_save_directory"),
+            SettingsDirectoryPathBinding::ScreenRecordingVideoDirectory,
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Select video save directory")),
+        textFormatItem(
+            QStringLiteral("screen-recording-output.video-filename-format"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Video filename format"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Set the generated filename used for recording output files"),
+            QStringLiteral("screen_recording/video_filename_format"),
+            SettingsTextBinding::ScreenRecordingVideoFilenameFormat),
+    };
+}
+
 SettingsItemDefinition screenshotOcrActionItem() {
     return fixedSelectItem(
         QStringLiteral("screenshot.auto-execute-after-text-recognition"),
@@ -776,47 +861,95 @@ SettingsItemDefinition autoStartItem() {
 }
 
 SettingsItemDefinition localShortcutItem(
-    const QString& toolId, const char* title,
+    SettingsLocalShortcutScope scope, const QString& shortcutId, const char* title,
     std::function<adqt::icons::IconRef()> iconFactory) {
+    const bool screenshotShortcut = scope == SettingsLocalShortcutScope::Screenshot;
     return {
-        QStringLiteral("drawing-shortcut.%1").arg(toolId),
+        QStringLiteral("%1-shortcut.%2")
+            .arg(screenshotShortcut ? QStringLiteral("screenshot") : QStringLiteral("drawing"),
+                 shortcutId),
         settingsText(title),
-        settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
-                                       "Set up to two keys for this screenshot drawing tool")),
-        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Drawing shortcut"))},
-        QStringLiteral("drawing_shortcuts/") + toolId,
-        SettingsLocalShortcutDefinition{toolId, std::move(iconFactory)},
+        screenshotShortcut
+            ? settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
+                                             "Set up to two keys for this screenshot action"))
+            : settingsText(QT_TRANSLATE_NOOP(
+                  "SettingsCatalog", "Set up to two keys for this screenshot drawing tool")),
+        {settingsText(screenshotShortcut
+                          ? QT_TRANSLATE_NOOP("SettingsCatalog", "Screenshot shortcut")
+                          : QT_TRANSLATE_NOOP("SettingsCatalog", "Drawing shortcut"))},
+        (screenshotShortcut ? QStringLiteral("screenshot_shortcuts/")
+                            : QStringLiteral("drawing_shortcuts/")) +
+            shortcutId,
+        SettingsLocalShortcutDefinition{shortcutId, std::move(iconFactory), scope},
+    };
+}
+
+QVector<SettingsItemDefinition> screenshotShortcutItems() {
+    return {
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("move_tool"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Move tool"),
+            []() { return custom_outlined_icons::ToolMove(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("move_cursor_up"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Move cursor up"),
+            []() { return outlined_icons::ArrowUp(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("move_cursor_down"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Move cursor down"),
+            []() { return outlined_icons::ArrowDown(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("move_cursor_left"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Move cursor left"),
+            []() { return outlined_icons::ArrowLeft(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("move_cursor_right"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Move cursor right"),
+            []() { return outlined_icons::ArrowRight(); }),
     };
 }
 
 QVector<SettingsItemDefinition> drawingShortcutItems() {
     return {
         localShortcutItem(
-            QStringLiteral("shape"), QT_TRANSLATE_NOOP("SettingsCatalog", "Shape tool"),
+            SettingsLocalShortcutScope::Drawing, QStringLiteral("select"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Select tool"),
+            []() { return custom_outlined_icons::ToolSelect(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Drawing, QStringLiteral("shape"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Shape tool"),
             []() { return custom_outlined_icons::ToolRectangle(); }),
         localShortcutItem(
-            QStringLiteral("arrow"), QT_TRANSLATE_NOOP("SettingsCatalog", "Arrow"),
+            SettingsLocalShortcutScope::Drawing, QStringLiteral("arrow"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Arrow"),
             []() { return custom_outlined_icons::ToolArrow(); }),
         localShortcutItem(
-            QStringLiteral("brush"), QT_TRANSLATE_NOOP("SettingsCatalog", "Brush"),
+            SettingsLocalShortcutScope::Drawing, QStringLiteral("brush"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Brush"),
             []() { return custom_outlined_icons::ToolFreeDraw(); }),
         localShortcutItem(
-            QStringLiteral("highlight"), QT_TRANSLATE_NOOP("SettingsCatalog", "Highlight"),
+            SettingsLocalShortcutScope::Drawing, QStringLiteral("highlight"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Highlight"),
             []() { return custom_outlined_icons::ToolHighlight(); }),
         localShortcutItem(
-            QStringLiteral("text"), QT_TRANSLATE_NOOP("SettingsCatalog", "Text"),
+            SettingsLocalShortcutScope::Drawing, QStringLiteral("text"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Text"),
             []() { return custom_outlined_icons::ToolText(); }),
         localShortcutItem(
-            QStringLiteral("serial_number"), QT_TRANSLATE_NOOP("SettingsCatalog", "Serial number"),
+            SettingsLocalShortcutScope::Drawing, QStringLiteral("serial_number"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Serial number"),
             []() { return custom_outlined_icons::ToolSerialNumber(); }),
         localShortcutItem(
-            QStringLiteral("filter"), QT_TRANSLATE_NOOP("SettingsCatalog", "Filter"),
+            SettingsLocalShortcutScope::Drawing, QStringLiteral("filter"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Filter"),
             []() { return custom_outlined_icons::ToolFilter(); }),
         localShortcutItem(
-            QStringLiteral("eraser"), QT_TRANSLATE_NOOP("SettingsCatalog", "Eraser"),
+            SettingsLocalShortcutScope::Drawing, QStringLiteral("eraser"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Eraser"),
             []() { return custom_outlined_icons::ToolEraser(); }),
         localShortcutItem(
-            QStringLiteral("watermark"), QT_TRANSLATE_NOOP("SettingsCatalog", "Watermark"),
+            SettingsLocalShortcutScope::Drawing, QStringLiteral("watermark"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Watermark"),
             []() { return custom_outlined_icons::ToolWatermark(); }),
     };
 }
@@ -974,7 +1107,7 @@ QVector<SettingsPageDefinition> builtInPages() {
                     {drawingQuickSelectionItem()},
                 },
                 {
-                    QStringLiteral("screen-recording"),
+                    QStringLiteral("screen-recording-settings"),
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screen Recording")),
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
                                                    "Screen recording and animated image export settings")),
@@ -1142,6 +1275,22 @@ QVector<SettingsPageDefinition> builtInPages() {
                     },
                 },
                 {
+                    QStringLiteral("screenshots"),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screenshots")),
+                    settingsText(QT_TRANSLATE_NOOP(
+                        "SettingsCatalog", "Screenshot output locations, formats, and filenames")),
+                    SettingsSectionReset::ScreenshotOutput,
+                    screenshotOutputItems(),
+                },
+                {
+                    QStringLiteral("screen-recording-output"),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screen Recording")),
+                    settingsText(QT_TRANSLATE_NOOP(
+                        "SettingsCatalog", "Recording output location and filename settings")),
+                    SettingsSectionReset::ScreenRecordingOutput,
+                    videoOutputItems(),
+                },
+                {
                     QStringLiteral("storage-status"),
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Storage Status")),
                     settingsText(QT_TRANSLATE_NOOP(
@@ -1190,6 +1339,14 @@ QVector<SettingsPageDefinition> builtInPages() {
             settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
                                            "Configure screenshot editor shortcut keys")),
             {
+                {
+                    QStringLiteral("screenshot-shortcuts"),
+                    settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Screenshot")),
+                    settingsText(QT_TRANSLATE_NOOP(
+                        "SettingsCatalog", "Shortcut keys for screenshot tools and cursor movement")),
+                    SettingsSectionReset::ScreenshotEditorShortcuts,
+                    screenshotShortcutItems(),
+                },
                 {
                     QStringLiteral("drawing-shortcuts"),
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Drawing")),
@@ -1548,6 +1705,9 @@ QStringList SettingsCatalog::validationErrors() const {
                     case SettingsSelectBinding::ScreenRecordingEncodingPreset:
                         expectedKey = QStringLiteral("screen_recording/encoding_preset");
                         break;
+                    case SettingsSelectBinding::ScreenshotImageFormat:
+                        expectedKey = QStringLiteral("screenshot/image_format");
+                        break;
                     case SettingsSelectBinding::TrayLeftClickAction:
                         expectedKey = QStringLiteral("tray/left_click_action");
                         break;
@@ -1760,8 +1920,11 @@ QStringList SettingsCatalog::validationErrors() const {
                 if (const auto* local =
                         std::get_if<SettingsLocalShortcutDefinition>(&itemDefinition.payload)) {
                     const QString expectedKey =
-                        QStringLiteral("drawing_shortcuts/") + local->toolId;
-                    if (local->toolId.isEmpty() || !local->iconFactory ||
+                        (local->scope == SettingsLocalShortcutScope::Screenshot
+                             ? QStringLiteral("screenshot_shortcuts/")
+                             : QStringLiteral("drawing_shortcuts/")) +
+                        local->shortcutId;
+                    if (local->shortcutId.isEmpty() || !local->iconFactory ||
                         itemDefinition.configurationKey != expectedKey || schemaEntry == nullptr ||
                         schemaEntry->valueKind != storage::ConfigurationValueKind::StringList ||
                         schemaEntry->maximumListItems != 2) {
@@ -1856,6 +2019,47 @@ QStringList SettingsCatalog::validationErrors() const {
                         !filePath->fileFilter.isValid()) {
                         errors.push_back(QStringLiteral("file path binding is incompatible: %1")
                                              .arg(itemDefinition.id));
+                    }
+                }
+                if (const auto* directoryPath =
+                        std::get_if<SettingsDirectoryPathDefinition>(&itemDefinition.payload)) {
+                    QString expectedKey;
+                    switch (directoryPath->binding) {
+                    case SettingsDirectoryPathBinding::ScreenshotImageDirectory:
+                        expectedKey = QStringLiteral("screenshot/image_save_directory");
+                        break;
+                    case SettingsDirectoryPathBinding::ScreenRecordingVideoDirectory:
+                        expectedKey = QStringLiteral("screen_recording/video_save_directory");
+                        break;
+                    }
+                    if (itemDefinition.configurationKey != expectedKey || schemaEntry == nullptr ||
+                        schemaEntry->valueKind != storage::ConfigurationValueKind::String ||
+                        !directoryPath->buttonText.isValid() ||
+                        !directoryPath->dialogTitle.isValid()) {
+                        errors.push_back(
+                            QStringLiteral("directory path binding is incompatible: %1")
+                                .arg(itemDefinition.id));
+                    }
+                }
+                if (const auto* text =
+                        std::get_if<SettingsTextDefinition>(&itemDefinition.payload)) {
+                    QString expectedKey;
+                    switch (text->binding) {
+                    case SettingsTextBinding::ScreenshotManualFilenameFormat:
+                        expectedKey = QStringLiteral("screenshot/manual_save_filename_format");
+                        break;
+                    case SettingsTextBinding::ScreenshotAutoFilenameFormat:
+                        expectedKey = QStringLiteral("screenshot/auto_save_filename_format");
+                        break;
+                    case SettingsTextBinding::ScreenRecordingVideoFilenameFormat:
+                        expectedKey = QStringLiteral("screen_recording/video_filename_format");
+                        break;
+                    }
+                    if (itemDefinition.configurationKey != expectedKey || schemaEntry == nullptr ||
+                        schemaEntry->valueKind != storage::ConfigurationValueKind::String) {
+                        errors.push_back(
+                            QStringLiteral("text binding is incompatible: %1")
+                                .arg(itemDefinition.id));
                     }
                 }
                 if (const auto* action =

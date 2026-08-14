@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QMimeData>
+#include <QRegularExpression>
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QUrl>
@@ -42,8 +43,27 @@ QString collisionSafePath(const QString& directory, const QString& baseName,
 } // namespace
 
 QString ScreenshotImageFileService::suggestedBaseName(const QDateTime& timestamp) {
-    return QStringLiteral("SnowShot_%1").arg(
-        timestamp.toString(QStringLiteral("yyyy-MM-dd_HH-mm-ss")));
+    return suggestedBaseName(QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}"), timestamp);
+}
+
+QString ScreenshotImageFileService::suggestedBaseName(const QString& filenameFormat,
+                                                       const QDateTime& timestamp) {
+    QString result = filenameFormat.trimmed();
+    static const QRegularExpression placeholder(QStringLiteral("\\{([^{}]+)\\}"));
+    QList<QRegularExpressionMatch> matches;
+    auto iterator = placeholder.globalMatch(result);
+    while (iterator.hasNext()) {
+        matches.push_back(iterator.next());
+    }
+    for (auto match = matches.crbegin(); match != matches.crend(); ++match) {
+        QString dateTimeFormat = match->captured(1);
+        dateTimeFormat.replace(QStringLiteral("YYYY"), QStringLiteral("yyyy"));
+        dateTimeFormat.replace(QStringLiteral("YY"), QStringLiteral("yy"));
+        dateTimeFormat.replace(QStringLiteral("DD"), QStringLiteral("dd"));
+        result.replace(match->capturedStart(), match->capturedLength(),
+                       timestamp.toString(dateTimeFormat));
+    }
+    return result;
 }
 
 QString ScreenshotImageFileService::dialogFilter(ScreenshotImageFileFormat format) {
@@ -80,6 +100,21 @@ QStringList ScreenshotImageFileService::automaticDirectories() {
     return directories;
 }
 
+QStringList ScreenshotImageFileService::automaticDirectories(
+    const QString& configuredDirectory) {
+    QStringList directories;
+    const QString configured = QDir::cleanPath(configuredDirectory.trimmed());
+    if (!configured.isEmpty() && QFileInfo(configured).isDir()) {
+        directories.push_back(configured);
+    }
+    for (const QString& fallback : automaticDirectories()) {
+        if (!directories.contains(fallback, Qt::CaseInsensitive)) {
+            directories.push_back(fallback);
+        }
+    }
+    return directories;
+}
+
 QString ScreenshotImageFileService::extension(ScreenshotImageFileFormat format) {
     switch (format) {
     case ScreenshotImageFileFormat::Png:
@@ -94,6 +129,23 @@ QString ScreenshotImageFileService::extension(ScreenshotImageFileFormat format) 
         return QStringLiteral("avif");
     }
     return {};
+}
+
+ScreenshotImageFileFormat ScreenshotImageFileService::formatForKey(const QString& key) {
+    const QString normalized = key.trimmed().toLower();
+    if (normalized == QStringLiteral("jpeg") || normalized == QStringLiteral("jpg")) {
+        return ScreenshotImageFileFormat::Jpeg;
+    }
+    if (normalized == QStringLiteral("webp")) {
+        return ScreenshotImageFileFormat::Webp;
+    }
+    if (normalized == QStringLiteral("jxl")) {
+        return ScreenshotImageFileFormat::Jxl;
+    }
+    if (normalized == QStringLiteral("avif")) {
+        return ScreenshotImageFileFormat::Avif;
+    }
+    return ScreenshotImageFileFormat::Png;
 }
 
 QString ScreenshotImageFileService::normalizedPath(QString path,
@@ -234,8 +286,22 @@ ScreenshotImageFileSaveResult ScreenshotImageFileService::saveAutomatically(
 
 ScreenshotImageFileSaveResult ScreenshotImageFileService::saveAutomatically(
     const QImage& image, const QStringList& candidateDirectories, const QDateTime& timestamp) {
+    return saveAutomatically(image, candidateDirectories, ScreenshotImageFileFormat::Png,
+                             QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}"), timestamp);
+}
+
+ScreenshotImageFileSaveResult ScreenshotImageFileService::saveAutomatically(
+    const QImage& image, const QStringList& candidateDirectories,
+    ScreenshotImageFileFormat format, const QString& filenameFormat,
+    const QDateTime& timestamp) {
     if (image.isNull()) {
         return {{}, QStringLiteral("The screenshot image is empty")};
+    }
+
+    const QString baseName = suggestedBaseName(filenameFormat, timestamp);
+    if (baseName.isEmpty() || baseName.contains(QLatin1Char('/')) ||
+        baseName.contains(QLatin1Char('\\'))) {
+        return {{}, QStringLiteral("The screenshot filename format is invalid")};
     }
 
     QString lastError = QStringLiteral("No automatic screenshot folder is available");
@@ -251,10 +317,8 @@ ScreenshotImageFileSaveResult ScreenshotImageFileService::saveAutomatically(
             continue;
         }
 
-        const QString path = collisionSafePath(directory, suggestedBaseName(timestamp),
-                                               extension(ScreenshotImageFileFormat::Png));
-        const ScreenshotImageFileSaveResult result =
-            write(image, path, ScreenshotImageFileFormat::Png);
+        const QString path = collisionSafePath(directory, baseName, extension(format));
+        const ScreenshotImageFileSaveResult result = write(image, path, format);
         if (result.succeeded()) {
             return result;
         }

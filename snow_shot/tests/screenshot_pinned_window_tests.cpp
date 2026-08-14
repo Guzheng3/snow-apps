@@ -22,6 +22,8 @@
 #include <QEnterEvent>
 #include <QEvent>
 #include <QFrame>
+#include <QGraphicsTextItem>
+#include <QGraphicsView>
 #include <QImage>
 #include <QKeyEvent>
 #include <QLabel>
@@ -34,7 +36,6 @@
 #include <QScreen>
 #include <QThread>
 #include <QTimer>
-#include <QTextBrowser>
 #include <QTextDocument>
 #include <QTextEdit>
 #include <QVariantAnimation>
@@ -138,10 +139,41 @@ class FakeOcrRecognition final : public ScreenshotOcrRecognitionPort {
     QVector<RequestToken> cancelledTokens;
 };
 
+class FakeQrRecognition final : public ScreenshotQrRecognitionPort {
+  public:
+    RequestToken recognize(QImage image, QObject* receiver, Completion completion) override {
+        Q_UNUSED(image);
+        Q_UNUSED(receiver);
+        Q_UNUSED(completion);
+        return ++nextToken;
+    }
+
+    void cancel(RequestToken token) override {
+        cancelledTokens.push_back(token);
+    }
+
+    RequestToken nextToken = 0;
+    QVector<RequestToken> cancelledTokens;
+};
+
 void require(bool condition, const char* message) {
     if (!condition) {
         throw std::runtime_error(message);
     }
+}
+
+QGraphicsTextItem* formattedTextItem(QGraphicsView* layer) {
+    if (layer == nullptr || layer->scene() == nullptr) {
+        return nullptr;
+    }
+    for (QGraphicsItem* item : layer->scene()->items()) {
+        auto* textItem = dynamic_cast<QGraphicsTextItem*>(item);
+        if (textItem != nullptr &&
+            textItem->objectName() == QStringLiteral("screenshotClipboardTextItem")) {
+            return textItem;
+        }
+    }
+    return nullptr;
 }
 
 void waitForUi(int milliseconds) {
@@ -322,6 +354,8 @@ void pinnedLargeImageRemainsOpenWhenEnteringDrawingMode(SnowCanvasRuntime& sourc
     QScreen* screen = QGuiApplication::primaryScreen();
     require(screen != nullptr, "a primary screen is required");
 
+    FakeQrRecognition qrRecognition;
+    SnowShotApiClient tableRecognition(QString{});
     auto* pinnedWindow = new ScreenshotPinnedWindow(sourceRuntime);
     QPointer<ScreenshotPinnedWindow> guardedWindow(pinnedWindow);
     QImage background(400, 40000, QImage::Format_ARGB32_Premultiplied);
@@ -336,6 +370,8 @@ void pinnedLargeImageRemainsOpenWhenEnteringDrawingMode(SnowCanvasRuntime& sourc
     config.initialScalePercent = 10.0;
     config.screen = screen;
     config.enableEditing = true;
+    config.qrRecognition = &qrRecognition;
+    config.tableRecognition = &tableRecognition;
     require(pinnedWindow->present(config), "large pinned window presentation failed");
     QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
 
@@ -349,6 +385,26 @@ void pinnedLargeImageRemainsOpenWhenEnteringDrawingMode(SnowCanvasRuntime& sourc
     auto* controller = guardedWindow->findChild<ScreenshotPinnedEditController*>();
     require(controller != nullptr && controller->editMode(),
             "large pinned window did not enter drawing mode");
+    ScreenshotToolPalette* toolbar =
+        controller->toolbarWindow() != nullptr ? controller->toolbarWindow()->palette() : nullptr;
+    auto* tableQrButton =
+        toolbar != nullptr ? toolbar->findChild<QWidget*>(QStringLiteral("screenshotTableQrButton"))
+                           : nullptr;
+    require(tableQrButton != nullptr, "large pinned table and QR trigger was not found");
+    require(!tableQrButton->isEnabled(),
+            "large pinned images should disable the table and QR trigger");
+
+    auto* recognitionSession = guardedWindow->findChild<ScreenshotRecognitionSessionController*>();
+    require(recognitionSession != nullptr, "large pinned recognition session was not found");
+    toolbar->tableRequested();
+    toolbar->qrRequested();
+    require(!recognitionSession->active() && qrRecognition.nextToken == 0,
+            "large pinned images should reject table and QR activation attempts");
+    recognitionSession->activate(ScreenshotRecognitionSessionController::Mode::Qr);
+    require(qrRecognition.nextToken == 0 &&
+                !recognitionSession->busy(ScreenshotRecognitionSessionController::Mode::Qr),
+            "the recognition session should not submit oversized QR images");
+    recognitionSession->deactivate();
     require(guardedWindow->currentNativeGeometry() == config.nativeGeometry,
             "large pinned window geometry changed after entering drawing mode");
 
@@ -1174,10 +1230,21 @@ void pinnedFormattedClipboardTextSkipsOcrAndSeedsPlainTextEditing(
     require(screen != nullptr, "a primary screen is required");
 
     FakeOcrRecognition recognition;
-    QImage renderedText(320, 120, QImage::Format_ARGB32_Premultiplied);
-    renderedText.fill(Qt::white);
+    const qreal formattedTextDevicePixelRatio = screen->devicePixelRatio();
+    const QSize logicalTextSize(320, 120);
     auto document = std::make_shared<QTextDocument>();
+    document->setDocumentMargin(0.0);
     document->setHtml(QStringLiteral("<p><b>Formatted</b> clipboard text</p>"));
+    document->setTextWidth(logicalTextSize.width());
+    QImage renderedText(
+        QSize(qCeil(logicalTextSize.width() * formattedTextDevicePixelRatio),
+              qCeil(logicalTextSize.height() * formattedTextDevicePixelRatio)),
+        QImage::Format_ARGB32_Premultiplied);
+    renderedText.setDevicePixelRatio(formattedTextDevicePixelRatio);
+    renderedText.fill(Qt::white);
+    QPainter textPainter(&renderedText);
+    document->drawContents(&textPainter, QRectF(QPointF(), QSizeF(logicalTextSize)));
+    textPainter.end();
     const QString plainText = document->toPlainText();
 
     auto* pinnedWindow = new ScreenshotPinnedWindow(sourceRuntime);
@@ -1190,6 +1257,7 @@ void pinnedFormattedClipboardTextSkipsOcrAndSeedsPlainTextEditing(
     config.recognition = &recognition;
     config.formattedTextDocument = document;
     config.formattedPlainText = plainText;
+    config.formattedTextDevicePixelRatio = formattedTextDevicePixelRatio;
     require(pinnedWindow->present(config), "formatted clipboard pin presentation failed");
     QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
     require(recognition.nextToken == 0 && recognition.pending.token == 0,
@@ -1197,32 +1265,43 @@ void pinnedFormattedClipboardTextSkipsOcrAndSeedsPlainTextEditing(
 
     auto* menu = pinnedWindow->findChild<adqt::widgets::AdContextMenu*>(
         QStringLiteral("screenshotPinnedContextMenu"));
-    require(menu != nullptr && menu->actions().size() > 2 &&
-                menu->actions().at(2)->isEnabled(),
+    require(menu != nullptr && menu->actions().size() > 2 && menu->actions().at(2)->isEnabled(),
             "formatted clipboard text should expose text selection without an OCR result");
     menu->actions().at(2)->trigger();
     QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
 
-    auto* browser =
-        pinnedWindow->findChild<QTextBrowser*>(QStringLiteral("screenshotClipboardText"));
-    require(browser != nullptr && browser->isVisible() && browser->document() == document.get() &&
-                browser->toPlainText() == plainText && recognition.nextToken == 0,
+    auto* textLayer =
+        pinnedWindow->findChild<QGraphicsView*>(QStringLiteral("screenshotClipboardText"));
+    auto* textItem = formattedTextItem(textLayer);
+    require(textLayer != nullptr && textLayer->isVisible() && textItem != nullptr &&
+                textItem->document() == document.get() && textItem->toPlainText() == plainText &&
+                qFuzzyCompare(textItem->scale(), formattedTextDevicePixelRatio) &&
+                recognition.nextToken == 0,
             "text mode should show the original selectable formatted document without OCR");
+    const QPointF mappedOrigin = textLayer->transform().map(QPointF());
+    const QPointF mappedExtent =
+        textLayer->transform().map(QPointF(renderedText.width(), renderedText.height()));
+    const QSizeF mappedSize(mappedExtent.x() - mappedOrigin.x(),
+                            mappedExtent.y() - mappedOrigin.y());
+    require(std::abs(mappedSize.width() - textLayer->viewport()->width()) < 1.0 &&
+                std::abs(mappedSize.height() - textLayer->viewport()->height()) < 1.0,
+            "formatted clipboard text should use the same physical-pixel canvas basis as the "
+            "pinned image on the current DPI");
 
     auto* session = pinnedWindow->findChild<ScreenshotRecognitionSessionController*>();
     require(session != nullptr && session->originalText() == plainText,
             "formatted clipboard text should seed the recognition session with plain text");
     session->beginTextEditing();
     QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
-    auto* editor =
-        pinnedWindow->findChild<QTextEdit*>(QStringLiteral("screenshotOcrEditor"));
+    auto* editor = pinnedWindow->findChild<QTextEdit*>(QStringLiteral("screenshotOcrEditor"));
     require(editor != nullptr && editor->toPlainText() == plainText,
             "editing formatted clipboard text should use its plain-text projection");
 
     session->endTextEditing();
     QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
-    browser = pinnedWindow->findChild<QTextBrowser*>(QStringLiteral("screenshotClipboardText"));
-    require(browser != nullptr && browser->document() == document.get(),
+    textLayer = pinnedWindow->findChild<QGraphicsView*>(QStringLiteral("screenshotClipboardText"));
+    textItem = formattedTextItem(textLayer);
+    require(textLayer != nullptr && textItem != nullptr && textItem->document() == document.get(),
             "ending plain-text editing should restore the formatted clipboard document");
 
     pinnedWindow->close();
@@ -1988,17 +2067,47 @@ void pinnedScalingAndAspectLockedResizing(SnowCanvasRuntime& sourceRuntime) {
 
     recognition.complete({nullptr, QStringLiteral("deterministic failure")});
     menu->actions().at(2)->setChecked(true);
+    auto* recognitionSession =
+        pinnedWindow->findChild<ScreenshotRecognitionSessionController*>();
+    auto* editController = pinnedWindow->findChild<ScreenshotPinnedEditController*>();
+    ScreenshotToolPalette* recognitionToolbar =
+        editController != nullptr && editController->toolbarWindow() != nullptr
+            ? editController->toolbarWindow()->palette()
+            : nullptr;
+    require(recognitionSession != nullptr && recognitionToolbar != nullptr,
+            "recognition controls should exist after activating text recognition");
+
+    const auto requireRecognitionDisablesZoom =
+        [&](ScreenshotRecognitionSessionController::Mode mode, const char* modeName) {
+            require(recognitionSession->active() && recognitionSession->mode() == mode,
+                    modeName);
+            require(!scaleMenu->menuAction()->isEnabled(),
+                    "recognition should disable the scale menu");
 #if defined(Q_OS_WIN) || defined(_WIN32)
-    const QRect ocrGeometry = pinnedWindow->currentNativeGeometry();
-    require(nativeHitTest(QPoint(ocrGeometry.right(), ocrGeometry.center().y())) == HTRIGHT &&
-                nativeHitTest(ocrGeometry.center()) == HTCLIENT,
-            "OCR mode should retain resize borders and a client-interactive interior");
+            const QRect recognitionGeometry = pinnedWindow->currentNativeGeometry();
+            require(nativeHitTest(QPoint(recognitionGeometry.right(),
+                                         recognitionGeometry.center().y())) == HTCLIENT &&
+                        nativeHitTest(recognitionGeometry.center()) == HTCLIENT,
+                    "recognition should disable native resize zoom and keep the interior "
+                    "interactive");
 #endif
-    const QSize beforeOcrWheel = pinnedWindow->currentNativeGeometry().size();
-    sendWheel(canvas->rect().center(), QPoint(), QPoint(0, 120));
-    require(menu->actions().at(2)->isChecked() &&
-                pinnedWindow->currentNativeGeometry().size() != beforeOcrWheel,
-            "OCR mode should retain wheel scaling");
+            const QRect beforeWheel = pinnedWindow->currentNativeGeometry();
+            sendWheel(canvas->rect().center(), QPoint(), QPoint(0, 120));
+            require(pinnedWindow->currentNativeGeometry() == beforeWheel,
+                    "recognition should ignore wheel zoom");
+            scaleMenu->actions().at(1)->trigger();
+            require(pinnedWindow->currentNativeGeometry() == beforeWheel,
+                    "recognition should ignore scale preset activation");
+        };
+
+    requireRecognitionDisablesZoom(ScreenshotRecognitionSessionController::Mode::Text,
+                                   "text recognition should be active");
+    recognitionToolbar->tableRequested();
+    requireRecognitionDisablesZoom(ScreenshotRecognitionSessionController::Mode::Table,
+                                   "table recognition should be active");
+    recognitionToolbar->qrRequested();
+    requireRecognitionDisablesZoom(ScreenshotRecognitionSessionController::Mode::Qr,
+                                   "QR recognition should be active");
 
     menu->actions().constLast()->trigger();
     require(processUntilDeleted(guardedWindow, 2000),

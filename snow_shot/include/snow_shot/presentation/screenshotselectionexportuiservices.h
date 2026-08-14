@@ -29,7 +29,8 @@ class ScreenshotSelectionExportUiServices final : public ScreenshotSelectionExpo
                                           const QRect& nativeGeometry,
                                           const QSize& fullResolutionScaleBasis = {},
                                           std::shared_ptr<QTextDocument> formattedTextDocument = {},
-                                          const QString& formattedPlainText = {});
+                                          const QString& formattedPlainText = {},
+                                          qreal formattedTextDevicePixelRatio = 1.0);
     [[nodiscard]] bool
     presentPinnedSelection(const ScreenshotPinnedSelectionRequest& request) override;
 

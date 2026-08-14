@@ -90,8 +90,8 @@ void builtInCatalogIsCompleteAndValid() {
             }
         }
     }
-    require(sectionCount == 21 && itemCount == 65,
-            "catalog must contain the expected twenty-one sections and sixty-five items");
+    require(sectionCount == 24 && itemCount == 77,
+            "catalog must contain the expected twenty-four sections and seventy-seven items");
     const auto* functionPage = catalog.page(QStringLiteral("function-settings"));
     const auto* smartSelection =
         catalog.item({QStringLiteral("function-settings"), QStringLiteral("screenshot-settings"),
@@ -108,12 +108,14 @@ void builtInCatalogIsCompleteAndValid() {
                 functionPage->sections.at(0).id == QStringLiteral("screenshot-settings") &&
                 functionPage->sections.at(1).id == QStringLiteral("pin-to-screen-settings") &&
                 functionPage->sections.at(2).id == QStringLiteral("drawing-settings") &&
-                functionPage->sections.at(3).id == QStringLiteral("screen-recording") &&
+                functionPage->sections.at(3).id ==
+                    QStringLiteral("screen-recording-settings") &&
                 functionPage->sections.at(4).id == QStringLiteral("tray-settings") &&
                 functionPage->sections.at(5).id == QStringLiteral("global-hotkeys"),
             "Function Settings must order Pin to Screen, Drawing, and Tray around existing sections");
     const auto* encodingPreset =
-        catalog.item({QStringLiteral("function-settings"), QStringLiteral("screen-recording"),
+        catalog.item({QStringLiteral("function-settings"),
+                      QStringLiteral("screen-recording-settings"),
                       QStringLiteral("screen-recording.encoding-preset")});
     require(encodingPreset != nullptr,
             "Function Settings must expose the video encoding preset selector");
@@ -151,6 +153,31 @@ void builtInCatalogIsCompleteAndValid() {
                               QStringLiteral("tray.left-click-action")}) != nullptr,
             "Function Settings must own the moved Pin to Screen, Drawing, and Tray controls");
 
+    const auto* storagePage = catalog.page(QStringLiteral("storage-and-privacy"));
+    const auto* imageFormat = catalog.item(
+        {QStringLiteral("storage-and-privacy"), QStringLiteral("screenshots"),
+         QStringLiteral("screenshot-output.image-format")});
+    const auto* imageDirectory = catalog.item(
+        {QStringLiteral("storage-and-privacy"), QStringLiteral("screenshots"),
+         QStringLiteral("screenshot-output.image-save-directory")});
+    const auto* videoFilename = catalog.item(
+        {QStringLiteral("storage-and-privacy"), QStringLiteral("screen-recording-output"),
+         QStringLiteral("screen-recording-output.video-filename-format")});
+    require(storagePage != nullptr && storagePage->sections.size() == 4 &&
+                storagePage->sections.at(0).id == QStringLiteral("history") &&
+                storagePage->sections.at(1).id == QStringLiteral("screenshots") &&
+                storagePage->sections.at(2).id == QStringLiteral("screen-recording-output") &&
+                storagePage->sections.at(3).id == QStringLiteral("storage-status") &&
+                imageFormat != nullptr && imageDirectory != nullptr && videoFilename != nullptr &&
+                std::get<settings::SettingsSelectDefinition>(imageFormat->payload).options.size() ==
+                    5 &&
+                std::get<settings::SettingsDirectoryPathDefinition>(imageDirectory->payload)
+                        .binding ==
+                    settings::SettingsDirectoryPathBinding::ScreenshotImageDirectory &&
+                std::get<settings::SettingsTextDefinition>(videoFilename->payload).binding ==
+                    settings::SettingsTextBinding::ScreenRecordingVideoFilenameFormat,
+            "Storage and Privacy must expose ordered screenshot and recording output settings");
+
     const auto* settingsGroup =
         std::get_if<settings::SettingsNavigationGroupDefinition>(&catalog.navigation().at(2));
     require(settingsGroup != nullptr && settingsGroup->pages.size() >= 2 &&
@@ -165,6 +192,24 @@ void builtInCatalogIsCompleteAndValid() {
     require(catalog.page(QStringLiteral("hotkey-settings"))->route ==
                 QStringLiteral("/settings/hotKeySettings"),
             "Hotkey Settings must remain reachable below Function Settings");
+    const auto* drawingShortcuts =
+        catalog.section(QStringLiteral("hotkey-settings"), QStringLiteral("drawing-shortcuts"));
+    const auto* screenshotShortcuts =
+        catalog.section(QStringLiteral("hotkey-settings"), QStringLiteral("screenshot-shortcuts"));
+    require(catalog.page(QStringLiteral("hotkey-settings"))->sections.size() == 2 &&
+                screenshotShortcuts != nullptr && screenshotShortcuts->items.size() == 5 &&
+                screenshotShortcuts->items.constFirst().id ==
+                    QStringLiteral("screenshot-shortcut.move_tool") &&
+                screenshotShortcuts->items.at(1).configurationKey ==
+                    QStringLiteral("screenshot_shortcuts/move_cursor_up") &&
+                std::get<settings::SettingsLocalShortcutDefinition>(
+                    screenshotShortcuts->items.constFirst().payload)
+                        .scope == settings::SettingsLocalShortcutScope::Screenshot &&
+                drawingShortcuts != nullptr && drawingShortcuts->items.size() == 10 &&
+                drawingShortcuts->items.constFirst().id ==
+                    QStringLiteral("drawing-shortcut.select") &&
+                drawingShortcuts->items.at(1).id == QStringLiteral("drawing-shortcut.shape"),
+            "Hotkey Settings must expose Screenshot before Drawing with stable local shortcuts");
 
     const auto* interfacePage = catalog.page(QStringLiteral("interface-settings"));
     require(interfacePage != nullptr && interfacePage->sections.size() == 6 &&
@@ -371,7 +416,7 @@ void quickFunctionShortcutsHaveStableContracts() {
             "Screen Recording must use the screenshot toolbar recording icon");
     require(screenRecordCopy != nullptr && screenRecordCopy->title.source != nullptr &&
                 QString::fromLatin1(screenRecordCopy->title.source) ==
-                    QStringLiteral("Start Recording / Stop Recording and Copy Video") &&
+                    QStringLiteral("Start Screen Recording / Stop and Copy Video") &&
                 screenRecordCopyShortcut != nullptr && screenRecordCopyShortcut->iconFactory &&
                 screenRecordCopyShortcut->iconFactory() ==
                     snow_shot::presentation::icons::custom::outlined::ScreenshotCopy(),
@@ -431,7 +476,7 @@ void invalidCatalogReportsAllConformanceErrors() {
     pages[3].sections[0].items[1].id = QStringLiteral("interface-theme");
     pages[4].sections[0].items[1].configurationKey = QStringLiteral("missing/key");
     auto& custom =
-        std::get<settings::SettingsCustomDefinition>(pages[4].sections[1].items[0].payload);
+        std::get<settings::SettingsCustomDefinition>(pages[4].sections[3].items[0].payload);
     custom.renderer = static_cast<settings::SettingsCustomRenderer>(999);
     pages.push_back({QStringLiteral("empty-page"),
                      QStringLiteral("relative-route"),
@@ -469,8 +514,8 @@ void invalidCatalogReportsAllConformanceErrors() {
 
 void searchIndexIsGeneratedAndRanked() {
     settings::SettingsSearchIndex index(settings::builtInSettingsCatalog());
-    require(index.entries().size() == 93 && index.search(QString()).size() == 93,
-            "search must generate all ninety-three catalog nodes in catalog order");
+    require(index.entries().size() == 108 && index.search(QString()).size() == 108,
+            "search must generate all one hundred eight catalog nodes in catalog order");
 
     int pages = 0;
     int sections = 0;
@@ -497,7 +542,7 @@ void searchIndexIsGeneratedAndRanked() {
             break;
         }
     }
-    require(pages == 7 && sections == 21 && items == 65,
+    require(pages == 7 && sections == 24 && items == 77,
             "search node counts must match catalog page, section, and item counts");
 
     const auto theme = index.search(QStringLiteral("theme"));
@@ -590,7 +635,7 @@ void addingCatalogNodesAutomaticallyExpandsSearch() {
     require(expanded.validationErrors().isEmpty(),
             "a normal additional catalog page must validate without consumer changes");
     settings::SettingsSearchIndex index(expanded);
-    require(index.entries().size() == 96 &&
+    require(index.entries().size() == 111 &&
                 index.search(QStringLiteral("extra item")).constFirst().location ==
                     settings::SettingsLocation{QStringLiteral("extra-page"),
                                                QStringLiteral("extra-section"),

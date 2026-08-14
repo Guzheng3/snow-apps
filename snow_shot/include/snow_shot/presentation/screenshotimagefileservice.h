@@ -32,11 +32,16 @@ class ScreenshotImageFileService final {
   public:
     [[nodiscard]] static QString suggestedBaseName(
         const QDateTime& timestamp = QDateTime::currentDateTime());
+    [[nodiscard]] static QString suggestedBaseName(
+        const QString& filenameFormat,
+        const QDateTime& timestamp = QDateTime::currentDateTime());
     [[nodiscard]] static QString dialogFilter(ScreenshotImageFileFormat format);
     [[nodiscard]] static QString saveDialogFilter();
     [[nodiscard]] static QString automaticDirectory();
     [[nodiscard]] static QStringList automaticDirectories();
+    [[nodiscard]] static QStringList automaticDirectories(const QString& configuredDirectory);
     [[nodiscard]] static QString extension(ScreenshotImageFileFormat format);
+    [[nodiscard]] static ScreenshotImageFileFormat formatForKey(const QString& key);
     [[nodiscard]] static QString normalizedPath(QString path, ScreenshotImageFileFormat format);
     [[nodiscard]] static std::optional<ScreenshotImageFileFormat> formatForPath(
         const QString& path);
@@ -52,6 +57,10 @@ class ScreenshotImageFileService final {
     [[nodiscard]] static ScreenshotImageFileSaveResult saveAutomatically(
         const QImage& image, const QStringList& candidateDirectories,
         const QDateTime& timestamp);
+    [[nodiscard]] static ScreenshotImageFileSaveResult saveAutomatically(
+        const QImage& image, const QStringList& candidateDirectories,
+        ScreenshotImageFileFormat format, const QString& filenameFormat,
+        const QDateTime& timestamp = QDateTime::currentDateTime());
     [[nodiscard]] static bool publishFileToClipboard(QClipboard* clipboard,
                                                      const QString& path);
 };

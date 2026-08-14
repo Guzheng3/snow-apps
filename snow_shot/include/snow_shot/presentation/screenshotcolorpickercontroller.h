@@ -63,13 +63,21 @@ class ScreenshotColorPickerController final {
     [[nodiscard]] qreal opacityForPoint(const QPoint& physicalPoint, bool selectionDrag,
                                         const ScreenshotColorPickerContext& context) const;
     [[nodiscard]] bool setPhysicalCursorPosition(const QPoint& physicalPoint) const;
+    void rememberCursorPhysicalPoint(const QPoint& physicalPoint);
+    void updateAtPhysicalPoint(const QPoint& physicalPoint,
+                               const ScreenshotColorPickerContext& context, qreal opacity,
+                               bool rememberAsCursor);
 
     ScreenshotOverlayCoordinator& m_overlayCoordinator;
     const ScreenshotGeometryMapper& m_geometry;
     const ScreenshotDisplaySession& m_displaySession;
     QPointer<ScreenshotOverlayWindow> m_overlay;
-    QPoint m_physicalPoint;
-    bool m_hasPhysicalPoint = false;
+    // The cursor and the picker sample are different during a handle drag:
+    // the picker is anchored to the handle while the cursor remains at the
+    // user's actual drag position. Keep them independent so keyboard movement
+    // always starts from the real cursor pixel.
+    QPoint m_cursorPhysicalPoint;
+    bool m_hasCursorPhysicalPoint = false;
     bool m_suppressed = false;
     ScreenshotColorPickerDisplayMode m_displayMode =
         ScreenshotColorPickerDisplayMode::HideOutsideSelection;

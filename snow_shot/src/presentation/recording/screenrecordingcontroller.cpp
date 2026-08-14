@@ -1,6 +1,7 @@
 #include "snow_shot/presentation/screenrecordingcontroller.h"
 
 #include "snow_shot/presentation/screenshottoolpalette.h"
+#include "snow_shot/presentation/screenshotimagefileservice.h"
 #include "snow_shot/presentation/screenshotgeometry.h"
 #include "snow_shot/presentation/screenrecordingareawindow.h"
 #include "snow_shot/presentation/screenrecordingtoolbarwindow.h"
@@ -15,7 +16,6 @@
 
 #include <QApplication>
 #include <QClipboard>
-#include <QDateTime>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileInfo>
@@ -110,20 +110,63 @@ RecordingExportSettings recordingExportSettings(bool animatedImage, const QSize&
     return result;
 }
 
-QString recordingDirectory() {
-    QString root = QStandardPaths::writableLocation(QStandardPaths::MoviesLocation);
-    if (root.isEmpty()) {
-        root = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+QStringList defaultRecordingDirectories() {
+    QStringList directories;
+    for (QStandardPaths::StandardLocation location :
+         {QStandardPaths::MoviesLocation, QStandardPaths::DocumentsLocation}) {
+        const QString root = QStandardPaths::writableLocation(location);
+        if (root.isEmpty()) {
+            continue;
+        }
+        const QString directory = QDir(root).filePath(QStringLiteral("SnowShot"));
+        if (!directories.contains(directory, Qt::CaseInsensitive)) {
+            directories.push_back(directory);
+        }
     }
-    return QDir(root).filePath(QStringLiteral("SnowShot"));
+    return directories;
+}
+
+QStringList recordingDirectories() {
+    QStringList directories;
+    const QString configured = QDir::cleanPath(
+        snow_shot::storage::RecordingSettings().videoSaveDirectory().trimmed());
+    const QFileInfo configuredInfo(configured);
+    if (!configured.isEmpty() && configuredInfo.isDir() && configuredInfo.isWritable()) {
+        directories.push_back(configured);
+    }
+    for (const QString& fallback : defaultRecordingDirectories()) {
+        if (!directories.contains(fallback, Qt::CaseInsensitive)) {
+            directories.push_back(fallback);
+        }
+    }
+    return directories;
+}
+
+QString recordingDirectory() {
+    const QStringList directories = recordingDirectories();
+    for (const QString& candidate : directories) {
+        QDir directory(candidate);
+        if ((directory.exists() || directory.mkpath(QStringLiteral("."))) &&
+            QFileInfo(directory.absolutePath()).isWritable()) {
+            return directory.absolutePath();
+        }
+    }
+    return directories.isEmpty() ? QString() : directories.constFirst();
 }
 
 QString recordingFilePath(const QString& extension) {
-    const QString fileName =
-        QStringLiteral("SnowShot_Video_%1.%2")
-            .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd_HH-mm-ss")))
-            .arg(extension);
-    return QDir(recordingDirectory()).filePath(fileName);
+    const QString baseName = ScreenshotImageFileService::suggestedBaseName(
+        snow_shot::storage::RecordingSettings().videoFilenameFormat());
+    const QDir directory(recordingDirectory());
+    const QString normalizedExtension = extension.startsWith(QLatin1Char('.'))
+                                            ? extension
+                                            : QStringLiteral(".%1").arg(extension);
+    QString path = directory.filePath(baseName + normalizedExtension);
+    for (int suffix = 1; QFileInfo::exists(path); ++suffix) {
+        path = directory.filePath(
+            QStringLiteral("%1_%2%3").arg(baseName).arg(suffix).arg(normalizedExtension));
+    }
+    return path;
 }
 
 QString recordingWorkingDirectory() {

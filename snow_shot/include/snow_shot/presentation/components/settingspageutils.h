@@ -33,8 +33,8 @@ inline void configureSettingsScrollArea(adqt::widgets::AdScrollArea* scrollArea,
     viewport->setAutoFillBackground(false);
 }
 
-inline int settingsControlWidth(const styles::ThemeAliasMetricToken& metric) {
-    return metric.controlHeightLG * 5 + metric.paddingLG;
+inline int settingsControlWidth(const styles::ThemeAliasMetricToken&) {
+    return 230;
 }
 
 inline QWidget* createSettingItemRow(QWidget* parent,

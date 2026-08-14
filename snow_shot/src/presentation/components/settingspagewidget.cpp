@@ -13,6 +13,7 @@
 #include "widgets/button.h"
 #include "widgets/color_picker.h"
 #include "widgets/input_number.h"
+#include "widgets/input_line_edit.h"
 #include "widgets/input_search_edit.h"
 #include "widgets/modal.h"
 #include "widgets/multi_select.h"
@@ -76,6 +77,8 @@ class SettingsPageWidget::Impl {
         QVector<adqt::widgets::AdRadio*> radioButtons;
         QVector<QVariant> radioValues;
         adqt::widgets::AdSearchEdit* filePathControl = nullptr;
+        adqt::widgets::AdSearchEdit* directoryPathControl = nullptr;
+        adqt::widgets::AdLineEdit* textControl = nullptr;
         ShortcutKeyRow* shortcutControl = nullptr;
         adqt::widgets::AdButton* actionControl = nullptr;
         SettingsCustomWidget* customControl = nullptr;
@@ -150,10 +153,6 @@ class SettingsPageWidget::Impl {
             runtimeSection.header->setObjectName(settings::generatedObjectName(
                 QStringLiteral("settings-section"),
                 QStringLiteral("%1-%2").arg(page->id, sectionDefinition.id)));
-            if (page->id == QStringLiteral("hotkey-settings")) {
-                runtimeSection.header->setPresentation(
-                    SectionHeaderWidget::Presentation::FormGroup);
-            }
             runtimeSection.header->setResetVisible(
                 sectionDefinition.reset != settings::SettingsSectionReset::None);
             contentLayout->addWidget(runtimeSection.header);
@@ -167,8 +166,10 @@ class SettingsPageWidget::Impl {
             auto* listLayout = new QVBoxLayout(list);
             listLayout->setContentsMargins(0, 0, 0, 0);
             const bool compactShortcutGrid = page->id == QStringLiteral("hotkey-settings") &&
-                                             sectionDefinition.id ==
-                                                 QStringLiteral("drawing-shortcuts");
+                                             (sectionDefinition.id ==
+                                                  QStringLiteral("screenshot-shortcuts") ||
+                                              sectionDefinition.id ==
+                                                  QStringLiteral("drawing-shortcuts"));
             listLayout->setSpacing(compactShortcutGrid
                                        ? 0
                                        : (page->id == QStringLiteral("quick-functions")
@@ -192,19 +193,10 @@ class SettingsPageWidget::Impl {
             }
             contentLayout->addWidget(list);
         }
-        trailingScrollSpace = new QWidget(contentWidget);
-        trailingScrollSpace->setObjectName(settings::generatedObjectName(
-            QStringLiteral("settings-section-scroll-space"), page->id));
-        trailingScrollSpace->setFixedHeight(0);
-        contentLayout->addWidget(trailingScrollSpace);
-        contentLayout->addStretch(1);
         pageLayout->addWidget(pageContainer, 1);
         scrollMarginX = metric.paddingSM;
         scrollMarginY = metric.paddingSM;
-        if (scrollArea->viewport() != nullptr) {
-            scrollArea->viewport()->installEventFilter(&q);
-        }
-        requestScrollGeometryUpdate();
+        requestVisibleSectionSync();
     }
 
     void buildItem(const settings::SettingsItemDefinition& definition, QWidget* list,
@@ -477,6 +469,75 @@ class SettingsPageWidget::Impl {
                                 }
                             });
                 } else if constexpr (std::is_same_v<
+                                         Payload, settings::SettingsDirectoryPathDefinition>) {
+                    auto* control = new adqt::widgets::AdSearchEdit(list);
+                    control->setControlSize(adqt::widgets::AdSearchEdit::ControlSize::Medium);
+                    control->setAllowClear(true);
+                    control->setFixedWidth(
+                        settings_ui::settingsControlWidth(colorScheme.metricAlias));
+                    runtime.directoryPathControl = control;
+                    runtime.focusTarget = control;
+                    runtime.anchor = settings_ui::createSettingItemRow(
+                        list, colorScheme.metricAlias, &runtime.title, &runtime.description,
+                        control,
+                        settings::generatedObjectName(QStringLiteral("settings-item"),
+                                                      definition.id));
+                    addItemWidget(runtime.anchor);
+                    connect(control, &adqt::widgets::AdSearchEdit::editingFinished, &q,
+                            [this, control, binding = payload.binding]() {
+                                if (!synchronizingValues &&
+                                    !runtimeBindings.applyDirectoryPathValue(binding,
+                                                                             control->text())) {
+                                    syncValues();
+                                }
+                            });
+                    connect(control, &adqt::widgets::AdSearchEdit::searchRequested, &q,
+                            [this, control, binding = payload.binding,
+                             dialogTitle = payload.dialogTitle](
+                                const QString& text,
+                                adqt::widgets::AdSearchEdit::SearchReason reason) {
+                                if (reason ==
+                                    adqt::widgets::AdSearchEdit::SearchReason::ButtonClick) {
+                                    const QString path = QFileDialog::getExistingDirectory(
+                                        &q, dialogTitle.translated(), text);
+                                    if (!path.isEmpty()) {
+                                        control->setText(path);
+                                        if (!runtimeBindings.applyDirectoryPathValue(binding,
+                                                                                     path)) {
+                                            syncValues();
+                                        }
+                                    }
+                                } else if (reason ==
+                                           adqt::widgets::AdSearchEdit::SearchReason::ClearAction) {
+                                    if (!runtimeBindings.applyDirectoryPathValue(binding,
+                                                                                 QString())) {
+                                        syncValues();
+                                    }
+                                }
+                            });
+                } else if constexpr (std::is_same_v<Payload,
+                                                     settings::SettingsTextDefinition>) {
+                    auto* control = new adqt::widgets::AdLineEdit(list);
+                    control->setControlSize(adqt::widgets::AdLineEdit::ControlSize::Medium);
+                    control->setAllowClear(false);
+                    control->setFixedWidth(
+                        settings_ui::settingsControlWidth(colorScheme.metricAlias));
+                    runtime.textControl = control;
+                    runtime.focusTarget = control;
+                    runtime.anchor = settings_ui::createSettingItemRow(
+                        list, colorScheme.metricAlias, &runtime.title, &runtime.description,
+                        control,
+                        settings::generatedObjectName(QStringLiteral("settings-item"),
+                                                      definition.id));
+                    addItemWidget(runtime.anchor);
+                    connect(control, &QLineEdit::editingFinished, &q,
+                            [this, control, binding = payload.binding]() {
+                                if (!synchronizingValues &&
+                                    !runtimeBindings.applyTextValue(binding, control->text())) {
+                                    syncValues();
+                                }
+                            });
+                } else if constexpr (std::is_same_v<
                                          Payload, settings::SettingsShortcutActionDefinition>) {
                     const auto shortcutState = runtimeBindings.shortcutState(payload.shortcutAction);
                     const auto metric = colorScheme.metricAlias;
@@ -521,7 +582,8 @@ class SettingsPageWidget::Impl {
                             });
                 } else if constexpr (std::is_same_v<
                                          Payload, settings::SettingsLocalShortcutDefinition>) {
-                    const QStringList shortcuts = runtimeBindings.localShortcuts(payload.toolId);
+                    const QStringList shortcuts =
+                        runtimeBindings.localShortcuts(payload.scope, payload.shortcutId);
                     snow_shot::presentation::GlobalShortcutRegistrationState displayState;
                     displayState.shortcuts = shortcuts;
                     displayState.status = shortcuts.isEmpty()
@@ -541,12 +603,16 @@ class SettingsPageWidget::Impl {
                     config.useStableBorder = false;
                     config.maxShortcutCount = 2;
                     config.shortcutValidator =
-                        [this, toolId = payload.toolId](const QString& shortcut) {
-                            return runtimeBindings.validateLocalShortcut(toolId, shortcut);
+                        [this, scope = payload.scope,
+                         shortcutId = payload.shortcutId](const QString& shortcut) {
+                            return runtimeBindings.validateLocalShortcut(scope, shortcutId,
+                                                                         shortcut);
                         };
                     config.showRegistrationStatus = false;
                     config.validationScope =
-                        ShortcutKeyRowConfig::ValidationScope::DrawingShortcut;
+                        payload.scope == settings::SettingsLocalShortcutScope::Screenshot
+                            ? ShortcutKeyRowConfig::ValidationScope::ScreenshotShortcut
+                            : ShortcutKeyRowConfig::ValidationScope::DrawingShortcut;
                     config.presentation =
                         ShortcutKeyRowConfig::Presentation::CompactFormField;
                     auto* control = new ShortcutKeyRow(config, metric, mainWindowMetric, list);
@@ -557,8 +623,9 @@ class SettingsPageWidget::Impl {
                     runtime.anchor = control;
                     addItemWidget(control);
                     connect(control, &ShortcutKeyRow::shortcutsChanged, &q,
-                            [this, toolId = payload.toolId](const QStringList& next) {
-                                if (!runtimeBindings.applyLocalShortcuts(toolId, next)) {
+                            [this, scope = payload.scope,
+                             shortcutId = payload.shortcutId](const QStringList& next) {
+                                if (!runtimeBindings.applyLocalShortcuts(scope, shortcutId, next)) {
                                     syncValues();
                                 }
                             });
@@ -638,10 +705,7 @@ class SettingsPageWidget::Impl {
             QObject::connect(scrollArea->verticalScrollBar(), &QScrollBar::valueChanged, &q,
                              [this](int) { syncVisibleSection(); });
             QObject::connect(scrollArea->verticalScrollBar(), &QScrollBar::rangeChanged, &q,
-                             [this](int, int) {
-                                 requestScrollGeometryUpdate();
-                                 syncVisibleSection();
-                             });
+                             [this](int, int) { requestVisibleSectionSync(); });
         }
 
         for (RuntimeSection& section : sections) {
@@ -840,6 +904,27 @@ class SettingsPageWidget::Impl {
                 }
                 runtime.filePathControl->setEnabled(storageStatus.writeAvailable);
             }
+            if (runtime.directoryPathControl != nullptr) {
+                const QSignalBlocker blocker(runtime.directoryPathControl);
+                const auto* definition =
+                    std::get_if<settings::SettingsDirectoryPathDefinition>(
+                        &runtime.definition->payload);
+                if (definition != nullptr) {
+                    runtime.directoryPathControl->setText(
+                        runtimeBindings.directoryPathValue(definition->binding));
+                }
+                runtime.directoryPathControl->setEnabled(storageStatus.writeAvailable);
+            }
+            if (runtime.textControl != nullptr) {
+                const QSignalBlocker blocker(runtime.textControl);
+                const auto* definition = std::get_if<settings::SettingsTextDefinition>(
+                    &runtime.definition->payload);
+                if (definition != nullptr) {
+                    runtime.textControl->setText(
+                        runtimeBindings.textValue(definition->binding));
+                }
+                runtime.textControl->setEnabled(storageStatus.writeAvailable);
+            }
             if (runtime.shortcutControl != nullptr) {
                 const auto* definition = std::get_if<settings::SettingsShortcutActionDefinition>(
                     &runtime.definition->payload);
@@ -854,7 +939,8 @@ class SettingsPageWidget::Impl {
                     &runtime.definition->payload);
                 if (local != nullptr) {
                     snow_shot::presentation::GlobalShortcutRegistrationState state;
-                    state.shortcuts = runtimeBindings.localShortcuts(local->toolId);
+                    state.shortcuts =
+                        runtimeBindings.localShortcuts(local->scope, local->shortcutId);
                     state.status = state.shortcuts.isEmpty()
                                        ? snow_shot::presentation::GlobalShortcutStatus::Unset
                                        : snow_shot::presentation::GlobalShortcutStatus::Registered;
@@ -958,6 +1044,13 @@ class SettingsPageWidget::Impl {
                 runtime.filePathControl->setPlaceholderText(
                     filePath->fileFilter.translated().section(QStringLiteral(";;"), 0, 0));
             }
+            if (runtime.directoryPathControl != nullptr) {
+                const auto* directoryPath =
+                    std::get_if<settings::SettingsDirectoryPathDefinition>(&definition.payload);
+                Q_ASSERT(directoryPath != nullptr);
+                runtime.directoryPathControl->setSearchButtonText(
+                    directoryPath->buttonText.translated());
+            }
             if (runtime.shortcutControl != nullptr) {
                 runtime.shortcutControl->setTitle(title);
                 runtime.shortcutControl->setAccessibleDescription(description);
@@ -980,7 +1073,7 @@ class SettingsPageWidget::Impl {
             }
         }
         syncValues();
-        requestScrollGeometryUpdate();
+        requestVisibleSectionSync();
     }
 
     void applyTheme(const snow_shot::presentation::styles::ThemeColorScheme& scheme) {
@@ -999,7 +1092,7 @@ class SettingsPageWidget::Impl {
                 runtime.customControl->applyTheme(scheme);
             }
         }
-        requestScrollGeometryUpdate();
+        requestVisibleSectionSync();
         q.update();
     }
 
@@ -1014,44 +1107,13 @@ class SettingsPageWidget::Impl {
         return contentLayout != nullptr ? contentLayout->contentsMargins().top() : 0;
     }
 
-    void updateTrailingScrollSpace() {
-        if (updatingScrollGeometry || scrollArea == nullptr || contentWidget == nullptr ||
-            contentLayout == nullptr || trailingScrollSpace == nullptr || sections.isEmpty() ||
-            scrollArea->viewport() == nullptr) {
+    void requestVisibleSectionSync() {
+        if (visibleSectionSyncPending) {
             return;
         }
-
-        updatingScrollGeometry = true;
-        contentLayout->activate();
-        const int existingReserve = trailingScrollSpace->height();
-        const int naturalHeight =
-            qMax(0, contentWidget->sizeHint().height() - existingReserve);
-        const int viewportHeight = scrollArea->viewport()->height();
-        int reserve = 0;
-        // A scrollable page needs enough tail room for its final section to align at the top.
-        if (viewportHeight > 0 && naturalHeight > viewportHeight) {
-            const int lastSectionTop = sectionTop(sections.constLast());
-            const int requiredHeight =
-                lastSectionTop - sectionViewportInset() + viewportHeight;
-            reserve = qMax(0, requiredHeight - naturalHeight);
-        }
-
-        if (trailingScrollSpace->height() != reserve) {
-            trailingScrollSpace->setFixedHeight(reserve);
-            contentLayout->activate();
-            contentWidget->resize(contentWidget->width(), contentWidget->sizeHint().height());
-        }
-        updatingScrollGeometry = false;
-    }
-
-    void requestScrollGeometryUpdate() {
-        if (scrollGeometryUpdatePending) {
-            return;
-        }
-        scrollGeometryUpdatePending = true;
+        visibleSectionSyncPending = true;
         QTimer::singleShot(0, &q, [this]() {
-            scrollGeometryUpdatePending = false;
-            updateTrailingScrollSpace();
+            visibleSectionSyncPending = false;
             syncVisibleSection();
         });
     }
@@ -1083,7 +1145,7 @@ class SettingsPageWidget::Impl {
     }
 
     void syncVisibleSection() {
-        if (suppressVisibleSectionTracking || updatingScrollGeometry || scrollArea == nullptr ||
+        if (suppressVisibleSectionTracking || scrollArea == nullptr ||
             scrollArea->verticalScrollBar() == nullptr ||
             scrollArea->verticalScrollBar()->maximum() <=
                 scrollArea->verticalScrollBar()->minimum()) {
@@ -1101,25 +1163,9 @@ class SettingsPageWidget::Impl {
         if (scrollArea == nullptr || scrollArea->verticalScrollBar() == nullptr) {
             return;
         }
-        updateTrailingScrollSpace();
         QScrollBar* scrollBar = scrollArea->verticalScrollBar();
         const int target = sectionTop(section) - sectionViewportInset();
         scrollBar->setValue(qBound(scrollBar->minimum(), target, scrollBar->maximum()));
-    }
-
-    void handleWatchedEvent(QObject* watched, QEvent* event) {
-        if (event == nullptr || scrollArea == nullptr || watched != scrollArea->viewport()) {
-            return;
-        }
-        switch (event->type()) {
-        case QEvent::Resize:
-        case QEvent::Show:
-        case QEvent::LayoutRequest:
-            requestScrollGeometryUpdate();
-            break;
-        default:
-            break;
-        }
     }
 
     void reveal(const settings::SettingsLocation& requested) {
@@ -1168,7 +1214,6 @@ class SettingsPageWidget::Impl {
     adqt::widgets::AdScrollArea* scrollArea = nullptr;
     QWidget* contentWidget = nullptr;
     QVBoxLayout* contentLayout = nullptr;
-    QWidget* trailingScrollSpace = nullptr;
     QVector<RuntimeSection> sections;
     QVector<RuntimeItem> items;
     snow_shot::presentation::styles::ThemeColorScheme colorScheme;
@@ -1177,8 +1222,7 @@ class SettingsPageWidget::Impl {
     QString lastVisibleSectionId;
     bool suppressVisibleSectionTracking = false;
     bool synchronizingValues = false;
-    bool updatingScrollGeometry = false;
-    bool scrollGeometryUpdatePending = false;
+    bool visibleSectionSyncPending = false;
 };
 
 SettingsPageWidget::SettingsPageWidget(
@@ -1213,11 +1257,4 @@ void SettingsPageWidget::changeEvent(QEvent* event) {
     if (event->type() == QEvent::LanguageChange) {
         retranslateUi();
     }
-}
-
-bool SettingsPageWidget::eventFilter(QObject* watched, QEvent* event) {
-    if (m_impl != nullptr) {
-        m_impl->handleWatchedEvent(watched, event);
-    }
-    return QWidget::eventFilter(watched, event);
 }

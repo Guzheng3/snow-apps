@@ -21,6 +21,7 @@ struct ScreenshotClipboardContent {
     QImage image;
     std::shared_ptr<QTextDocument> formattedDocument;
     QString plainText;
+    qreal formattedTextDevicePixelRatio = 1.0;
 
     [[nodiscard]] bool isValid() const {
         return !image.isNull() && !image.size().isEmpty() &&
@@ -39,9 +40,9 @@ class ScreenshotClipboardContentReader final {
     // returned document and image are detached snapshots and do not retain the
     // QMimeData object.
     [[nodiscard]] static std::optional<ScreenshotClipboardContent> read(
-        QClipboard* clipboard);
+        QClipboard* clipboard, qreal devicePixelRatio);
     [[nodiscard]] static std::optional<ScreenshotClipboardContent> readMimeData(
-        const QMimeData* mimeData);
+        const QMimeData* mimeData, qreal devicePixelRatio);
 };
 
 #endif // SNOW_SHOT_PRESENTATION_SCREENSHOTCLIPBOARDCONTENT_H

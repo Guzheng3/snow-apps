@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonParseError>
 #include <QMutexLocker>
@@ -76,6 +77,50 @@ QString legacyKeyFor(const QString& key) {
     }
     return QStringLiteral("video_recording/") +
            key.mid(QStringLiteral("screen_recording/").size());
+}
+
+bool hasScreenshotShortcutConfiguration(const QJsonObject& root) {
+    for (const QString& key : {QStringLiteral("screenshot_shortcuts/move_tool"),
+                               QStringLiteral("screenshot_shortcuts/move_cursor_up"),
+                               QStringLiteral("screenshot_shortcuts/move_cursor_down"),
+                               QStringLiteral("screenshot_shortcuts/move_cursor_left"),
+                               QStringLiteral("screenshot_shortcuts/move_cursor_right")}) {
+        bool present = false;
+        static_cast<void>(valueAtPath(root, key, &present));
+        if (present) {
+            return true;
+        }
+    }
+    return false;
+}
+
+QJsonValue withoutLegacyDrawingAlias(const QString& key, const QJsonValue& value,
+                                     bool* changed) {
+    if (!value.isArray()) {
+        return value;
+    }
+    QString alias;
+    if (key == QStringLiteral("drawing_shortcuts/shape")) {
+        alias = QStringLiteral("S");
+    } else if (key == QStringLiteral("drawing_shortcuts/arrow")) {
+        alias = QStringLiteral("A");
+    } else if (key == QStringLiteral("drawing_shortcuts/watermark")) {
+        alias = QStringLiteral("W");
+    } else {
+        return value;
+    }
+
+    QJsonArray migrated;
+    for (const QJsonValue& item : value.toArray()) {
+        if (item.isString() && item.toString().trimmed().compare(alias, Qt::CaseInsensitive) == 0) {
+            if (changed != nullptr) {
+                *changed = true;
+            }
+            continue;
+        }
+        migrated.push_back(item);
+    }
+    return migrated;
 }
 
 bool integerVersion(const QJsonValue& value, int* version) {
@@ -349,6 +394,9 @@ void ConfigurationStore::load() {
                                            "storage is read-only");
                     qCWarning(storageLog) << error << version;
                 }
+                const bool migrateLegacyDrawingAliases =
+                    compatibility != ConfigurationCompatibility::FutureVersion &&
+                    !hasScreenshotShortcutConfiguration(parsedObject);
                 for (const ConfigurationSchemaEntry& entry : ConfigurationSchema::entries()) {
                     if (entry.key == QStringLiteral("storage/schema_version")) {
                         loaded.insert(entry.key, version);
@@ -369,6 +417,10 @@ void ConfigurationStore::load() {
                         }
                         continue;
                     }
+                    bool migratedDrawingAlias = false;
+                    if (migrateLegacyDrawingAliases) {
+                        raw = withoutLegacyDrawingAlias(entry.key, raw, &migratedDrawingAlias);
+                    }
                     const ConfigurationNormalization normalized =
                         ConfigurationSchema::normalize(entry.key, raw);
                     if (!normalized.valid) {
@@ -383,7 +435,7 @@ void ConfigurationStore::load() {
                     }
                     loaded.insert(entry.key, normalized.value);
                     if (compatibility != ConfigurationCompatibility::FutureVersion &&
-                        (normalized.changed || migratedLegacy)) {
+                        (normalized.changed || migratedLegacy || migratedDrawingAlias)) {
                         insertPath(&document, entry.key, normalized.value);
                         if (!legacyKey.isEmpty()) {
                             removePath(&document, legacyKey);

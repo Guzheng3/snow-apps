@@ -8,6 +8,8 @@
 #include "snow_shot/presentation/screenshotinteractionstate.h"
 #include "snow_shot/presentation/screenshotoverlayinputhandler.h"
 #include "snow_shot/presentation/screenshotselectionmodel.h"
+#include "snow_shot/storage/applicationstorage.h"
+#include "snow_shot/storage/settingsadapters.h"
 
 #include "snow_draw_engine_qt/snow_canvas_runtime.h"
 #include "snow_draw_engine_qt/snow_canvas_widget.h"
@@ -29,6 +31,8 @@
 #include <iostream>
 #include <optional>
 #include <utility>
+
+namespace storage = snow_shot::storage;
 
 namespace {
 void require(bool condition, const char* message) {
@@ -899,7 +903,7 @@ void completionGesturesRequireAConfirmedSelectionAndSupportedTool() {
             "completion gestures must ignore Select and scrolling screenshot modes");
 }
 
-void drawingShortcutsTakePriorityOverMoveColorPickerKeys() {
+void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
     ScreenshotCaptureState captureState;
     ScreenshotDisplaySession displays;
     ScreenshotGeometryMapper geometry;
@@ -909,15 +913,31 @@ void drawingShortcutsTakePriorityOverMoveColorPickerKeys() {
     ScreenshotInteractionState interaction;
     interaction.confirmSelection();
 
-    QString activatedTool;
-    int colorPickerMoves = 0;
+    const storage::ScreenshotShortcutSettings shortcutSettings;
+    const QMap<QString, QStringList> originalShortcuts = shortcutSettings.allShortcuts();
+    QMap<QString, QStringList> defaults = originalShortcuts;
+    defaults.insert(QStringLiteral("move_tool"), {QStringLiteral("M")});
+    defaults.insert(QStringLiteral("move_cursor_up"),
+                    {QStringLiteral("W"), QStringLiteral("Up")});
+    defaults.insert(QStringLiteral("move_cursor_down"),
+                    {QStringLiteral("S"), QStringLiteral("Down")});
+    defaults.insert(QStringLiteral("move_cursor_left"),
+                    {QStringLiteral("A"), QStringLiteral("Left")});
+    defaults.insert(QStringLiteral("move_cursor_right"),
+                    {QStringLiteral("D"), QStringLiteral("Right")});
+    require(shortcutSettings.setAllShortcutsAtomic(defaults),
+            "failed to establish screenshot shortcut defaults");
+
+    int moveToolActivations = 0;
+    QVector<QPoint> colorPickerMoves;
     ScreenshotOverlayInputActions actions;
-    actions.activateDrawingShortcut = [&activatedTool](const QString& toolId) {
-        activatedTool = toolId;
+    actions.activateMoveTool = [&interaction, &moveToolActivations]() {
+        ++moveToolActivations;
+        interaction.setMoveTool(true, false);
         return true;
     };
-    actions.moveColorPickerCursor = [&colorPickerMoves](int, int) {
-        ++colorPickerMoves;
+    actions.moveColorPickerCursor = [&colorPickerMoves](int dx, int dy) {
+        colorPickerMoves.push_back(QPoint(dx, dy));
         return true;
     };
     ScreenshotOverlayInputHandler handler({
@@ -930,23 +950,62 @@ void drawingShortcutsTakePriorityOverMoveColorPickerKeys() {
         std::move(actions),
     });
 
-    require(handler.handleKeyPress(Qt::Key_S, {}), "default Shape shortcut was not handled");
-    require(activatedTool == QStringLiteral("shape") && colorPickerMoves == 0,
-            "default Shape shortcut must win over Move color-picker navigation");
+    interaction.setCanvasTool(ScreenshotActiveTool::Shape);
+    require(handler.handleKeyPress(Qt::Key_M, {}), "default Move shortcut was not handled");
+    require(moveToolActivations == 1 && interaction.moveToolActive(),
+            "default Move shortcut must activate the Move tool");
 
-    activatedTool.clear();
+    require(handler.handleKeyPress(Qt::Key_W, {}) && handler.handleKeyPress(Qt::Key_Up, {}),
+            "default cursor-up shortcuts were not handled");
+    require(colorPickerMoves == QVector<QPoint>{QPoint(0, -1), QPoint(0, -1)},
+            "W and Up must move the color-picker cursor up by one pixel");
+
+    require(shortcutSettings.setMoveCursorUp({QStringLiteral("Ctrl+Alt+K")}),
+            "failed to customize the cursor-up shortcut");
+    require(!handler.handleKeyPress(Qt::Key_W, {}),
+            "removed cursor shortcut must stop handling its previous key");
+    require(handler.handleKeyPress(Qt::Key_K, Qt::ControlModifier | Qt::AltModifier) &&
+                colorPickerMoves.constLast() == QPoint(0, -1),
+            "customized cursor shortcut must take effect without restarting capture");
+
+    require(shortcutSettings.setMoveTool({QStringLiteral("Ctrl+Alt+M")}),
+            "failed to customize the Move shortcut");
+    interaction.setCanvasTool(ScreenshotActiveTool::Shape);
+    require(!handler.handleKeyPress(Qt::Key_M, {}) &&
+                handler.handleKeyPress(Qt::Key_M, Qt::ControlModifier | Qt::AltModifier) &&
+                moveToolActivations == 2 && interaction.moveToolActive(),
+            "customized Move shortcut must replace the default key immediately");
+
+    require(shortcutSettings.setAllShortcutsAtomic(originalShortcuts),
+            "failed to restore screenshot shortcuts after input test");
+    colorPickerMoves.clear();
     require(handler.handleKeyPress(Qt::Key_Up, {}),
-            "non-conflicting color-picker navigation was not handled");
-    require(activatedTool.isEmpty() && colorPickerMoves == 1,
-            "arrow-key color-picker navigation should remain available");
+            "restored cursor shortcut was not handled");
+    require(colorPickerMoves == QVector<QPoint>{QPoint(0, -1)},
+            "restored cursor shortcut must use the persisted configuration");
 }
 } // namespace
 
 int main(int argc, char** argv) {
-    qputenv("QT_QPA_PLATFORM", "offscreen");
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
+        qputenv("QT_QPA_PLATFORM", "offscreen");
+    }
     QApplication application(argc, argv);
     QTemporaryDir temporary;
     require(temporary.isValid(), "temporary directory unavailable");
+    storage::ApplicationStorage::instance().shutdown();
+    const storage::StorageInitializationOptions storageOptions{
+        QDir(temporary.path()).filePath(QStringLiteral("bin")),
+        QDir(temporary.path()).filePath(QStringLiteral("settings")),
+        0,
+    };
+    require(storage::ApplicationStorage::instance().initialize(storageOptions).success,
+            "failed to initialize isolated shortcut settings");
+    if (QCoreApplication::arguments().contains(QStringLiteral("--shortcut-input-only"))) {
+        configuredScreenshotShortcutsControlMoveAndCursorNavigation();
+        storage::ApplicationStorage::instance().shutdown();
+        return 0;
+    }
     navigationMatchesDisplaysAndRestoresLiveEndpoint(
         QDir(temporary.path()).filePath(QStringLiteral("navigation")));
     navigationSharesCanvasCreationStyles(
@@ -975,6 +1034,7 @@ int main(int argc, char** argv) {
     historyKeysOnlyWorkDuringSelectionStates();
     moveToolCanStartManualSelectionOutsideConfirmedBox();
     completionGesturesRequireAConfirmedSelectionAndSupportedTool();
-    drawingShortcutsTakePriorityOverMoveColorPickerKeys();
+    configuredScreenshotShortcutsControlMoveAndCursorNavigation();
+    storage::ApplicationStorage::instance().shutdown();
     return 0;
 }

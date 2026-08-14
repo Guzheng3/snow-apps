@@ -194,7 +194,8 @@ bool ScreenshotSelectionExportUiServices::presentPinnedImage(const QImage& image
                                                              const QSize& fullResolutionScaleBasis,
                                                              std::shared_ptr<QTextDocument>
                                                                  formattedTextDocument,
-                                                             const QString& formattedPlainText) {
+                                                             const QString& formattedPlainText,
+                                                             qreal formattedTextDevicePixelRatio) {
     SNOW_SHOT_PIN_PERF_SCOPE("ui.present_pinned_image");
     if (image.isNull() || screen == nullptr || nativeGeometry.isEmpty()) {
         return false;
@@ -226,6 +227,7 @@ bool ScreenshotSelectionExportUiServices::presentPinnedImage(const QImage& image
     config.enableEditing = true;
     config.formattedTextDocument = std::move(formattedTextDocument);
     config.formattedPlainText = formattedPlainText;
+    config.formattedTextDevicePixelRatio = formattedTextDevicePixelRatio;
     config.recognition = m_recognition;
     config.qrRecognition = m_qrRecognition;
     config.tableRecognition = m_tableRecognition;

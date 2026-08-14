@@ -58,9 +58,24 @@ void namingAndFormatSelection() {
     require(ScreenshotImageFileService::suggestedBaseName(timestamp) ==
                 QStringLiteral("SnowShot_2026-08-14_09-07-06"),
             "automatic screenshot names must use the documented timestamp format");
+    require(ScreenshotImageFileService::suggestedBaseName(
+                QStringLiteral("Capture_{yyyyMMdd}_{HHmmss}_{zzz}"), timestamp) ==
+                QStringLiteral("Capture_20260814_090706_000"),
+            "filename formats must expand arbitrary date-time patterns inside braces");
+    require(ScreenshotImageFileService::suggestedBaseName(
+                QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}"), timestamp) ==
+                QStringLiteral("SnowShot_2026-08-14_09-07-06"),
+            "documented uppercase date tokens must map to Qt date-time fields");
     require(ScreenshotImageFileService::extension(ScreenshotImageFileFormat::Jpeg) ==
                 QStringLiteral("jpg"),
             "JPEG should use the canonical jpg extension");
+    require(ScreenshotImageFileService::formatForKey(QStringLiteral("jpeg")) ==
+                ScreenshotImageFileFormat::Jpeg &&
+                ScreenshotImageFileService::formatForKey(QStringLiteral("webp")) ==
+                    ScreenshotImageFileFormat::Webp &&
+                ScreenshotImageFileService::formatForKey(QStringLiteral("unsupported")) ==
+                    ScreenshotImageFileFormat::Png,
+            "persisted image format keys must resolve to supported codecs with PNG fallback");
     require(ScreenshotImageFileService::formatForDialogSelection(
                 QStringLiteral("capture.unknown"), QStringLiteral("JPEG image (*.jpg *.jpeg)")) ==
                 ScreenshotImageFileFormat::Jpeg,
@@ -146,6 +161,32 @@ void writesEveryAdvertisedFormat() {
     }
 }
 
+void configuredAutomaticOutputUsesFormatDirectoryAndFilename() {
+    QTemporaryDir directory;
+    require(directory.isValid(), "temporary configured-output directory could not be created");
+    const QDateTime timestamp(QDate(2026, 8, 14), QTime(9, 7, 6), QTimeZone::UTC);
+    const QStringList candidates =
+        ScreenshotImageFileService::automaticDirectories(directory.path());
+    require(!candidates.isEmpty() && candidates.constFirst() == directory.path(),
+            "an existing configured directory must precede platform fallbacks");
+
+    const ScreenshotImageFileSaveResult result = ScreenshotImageFileService::saveAutomatically(
+        image(), candidates, ScreenshotImageFileFormat::Webp,
+        QStringLiteral("Auto_{yyyyMMdd_HHmmss}"), timestamp);
+    require(result.succeeded() &&
+                result.path ==
+                    QDir(directory.path()).filePath(QStringLiteral("Auto_20260814_090706.webp")) &&
+                snow_shot::image_codec::inspectFile(result.path, snow::image::Format::webp,
+                                                    QSize(3, 2)),
+            "configured automatic output must apply its directory, filename, and image format");
+
+    const QString missing = QDir(directory.path()).filePath(QStringLiteral("missing"));
+    const QStringList fallbackCandidates =
+        ScreenshotImageFileService::automaticDirectories(missing);
+    require(!fallbackCandidates.contains(missing, Qt::CaseInsensitive),
+            "a missing configured directory must be skipped in favor of platform fallbacks");
+}
+
 void retriesNextDirectoryAndPublishesFileOnlyClipboardData() {
     QTemporaryDir directory;
     require(directory.isValid(), "temporary directory could not be created");
@@ -196,6 +237,7 @@ int main(int argc, char** argv) {
         namingAndFormatSelection();
         writesLosslessImageAndPreservesCollisionNames();
         writesEveryAdvertisedFormat();
+        configuredAutomaticOutputUsesFormatDirectoryAndFilename();
         retriesNextDirectoryAndPublishesFileOnlyClipboardData();
         codecOptionsUseFastLosslessAndMaximumJpegQuality();
     } catch (const std::exception& error) {

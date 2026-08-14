@@ -14,6 +14,7 @@
 #include <QKeyCombination>
 #include <QKeySequence>
 
+#include <algorithm>
 #include <utility>
 
 namespace {
@@ -41,6 +42,18 @@ bool recognitionTool(ScreenshotActiveTool tool) {
 bool screenshotCompletionGestureTool(ScreenshotActiveTool tool) {
     return tool != ScreenshotActiveTool::Select && tool != ScreenshotActiveTool::Ocr &&
            tool != ScreenshotActiveTool::Table && tool != ScreenshotActiveTool::Qr;
+}
+
+QString portableShortcutForKeyPress(int key, Qt::KeyboardModifiers modifiers) {
+    return QKeySequence(QKeyCombination(modifiers, Qt::Key(key)))
+        .toString(QKeySequence::PortableText)
+        .trimmed();
+}
+
+bool shortcutListContains(const QStringList& shortcuts, const QString& pressed) {
+    return std::any_of(shortcuts.cbegin(), shortcuts.cend(), [&pressed](const QString& shortcut) {
+        return shortcut.compare(pressed, Qt::CaseInsensitive) == 0;
+    });
 }
 } // namespace
 
@@ -385,9 +398,9 @@ bool ScreenshotOverlayInputHandler::handleKeyPress(int key, Qt::KeyboardModifier
         return true;
     }
 
-    // Configured drawing shortcuts are explicit user commands and include S,
-    // A, and W by default, so they take precedence over the Move tool's legacy
-    // WASD color-picker navigation. Arrow-key navigation remains available.
+    if (handleScreenshotShortcut(key, modifiers)) {
+        return true;
+    }
     if (handleDrawingShortcut(key, modifiers)) {
         return true;
     }
@@ -395,18 +408,50 @@ bool ScreenshotOverlayInputHandler::handleKeyPress(int key, Qt::KeyboardModifier
            handleColorPickerKeyPress(key, modifiers);
 }
 
+bool ScreenshotOverlayInputHandler::handleScreenshotShortcut(
+    int key, Qt::KeyboardModifiers modifiers) {
+    if (!(m_context.interaction.movingSelection() || m_context.interaction.editing()) ||
+        !m_context.actions.localShortcutInputAllowed()) {
+        return false;
+    }
+
+    const QString pressed = portableShortcutForKeyPress(key, modifiers);
+    if (pressed.isEmpty() ||
+        snow_shot::storage::ScreenshotShortcutSettings::isReservedShortcut(pressed)) {
+        return false;
+    }
+
+    const snow_shot::storage::ScreenshotShortcutSettings shortcuts;
+    if (shortcutListContains(shortcuts.moveTool(), pressed)) {
+        return m_context.actions.activateMoveTool();
+    }
+    if (!m_context.interaction.moveToolActive()) {
+        return false;
+    }
+    if (shortcutListContains(shortcuts.moveCursorUp(), pressed)) {
+        return m_context.actions.moveColorPickerCursor(0, -1);
+    }
+    if (shortcutListContains(shortcuts.moveCursorDown(), pressed)) {
+        return m_context.actions.moveColorPickerCursor(0, 1);
+    }
+    if (shortcutListContains(shortcuts.moveCursorLeft(), pressed)) {
+        return m_context.actions.moveColorPickerCursor(-1, 0);
+    }
+    if (shortcutListContains(shortcuts.moveCursorRight(), pressed)) {
+        return m_context.actions.moveColorPickerCursor(1, 0);
+    }
+    return false;
+}
+
 bool ScreenshotOverlayInputHandler::handleDrawingShortcut(
     int key, Qt::KeyboardModifiers modifiers) {
     if (!(m_context.interaction.movingSelection() || m_context.interaction.editing()) ||
         recognitionTool(m_context.interaction.activeTool()) ||
-        !m_context.actions.drawingShortcutInputAllowed()) {
+        !m_context.actions.localShortcutInputAllowed()) {
         return false;
     }
 
-    const QString pressed =
-        QKeySequence(QKeyCombination(modifiers, Qt::Key(key)))
-            .toString(QKeySequence::PortableText)
-            .trimmed();
+    const QString pressed = portableShortcutForKeyPress(key, modifiers);
     if (pressed.isEmpty() ||
         snow_shot::storage::DrawingShortcutSettings::isReservedShortcut(pressed)) {
         return false;
@@ -425,31 +470,12 @@ bool ScreenshotOverlayInputHandler::handleDrawingShortcut(
 
 bool ScreenshotOverlayInputHandler::handleColorPickerKeyPress(int key,
                                                               Qt::KeyboardModifiers modifiers) {
-    const bool onlyShiftPressed =
-        modifiers == Qt::ShiftModifier || modifiers == Qt::KeyboardModifiers();
-
     if (key == Qt::Key_C && modifiers == Qt::KeyboardModifiers() &&
         m_context.actions.copyColorPickerColorToClipboard()) {
         return true;
     }
     if (key == Qt::Key_Shift && modifiers == Qt::ShiftModifier &&
         m_context.actions.cycleColorPickerFormat()) {
-        return true;
-    }
-    if ((key == Qt::Key_W || key == Qt::Key_Up) && onlyShiftPressed &&
-        m_context.actions.moveColorPickerCursor(0, -1)) {
-        return true;
-    }
-    if ((key == Qt::Key_S || key == Qt::Key_Down) && onlyShiftPressed &&
-        m_context.actions.moveColorPickerCursor(0, 1)) {
-        return true;
-    }
-    if ((key == Qt::Key_A || key == Qt::Key_Left) && onlyShiftPressed &&
-        m_context.actions.moveColorPickerCursor(-1, 0)) {
-        return true;
-    }
-    if ((key == Qt::Key_D || key == Qt::Key_Right) && onlyShiftPressed &&
-        m_context.actions.moveColorPickerCursor(1, 0)) {
         return true;
     }
 

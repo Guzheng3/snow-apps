@@ -934,7 +934,8 @@ void ScreenshotRecognitionSessionController::startTextRecognition(
 }
 
 void ScreenshotRecognitionSessionController::startTableRecognition() {
-    if (!hasTarget() || m_tableRecognition == nullptr || m_tableRequestToken != 0) {
+    if (!hasTarget() || m_tableRecognition == nullptr || m_tableRequestToken != 0 ||
+        !screenshotOcrImageWithinPixelLimit(m_target.image.size())) {
         if (m_tableRecognition == nullptr) {
             showStatus(tr("Table recognition service is unavailable"), true);
         }
@@ -964,7 +965,8 @@ void ScreenshotRecognitionSessionController::startTableRecognition() {
 }
 
 void ScreenshotRecognitionSessionController::startQrRecognition() {
-    if (!hasTarget() || m_qrRecognition == nullptr || m_qrRequestToken != 0) {
+    if (!hasTarget() || m_qrRecognition == nullptr || m_qrRequestToken != 0 ||
+        !screenshotOcrImageWithinPixelLimit(m_target.image.size())) {
         if (m_qrRecognition == nullptr) {
             showStatus(tr("QR code recognition is unavailable"), true);
         }

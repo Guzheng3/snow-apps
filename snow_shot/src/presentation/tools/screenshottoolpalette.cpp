@@ -397,6 +397,9 @@ QString drawingToolItemId(ScreenshotToolPalette::Tool tool) {
 }
 
 QString drawingShortcutToolIdForItemId(const QString& itemId) {
+    if (itemId == QStringLiteral("select")) {
+        return QStringLiteral("select");
+    }
     if (itemId == QStringLiteral("shape")) {
         return QStringLiteral("shape");
     }
@@ -428,6 +431,9 @@ QString drawingShortcutToolIdForItemId(const QString& itemId) {
 }
 
 QString drawingShortcutToolIdForTooltipSource(const QString& source) {
+    if (source == QStringLiteral("Select elements")) {
+        return QStringLiteral("select");
+    }
     if (source == QStringLiteral("Shape")) {
         return QStringLiteral("shape");
     }
@@ -2568,6 +2574,9 @@ void ScreenshotToolPalette::clearDrawingToolGroups() {
 void ScreenshotToolPalette::activateDrawingTool(Tool tool) {
     setActiveTool(tool);
     switch (tool) {
+    case Tool::Select:
+        emit selectRequested();
+        break;
     case Tool::Shape:
         emit shapeRequested();
         break;
@@ -3207,7 +3216,9 @@ ScreenshotToolPalette::Tool ScreenshotToolPalette::drawingShortcutEntryTool(
 
 bool ScreenshotToolPalette::activateDrawingShortcut(const QString& toolId) {
     Tool tool = Tool::Move;
-    if (toolId == QStringLiteral("shape")) {
+    if (toolId == QStringLiteral("select")) {
+        tool = Tool::Select;
+    } else if (toolId == QStringLiteral("shape")) {
         tool = Tool::Shape;
     } else if (toolId == QStringLiteral("arrow")) {
         tool = Tool::Arrow;

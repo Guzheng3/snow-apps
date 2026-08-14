@@ -40,7 +40,8 @@ struct ScreenshotOverlayInputActions {
     std::function<void()> copySelectionToClipboard = []() {};
     std::function<void(const QString& action)> executeConfiguredCompletionAction =
         [](const QString&) {};
-    std::function<bool()> drawingShortcutInputAllowed = []() { return true; };
+    std::function<bool()> localShortcutInputAllowed = []() { return true; };
+    std::function<bool()> activateMoveTool = []() { return false; };
     std::function<bool(const QString& toolId)> activateDrawingShortcut =
         [](const QString&) { return false; };
     std::function<bool()> navigateHistoryPrevious = []() { return false; };
@@ -113,6 +114,7 @@ class ScreenshotOverlayInputHandler final {
     void handleManualSelectionRelease(ScreenshotOverlayWindow* overlay,
                                       const QPointF& localPosition, const QPointF& virtualPosition);
     [[nodiscard]] bool handleColorPickerKeyPress(int key, Qt::KeyboardModifiers modifiers);
+    [[nodiscard]] bool handleScreenshotShortcut(int key, Qt::KeyboardModifiers modifiers);
     [[nodiscard]] bool handleDrawingShortcut(int key, Qt::KeyboardModifiers modifiers);
     void requestIntelligentSelectionHitTest(const QPointF& virtualPosition);
     void setIntelligentSelectionIndex(int index);

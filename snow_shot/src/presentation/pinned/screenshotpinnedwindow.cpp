@@ -979,6 +979,9 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
         !contentCanvasRect.isValid() || contentCanvasRect.isEmpty() ||
         !surfaceCanvasRect.isValid() || surfaceCanvasRect.isEmpty() ||
         !surfaceCanvasRect.contains(contentCanvasRect) || !imageSource.isValid() ||
+        (config.formattedTextDocument != nullptr &&
+         (!std::isfinite(config.formattedTextDevicePixelRatio) ||
+          config.formattedTextDevicePixelRatio <= 0.0)) ||
         m_canvas == nullptr) {
         return false;
     }
@@ -1023,6 +1026,9 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
     m_ocrMode = false;
     m_formattedTextDocument = config.formattedTextDocument;
     m_formattedPlainText = config.formattedPlainText;
+    m_formattedTextDevicePixelRatio = config.formattedTextDocument != nullptr
+                                          ? config.formattedTextDevicePixelRatio
+                                          : 1.0;
     if (m_formattedTextDocument != nullptr && m_formattedPlainText.isEmpty()) {
         m_formattedPlainText = m_formattedTextDocument->toPlainText();
     }
@@ -1158,7 +1164,8 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
                         !content->present(ScreenshotRecognitionWindow::Config{
                             contentScreen, this, m_canvas->geometry(),
                             m_canvasSourceRect,
-                            ScreenshotRecognitionWindow::PresentationMode::EmbeddedChild})) {
+                            ScreenshotRecognitionWindow::PresentationMode::EmbeddedChild,
+                            m_formattedTextDevicePixelRatio})) {
                         delete content;
                         return nullptr;
                     }
@@ -1851,6 +1858,7 @@ void ScreenshotPinnedWindow::createContextMenu() {
     auto* scaleMenu = m_contextMenu->addSubMenu(tr("Scale"), outlined_icons::Percentage());
     setActionTranslationSource(scaleMenu->menuAction(), "Scale");
     scaleMenu->setObjectName(QStringLiteral("screenshotPinnedScaleMenu"));
+    m_scaleMenuAction = scaleMenu->menuAction();
     m_scaleActions = new QActionGroup(scaleMenu);
     m_scaleActions->setExclusive(true);
     for (int percent : {25, 50, 75, 100}) {
@@ -1987,6 +1995,9 @@ void ScreenshotPinnedWindow::refreshContextMenu() {
         for (QAction* action : m_scaleActions->actions()) {
             action->setChecked(qAbs(action->data().toDouble() - m_scalePercent) < 0.001);
         }
+    }
+    if (m_scaleMenuAction != nullptr) {
+        m_scaleMenuAction->setEnabled(!m_ocrMode);
     }
     if (m_scaleReadoutAction != nullptr) {
         m_scaleReadoutAction->setText(tr("Current: %1%").arg(qRound(m_scalePercent)));
@@ -2201,13 +2212,12 @@ void ScreenshotPinnedWindow::ensureEditController() {
             connect(toolbar, &ScreenshotToolPalette::watermarkRequested, this,
                     leaveRecognition);
             connect(toolbar, &ScreenshotToolPalette::textRequested, this, leaveRecognition);
-            connect(toolbar, &ScreenshotToolPalette::serialNumberRequested, this,
-                    leaveRecognition);
+            connect(toolbar, &ScreenshotToolPalette::serialNumberRequested, this, leaveRecognition);
             connect(toolbar, &ScreenshotToolPalette::confirmRequested, this, leaveRecognition);
             toolbar->setOcrEnabled(m_formattedTextAvailable ||
                                    (m_ocrSupported && m_recognition != nullptr));
-            toolbar->setTableEnabled(m_tableRecognition != nullptr);
-            toolbar->setQrEnabled(m_qrRecognition != nullptr);
+            toolbar->setTableEnabled(m_ocrSupported && m_tableRecognition != nullptr);
+            toolbar->setQrEnabled(m_ocrSupported && m_qrRecognition != nullptr);
         }
     }
 
@@ -2278,7 +2288,14 @@ void ScreenshotPinnedWindow::updateRecognitionContentGeometry() {
 }
 
 void ScreenshotPinnedWindow::activateRecognitionMode(int mode) {
-    if (m_closing || m_recognitionSession == nullptr || !ensureMaterializedImage()) {
+    if (m_closing || m_recognitionSession == nullptr) {
+        return;
+    }
+    const auto selectedMode = static_cast<ScreenshotRecognitionSessionController::Mode>(mode);
+    const bool canUseFormattedText =
+        selectedMode == ScreenshotRecognitionSessionController::Mode::Text &&
+        m_formattedTextAvailable;
+    if ((!m_ocrSupported && !canUseFormattedText) || !ensureMaterializedImage()) {
         return;
     }
     ensureEditController();
@@ -2288,7 +2305,6 @@ void ScreenshotPinnedWindow::activateRecognitionMode(int mode) {
     if (!m_editController->editMode()) {
         setEditMode(true);
     }
-    const auto selectedMode = static_cast<ScreenshotRecognitionSessionController::Mode>(mode);
     m_recognitionSession->activate(selectedMode);
     refreshContextMenu();
 }
@@ -2309,12 +2325,12 @@ void ScreenshotPinnedWindow::updateRecognitionToolbarState() {
     if (ScreenshotToolPalette* toolbar = m_editController->toolbarWindow()->palette()) {
         toolbar->setOcrEnabled(m_formattedTextAvailable ||
                                (m_ocrSupported && m_recognition != nullptr));
-        toolbar->setTableEnabled(m_tableRecognition != nullptr);
-        toolbar->setQrEnabled(m_qrRecognition != nullptr);
-        toolbar->setOcrBusy(m_recognitionSession->busy(
-            ScreenshotRecognitionSessionController::Mode::Text));
-        toolbar->setTableBusy(m_recognitionSession->busy(
-            ScreenshotRecognitionSessionController::Mode::Table));
+        toolbar->setTableEnabled(m_ocrSupported && m_tableRecognition != nullptr);
+        toolbar->setQrEnabled(m_ocrSupported && m_qrRecognition != nullptr);
+        toolbar->setOcrBusy(
+            m_recognitionSession->busy(ScreenshotRecognitionSessionController::Mode::Text));
+        toolbar->setTableBusy(
+            m_recognitionSession->busy(ScreenshotRecognitionSessionController::Mode::Table));
         toolbar->setQrBusy(m_recognitionSession->busy(
             ScreenshotRecognitionSessionController::Mode::Qr));
     }
@@ -2639,7 +2655,7 @@ void ScreenshotPinnedWindow::rebuildTransformedImage() {
 }
 
 void ScreenshotPinnedWindow::applyScale(int percent) {
-    if (percent < kMinimumScalePercent || percent > kMaximumScalePercent) {
+    if (m_ocrMode || percent < kMinimumScalePercent || percent > kMaximumScalePercent) {
         return;
     }
     restoreFromThumbnailImmediately();
@@ -2665,7 +2681,7 @@ void ScreenshotPinnedWindow::applyScale(int percent) {
 }
 
 void ScreenshotPinnedWindow::applyWheelScale(int percent, const QPointF& nativeCursor) {
-    if (percent < kMinimumScalePercent || percent > kMaximumScalePercent) {
+    if (m_ocrMode || percent < kMinimumScalePercent || percent > kMaximumScalePercent) {
         return;
     }
     restoreFromThumbnailImmediately();
@@ -2731,8 +2747,14 @@ bool ScreenshotPinnedWindow::handleOpacityWheel(QObject* watched, QWheelEvent* e
 }
 
 bool ScreenshotPinnedWindow::handleScaleWheel(QObject* watched, QWheelEvent* event) {
-    if (event == nullptr || m_closing ||
-        (!m_ocrMode && m_editController != nullptr && m_editController->editMode())) {
+    if (event == nullptr || m_closing) {
+        return false;
+    }
+    if (m_ocrMode) {
+        event->accept();
+        return true;
+    }
+    if (m_editController != nullptr && m_editController->editMode()) {
         return false;
     }
 
@@ -3237,7 +3259,7 @@ bool ScreenshotPinnedWindow::nativeTrackSizeConstraintsEnabled() const {
 
 bool ScreenshotPinnedWindow::interactiveResizingEnabled() const {
     return !m_closing && !m_thumbnailMode && !m_geometryAnimating &&
-           (m_ocrMode || m_editController == nullptr || !m_editController->editMode());
+           !m_ocrMode && (m_editController == nullptr || !m_editController->editMode());
 }
 
 QPointF ScreenshotPinnedWindow::windowPositionForEvent(QObject* watched,
