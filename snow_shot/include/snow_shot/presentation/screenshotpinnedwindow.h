@@ -13,6 +13,7 @@
 #include <QRect>
 #include <QRectF>
 #include <QSize>
+#include <QString>
 #include <QTransform>
 #include <QWidget>
 
@@ -68,11 +69,13 @@ class ScreenshotPinnedWindow final : public QWidget {
         ScreenshotResultStyle resultStyle;
         QSize fullResolutionScaleBasis;
         double initialScalePercent = 100.0;
+        QString mouseWheelZoomMode = QStringLiteral("mouse_position");
         ScreenshotImageSource imageSource;
         // Compatibility input for direct callers. New pin transactions use imageSource.
         QImage backgroundImage;
         QScreen* screen = nullptr;
         bool enableEditing = true;
+        bool automaticTextRecognition = true;
         ScreenshotOcrRecognitionPort* recognition = nullptr;
         ScreenshotQrRecognitionPort* qrRecognition = nullptr;
         SnowShotApiClient* tableRecognition = nullptr;
@@ -155,7 +158,7 @@ class ScreenshotPinnedWindow final : public QWidget {
     void resetImageTransform();
     void rebuildTransformedImage();
     void applyScale(int percent);
-    void applyScaleAroundCursor(int percent, const QPointF& nativeCursor);
+    void applyWheelScale(int percent, const QPointF& nativeCursor);
     bool handleOpacityWheel(QObject* watched, QWheelEvent* event);
     bool handleScaleWheel(QObject* watched, QWheelEvent* event);
     QSize orientedInitialPhysicalSize() const;
@@ -236,6 +239,7 @@ class ScreenshotPinnedWindow final : public QWidget {
     double m_viewportZoom = 1.0;
     QPointF m_viewportCenter;
     double m_scalePercent = 100.0;
+    QString m_mouseWheelZoomMode = QStringLiteral("mouse_position");
     int m_wheelAngleRemainder = 0;
     int m_opacityWheelAngleRemainder = 0;
     int m_opacityPercent = 100;
@@ -243,6 +247,7 @@ class ScreenshotPinnedWindow final : public QWidget {
     bool m_ocrReady = false;
     bool m_ocrSupported = false;
     bool m_ocrMode = false;
+    bool m_automaticTextRecognition = true;
     bool m_editingEnabled = true;
     bool m_thumbnailMode = false;
     bool m_thumbnailAnimationTarget = false;

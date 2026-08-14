@@ -15,6 +15,7 @@
 #include "widgets/input_number.h"
 #include "widgets/input_search_edit.h"
 #include "widgets/modal.h"
+#include "widgets/multi_select.h"
 #include "widgets/radio.h"
 #include "widgets/radio_button_group.h"
 #include "widgets/scroll_area.h"
@@ -62,6 +63,7 @@ class SettingsPageWidget::Impl {
         QLabel* title = nullptr;
         QLabel* description = nullptr;
         adqt::widgets::AdSelect* select = nullptr;
+        adqt::widgets::AdMultiSelect* multiSelect = nullptr;
         adqt::widgets::AdSwitch* switchControl = nullptr;
         adqt::widgets::AdInputNumber* integerControl = nullptr;
         QWidget* sliderContainer = nullptr;
@@ -206,6 +208,28 @@ class SettingsPageWidget::Impl {
                     connect(select, &adqt::widgets::AdSelect::currentValueChanged, &q,
                             [this, itemId = definition.id](const QVariant& value) {
                                 applySelectValue(itemId, value);
+                            });
+                } else if constexpr (std::is_same_v<
+                                         Payload, settings::SettingsMultiSelectDefinition>) {
+                    auto* control = new adqt::widgets::AdMultiSelect(list);
+                    control->setControlSize(
+                        adqt::widgets::AdMultiSelect::ControlSize::Middle);
+                    control->setResponsiveMaxTagCount(true);
+                    control->setFixedWidth(
+                        settings_ui::settingsControlWidth(colorScheme.metricAlias));
+                    runtime.multiSelect = control;
+                    runtime.focusTarget = control;
+                    runtime.anchor = settings_ui::createSettingItemRow(
+                        list, colorScheme.metricAlias, &runtime.title, &runtime.description,
+                        control, settings::generatedObjectName(QStringLiteral("settings-item"),
+                                                               definition.id));
+                    listLayout->addWidget(runtime.anchor);
+                    connect(control, &adqt::widgets::AdMultiSelect::selectedValuesChanged, &q,
+                            [this, binding = payload.binding](const QVariantList& value) {
+                                if (!synchronizingValues &&
+                                    !runtimeBindings.applyMultiSelectValue(binding, value)) {
+                                    syncValues();
+                                }
                             });
                 } else if constexpr (std::is_same_v<Payload,
                                                     settings::SettingsSwitchDefinition>) {
@@ -465,6 +489,47 @@ class SettingsPageWidget::Impl {
                                      syncValues();
                                  }
                             });
+                } else if constexpr (std::is_same_v<
+                                         Payload, settings::SettingsLocalShortcutDefinition>) {
+                    const QStringList shortcuts = runtimeBindings.localShortcuts(payload.toolId);
+                    snow_shot::presentation::GlobalShortcutRegistrationState displayState;
+                    displayState.shortcuts = shortcuts;
+                    displayState.status = shortcuts.isEmpty()
+                                              ? snow_shot::presentation::GlobalShortcutStatus::Unset
+                                              : snow_shot::presentation::GlobalShortcutStatus::Registered;
+                    const auto metric = colorScheme.metricAlias;
+                    const auto mainWindowMetric =
+                        snow_shot::presentation::styles::buildMainWindowComponentMetricToken(
+                            colorScheme);
+                    ShortcutKeyRowConfig config;
+                    config.title = definition.title.translated();
+                    config.iconRef = payload.iconFactory ? payload.iconFactory()
+                                                         : adqt::icons::IconRef();
+                    config.shortcuts = shortcuts;
+                    config.registrationState = displayState;
+                    config.rowState = QStringLiteral("normal");
+                    config.useStableBorder = true;
+                    config.maxShortcutCount = 2;
+                    config.shortcutValidator =
+                        [this, toolId = payload.toolId](const QString& shortcut) {
+                            return runtimeBindings.validateLocalShortcut(toolId, shortcut);
+                        };
+                    config.showRegistrationStatus = false;
+                    config.validationScope =
+                        ShortcutKeyRowConfig::ValidationScope::DrawingShortcut;
+                    auto* control = new ShortcutKeyRow(config, metric, mainWindowMetric, list);
+                    control->setObjectName(settings::generatedObjectName(
+                        QStringLiteral("settings-item"), definition.id));
+                    runtime.shortcutControl = control;
+                    runtime.focusTarget = control;
+                    runtime.anchor = control;
+                    listLayout->addWidget(control);
+                    connect(control, &ShortcutKeyRow::shortcutsChanged, &q,
+                            [this, toolId = payload.toolId](const QStringList& next) {
+                                if (!runtimeBindings.applyLocalShortcuts(toolId, next)) {
+                                    syncValues();
+                                }
+                            });
                 } else if constexpr (std::is_same_v<Payload,
                                                     settings::SettingsActionDefinition>) {
                     auto* control = new adqt::widgets::AdButton(list);
@@ -665,6 +730,16 @@ class SettingsPageWidget::Impl {
                 }
                 runtime.select->setEnabled(storageStatus.writeAvailable);
             }
+            if (runtime.multiSelect != nullptr) {
+                const QSignalBlocker blocker(runtime.multiSelect);
+                const auto* definition = std::get_if<settings::SettingsMultiSelectDefinition>(
+                    &runtime.definition->payload);
+                if (definition != nullptr) {
+                    runtime.multiSelect->setSelectedValues(
+                        runtimeBindings.multiSelectValue(definition->binding));
+                }
+                runtime.multiSelect->setEnabled(storageStatus.writeAvailable);
+            }
             if (runtime.switchControl != nullptr) {
                 // AdSwitch refreshes its rendered thumb from toggled; the sync guard prevents
                 // this programmatic update from being written back as a user change.
@@ -743,6 +818,17 @@ class SettingsPageWidget::Impl {
                         runtimeBindings.integerValue(
                             settings::SettingsIntegerBinding::ScreenshotDelaySeconds));
                 }
+                const auto* local = std::get_if<settings::SettingsLocalShortcutDefinition>(
+                    &runtime.definition->payload);
+                if (local != nullptr) {
+                    snow_shot::presentation::GlobalShortcutRegistrationState state;
+                    state.shortcuts = runtimeBindings.localShortcuts(local->toolId);
+                    state.status = state.shortcuts.isEmpty()
+                                       ? snow_shot::presentation::GlobalShortcutStatus::Unset
+                                       : snow_shot::presentation::GlobalShortcutStatus::Registered;
+                    runtime.shortcutControl->setRegistrationState(state);
+                    runtime.shortcutControl->setEnabled(storageStatus.writeAvailable);
+                }
             }
             if (runtime.actionControl != nullptr) {
                 const auto* definition = std::get_if<settings::SettingsActionDefinition>(
@@ -786,6 +872,18 @@ class SettingsPageWidget::Impl {
                 Q_ASSERT(select != nullptr);
                 const QSignalBlocker blocker(runtime.select);
                 runtime.select->setOptions(selectOptions(*select));
+            }
+            if (runtime.multiSelect != nullptr) {
+                const auto* multi =
+                    std::get_if<settings::SettingsMultiSelectDefinition>(&definition.payload);
+                Q_ASSERT(multi != nullptr);
+                QVector<adqt::widgets::AdMultiSelect::Option> options;
+                options.reserve(multi->options.size());
+                for (const settings::SettingsOptionDefinition& option : multi->options) {
+                    options.push_back(selectOption(option.value, option.label.translated()));
+                }
+                const QSignalBlocker blocker(runtime.multiSelect);
+                runtime.multiSelect->setOptions(options);
             }
             if (runtime.integerControl != nullptr) {
                 const auto* integer =

@@ -60,4 +60,32 @@ QRect videoRecordingCompatibleCaptureRegion(const QRect& selectedPhysicalRegion,
     }
     return captureRegion;
 }
+
+QSize videoRecordingMaximumSizeForClarity(const QString& clarity) {
+    if (clarity == QStringLiteral("4k")) {
+        return {3840, 2160};
+    }
+    if (clarity == QStringLiteral("2k")) {
+        return {2560, 1440};
+    }
+    if (clarity == QStringLiteral("720p")) {
+        return {1280, 720};
+    }
+    if (clarity == QStringLiteral("480p")) {
+        return {854, 480};
+    }
+    return {1920, 1080};
+}
+
+QSize videoRecordingOrientedMaximumSize(const QSize& maximumSize, const QSize& captureSize) {
+    const bool maximumIsLandscape = maximumSize.width() > maximumSize.height();
+    const bool maximumIsPortrait = maximumSize.height() > maximumSize.width();
+    const bool captureIsLandscape = captureSize.width() > captureSize.height();
+    const bool captureIsPortrait = captureSize.height() > captureSize.width();
+    if ((maximumIsLandscape && captureIsPortrait) ||
+        (maximumIsPortrait && captureIsLandscape)) {
+        return maximumSize.transposed();
+    }
+    return maximumSize;
+}
 } // namespace snow_shot::presentation::recording

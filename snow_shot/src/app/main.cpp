@@ -4,7 +4,9 @@
 #include "snow_shot/presentation/components/icons/snowshoticons.h"
 #include "snow_shot/presentation/styles/thememanager.h"
 #include "snow_shot/presentation/settings/applicationpriority.h"
+#include "snow_shot/platform/windows/autostartregistration.h"
 #include "snow_shot/storage/applicationstorage.h"
+#include "snow_shot/storage/settingsadapters.h"
 #include "../presentation/pinned/screenshotpintoperfinstrumentation.h"
 
 #include "icon_registry.h"
@@ -57,6 +59,15 @@ int main(int argc, char* argv[]) {
     }
 
     static_cast<void>(snow_shot::storage::ApplicationStorage::instance().initialize());
+    if (snow_shot::platform::windows::AutoStartRegistration::isSupported()) {
+        const bool enabled = snow_shot::storage::SystemSettings().autoStartAtBoot();
+        QString error;
+        if ((!enabled ||
+             !snow_shot::platform::windows::AutoStartRegistration::matchesExpectedCommand()) &&
+            !snow_shot::platform::windows::AutoStartRegistration::setEnabled(enabled, &error)) {
+            qWarning().noquote() << error;
+        }
+    }
     static_cast<void>(snow_shot::presentation::settings::applyConfiguredApplicationPriority());
     QApplication::setQuitOnLastWindowClosed(false);
     QApplication::setWindowIcon(
@@ -72,7 +83,8 @@ int main(int argc, char* argv[]) {
             applicationController.handleLaunchRequest(arguments);
         });
     applicationController.start();
-    if (QApplication::arguments().contains(QStringLiteral("--show-main-window"))) {
+    if (!QApplication::arguments().contains(QStringLiteral("--autostart")) &&
+        QApplication::arguments().contains(QStringLiteral("--show-main-window"))) {
         applicationController.showMainWindow();
     }
     return QApplication::exec();

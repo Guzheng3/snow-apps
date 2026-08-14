@@ -42,6 +42,7 @@ ScreenshotToolPalette::Options screenshotToolbarOptions() {
     options.showQrTool = true;
     options.showVideoRecordButton = true;
     options.showScrollingScreenshotTool = true;
+    options.showSaveButton = true;
     options.separatorBeforeShape = true;
     options.actions = ScreenshotToolPalette::PinAction | ScreenshotToolPalette::CancelAction |
                       ScreenshotToolPalette::CopyAction;
@@ -227,6 +228,8 @@ void ScreenshotToolbarWindow::connectActionCommands(ScreenshotToolPalette& toolP
             [this]() { m_commands.startVideoRecording(); });
     connect(&toolPalette, &ScreenshotToolPalette::pinRequested, this,
             [this]() { m_commands.pinSelectionToScreen(); });
+    connect(&toolPalette, &ScreenshotToolPalette::saveRequested, this,
+            [this]() { m_commands.saveSelectionToFile(); });
     connect(&toolPalette, &ScreenshotToolPalette::cancelRequested, this,
             [this, palette = &toolPalette]() {
                 palette->clearActiveTool();
@@ -386,6 +389,11 @@ void ScreenshotToolbarWindow::setScrollingScreenshotMode(bool enabled) {
 
 void ScreenshotToolbarWindow::setActiveTool(ScreenshotToolPalette::Tool tool) {
     setActiveToolAndReposition(tool);
+}
+
+bool ScreenshotToolbarWindow::activateDrawingShortcut(const QString& toolId) {
+    ScreenshotToolPalette* toolPalette = palette();
+    return toolPalette != nullptr && toolPalette->activateDrawingShortcut(toolId);
 }
 
 void ScreenshotToolbarWindow::setHistoryState(const SnowCanvasHistoryState& state) {

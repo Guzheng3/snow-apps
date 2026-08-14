@@ -236,13 +236,30 @@ QString shortcutTextForKey(const QKeyEvent& event) {
 
 QString
 shortcutValidationMessage(const snow_shot::presentation::GlobalShortcutValidationResult& validation,
-                          const QString& attemptedShortcut) {
+                          const QString& attemptedShortcut,
+                          ShortcutKeyRowConfig::ValidationScope validationScope) {
+    const QString displayShortcut = formatShortcutDisplayText(attemptedShortcut);
+    if (validationScope == ShortcutKeyRowConfig::ValidationScope::DrawingShortcut) {
+        if (validation.failureReason ==
+            snow_shot::presentation::GlobalShortcutFailureReason::AlreadyInUse) {
+            return displayShortcut.isEmpty()
+                       ? QObject::tr(
+                             "This key is already assigned to another drawing tool, try another key")
+                       : QObject::tr(
+                             "%1 is already assigned to another drawing tool, try another key")
+                             .arg(displayShortcut);
+        }
+        return displayShortcut.isEmpty()
+                   ? QObject::tr("This key cannot be used as a drawing shortcut, try another key")
+                   : QObject::tr("%1 cannot be used as a drawing shortcut, try another key")
+                         .arg(displayShortcut);
+    }
+
     if (validation.failureReason ==
         snow_shot::presentation::GlobalShortcutFailureReason::UnsupportedPlatform) {
         return QObject::tr("Global shortcuts are not supported on this platform");
     }
 
-    const QString displayShortcut = formatShortcutDisplayText(attemptedShortcut);
     if (!displayShortcut.isEmpty()) {
         return QObject::tr("%1 cannot be registered as a Windows global shortcut, try another key")
             .arg(displayShortcut);
@@ -452,12 +469,16 @@ class ShortcutConfigValidationButton final : public adqt::widgets::AdButton {
   public:
     explicit ShortcutConfigValidationButton(
         const snow_shot::presentation::styles::ThemeAliasMetricToken& metric,
+        ShortcutKeyRowConfig::ValidationScope validationScope,
         QWidget* parent = nullptr)
         : adqt::widgets::AdButton(parent), m_infoGap(metric.marginXS),
           m_info(new InfoTooltipIcon(metric.fontSize, this)) {
         m_info->setObjectName(QStringLiteral("shortcutConfigValidationTooltipTrigger"));
         m_info->setProperty("inlineGap", m_infoGap);
-        m_info->setAccessibleName(QObject::tr("Invalid global shortcut"));
+        m_info->setAccessibleName(
+            validationScope == ShortcutKeyRowConfig::ValidationScope::DrawingShortcut
+                ? QObject::tr("Invalid drawing shortcut")
+                : QObject::tr("Invalid global shortcut"));
     }
 
     void setValidationTooltipText(const QString& text) {
@@ -611,10 +632,12 @@ class ShortcutKeyConfigContent final : public QWidget {
         const snow_shot::presentation::styles::ThemeColorScheme& colorScheme, int maxShortcutCount,
         std::function<snow_shot::presentation::GlobalShortcutValidationResult(const QString&)>
             shortcutValidator,
+        ShortcutKeyRowConfig::ValidationScope validationScope,
         QWidget* parent = nullptr)
         : QWidget(parent), m_colorScheme(colorScheme),
           m_maxShortcutCount(std::max(1, maxShortcutCount)),
-          m_shortcutValidator(std::move(shortcutValidator)) {
+          m_shortcutValidator(std::move(shortcutValidator)),
+          m_validationScope(validationScope) {
         setObjectName(QStringLiteral("shortcutConfigContent"));
         setFocusPolicy(Qt::StrongFocus);
 
@@ -743,7 +766,8 @@ class ShortcutKeyConfigContent final : public QWidget {
             ShortcutConfigValidationButton* validationButton = nullptr;
             adqt::widgets::AdButton* keyButton = nullptr;
             if (hasValidationError) {
-                validationButton = new ShortcutConfigValidationButton(metric, rowWidget);
+                validationButton =
+                    new ShortcutConfigValidationButton(metric, m_validationScope, rowWidget);
                 keyButton = validationButton;
             } else {
                 keyButton = new adqt::widgets::AdButton(rowWidget);
@@ -901,7 +925,8 @@ class ShortcutKeyConfigContent final : public QWidget {
 
         m_pendingShortcut.clear();
         m_rejectedShortcut = shortcut;
-        m_validationMessage = shortcutValidationMessage(validation, shortcut);
+        m_validationMessage =
+            shortcutValidationMessage(validation, shortcut, m_validationScope);
     }
 
     void deleteKeyConfig(int configIndex) {
@@ -988,6 +1013,8 @@ class ShortcutKeyConfigContent final : public QWidget {
     bool m_keyboardGrabbed = false;
     std::function<snow_shot::presentation::GlobalShortcutValidationResult(const QString&)>
         m_shortcutValidator;
+    ShortcutKeyRowConfig::ValidationScope m_validationScope =
+        ShortcutKeyRowConfig::ValidationScope::GlobalShortcut;
 };
 
 class ShortcutKeyButton final : public adqt::widgets::AdButton {
@@ -1250,6 +1277,8 @@ ShortcutKeyRow::ShortcutKeyRow(
       m_delaySeconds(std::clamp(config.delaySeconds, 1, 10)),
       m_delaySetter(config.delaySetter),
       m_colorScheme(snow_shot::presentation::styles::ThemeManager::instance().themeColorScheme()) {
+    m_showRegistrationStatus = config.showRegistrationStatus;
+    m_validationScope = config.validationScope;
     if (m_registrationState.shortcuts.isEmpty() && !config.shortcuts.isEmpty()) {
         m_registrationState.shortcuts = config.shortcuts;
     }
@@ -1259,7 +1288,7 @@ ShortcutKeyRow::ShortcutKeyRow(
     setAccentRole(adqt::widgets::AdButton::AccentRole::Primary);
     setShape(adqt::widgets::AdButton::Shape::Rounded);
     setFixedHeight(metric.controlHeightLG + metric.paddingXXS);
-    setCursor(Qt::PointingHandCursor);
+    setCursor(m_adjustableDelay ? Qt::SplitVCursor : Qt::PointingHandCursor);
     if (m_adjustableDelay) {
         setToolTip(tr("Delay: %1 seconds").arg(m_delaySeconds));
     }
@@ -1420,6 +1449,10 @@ void ShortcutKeyRow::paintEvent(QPaintEvent* event) {
 }
 
 bool ShortcutKeyRow::event(QEvent* event) {
+    if (m_adjustableDelay && event->type() == QEvent::Wheel && adjustDelayFromWheel(event)) {
+        return true;
+    }
+
     const bool handled = adqt::widgets::AdButton::event(event);
 
     const QEvent::Type type = event->type();
@@ -1519,7 +1552,8 @@ void ShortcutKeyRow::openShortcutConfigDialog() {
     QWidget* const hostWindow = window();
     auto* modal = new adqt::widgets::AdModal(this);
     auto* content = new ShortcutKeyConfigContent(m_registrationState.shortcuts, m_colorScheme,
-                                                 m_maxShortcutCount, m_shortcutValidator);
+                                                 m_maxShortcutCount, m_shortcutValidator,
+                                                 m_validationScope);
     const QPointer<ShortcutKeyConfigContent> contentGuard(content);
 
     modal->setOwnerWindow(hostWindow);
@@ -1617,7 +1651,9 @@ void ShortcutKeyRow::syncTitleIcon(const QColor& iconColor) {
 }
 
 void ShortcutKeyRow::syncRegistrationStatus() {
-    const auto status = m_registrationState.status;
+    const auto status = m_showRegistrationStatus
+                            ? m_registrationState.status
+                            : snow_shot::presentation::GlobalShortcutStatus::Registered;
     const QColor statusColor = registrationStatusColor(status, m_colorScheme.map);
     const QString shortcutText = formatShortcutListDisplayText(m_registrationState.shortcuts);
 
@@ -1644,7 +1680,7 @@ void ShortcutKeyRow::syncRegistrationStatus() {
         break;
     }
 
-    const QString tooltipText = registrationTooltipText();
+    const QString tooltipText = m_showRegistrationStatus ? registrationTooltipText() : QString();
     const bool showTooltip = !tooltipText.trimmed().isEmpty();
     if (m_shortcutButton != nullptr) {
         auto* const button = static_cast<ShortcutKeyButton*>(m_shortcutButton);

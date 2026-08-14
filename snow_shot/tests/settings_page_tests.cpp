@@ -1,6 +1,7 @@
 #include "snow_shot/presentation/components/applicationsearchwidget.h"
 #include "snow_shot/presentation/components/contentcardwidget.h"
 #include "snow_shot/presentation/components/drawingtoolbareditorsettingswidget.h"
+#include "snow_shot/presentation/components/infotooltipicon.h"
 #include "snow_shot/presentation/components/maincontentheaderwidget.h"
 #include "snow_shot/presentation/components/pagecontainerwidget.h"
 #include "snow_shot/presentation/components/sectionheaderwidget.h"
@@ -22,6 +23,7 @@
 #include "widgets/descriptions.h"
 #include "widgets/input_number.h"
 #include "widgets/modal.h"
+#include "widgets/multi_select.h"
 #include "widgets/navigation_menu.h"
 #include "widgets/pagination.h"
 #include "widgets/popconfirm.h"
@@ -87,6 +89,50 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
                                  {},
                                  snow_shot::presentation::GlobalShortcutStatus::Unset,
                                  {}});
+        m_selectValues = {
+            {settings::SettingsSelectBinding::ScreenshotOcrAction,
+             QStringLiteral("no_action")},
+            {settings::SettingsSelectBinding::ScreenshotDoubleClickAction,
+             QStringLiteral("copy")},
+            {settings::SettingsSelectBinding::ScreenshotMiddleClickAction,
+             QStringLiteral("pin")},
+            {settings::SettingsSelectBinding::PinMouseWheelZoomMode,
+             QStringLiteral("mouse_position")},
+            {settings::SettingsSelectBinding::VideoClarity, QStringLiteral("1080p")},
+            {settings::SettingsSelectBinding::VideoFrameRate, 30},
+            {settings::SettingsSelectBinding::AnimatedImageClarity,
+             QStringLiteral("1080p")},
+            {settings::SettingsSelectBinding::AnimatedImageFrameRate, 10},
+            {settings::SettingsSelectBinding::AnimatedImageFormat, QStringLiteral("gif")},
+            {settings::SettingsSelectBinding::VideoEncoder, QStringLiteral("h264")},
+            {settings::SettingsSelectBinding::VideoEncodingPreset,
+             QStringLiteral("veryfast")},
+            {settings::SettingsSelectBinding::TrayLeftClickAction,
+             QStringLiteral("screenshot")},
+        };
+        m_switchValues = {
+            {settings::SettingsSwitchBinding::ScreenshotAutoSaveAfterCopy, false},
+            {settings::SettingsSwitchBinding::ScreenshotCopyImageFileToClipboard, false},
+            {settings::SettingsSwitchBinding::PinAutomaticTextRecognition, true},
+            {settings::SettingsSwitchBinding::PinAutoResizeWindow, true},
+            {settings::SettingsSwitchBinding::VideoHideToolbarInRecording, true},
+            {settings::SettingsSwitchBinding::DisableHotkeysOnFocusedFullscreen, false},
+            {settings::SettingsSwitchBinding::AutoStartAtBoot, false},
+        };
+        m_multiSelectValues.insert(
+            settings::SettingsMultiSelectBinding::DrawingQuickSelectionDisabledTools,
+            {QStringLiteral("free-draw"), QStringLiteral("pen-filter")});
+        m_localShortcuts = {
+            {QStringLiteral("shape"), {QStringLiteral("1"), QStringLiteral("S")}},
+            {QStringLiteral("arrow"), {QStringLiteral("2"), QStringLiteral("A")}},
+            {QStringLiteral("brush"), {QStringLiteral("3"), QStringLiteral("P")}},
+            {QStringLiteral("highlight"), {QStringLiteral("4"), QStringLiteral("H")}},
+            {QStringLiteral("text"), {QStringLiteral("5"), QStringLiteral("T")}},
+            {QStringLiteral("serial_number"), {QStringLiteral("6"), QStringLiteral("N")}},
+            {QStringLiteral("filter"), {QStringLiteral("7"), QStringLiteral("F")}},
+            {QStringLiteral("eraser"), {QStringLiteral("8"), QStringLiteral("E")}},
+            {QStringLiteral("watermark"), {QStringLiteral("9"), QStringLiteral("W")}},
+        };
     }
 
     QVariant selectValue(settings::SettingsSelectBinding binding) const override {
@@ -101,6 +147,8 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
             return m_toolbarSize;
         case settings::SettingsSelectBinding::ColorPickerDisplayMode:
             return m_colorPickerDisplayMode;
+        default:
+            return m_selectValues.value(binding);
         }
         return {};
     }
@@ -125,8 +173,10 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
             m_applicationPriority = value.toString();
         } else if (binding == settings::SettingsSelectBinding::ScreenshotToolbarSize) {
             m_toolbarSize = value.toString();
-        } else {
+        } else if (binding == settings::SettingsSelectBinding::ColorPickerDisplayMode) {
             m_colorPickerDisplayMode = value.toString();
+        } else {
+            m_selectValues.insert(binding, value);
         }
         emit synchronized();
         return true;
@@ -144,8 +194,9 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
             return m_selectionTransitionAnimation;
         case settings::SettingsSwitchBinding::TrayEnabled:
             return m_trayEnabled;
+        default:
+            return m_switchValues.value(binding, false);
         }
-        return false;
     }
 
     bool switchEnabled(settings::SettingsSwitchBinding binding) const override {
@@ -166,9 +217,25 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
             m_selectionTransitionAnimation = value;
         } else if (binding == settings::SettingsSwitchBinding::TrayEnabled) {
             m_trayEnabled = value;
-        } else {
+        } else if (binding == settings::SettingsSwitchBinding::HistoryEnabled) {
             m_historyEnabled = value;
+        } else {
+            m_switchValues.insert(binding, value);
         }
+        emit synchronized();
+        return true;
+    }
+
+    QVariantList multiSelectValue(settings::SettingsMultiSelectBinding binding) const override {
+        return m_multiSelectValues.value(binding);
+    }
+
+    bool applyMultiSelectValue(settings::SettingsMultiSelectBinding binding,
+                               const QVariantList& value) override {
+        if (!acceptWrites) {
+            return false;
+        }
+        m_multiSelectValues.insert(binding, value);
         emit synchronized();
         return true;
     }
@@ -297,6 +364,24 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
         return true;
     }
 
+    QStringList localShortcuts(const QString& toolId) const override {
+        return m_localShortcuts.value(toolId);
+    }
+
+    snow_shot::presentation::GlobalShortcutValidationResult
+    validateLocalShortcut(const QString&, const QString& shortcut) const override {
+        return {shortcut, true, snow_shot::presentation::GlobalShortcutFailureReason::None};
+    }
+
+    bool applyLocalShortcuts(const QString& toolId, const QStringList& shortcuts) override {
+        if (!acceptWrites) {
+            return false;
+        }
+        m_localShortcuts.insert(toolId, shortcuts);
+        emit synchronized();
+        return true;
+    }
+
     settings::SettingsActionState actionState(settings::SettingsActionBinding) const override {
         return {m_storageStatus.writeAvailable && !m_storageStatus.historyClearing &&
                     m_storageStatus.historyUsage.entryCount > 0,
@@ -351,6 +436,9 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
     QString m_applicationPriority = QStringLiteral("above_normal");
     QString m_toolbarSize = QStringLiteral("normal");
     QString m_colorPickerDisplayMode = QStringLiteral("hex");
+    QHash<settings::SettingsSelectBinding, QVariant> m_selectValues;
+    QHash<settings::SettingsMultiSelectBinding, QVariantList> m_multiSelectValues;
+    QHash<settings::SettingsSwitchBinding, bool> m_switchValues;
     bool m_historyEnabled = true;
     bool m_smartSelection = true;
     bool m_directMlAcceleration = true;
@@ -370,6 +458,7 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
     QHash<snow_shot::presentation::GlobalShortcutAction,
           snow_shot::presentation::GlobalShortcutRegistrationState>
         m_shortcutStates;
+    QHash<QString, QStringList> m_localShortcuts;
 };
 
 class PageTranslator final : public QTranslator {
@@ -870,16 +959,19 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
     SettingsPageWidget storagePage(catalog, QStringLiteral("storage-and-privacy"), bindings);
     SettingsPageWidget functionPage(catalog, QStringLiteral("function-settings"), bindings);
     SettingsPageWidget systemPage(catalog, QStringLiteral("system-settings"), bindings);
+    SettingsPageWidget hotkeyPage(catalog, QStringLiteral("hotkey-settings"), bindings);
     interfacePage.resize(720, 360);
     quick.resize(720, 520);
     storagePage.resize(720, 480);
     functionPage.resize(720, 240);
     systemPage.resize(720, 240);
+    hotkeyPage.resize(720, 360);
     interfacePage.show();
     quick.show();
     storagePage.show();
     functionPage.show();
     systemPage.show();
+    hotkeyPage.show();
     flushEvents();
 
     auto* theme = interfacePage.findChild<adqt::widgets::AdSelect*>(
@@ -894,6 +986,67 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
     require(!theme->accessibleName().isEmpty() && !theme->accessibleDescription().isEmpty() &&
                 !language->accessibleName().isEmpty(),
             "generated controls must expose catalog accessibility metadata");
+
+    auto* ocrAction = functionPage.findChild<adqt::widgets::AdSelect*>(
+        QStringLiteral("settings-control-screenshot-auto-execute-after-text-recognition"));
+    auto* doubleClickAction = functionPage.findChild<adqt::widgets::AdSelect*>(
+        QStringLiteral("settings-control-screenshot-double-click-action"));
+    auto* middleClickAction = functionPage.findChild<adqt::widgets::AdSelect*>(
+        QStringLiteral("settings-control-screenshot-middle-mouse-button-action"));
+    auto* videoClarity = functionPage.findChild<adqt::widgets::AdSelect*>(
+        QStringLiteral("settings-control-video-recording-video-clarity"));
+    auto* videoFrameRate = functionPage.findChild<adqt::widgets::AdSelect*>(
+        QStringLiteral("settings-control-video-recording-frame-rate"));
+    auto* animatedFormat = functionPage.findChild<adqt::widgets::AdSelect*>(
+        QStringLiteral("settings-control-video-recording-animated-image-format"));
+    auto* drawingExclusions = interfacePage.findChild<adqt::widgets::AdMultiSelect*>(
+        QStringLiteral("settings-control-drawing-quick-selection-disabled-tools"));
+    auto* pinZoomMode = interfacePage.findChild<adqt::widgets::AdSelect*>(
+        QStringLiteral("settings-control-pin-to-screen-mouse-wheel-zoom-mode"));
+    auto* trayLeftClick = interfacePage.findChild<adqt::widgets::AdSelect*>(
+        QStringLiteral("settings-control-tray-left-click-action"));
+    require(ocrAction != nullptr && ocrAction->options().size() == 6 &&
+                doubleClickAction != nullptr && doubleClickAction->options().size() == 4 &&
+                middleClickAction != nullptr && middleClickAction->options().size() == 4 &&
+                videoClarity != nullptr && videoClarity->options().size() == 5 &&
+                videoFrameRate != nullptr && videoFrameRate->options().size() == 7 &&
+                animatedFormat != nullptr && animatedFormat->options().size() == 3 &&
+                drawingExclusions != nullptr && drawingExclusions->options().size() == 13 &&
+                pinZoomMode != nullptr && pinZoomMode->options().size() == 6 &&
+                trayLeftClick != nullptr && trayLeftClick->options().size() == 2,
+            "new select and multi-select controls must render every advertised option");
+
+    ocrAction->setCurrentValue(QStringLiteral("copy_text"));
+    videoFrameRate->setCurrentValue(83);
+    pinZoomMode->setCurrentValue(QStringLiteral("top_right"));
+    trayLeftClick->setCurrentValue(QStringLiteral("show_main_window"));
+    drawingExclusions->setSelectedValues(
+        {QStringLiteral("free-draw"), QStringLiteral("pen-filter")});
+    require(bindings.selectValue(settings::SettingsSelectBinding::ScreenshotOcrAction) ==
+                    QStringLiteral("copy_text") &&
+                bindings.selectValue(settings::SettingsSelectBinding::VideoFrameRate).toInt() ==
+                    83 &&
+                bindings.selectValue(settings::SettingsSelectBinding::PinMouseWheelZoomMode) ==
+                    QStringLiteral("top_right") &&
+                bindings.selectValue(settings::SettingsSelectBinding::TrayLeftClickAction) ==
+                    QStringLiteral("show_main_window") &&
+                bindings.multiSelectValue(
+                    settings::SettingsMultiSelectBinding::DrawingQuickSelectionDisabledTools) ==
+                    QVariantList{QStringLiteral("free-draw"), QStringLiteral("pen-filter")},
+            "new select and multi-select values must flow through runtime bindings");
+
+    const auto drawingShortcutRows = hotkeyPage.findChildren<ShortcutKeyRow*>();
+    require(drawingShortcutRows.size() == 9 &&
+                std::all_of(drawingShortcutRows.cbegin(), drawingShortcutRows.cend(),
+                            [](const ShortcutKeyRow* row) {
+                                const auto* status =
+                                    row != nullptr
+                                        ? row->findChild<InfoTooltipIcon*>(QStringLiteral(
+                                              "shortcutRegistrationStatusTooltipTrigger"))
+                                        : nullptr;
+                                return status != nullptr && status->isHidden();
+                            }),
+            "Hotkey Settings must render nine local drawing shortcut rows without global status");
 
     auto* generalList = interfacePage.findChild<QWidget*>(
         QStringLiteral("settings-section-list-interface-settings-general"));
@@ -1275,14 +1428,14 @@ void catalogExpansionUpdatesAllConsumers() {
     auto* search = header.findChild<ApplicationSearchWidget*>(QStringLiteral("globalTopSearchBar"));
     auto* searchSelect =
         search != nullptr ? search->findChild<adqt::widgets::AdSelect*>() : nullptr;
-    require(stack != nullptr && stack->count() == 7,
+    require(stack != nullptr && stack->count() == 8,
             "route stack must add catalog pages automatically");
     require(content.findChild<ScreenshotHistoryPageWidget*>(
                 QStringLiteral("screenshotHistoryPage")) == nullptr,
             "main-content construction eagerly instantiated screenshot history");
-    require(menu != nullptr && menu->model() != nullptr && menu->model()->rowCount() == 4,
+    require(menu != nullptr && menu->model() != nullptr && menu->model()->rowCount() == 5,
             "sidebar must add a catalog navigation node automatically");
-    require(searchSelect != nullptr && searchSelect->options().size() == 7,
+    require(searchSelect != nullptr && searchSelect->options().size() == 8,
             "application search must add every catalog page to its default results");
 
     content.setCurrentRoute(QStringLiteral("/history"));

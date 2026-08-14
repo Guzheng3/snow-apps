@@ -90,6 +90,8 @@ struct IsolatedSettings {
             {directory.path(), directory.path(), 8000}));
         snow_shot::storage::ShortcutSettings().setScreenshot({});
         snow_shot::storage::ShortcutSettings().setOpenSettings({});
+        snow_shot::storage::GlobalShortcutSettings()
+            .setDisableOnFocusedFullscreenWindow(false);
     }
 
     ~IsolatedSettings() {
@@ -267,6 +269,40 @@ void everyQuickActionHasIndependentPersistenceAndRegistration() {
             "quick action activation did not dispatch its owning action");
 }
 
+void focusedFullscreenSuppressionIsCheckedForEveryActivation() {
+    IsolatedSettings settings;
+    auto backend = std::make_unique<FakeGlobalShortcutBackend>();
+    auto* const backendPtr = backend.get();
+    bool focusedFullscreen = true;
+    shortcuts::GlobalShortcutManager manager(
+        std::move(backend), settings.organization, settings.application, nullptr,
+        [&focusedFullscreen]() { return focusedFullscreen; });
+    manager.initialize();
+    manager.setShortcuts(shortcuts::GlobalShortcutAction::Screenshot,
+                         {QStringLiteral("Ctrl+Alt+1")});
+
+    int activationCount = 0;
+    QObject::connect(&manager, &shortcuts::GlobalShortcutManager::activated, &manager,
+                     [&activationCount](shortcuts::GlobalShortcutAction) {
+                         ++activationCount;
+                     });
+    backendPtr->activate(QStringLiteral("Ctrl+Alt+1"));
+    require(activationCount == 1,
+            "fullscreen detection should not suppress hotkeys while the setting is disabled");
+
+    require(snow_shot::storage::GlobalShortcutSettings()
+                .setDisableOnFocusedFullscreenWindow(true),
+            "fullscreen hotkey suppression should be configurable");
+    backendPtr->activate(QStringLiteral("Ctrl+Alt+1"));
+    require(activationCount == 1,
+            "a focused fullscreen window should suppress the activated hotkey");
+
+    focusedFullscreen = false;
+    backendPtr->activate(QStringLiteral("Ctrl+Alt+1"));
+    require(activationCount == 2,
+            "hotkeys should resume as soon as no focused fullscreen window exists");
+}
+
 #ifdef Q_OS_WIN
 void nativeWindowsBackendRegistersAndReleases() {
     IsolatedSettings settings;
@@ -326,6 +362,7 @@ int main(int argc, char** argv) {
     persistedDesiredBindingsAreRestored();
     releasedApplicationConflictIsReconciled();
     everyQuickActionHasIndependentPersistenceAndRegistration();
+    focusedFullscreenSuppressionIsCheckedForEveryActivation();
 #ifdef Q_OS_WIN
     nativeWindowsBackendRegistersAndReleases();
 #endif

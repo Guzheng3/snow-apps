@@ -1,6 +1,7 @@
 #include "snow_shot/presentation/settings/settingsruntimebindings.h"
 #include "snow_shot/presentation/settings/applicationpriority.h"
 #include "snow_shot/presentation/settings/textrecognitionacceleration.h"
+#include "snow_shot/platform/windows/autostartregistration.h"
 
 #include "snow_shot/presentation/languagemanager.h"
 #include "snow_shot/presentation/styles/thememanager.h"
@@ -60,6 +61,29 @@ storage::CaptureHistoryPolicy defaultHistoryPolicy() {
                             .toInt();
     return policy;
 }
+
+bool applyAutoStartAtBoot(bool enabled) {
+    using snow_shot::platform::windows::AutoStartRegistration;
+    auto& configuration = storage::ApplicationStorage::instance().configuration();
+    const bool previousConfiguredValue =
+        configuration.value(QStringLiteral("system/auto_start_at_boot")).toBool();
+    const auto previous = AutoStartRegistration::snapshot();
+    if (!previous.valid || !AutoStartRegistration::setEnabled(enabled)) {
+        return false;
+    }
+    if (storage::SystemSettings().setAutoStartAtBoot(enabled) &&
+        configuration.flushNow().success) {
+        return true;
+    }
+    static_cast<void>(AutoStartRegistration::restore(previous));
+    if (configuration.value(QStringLiteral("system/auto_start_at_boot")).toBool() !=
+        previousConfiguredValue) {
+        static_cast<void>(configuration.setValue(
+            QStringLiteral("system/auto_start_at_boot"), previousConfiguredValue));
+        static_cast<void>(configuration.flushNow());
+    }
+    return false;
+}
 } // namespace
 
 BuiltInSettingsRuntimeBindings::BuiltInSettingsRuntimeBindings(
@@ -115,6 +139,30 @@ QVariant BuiltInSettingsRuntimeBindings::selectValue(SettingsSelectBinding bindi
         return storage::ScreenshotUiSettings().toolbarSize();
     case SettingsSelectBinding::ColorPickerDisplayMode:
         return storage::ScreenshotUiSettings().colorPickerDisplayMode();
+    case SettingsSelectBinding::ScreenshotOcrAction:
+        return storage::ScreenshotSettings().autoExecuteAfterTextRecognition();
+    case SettingsSelectBinding::ScreenshotDoubleClickAction:
+        return storage::ScreenshotSettings().doubleClickAction();
+    case SettingsSelectBinding::ScreenshotMiddleClickAction:
+        return storage::ScreenshotSettings().middleMouseButtonAction();
+    case SettingsSelectBinding::PinMouseWheelZoomMode:
+        return storage::PinToScreenSettings().mouseWheelZoomMode();
+    case SettingsSelectBinding::VideoClarity:
+        return storage::RecordingSettings().videoClarity();
+    case SettingsSelectBinding::VideoFrameRate:
+        return storage::RecordingSettings().frameRate();
+    case SettingsSelectBinding::AnimatedImageClarity:
+        return storage::RecordingSettings().animatedImageClarity();
+    case SettingsSelectBinding::AnimatedImageFrameRate:
+        return storage::RecordingSettings().animatedImageFrameRate();
+    case SettingsSelectBinding::AnimatedImageFormat:
+        return storage::RecordingSettings().animatedImageFormat();
+    case SettingsSelectBinding::VideoEncoder:
+        return storage::RecordingSettings().encoder();
+    case SettingsSelectBinding::VideoEncodingPreset:
+        return storage::RecordingSettings().encodingPreset();
+    case SettingsSelectBinding::TrayLeftClickAction:
+        return storage::TraySettings().leftClickAction();
     }
     return {};
 }
@@ -171,6 +219,30 @@ bool BuiltInSettingsRuntimeBindings::applySelectValue(SettingsSelectBinding bind
         return storage::ScreenshotUiSettings().setToolbarSize(value.toString());
     case SettingsSelectBinding::ColorPickerDisplayMode:
         return storage::ScreenshotUiSettings().setColorPickerDisplayMode(value.toString());
+    case SettingsSelectBinding::ScreenshotOcrAction:
+        return storage::ScreenshotSettings().setAutoExecuteAfterTextRecognition(value.toString());
+    case SettingsSelectBinding::ScreenshotDoubleClickAction:
+        return storage::ScreenshotSettings().setDoubleClickAction(value.toString());
+    case SettingsSelectBinding::ScreenshotMiddleClickAction:
+        return storage::ScreenshotSettings().setMiddleMouseButtonAction(value.toString());
+    case SettingsSelectBinding::PinMouseWheelZoomMode:
+        return storage::PinToScreenSettings().setMouseWheelZoomMode(value.toString());
+    case SettingsSelectBinding::VideoClarity:
+        return storage::RecordingSettings().setVideoClarity(value.toString());
+    case SettingsSelectBinding::VideoFrameRate:
+        return storage::RecordingSettings().setFrameRate(value.toInt());
+    case SettingsSelectBinding::AnimatedImageClarity:
+        return storage::RecordingSettings().setAnimatedImageClarity(value.toString());
+    case SettingsSelectBinding::AnimatedImageFrameRate:
+        return storage::RecordingSettings().setAnimatedImageFrameRate(value.toInt());
+    case SettingsSelectBinding::AnimatedImageFormat:
+        return storage::RecordingSettings().setAnimatedImageFormat(value.toString());
+    case SettingsSelectBinding::VideoEncoder:
+        return storage::RecordingSettings().setEncoder(value.toString());
+    case SettingsSelectBinding::VideoEncodingPreset:
+        return storage::RecordingSettings().setEncodingPreset(value.toString());
+    case SettingsSelectBinding::TrayLeftClickAction:
+        return storage::TraySettings().setLeftClickAction(value.toString());
     }
     return false;
 }
@@ -191,11 +263,28 @@ bool BuiltInSettingsRuntimeBindings::switchValue(SettingsSwitchBinding binding) 
         return storage::ScreenshotUiSettings().selectionTransitionAnimationEnabled();
     case SettingsSwitchBinding::TrayEnabled:
         return storage::TraySettings().enabled();
+    case SettingsSwitchBinding::ScreenshotAutoSaveAfterCopy:
+        return storage::ScreenshotSettings().autoSaveAfterCopy();
+    case SettingsSwitchBinding::ScreenshotCopyImageFileToClipboard:
+        return storage::ScreenshotSettings().copyImageFileToClipboard();
+    case SettingsSwitchBinding::PinAutomaticTextRecognition:
+        return storage::PinToScreenSettings().automaticTextRecognition();
+    case SettingsSwitchBinding::PinAutoResizeWindow:
+        return storage::PinToScreenSettings().autoResizeWindow();
+    case SettingsSwitchBinding::VideoHideToolbarInRecording:
+        return storage::RecordingSettings().hideToolbarInRecording();
+    case SettingsSwitchBinding::DisableHotkeysOnFocusedFullscreen:
+        return storage::GlobalShortcutSettings().disableOnFocusedFullscreenWindow();
+    case SettingsSwitchBinding::AutoStartAtBoot:
+        return storage::SystemSettings().autoStartAtBoot();
     }
     return false;
 }
 
 bool BuiltInSettingsRuntimeBindings::switchEnabled(SettingsSwitchBinding binding) const {
+    if (binding == SettingsSwitchBinding::AutoStartAtBoot) {
+        return snow_shot::platform::windows::AutoStartRegistration::isSupported();
+    }
     return binding != SettingsSwitchBinding::DirectMlAcceleration ||
            directMlTextRecognitionSupported();
 }
@@ -223,6 +312,27 @@ bool BuiltInSettingsRuntimeBindings::applySwitchValue(SettingsSwitchBinding bind
     if (binding == SettingsSwitchBinding::TrayEnabled) {
         return storage::TraySettings().setEnabled(value);
     }
+    if (binding == SettingsSwitchBinding::ScreenshotAutoSaveAfterCopy) {
+        return storage::ScreenshotSettings().setAutoSaveAfterCopy(value);
+    }
+    if (binding == SettingsSwitchBinding::ScreenshotCopyImageFileToClipboard) {
+        return storage::ScreenshotSettings().setCopyImageFileToClipboard(value);
+    }
+    if (binding == SettingsSwitchBinding::PinAutomaticTextRecognition) {
+        return storage::PinToScreenSettings().setAutomaticTextRecognition(value);
+    }
+    if (binding == SettingsSwitchBinding::PinAutoResizeWindow) {
+        return storage::PinToScreenSettings().setAutoResizeWindow(value);
+    }
+    if (binding == SettingsSwitchBinding::VideoHideToolbarInRecording) {
+        return storage::RecordingSettings().setHideToolbarInRecording(value);
+    }
+    if (binding == SettingsSwitchBinding::DisableHotkeysOnFocusedFullscreen) {
+        return storage::GlobalShortcutSettings().setDisableOnFocusedFullscreenWindow(value);
+    }
+    if (binding == SettingsSwitchBinding::AutoStartAtBoot) {
+        return applyAutoStartAtBoot(value);
+    }
 
     auto policy = storage::ApplicationStorage::instance().captureHistoryPolicy();
     switch (binding) {
@@ -235,6 +345,13 @@ bool BuiltInSettingsRuntimeBindings::applySwitchValue(SettingsSwitchBinding bind
         return false;
     case SettingsSwitchBinding::SelectionTransitionAnimation:
     case SettingsSwitchBinding::TrayEnabled:
+    case SettingsSwitchBinding::ScreenshotAutoSaveAfterCopy:
+    case SettingsSwitchBinding::ScreenshotCopyImageFileToClipboard:
+    case SettingsSwitchBinding::PinAutomaticTextRecognition:
+    case SettingsSwitchBinding::PinAutoResizeWindow:
+    case SettingsSwitchBinding::VideoHideToolbarInRecording:
+    case SettingsSwitchBinding::DisableHotkeysOnFocusedFullscreen:
+    case SettingsSwitchBinding::AutoStartAtBoot:
         return false;
     }
     return storage::ApplicationStorage::instance().requestCaptureHistoryPolicy(policy);
@@ -283,6 +400,30 @@ bool BuiltInSettingsRuntimeBindings::applyIntegerValue(SettingsIntegerBinding bi
     }
     }
     return storage::ApplicationStorage::instance().requestCaptureHistoryPolicy(policy);
+}
+
+QVariantList BuiltInSettingsRuntimeBindings::multiSelectValue(
+    SettingsMultiSelectBinding binding) const {
+    QVariantList values;
+    if (binding == SettingsMultiSelectBinding::DrawingQuickSelectionDisabledTools) {
+        for (const QString& value : storage::DrawingSettings().quickSelectionDisabledTools()) {
+            values.push_back(value);
+        }
+    }
+    return values;
+}
+
+bool BuiltInSettingsRuntimeBindings::applyMultiSelectValue(
+    SettingsMultiSelectBinding binding, const QVariantList& value) {
+    if (binding != SettingsMultiSelectBinding::DrawingQuickSelectionDisabledTools) {
+        return false;
+    }
+    QStringList tools;
+    tools.reserve(value.size());
+    for (const QVariant& item : value) {
+        tools.push_back(item.toString());
+    }
+    return storage::DrawingSettings().setQuickSelectionDisabledTools(tools);
 }
 
 int BuiltInSettingsRuntimeBindings::sliderValue(SettingsSliderBinding binding) const {
@@ -395,6 +536,48 @@ bool BuiltInSettingsRuntimeBindings::applyShortcuts(GlobalShortcutAction action,
     return m_shortcutManager.state(action).shortcuts == shortcuts;
 }
 
+QStringList BuiltInSettingsRuntimeBindings::localShortcuts(const QString& toolId) const {
+    return storage::DrawingShortcutSettings().shortcuts(toolId);
+}
+
+GlobalShortcutValidationResult BuiltInSettingsRuntimeBindings::validateLocalShortcut(
+    const QString& toolId, const QString& shortcut) const {
+    const QString key = QStringLiteral("drawing_shortcuts/") + toolId;
+    const storage::ConfigurationNormalization normalized = storage::ConfigurationSchema::normalize(
+        key, QJsonArray{shortcut});
+    if (!normalized.valid || normalized.value.toArray().isEmpty()) {
+        return {shortcut, false, GlobalShortcutFailureReason::InvalidShortcut};
+    }
+    const QString canonical = normalized.value.toArray().first().toString();
+    if (storage::DrawingShortcutSettings::isReservedShortcut(canonical)) {
+        return {canonical, false, GlobalShortcutFailureReason::InvalidShortcut};
+    }
+    const auto all = storage::DrawingShortcutSettings().allShortcuts();
+    for (auto it = all.cbegin(); it != all.cend(); ++it) {
+        if (it.key() == toolId) {
+            continue;
+        }
+        for (const QString& existing : it.value()) {
+            if (existing.compare(canonical, Qt::CaseInsensitive) == 0) {
+                return {canonical, false, GlobalShortcutFailureReason::AlreadyInUse};
+            }
+        }
+    }
+    return {canonical, true, GlobalShortcutFailureReason::None};
+}
+
+bool BuiltInSettingsRuntimeBindings::applyLocalShortcuts(
+    const QString& toolId, const QStringList& shortcuts) {
+    for (const QString& shortcut : shortcuts) {
+        const GlobalShortcutValidationResult validation =
+            validateLocalShortcut(toolId, shortcut);
+        if (!validation.supported) {
+            return false;
+        }
+    }
+    return storage::DrawingShortcutSettings().setShortcuts(toolId, shortcuts);
+}
+
 SettingsActionState
 BuiltInSettingsRuntimeBindings::actionState(SettingsActionBinding binding) const {
     const storage::StorageStatus status = storage::ApplicationStorage::instance().status();
@@ -477,9 +660,26 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
             defaultHistoryPolicy());
     case SettingsSectionReset::ScreenshotSettings:
         return storage::ApplicationStorage::instance().requestSmartSelection(
-            storage::ConfigurationSchema::defaultValue(
-                QStringLiteral("screenshot_selection/smart_selection"))
-                .toBool());
+                   storage::ConfigurationSchema::defaultValue(
+                       QStringLiteral("screenshot_selection/smart_selection"))
+                       .toBool()) &&
+               storage::ApplicationStorage::instance().configuration().setValues({
+                   {QStringLiteral("screenshot/auto_execute_after_text_recognition"),
+                    storage::ConfigurationSchema::defaultValue(
+                        QStringLiteral("screenshot/auto_execute_after_text_recognition"))},
+                   {QStringLiteral("screenshot/double_click_action"),
+                    storage::ConfigurationSchema::defaultValue(
+                        QStringLiteral("screenshot/double_click_action"))},
+                   {QStringLiteral("screenshot/middle_mouse_button_action"),
+                    storage::ConfigurationSchema::defaultValue(
+                        QStringLiteral("screenshot/middle_mouse_button_action"))},
+                   {QStringLiteral("screenshot/auto_save_after_copy"),
+                    storage::ConfigurationSchema::defaultValue(
+                        QStringLiteral("screenshot/auto_save_after_copy"))},
+                   {QStringLiteral("screenshot/copy_image_file_to_clipboard"),
+                    storage::ConfigurationSchema::defaultValue(
+                        QStringLiteral("screenshot/copy_image_file_to_clipboard"))},
+               });
     case SettingsSectionReset::ScreenshotInterfaceSettings:
         return storage::ApplicationStorage::instance().configuration().setValues({
             {QStringLiteral("screenshot_ui/toolbar_size"),
@@ -508,15 +708,41 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
                  QStringLiteral("screenshot_ui/color_picker_center_guide_line_color"))},
         });
     case SettingsSectionReset::DrawingToolbar:
-        return storage::ApplicationStorage::instance().configuration().setValue(
-            QStringLiteral("screenshot_toolbar/layout"),
-            storage::ConfigurationSchema::defaultValue(
-                QStringLiteral("screenshot_toolbar/layout")));
+        return storage::ApplicationStorage::instance().configuration().setValues({
+            {QStringLiteral("screenshot_toolbar/layout"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("screenshot_toolbar/layout"))},
+            {QStringLiteral("drawing/quick_selection_disabled_tools"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("drawing/quick_selection_disabled_tools"))},
+        });
+    case SettingsSectionReset::DrawingShortcuts: {
+        QMap<QString, QStringList> defaults;
+        for (const QString& toolId : {QStringLiteral("shape"), QStringLiteral("arrow"),
+                                     QStringLiteral("brush"), QStringLiteral("highlight"),
+                                     QStringLiteral("text"), QStringLiteral("serial_number"),
+                                     QStringLiteral("filter"), QStringLiteral("eraser"),
+                                     QStringLiteral("watermark")}) {
+            defaults.insert(toolId,
+                            stringListDefault(QStringLiteral("drawing_shortcuts/") + toolId));
+        }
+        return storage::DrawingShortcutSettings().setAllShortcutsAtomic(defaults);
+    }
     case SettingsSectionReset::PinToScreen:
-        return storage::ApplicationStorage::instance().configuration().setValue(
-            QStringLiteral("pin_to_screen/border_color"),
-            storage::ConfigurationSchema::defaultValue(
-                QStringLiteral("pin_to_screen/border_color")));
+        return storage::ApplicationStorage::instance().configuration().setValues({
+            {QStringLiteral("pin_to_screen/border_color"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("pin_to_screen/border_color"))},
+            {QStringLiteral("pin_to_screen/mouse_wheel_zoom_mode"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("pin_to_screen/mouse_wheel_zoom_mode"))},
+            {QStringLiteral("pin_to_screen/automatic_text_recognition"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("pin_to_screen/automatic_text_recognition"))},
+            {QStringLiteral("pin_to_screen/auto_resize_window"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("pin_to_screen/auto_resize_window"))},
+        });
     case SettingsSectionReset::Tray:
         return storage::ApplicationStorage::instance().configuration().setValues({
             {QStringLiteral("tray/enabled"),
@@ -525,7 +751,47 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
              storage::ConfigurationSchema::defaultValue(QStringLiteral("tray/icon"))},
             {QStringLiteral("tray/custom_icon"),
              storage::ConfigurationSchema::defaultValue(QStringLiteral("tray/custom_icon"))},
+            {QStringLiteral("tray/left_click_action"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("tray/left_click_action"))},
         });
+    case SettingsSectionReset::VideoRecording:
+        return storage::ApplicationStorage::instance().configuration().setValues({
+            {QStringLiteral("video_recording/video_clarity"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("video_recording/video_clarity"))},
+            {QStringLiteral("video_recording/frame_rate"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("video_recording/frame_rate"))},
+            {QStringLiteral("video_recording/animated_image_clarity"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("video_recording/animated_image_clarity"))},
+            {QStringLiteral("video_recording/animated_image_frame_rate"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("video_recording/animated_image_frame_rate"))},
+            {QStringLiteral("video_recording/animated_image_format"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("video_recording/animated_image_format"))},
+            {QStringLiteral("video_recording/encoder"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("video_recording/encoder"))},
+            {QStringLiteral("video_recording/encoding_preset"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("video_recording/encoding_preset"))},
+            {QStringLiteral("video_recording/hide_toolbar_in_recording"),
+             storage::ConfigurationSchema::defaultValue(
+                 QStringLiteral("video_recording/hide_toolbar_in_recording"))},
+        });
+    case SettingsSectionReset::GlobalHotkeys:
+        return storage::GlobalShortcutSettings().setDisableOnFocusedFullscreenWindow(
+            storage::ConfigurationSchema::defaultValue(
+                QStringLiteral("global_shortcuts/disable_on_focused_fullscreen_window"))
+                .toBool());
+    case SettingsSectionReset::SystemGeneral:
+        return applyAutoStartAtBoot(
+            storage::ConfigurationSchema::defaultValue(
+                QStringLiteral("system/auto_start_at_boot"))
+                .toBool());
     case SettingsSectionReset::SystemSettings: {
         auto& storage = storage::ApplicationStorage::instance();
         if (!storage.isInitialized()) {

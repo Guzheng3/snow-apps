@@ -16,10 +16,21 @@
         {
           "name": "ffmpeg",
           "default-features": false,
-          "features": ["avcodec", "avformat", "swresample", "swscale"]
+          "features": [
+            "avcodec",
+            "avformat",
+            "swresample",
+            "swscale",
+            "webp",
+            "x264",
+            "x265"
+          ]
         },
         { "name": "libpng", "features": ["apng"] },
         "libwebp",
+        "libjpeg-turbo",
+        { "name": "libheif", "default-features": false, "features": ["aom", "hevc"] },
+        "libjxl",
         {
           "name": "onnxruntime",
           "default-features": false,

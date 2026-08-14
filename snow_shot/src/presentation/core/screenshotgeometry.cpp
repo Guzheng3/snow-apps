@@ -843,6 +843,34 @@ ScreenshotPinnedImageFit ScreenshotGeometryMapper::fitImageToAvailableGeometry(
     return fit;
 }
 
+ScreenshotPinnedImageFit ScreenshotGeometryMapper::centerImageAtFullResolution(
+    const QSize& fullResolutionSize, const QRect& availableLogicalGeometry,
+    const QRect& screenLogicalGeometry, const QRect& screenNativeGeometry) {
+    ScreenshotPinnedImageFit placement;
+    placement.fullResolutionSize = fullResolutionSize;
+    if (!fullResolutionSize.isValid() || fullResolutionSize.isEmpty() ||
+        !availableLogicalGeometry.isValid() || availableLogicalGeometry.isEmpty() ||
+        !screenLogicalGeometry.isValid() || screenLogicalGeometry.isEmpty() ||
+        !screenNativeGeometry.isValid() || screenNativeGeometry.isEmpty()) {
+        return placement;
+    }
+
+    const QRect availableNative = nativeRectForLogicalRect(
+        availableLogicalGeometry, screenLogicalGeometry, screenNativeGeometry);
+    if (!availableNative.isValid() || availableNative.isEmpty()) {
+        return placement;
+    }
+    const QPoint topLeft(
+        qRound(availableNative.left() +
+               (availableNative.width() - fullResolutionSize.width()) / 2.0),
+        qRound(availableNative.top() +
+               (availableNative.height() - fullResolutionSize.height()) / 2.0));
+    placement.nativeGeometry = QRect(topLeft, fullResolutionSize);
+    placement.scalePercent = 100.0;
+    placement.valid = true;
+    return placement;
+}
+
 QPoint ScreenshotGeometryMapper::clampContentPositionToRect(const QPoint& desiredPosition,
                                                             const QRect& contentRect,
                                                             const QRect& bounds) {

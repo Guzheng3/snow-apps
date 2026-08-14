@@ -106,6 +106,7 @@ class ScreenshotToolPalette final : public QWidget {
         bool showTableTool = false;
         bool showQrTool = false;
         bool showScrollingScreenshotTool = false;
+        bool showSaveButton = false;
         bool showVideoRecordButton = false;
         bool showRecordingControls = false;
         bool showTrailingDragHandle = false;
@@ -156,6 +157,7 @@ class ScreenshotToolPalette final : public QWidget {
     bool styleToolbarVisible() const;
     bool actionToolbarVisible() const;
     void setActiveTool(Tool tool);
+    [[nodiscard]] bool activateDrawingShortcut(const QString& toolId);
     void clearActiveTool();
     void setHistoryState(const SnowCanvasHistoryState& state);
     void setScrollingScreenshotMode(bool enabled);
@@ -231,6 +233,7 @@ class ScreenshotToolPalette final : public QWidget {
     void textFormattingRequested(const QString& value);
     void textPunctuationRequested(const QString& value);
     void scrollingScreenshotRequested();
+    void saveRequested();
     void scrollingRecognitionModeChanged(ScreenshotScrollingRecognitionMode mode);
     void videoRecordRequested();
     void serialNumberDecrementRequested();
@@ -267,7 +270,7 @@ class ScreenshotToolPalette final : public QWidget {
     void recordingSystemAudioToggled(bool enabled);
     void recordingOpenFolderRequested();
     void recordingCloseRequested();
-    void recordingCopyGifRequested();
+    void recordingCopyAnimatedImageRequested();
     void recordingCopyVideoRequested();
 
   private:
@@ -293,6 +296,7 @@ class ScreenshotToolPalette final : public QWidget {
     adqt::widgets::AdButton* drawingToolEntryButton(Tool tool) const;
     void clearDrawingToolGroups();
     void activateDrawingTool(Tool tool);
+    [[nodiscard]] Tool drawingShortcutEntryTool(const QString& itemId, Tool fallback) const;
     void selectDrawingToolGroupEntry(Tool tool);
     void refreshDrawingToolGroup(int groupIndex);
     void addRecordingControls(QBoxLayout* layout);
@@ -467,6 +471,7 @@ class ScreenshotToolPalette final : public QWidget {
     adqt::widgets::AdSelect* m_textFormattingSelect = nullptr;
     adqt::widgets::AdSelect* m_textPunctuationSelect = nullptr;
     adqt::widgets::AdButton* m_scrollingScreenshotButton = nullptr;
+    adqt::widgets::AdButton* m_saveButton = nullptr;
     QWidget* m_scrollingRecognitionControls = nullptr;
     adqt::widgets::AdButton* m_scrollingVerticalButton = nullptr;
     adqt::widgets::AdButton* m_scrollingHorizontalButton = nullptr;
@@ -479,7 +484,7 @@ class ScreenshotToolPalette final : public QWidget {
     adqt::widgets::AdButton* m_recordSystemAudioButton = nullptr;
     adqt::widgets::AdButton* m_recordOpenFolderButton = nullptr;
     adqt::widgets::AdButton* m_recordCloseButton = nullptr;
-    adqt::widgets::AdButton* m_recordCopyGifButton = nullptr;
+    adqt::widgets::AdButton* m_recordCopyAnimatedImageButton = nullptr;
     adqt::widgets::AdButton* m_recordCopyVideoButton = nullptr;
     QLabel* m_recordDurationLabel = nullptr;
     adqt::widgets::AdButton* m_pinButton = nullptr;

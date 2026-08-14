@@ -23,6 +23,7 @@ class ScreenshotToolbarWindow final : public ScreenshotFloatingToolPaletteWindow
     void setToolbarLayout(const snow_shot::storage::ScreenshotToolbarLayout& layout);
     void setScrollingScreenshotMode(bool enabled);
     void setActiveTool(ScreenshotToolPalette::Tool tool);
+    [[nodiscard]] bool activateDrawingShortcut(const QString& toolId);
     void setHistoryState(const SnowCanvasHistoryState& state);
     void setStyleToolbarState(const SnowCanvasStyleToolbarState& state);
     void setWatermarkConfig(const SnowCanvasWatermarkConfig& config);

@@ -70,7 +70,7 @@ class ScreenshotOcrController final : public QObject {
     [[nodiscard]] bool tableModeActive() const;
     [[nodiscard]] bool qrModeActive() const;
     void setMode(Mode mode);
-    [[nodiscard]] bool copyRecognitionToClipboard();
+    [[nodiscard]] bool copyRecognitionToClipboard(bool endCapture = true);
     void mergeTableSelection();
     void splitTableSelection();
     void resetTable();

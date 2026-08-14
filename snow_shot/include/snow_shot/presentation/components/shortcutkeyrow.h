@@ -23,6 +23,11 @@ struct MainWindowComponentMetricToken;
 struct ThemeAliasMetricToken;
 } // namespace snow_shot::presentation::styles
 struct ShortcutKeyRowConfig {
+    enum class ValidationScope {
+        GlobalShortcut,
+        DrawingShortcut,
+    };
+
     QString title;
     adqt::icons::IconRef iconRef;
     QStringList shortcuts;
@@ -35,6 +40,8 @@ struct ShortcutKeyRowConfig {
     bool adjustableDelay = false;
     int delaySeconds = 3;
     std::function<bool(int)> delaySetter;
+    bool showRegistrationStatus = true;
+    ValidationScope validationScope = ValidationScope::GlobalShortcut;
 };
 
 class ShortcutKeyRow : public adqt::widgets::AdButton {
@@ -87,6 +94,9 @@ class ShortcutKeyRow : public adqt::widgets::AdButton {
     int m_rowBorderWidth = 1;
     int m_rowBorderRadius = 0;
     bool m_useStableBorder = false;
+    bool m_showRegistrationStatus = true;
+    ShortcutKeyRowConfig::ValidationScope m_validationScope =
+        ShortcutKeyRowConfig::ValidationScope::GlobalShortcut;
     int m_maxShortcutCount = 2;
     bool m_adjustableDelay = false;
     bool m_delayTitleHovered = false;

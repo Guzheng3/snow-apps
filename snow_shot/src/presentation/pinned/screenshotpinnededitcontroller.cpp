@@ -6,10 +6,13 @@
 #include "snow_shot/presentation/screenshotpinnedwindow.h"
 #include "snow_shot/presentation/screenshottoolpalette.h"
 #include "snow_shot/presentation/screenshottoolpalettehost.h"
+#include "snow_shot/storage/settingsadapters.h"
 
 #include "snow_draw_engine_qt/snow_canvas_widget.h"
 
 #include <QEvent>
+#include <QKeyEvent>
+#include <QKeySequence>
 #include <QPointer>
 #include <QScreen>
 #include <QTimer>
@@ -177,6 +180,10 @@ bool ScreenshotPinnedEditController::editMode() const {
 }
 
 bool ScreenshotPinnedEditController::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == &m_canvas && event != nullptr && event->type() == QEvent::KeyPress &&
+        m_editMode && handleDrawingShortcut(static_cast<QKeyEvent*>(event))) {
+        return true;
+    }
     if (watched == &m_canvas && event != nullptr && event->type() == QEvent::Wheel && m_editMode) {
         auto* wheelEvent = static_cast<QWheelEvent*>(event);
         const int deltaY = !wheelEvent->pixelDelta().isNull() ? wheelEvent->pixelDelta().y()
@@ -208,6 +215,39 @@ bool ScreenshotPinnedEditController::eventFilter(QObject* watched, QEvent* event
         }
     }
     return QObject::eventFilter(watched, event);
+}
+
+bool ScreenshotPinnedEditController::handleDrawingShortcut(QKeyEvent* event) {
+    if (event == nullptr || event->isAutoRepeat() || m_canvas.hasActiveTextEditing()) {
+        return false;
+    }
+
+    const QString pressed =
+        QKeySequence(QKeyCombination(event->modifiers(), Qt::Key(event->key())))
+            .toString(QKeySequence::PortableText)
+            .trimmed();
+    if (pressed.isEmpty() ||
+        snow_shot::storage::DrawingShortcutSettings::isReservedShortcut(pressed)) {
+        return false;
+    }
+
+    ScreenshotToolPalette* toolbar =
+        m_toolbarWindow != nullptr ? m_toolbarWindow->palette() : nullptr;
+    if (toolbar == nullptr) {
+        return false;
+    }
+    const auto shortcutsByTool =
+        snow_shot::storage::DrawingShortcutSettings().allShortcuts();
+    for (auto toolIt = shortcutsByTool.cbegin(); toolIt != shortcutsByTool.cend(); ++toolIt) {
+        for (const QString& shortcut : toolIt.value()) {
+            if (shortcut.compare(pressed, Qt::CaseInsensitive) == 0 &&
+                toolbar->activateDrawingShortcut(toolIt.key())) {
+                event->accept();
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 ScreenshotFloatingToolPaletteWindow* ScreenshotPinnedEditController::toolbarWindow() const {

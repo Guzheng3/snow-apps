@@ -152,11 +152,21 @@ int main(int argc, char* argv[]) {
     trayIcon->activated(QSystemTrayIcon::Unknown);
     require(screenshotRequests == 1, "only a left-click trigger should request a screenshot");
 
+    controller.setLeftClickAction(QStringLiteral("show_main_window"));
+    require(controller.leftClickAction() == QStringLiteral("show_main_window"),
+            "the configured show-window left-click action should be retained");
+    trayIcon->activated(QSystemTrayIcon::Trigger);
+    require(screenshotRequests == 1 && showMainWindowRequests == 1,
+            "the configured tray left-click should request the main window");
+    controller.setLeftClickAction(QStringLiteral("unsupported"));
+    require(controller.leftClickAction() == QStringLiteral("screenshot"),
+            "an unsupported tray left-click action should fall back to Screenshot");
+
     actions[0]->trigger();
     actions[2]->trigger();
     actions[3]->trigger();
     require(screenshotRequests == 2, "the Screenshot menu action should request a screenshot");
-    require(showMainWindowRequests == 1, "the Show Main Window action should emit its request");
+    require(showMainWindowRequests == 2, "the Show Main Window action should emit its request");
     require(exitRequests == 1, "the Exit action should emit its request");
 
     require(languageManager.setLanguage(QStringLiteral("zh_CN")),

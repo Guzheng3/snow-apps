@@ -55,6 +55,30 @@ void fitDoesNotDropBelowMinimumZoom() {
                 huge.nativeGeometry.size() == QSize(1000, 1000),
             "adaptive fit dropped below the minimum zoom");
 }
+
+void fullResolutionPlacementCentersWithoutFitting() {
+    const QRect logicalScreen(100, 50, 1600, 900);
+    const QRect available(100, 50, 1600, 860);
+    const QRect nativeScreen(200, 100, 2400, 1350);
+    const QSize imageSize(5000, 3000);
+    const ScreenshotPinnedImageFit placement =
+        ScreenshotGeometryMapper::centerImageAtFullResolution(
+            imageSize, available, logicalScreen, nativeScreen);
+    const QRect availableNative = ScreenshotGeometryMapper::nativeRectForLogicalRect(
+        available, logicalScreen, nativeScreen);
+    const QPointF availableCenter(availableNative.left() + availableNative.width() / 2.0,
+                                  availableNative.top() + availableNative.height() / 2.0);
+    const QPointF placementCenter(
+        placement.nativeGeometry.left() + placement.nativeGeometry.width() / 2.0,
+        placement.nativeGeometry.top() + placement.nativeGeometry.height() / 2.0);
+
+    require(placement.valid && placement.nativeGeometry.size() == imageSize &&
+                placement.fullResolutionSize == imageSize && placement.scalePercent == 100.0,
+            "full-resolution placement should preserve the image pixel dimensions");
+    require((placementCenter - availableCenter).manhattanLength() <= 1.0 &&
+                !availableNative.contains(placement.nativeGeometry),
+            "full-resolution placement should center in the work area while allowing overflow");
+}
 } // namespace
 
 int main() {
@@ -62,6 +86,7 @@ int main() {
         landscapeAndPortraitResultsFitBothAxes();
         fitUsesAvailableGeometryMarginAndNeverUpscales();
         fitDoesNotDropBelowMinimumZoom();
+        fullResolutionPlacementCentersWithoutFitting();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return EXIT_FAILURE;

@@ -17,6 +17,7 @@
 namespace snow_shot::presentation {
 namespace {
 constexpr auto DEFAULT_TRAY_ICON = "default";
+constexpr auto DEFAULT_LEFT_CLICK_ACTION = "screenshot";
 
 const QHash<QString, QString>& bundledIconResources() {
     static const QHash<QString, QString> resources{
@@ -43,6 +44,12 @@ QString normalizedIconSelection(const QString& selection) {
 
 QString bundledIconResource(const QString& selection) {
     return bundledIconResources().value(normalizedIconSelection(selection));
+}
+
+QString normalizedLeftClickAction(const QString& action) {
+    return action == QStringLiteral("show_main_window")
+               ? action
+               : QString::fromLatin1(DEFAULT_LEFT_CLICK_ACTION);
 }
 
 QIcon loadImageIcon(const QString& path) {
@@ -85,7 +92,11 @@ class SystemTrayController::Impl {
         QObject::connect(trayIcon, &QSystemTrayIcon::activated, &q,
                          [this](QSystemTrayIcon::ActivationReason reason) {
                              if (reason == QSystemTrayIcon::Trigger) {
-                                 emit q.screenshotRequested();
+                                 if (leftClickAction == QStringLiteral("show_main_window")) {
+                                     emit q.showMainWindowRequested();
+                                 } else {
+                                     emit q.screenshotRequested();
+                                 }
                              }
                          });
         QObject::connect(screenshotAction, &QAction::triggered, &q,
@@ -137,6 +148,7 @@ class SystemTrayController::Impl {
     QAction* exitAction = nullptr;
     QString iconSelection = QString::fromLatin1(DEFAULT_TRAY_ICON);
     QString customIconPath;
+    QString leftClickAction = QString::fromLatin1(DEFAULT_LEFT_CLICK_ACTION);
     bool enabled = true;
 };
 
@@ -197,5 +209,13 @@ void SystemTrayController::setCustomIconPath(const QString& path) {
 
 QString SystemTrayController::customIconPath() const {
     return m_impl->customIconPath;
+}
+
+void SystemTrayController::setLeftClickAction(const QString& action) {
+    m_impl->leftClickAction = normalizedLeftClickAction(action);
+}
+
+QString SystemTrayController::leftClickAction() const {
+    return m_impl->leftClickAction;
 }
 } // namespace snow_shot::presentation

@@ -108,6 +108,41 @@ typedef enum SnowCaptureRecordingState {
     SNOW_CAPTURE_RECORDING_STATE_STOPPED = 3,
 } SnowCaptureRecordingState;
 
+typedef enum SnowCaptureRecordingExportFormat {
+    SNOW_CAPTURE_RECORDING_EXPORT_FORMAT_MP4 = 0,
+    SNOW_CAPTURE_RECORDING_EXPORT_FORMAT_GIF = 1,
+    SNOW_CAPTURE_RECORDING_EXPORT_FORMAT_APNG = 2,
+    SNOW_CAPTURE_RECORDING_EXPORT_FORMAT_WEBP = 3,
+} SnowCaptureRecordingExportFormat;
+
+typedef enum SnowCaptureVideoCodec {
+    SNOW_CAPTURE_VIDEO_CODEC_H264 = 0,
+    SNOW_CAPTURE_VIDEO_CODEC_H265 = 1,
+} SnowCaptureVideoCodec;
+
+typedef enum SnowCaptureVideoEncodingPreset {
+    SNOW_CAPTURE_VIDEO_ENCODING_PRESET_ULTRAFAST = 0,
+    SNOW_CAPTURE_VIDEO_ENCODING_PRESET_VERYFAST = 1,
+    SNOW_CAPTURE_VIDEO_ENCODING_PRESET_MEDIUM = 2,
+    SNOW_CAPTURE_VIDEO_ENCODING_PRESET_VERYSLOW = 3,
+    SNOW_CAPTURE_VIDEO_ENCODING_PRESET_PLACEBO = 4,
+} SnowCaptureVideoEncodingPreset;
+
+#define SNOW_CAPTURE_RECORDING_EXPORT_CONFIG_VERSION 1u
+
+typedef struct SnowCaptureRecordingExportConfig {
+    uint32_t version;
+    uint32_t struct_size;
+    const char* output_file_utf8;
+    uint32_t format;
+    uint32_t maximum_width;
+    uint32_t maximum_height;
+    uint32_t target_fps;
+    uint32_t codec;
+    uint32_t preset;
+    uint8_t reserved[32];
+} SnowCaptureRecordingExportConfig;
+
 SnowCaptureDesktopSession* snow_capture_desktop_session_create(
     const SnowCaptureDesktopSessionConfig* config);
 void snow_capture_desktop_session_destroy(SnowCaptureDesktopSession* session);
@@ -162,6 +197,9 @@ uint8_t snow_capture_recording_session_stop_and_export(
     SnowCaptureRecordingSession* session,
     const char* output_file_utf8,
     uint8_t export_gif);
+uint8_t snow_capture_recording_session_stop_and_export_v1(
+    SnowCaptureRecordingSession* session,
+    const SnowCaptureRecordingExportConfig* config);
 
 const char* snow_capture_last_error_message(void);
 

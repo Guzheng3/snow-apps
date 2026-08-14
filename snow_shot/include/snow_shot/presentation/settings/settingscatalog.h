@@ -70,6 +70,18 @@ enum class SettingsSelectBinding {
     ApplicationPriority,
     ScreenshotToolbarSize,
     ColorPickerDisplayMode,
+    ScreenshotOcrAction,
+    ScreenshotDoubleClickAction,
+    ScreenshotMiddleClickAction,
+    PinMouseWheelZoomMode,
+    VideoClarity,
+    VideoFrameRate,
+    AnimatedImageClarity,
+    AnimatedImageFrameRate,
+    AnimatedImageFormat,
+    VideoEncoder,
+    VideoEncodingPreset,
+    TrayLeftClickAction,
 };
 
 struct SettingsSelectDefinition {
@@ -84,6 +96,13 @@ enum class SettingsSwitchBinding {
     DirectMlAcceleration,
     SelectionTransitionAnimation,
     TrayEnabled,
+    ScreenshotAutoSaveAfterCopy,
+    ScreenshotCopyImageFileToClipboard,
+    PinAutomaticTextRecognition,
+    PinAutoResizeWindow,
+    VideoHideToolbarInRecording,
+    DisableHotkeysOnFocusedFullscreen,
+    AutoStartAtBoot,
 };
 
 struct SettingsSwitchDefinition {
@@ -95,6 +114,16 @@ enum class SettingsIntegerBinding {
     HistoryMaxEntries,
     HistoryMaxDiskMiB,
     ScreenshotDelaySeconds,
+};
+
+enum class SettingsMultiSelectBinding {
+    DrawingQuickSelectionDisabledTools,
+};
+
+struct SettingsMultiSelectDefinition {
+    SettingsMultiSelectBinding binding =
+        SettingsMultiSelectBinding::DrawingQuickSelectionDisabledTools;
+    QVector<SettingsOptionDefinition> options;
 };
 
 struct SettingsIntegerDefinition {
@@ -162,6 +191,11 @@ struct SettingsShortcutActionDefinition {
     SettingsShortcutAdjustment adjustment = SettingsShortcutAdjustment::None;
 };
 
+struct SettingsLocalShortcutDefinition {
+    QString toolId;
+    std::function<adqt::icons::IconRef()> iconFactory;
+};
+
 enum class SettingsActionBinding {
     ClearCaptureHistory,
 };
@@ -197,10 +231,10 @@ struct SettingsCustomDefinition {
 
 using SettingsItemPayload =
     std::variant<SettingsSelectDefinition, SettingsSwitchDefinition, SettingsIntegerDefinition,
-                 SettingsSliderDefinition, SettingsColorDefinition, SettingsRadioDefinition,
-                 SettingsFilePathDefinition,
-                 SettingsShortcutActionDefinition, SettingsActionDefinition,
-                 SettingsCustomDefinition>;
+                 SettingsMultiSelectDefinition, SettingsSliderDefinition,
+                 SettingsColorDefinition, SettingsRadioDefinition, SettingsFilePathDefinition,
+                 SettingsShortcutActionDefinition, SettingsLocalShortcutDefinition,
+                 SettingsActionDefinition, SettingsCustomDefinition>;
 
 struct SettingsItemDefinition {
     QString id;
@@ -220,8 +254,12 @@ enum class SettingsSectionReset {
     ScreenshotSettings,
     ScreenshotInterfaceSettings,
     DrawingToolbar,
+    DrawingShortcuts,
     PinToScreen,
     Tray,
+    VideoRecording,
+    GlobalHotkeys,
+    SystemGeneral,
     SystemSettings,
     TextRecognition,
 };

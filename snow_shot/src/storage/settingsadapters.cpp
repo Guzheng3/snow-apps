@@ -1,13 +1,16 @@
 #include "snow_shot/storage/settingsadapters.h"
 
 #include "snow_shot/storage/applicationstorage.h"
+#include "snow_shot/storage/configurationschema.h"
 #include "snow_shot/storage/configurationstore.h"
 
 #include "capturehistorypolicy_p.h"
 
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QKeySequence>
 #include <QLocale>
+#include <QSet>
 
 namespace snow_shot::storage {
 namespace {
@@ -41,6 +44,23 @@ QStringList shortcutValue(const QString& key) {
 
 bool setShortcutValue(const QString& key, const QStringList& shortcuts) {
     return cache().setValue(key, stringArray(shortcuts));
+}
+
+const QStringList& drawingShortcutToolIds() {
+    static const QStringList ids = {
+        QStringLiteral("shape"),         QStringLiteral("arrow"),
+        QStringLiteral("brush"),         QStringLiteral("highlight"),
+        QStringLiteral("text"),          QStringLiteral("serial_number"),
+        QStringLiteral("filter"),        QStringLiteral("eraser"),
+        QStringLiteral("watermark"),
+    };
+    return ids;
+}
+
+QString drawingShortcutKey(const QString& toolId) {
+    return drawingShortcutToolIds().contains(toolId)
+               ? QStringLiteral("drawing_shortcuts/") + toolId
+               : QString();
 }
 
 QVector<QStringList> stringListArray(const QJsonValue& value) {
@@ -217,12 +237,229 @@ bool ShortcutSettings::setOpenSettings(const QStringList& shortcuts) const {
     return setShortcutValue(QStringLiteral("global_shortcuts/open_settings"), shortcuts);
 }
 
+bool GlobalShortcutSettings::disableOnFocusedFullscreenWindow() const {
+    return cache()
+        .value(QStringLiteral("global_shortcuts/disable_on_focused_fullscreen_window"))
+        .toBool();
+}
+
+bool GlobalShortcutSettings::setDisableOnFocusedFullscreenWindow(bool disabled) const {
+    return cache().setValue(
+        QStringLiteral("global_shortcuts/disable_on_focused_fullscreen_window"), disabled);
+}
+
 int ScreenshotSettings::delaySeconds() const {
     return cache().value(QStringLiteral("screenshot/delay_seconds")).toInt();
 }
 
 bool ScreenshotSettings::setDelaySeconds(int seconds) const {
     return cache().setValue(QStringLiteral("screenshot/delay_seconds"), seconds);
+}
+
+QString ScreenshotSettings::autoExecuteAfterTextRecognition() const {
+    return cache()
+        .value(QStringLiteral("screenshot/auto_execute_after_text_recognition"))
+        .toString();
+}
+
+bool ScreenshotSettings::setAutoExecuteAfterTextRecognition(const QString& action) const {
+    return cache().setValue(QStringLiteral("screenshot/auto_execute_after_text_recognition"),
+                            action);
+}
+
+QString ScreenshotSettings::doubleClickAction() const {
+    return cache().value(QStringLiteral("screenshot/double_click_action")).toString();
+}
+
+bool ScreenshotSettings::setDoubleClickAction(const QString& action) const {
+    return cache().setValue(QStringLiteral("screenshot/double_click_action"), action);
+}
+
+QString ScreenshotSettings::middleMouseButtonAction() const {
+    return cache().value(QStringLiteral("screenshot/middle_mouse_button_action")).toString();
+}
+
+bool ScreenshotSettings::setMiddleMouseButtonAction(const QString& action) const {
+    return cache().setValue(QStringLiteral("screenshot/middle_mouse_button_action"), action);
+}
+
+bool ScreenshotSettings::autoSaveAfterCopy() const {
+    return cache().value(QStringLiteral("screenshot/auto_save_after_copy")).toBool();
+}
+
+bool ScreenshotSettings::setAutoSaveAfterCopy(bool enabled) const {
+    return cache().setValue(QStringLiteral("screenshot/auto_save_after_copy"), enabled);
+}
+
+bool ScreenshotSettings::copyImageFileToClipboard() const {
+    return cache().value(QStringLiteral("screenshot/copy_image_file_to_clipboard")).toBool();
+}
+
+bool ScreenshotSettings::setCopyImageFileToClipboard(bool enabled) const {
+    return cache().setValue(QStringLiteral("screenshot/copy_image_file_to_clipboard"), enabled);
+}
+
+QStringList DrawingSettings::quickSelectionDisabledTools() const {
+    return stringList(cache().value(QStringLiteral("drawing/quick_selection_disabled_tools")));
+}
+
+bool DrawingSettings::setQuickSelectionDisabledTools(const QStringList& tools) const {
+    return cache().setValue(QStringLiteral("drawing/quick_selection_disabled_tools"),
+                            stringArray(tools));
+}
+
+QStringList DrawingShortcutSettings::shape() const {
+    return shortcuts(QStringLiteral("shape"));
+}
+
+bool DrawingShortcutSettings::setShape(const QStringList& value) const {
+    return setShortcuts(QStringLiteral("shape"), value);
+}
+
+QStringList DrawingShortcutSettings::arrow() const {
+    return shortcuts(QStringLiteral("arrow"));
+}
+
+bool DrawingShortcutSettings::setArrow(const QStringList& value) const {
+    return setShortcuts(QStringLiteral("arrow"), value);
+}
+
+QStringList DrawingShortcutSettings::brush() const {
+    return shortcuts(QStringLiteral("brush"));
+}
+
+bool DrawingShortcutSettings::setBrush(const QStringList& value) const {
+    return setShortcuts(QStringLiteral("brush"), value);
+}
+
+QStringList DrawingShortcutSettings::highlight() const {
+    return shortcuts(QStringLiteral("highlight"));
+}
+
+bool DrawingShortcutSettings::setHighlight(const QStringList& value) const {
+    return setShortcuts(QStringLiteral("highlight"), value);
+}
+
+QStringList DrawingShortcutSettings::text() const {
+    return shortcuts(QStringLiteral("text"));
+}
+
+bool DrawingShortcutSettings::setText(const QStringList& value) const {
+    return setShortcuts(QStringLiteral("text"), value);
+}
+
+QStringList DrawingShortcutSettings::serialNumber() const {
+    return shortcuts(QStringLiteral("serial_number"));
+}
+
+bool DrawingShortcutSettings::setSerialNumber(const QStringList& value) const {
+    return setShortcuts(QStringLiteral("serial_number"), value);
+}
+
+QStringList DrawingShortcutSettings::filter() const {
+    return shortcuts(QStringLiteral("filter"));
+}
+
+bool DrawingShortcutSettings::setFilter(const QStringList& value) const {
+    return setShortcuts(QStringLiteral("filter"), value);
+}
+
+QStringList DrawingShortcutSettings::eraser() const {
+    return shortcuts(QStringLiteral("eraser"));
+}
+
+bool DrawingShortcutSettings::setEraser(const QStringList& value) const {
+    return setShortcuts(QStringLiteral("eraser"), value);
+}
+
+QStringList DrawingShortcutSettings::watermark() const {
+    return shortcuts(QStringLiteral("watermark"));
+}
+
+bool DrawingShortcutSettings::setWatermark(const QStringList& value) const {
+    return setShortcuts(QStringLiteral("watermark"), value);
+}
+
+bool DrawingShortcutSettings::isReservedShortcut(const QString& shortcut) {
+    QKeySequence sequence = QKeySequence::fromString(shortcut, QKeySequence::PortableText);
+    if (sequence.isEmpty()) {
+        sequence = QKeySequence::fromString(shortcut, QKeySequence::NativeText);
+    }
+    if (sequence.count() != 1) {
+        return false;
+    }
+
+    const QKeyCombination combination = sequence[0];
+    const Qt::Key key = combination.key();
+    const Qt::KeyboardModifiers modifiers = combination.keyboardModifiers();
+    if (key == Qt::Key_Escape || key == Qt::Key_Backspace || key == Qt::Key_Delete ||
+        key == Qt::Key_F4) {
+        return true;
+    }
+    if ((key == Qt::Key_Comma || key == Qt::Key_Period) && modifiers == Qt::NoModifier) {
+        return true;
+    }
+    if (key == Qt::Key_C && modifiers.testFlag(Qt::ControlModifier) &&
+        !modifiers.testFlag(Qt::AltModifier) && !modifiers.testFlag(Qt::MetaModifier)) {
+        return true;
+    }
+    return key == Qt::Key_Z && modifiers.testFlag(Qt::ControlModifier);
+}
+
+QStringList DrawingShortcutSettings::shortcuts(const QString& toolId) const {
+    const QString key = drawingShortcutKey(toolId);
+    return key.isEmpty() ? QStringList{} : shortcutValue(key);
+}
+
+bool DrawingShortcutSettings::setShortcuts(const QString& toolId,
+                                           const QStringList& value) const {
+    if (drawingShortcutKey(toolId).isEmpty()) {
+        return false;
+    }
+    QMap<QString, QStringList> next = allShortcuts();
+    next.insert(toolId, value);
+    return setAllShortcutsAtomic(next);
+}
+
+QMap<QString, QStringList> DrawingShortcutSettings::allShortcuts() const {
+    QMap<QString, QStringList> result;
+    for (const QString& toolId : drawingShortcutToolIds()) {
+        result.insert(toolId, shortcutValue(drawingShortcutKey(toolId)));
+    }
+    return result;
+}
+
+bool DrawingShortcutSettings::setAllShortcutsAtomic(
+    const QMap<QString, QStringList>& shortcutsByTool) const {
+    if (shortcutsByTool.size() != drawingShortcutToolIds().size()) {
+        return false;
+    }
+    QMap<QString, QJsonValue> values;
+    QSet<QString> seen;
+    for (const QString& toolId : drawingShortcutToolIds()) {
+        if (!shortcutsByTool.contains(toolId)) {
+            return false;
+        }
+        const QString key = drawingShortcutKey(toolId);
+        const ConfigurationNormalization normalized =
+            ConfigurationSchema::normalize(key, stringArray(shortcutsByTool.value(toolId)));
+        if (!normalized.valid) {
+            return false;
+        }
+        for (const QJsonValue& item : normalized.value.toArray()) {
+            const QString shortcut = item.toString();
+            if (isReservedShortcut(shortcut)) {
+                return false;
+            }
+            const QString binding = shortcut.toCaseFolded();
+            if (seen.contains(binding)) {
+                return false;
+            }
+            seen.insert(binding);
+        }
+        values.insert(key, normalized.value);
+    }
+    return cache().setValues(values);
 }
 
 QString ScreenshotUiSettings::toolbarSize() const {
@@ -307,6 +544,71 @@ bool RecordingSettings::setSystemAudioEnabled(bool enabled) const {
     return cache().setValue(QStringLiteral("video_recording/enable_system_audio"), enabled);
 }
 
+QString RecordingSettings::videoClarity() const {
+    return cache().value(QStringLiteral("video_recording/video_clarity")).toString();
+}
+
+bool RecordingSettings::setVideoClarity(const QString& clarity) const {
+    return cache().setValue(QStringLiteral("video_recording/video_clarity"), clarity);
+}
+
+int RecordingSettings::frameRate() const {
+    return cache().value(QStringLiteral("video_recording/frame_rate")).toInt();
+}
+
+bool RecordingSettings::setFrameRate(int frameRate) const {
+    return cache().setValue(QStringLiteral("video_recording/frame_rate"), frameRate);
+}
+
+QString RecordingSettings::animatedImageClarity() const {
+    return cache().value(QStringLiteral("video_recording/animated_image_clarity")).toString();
+}
+
+bool RecordingSettings::setAnimatedImageClarity(const QString& clarity) const {
+    return cache().setValue(QStringLiteral("video_recording/animated_image_clarity"), clarity);
+}
+
+int RecordingSettings::animatedImageFrameRate() const {
+    return cache().value(QStringLiteral("video_recording/animated_image_frame_rate")).toInt();
+}
+
+bool RecordingSettings::setAnimatedImageFrameRate(int frameRate) const {
+    return cache().setValue(QStringLiteral("video_recording/animated_image_frame_rate"),
+                            frameRate);
+}
+
+QString RecordingSettings::animatedImageFormat() const {
+    return cache().value(QStringLiteral("video_recording/animated_image_format")).toString();
+}
+
+bool RecordingSettings::setAnimatedImageFormat(const QString& format) const {
+    return cache().setValue(QStringLiteral("video_recording/animated_image_format"), format);
+}
+
+QString RecordingSettings::encoder() const {
+    return cache().value(QStringLiteral("video_recording/encoder")).toString();
+}
+
+bool RecordingSettings::setEncoder(const QString& encoder) const {
+    return cache().setValue(QStringLiteral("video_recording/encoder"), encoder);
+}
+
+QString RecordingSettings::encodingPreset() const {
+    return cache().value(QStringLiteral("video_recording/encoding_preset")).toString();
+}
+
+bool RecordingSettings::setEncodingPreset(const QString& preset) const {
+    return cache().setValue(QStringLiteral("video_recording/encoding_preset"), preset);
+}
+
+bool RecordingSettings::hideToolbarInRecording() const {
+    return cache().value(QStringLiteral("video_recording/hide_toolbar_in_recording")).toBool();
+}
+
+bool RecordingSettings::setHideToolbarInRecording(bool hide) const {
+    return cache().setValue(QStringLiteral("video_recording/hide_toolbar_in_recording"), hide);
+}
+
 QString ScreenshotToolbarSettings::arrowLineTool() const {
     return cache().value(QStringLiteral("screenshot_toolbar/arrow_line_tool")).toString();
 }
@@ -368,6 +670,30 @@ bool PinToScreenSettings::setBorderColor(const QColor& color) const {
     return setColorValue(QStringLiteral("pin_to_screen/border_color"), color);
 }
 
+QString PinToScreenSettings::mouseWheelZoomMode() const {
+    return cache().value(QStringLiteral("pin_to_screen/mouse_wheel_zoom_mode")).toString();
+}
+
+bool PinToScreenSettings::setMouseWheelZoomMode(const QString& mode) const {
+    return cache().setValue(QStringLiteral("pin_to_screen/mouse_wheel_zoom_mode"), mode);
+}
+
+bool PinToScreenSettings::automaticTextRecognition() const {
+    return cache().value(QStringLiteral("pin_to_screen/automatic_text_recognition")).toBool();
+}
+
+bool PinToScreenSettings::setAutomaticTextRecognition(bool enabled) const {
+    return cache().setValue(QStringLiteral("pin_to_screen/automatic_text_recognition"), enabled);
+}
+
+bool PinToScreenSettings::autoResizeWindow() const {
+    return cache().value(QStringLiteral("pin_to_screen/auto_resize_window")).toBool();
+}
+
+bool PinToScreenSettings::setAutoResizeWindow(bool enabled) const {
+    return cache().setValue(QStringLiteral("pin_to_screen/auto_resize_window"), enabled);
+}
+
 bool TraySettings::enabled() const {
     return cache().value(QStringLiteral("tray/enabled")).toBool();
 }
@@ -390,6 +716,22 @@ QString TraySettings::customIcon() const {
 
 bool TraySettings::setCustomIcon(const QString& path) const {
     return cache().setValue(QStringLiteral("tray/custom_icon"), path);
+}
+
+QString TraySettings::leftClickAction() const {
+    return cache().value(QStringLiteral("tray/left_click_action")).toString();
+}
+
+bool TraySettings::setLeftClickAction(const QString& action) const {
+    return cache().setValue(QStringLiteral("tray/left_click_action"), action);
+}
+
+bool SystemSettings::autoStartAtBoot() const {
+    return cache().value(QStringLiteral("system/auto_start_at_boot")).toBool();
+}
+
+bool SystemSettings::setAutoStartAtBoot(bool enabled) const {
+    return cache().setValue(QStringLiteral("system/auto_start_at_boot"), enabled);
 }
 
 CaptureHistoryPolicy HistorySettings::policy() const {

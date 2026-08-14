@@ -310,7 +310,7 @@ void ScreenshotOcrController::activateMode(Mode mode) {
     m_session->activate(static_cast<ScreenshotRecognitionSessionController::Mode>(mode));
 }
 
-bool ScreenshotOcrController::copyRecognitionToClipboard() {
+bool ScreenshotOcrController::copyRecognitionToClipboard(bool endCapture) {
     if (!m_active || QApplication::clipboard() == nullptr) {
         return false;
     }
@@ -320,7 +320,9 @@ bool ScreenshotOcrController::copyRecognitionToClipboard() {
             return false;
         }
         QApplication::clipboard()->setText(contents.join(QLatin1Char('\n')));
-        m_context.cancelCapture();
+        if (endCapture) {
+            m_context.cancelCapture();
+        }
         return true;
     }
     if (m_session->tableModeActive()) {
@@ -335,7 +337,9 @@ bool ScreenshotOcrController::copyRecognitionToClipboard() {
         mimeData->setData(QStringLiteral("text/html"), session->document.toHtml().toUtf8());
         mimeData->setText(session->document.toPlainText());
         QApplication::clipboard()->setMimeData(mimeData, QClipboard::Clipboard);
-        m_context.cancelCapture();
+        if (endCapture) {
+            m_context.cancelCapture();
+        }
         return true;
     }
 
@@ -351,7 +355,9 @@ bool ScreenshotOcrController::copyRecognitionToClipboard() {
         return false;
     }
     QApplication::clipboard()->setText(text);
-    m_context.cancelCapture();
+    if (endCapture) {
+        m_context.cancelCapture();
+    }
     return true;
 }
 

@@ -269,7 +269,8 @@ void cachedToolbarIconsFollowThemeColors() {
     auto* systemAudioButton =
         buttonWithTooltip(recordingToolbar, QStringLiteral("Record speakers"));
     auto* pauseButton = buttonWithTooltip(recordingToolbar, QStringLiteral("Pause recording"));
-    auto* copyGifButton = buttonWithTooltip(recordingToolbar, QStringLiteral("Copy GIF"));
+    auto* copyGifButton =
+        buttonWithTooltip(recordingToolbar, QStringLiteral("Copy animated image"));
     require(recordStartButton != nullptr && microphoneButton != nullptr &&
                 systemAudioButton != nullptr && pauseButton != nullptr && copyGifButton != nullptr,
             "theme icon test should expose recording toolbar icon controls");

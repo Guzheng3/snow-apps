@@ -169,27 +169,42 @@ class CursorPositionRestorer final {
 };
 
 void clickTextEditor(QLineEdit& editor) {
-#if defined(Q_OS_WIN) || defined(_WIN32)
-    const CursorPositionRestorer restoreCursor;
-    QCursor::setPos(editor.mapToGlobal(editor.rect().center()));
-    INPUT input[2]{};
-    input[0].type = INPUT_MOUSE;
-    input[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-    input[1].type = INPUT_MOUSE;
-    input[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
-    require(SendInput(2, input, sizeof(INPUT)) == 2,
-            "native click should reach the pinned watermark editor");
-    waitForUi(100);
-#else
     const QPointF center(editor.rect().center());
     QMouseEvent press(QEvent::MouseButtonPress, center, editor.mapToGlobal(center.toPoint()),
                       Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
     QCoreApplication::sendEvent(&editor, &press);
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+
+    if (!editor.hasFocus() && editor.window() != nullptr) {
+#if defined(Q_OS_WIN) || defined(_WIN32)
+        const HWND editorHwnd = toNativeHwnd(editor.window()->winId());
+        const HWND foregroundHwnd = GetForegroundWindow();
+        const DWORD currentThread = GetCurrentThreadId();
+        const DWORD foregroundThread =
+            foregroundHwnd != nullptr ? GetWindowThreadProcessId(foregroundHwnd, nullptr) : 0;
+        const bool attached = foregroundThread != 0 && foregroundThread != currentThread &&
+                              AttachThreadInput(currentThread, foregroundThread, TRUE) != FALSE;
+        if (editorHwnd != nullptr) {
+            SetActiveWindow(editorHwnd);
+            SetForegroundWindow(editorHwnd);
+            SetFocus(editorHwnd);
+        }
+#else
+        editor.window()->raise();
+        editor.window()->activateWindow();
+#endif
+        editor.setFocus(Qt::MouseFocusReason);
+#if defined(Q_OS_WIN) || defined(_WIN32)
+        if (attached) {
+            AttachThreadInput(currentThread, foregroundThread, FALSE);
+        }
+#endif
+    }
+
     QMouseEvent release(QEvent::MouseButtonRelease, center, editor.mapToGlobal(center.toPoint()),
                         Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
     QCoreApplication::sendEvent(&editor, &release);
     waitForUi(100);
-#endif
 }
 
 void typeText(const QString& text, QLineEdit& editor);
@@ -440,26 +455,12 @@ void pinnedCopyIncludesSourceCanvasDrawing() {
 }
 
 void typeText(const QString& text, QLineEdit& editor) {
-#if defined(Q_OS_WIN) || defined(_WIN32)
-    Q_UNUSED(editor);
-    for (const QChar character : text) {
-        INPUT input[2]{};
-        input[0].type = INPUT_KEYBOARD;
-        input[0].ki.wScan = character.unicode();
-        input[0].ki.dwFlags = KEYEVENTF_UNICODE;
-        input[1] = input[0];
-        input[1].ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-        require(SendInput(2, input, sizeof(INPUT)) == 2,
-                "native text should reach the pinned watermark editor");
-    }
-    waitForUi(100);
-#else
     for (const QChar character : text) {
         QKeyEvent keyPress(QEvent::KeyPress, character.toUpper().unicode(), Qt::NoModifier,
                            QString(character));
         QCoreApplication::sendEvent(&editor, &keyPress);
     }
-#endif
+    waitForUi(100);
 }
 
 QPushButton* buttonNamed(QWidget& window, const QString& accessibleName) {
@@ -1161,6 +1162,42 @@ void pinnedRecognitionPromotesAutomaticPrefetch(SnowCanvasRuntime& sourceRuntime
     closeButton->click();
     require(processUntilDeleted(guardedWindow, 2000),
             "priority pin was not deleted after the test");
+}
+
+void pinnedAutomaticRecognitionCanBeDisabled(SnowCanvasRuntime& sourceRuntime) {
+    QScreen* screen = QGuiApplication::primaryScreen();
+    require(screen != nullptr, "a primary screen is required");
+
+    FakeOcrRecognition recognition;
+    QImage background(160, 90, QImage::Format_ARGB32_Premultiplied);
+    background.fill(QColor(24, 72, 120));
+
+    auto* pinnedWindow = new ScreenshotPinnedWindow(sourceRuntime);
+    QPointer<ScreenshotPinnedWindow> guardedWindow(pinnedWindow);
+    ScreenshotPinnedWindow::Config config;
+    config.nativeGeometry = physicalPinGeometry(*screen, QPoint(60, 60), background.size());
+    config.canvasSourceRect = QRectF(QPointF(), QSizeF(background.size()));
+    config.backgroundImage = background;
+    config.screen = screen;
+    config.recognition = &recognition;
+    config.automaticTextRecognition = false;
+    require(pinnedWindow->present(config), "manual OCR pin presentation failed");
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    require(recognition.pending.token == 0,
+            "disabling automatic recognition should suppress pinned OCR prefetch");
+
+    auto* menu = pinnedWindow->findChild<adqt::widgets::AdContextMenu*>(
+        QStringLiteral("screenshotPinnedContextMenu"));
+    require(menu != nullptr && menu->actions().size() > 2,
+            "manual pinned OCR action should remain available without prefetch");
+    menu->actions().at(2)->trigger();
+    require(recognition.pending.token != 0 &&
+                recognition.pending.request.priority == ScreenshotOcrRequestPriority::Interactive,
+            "manual pinned OCR should still start interactive recognition");
+
+    pinnedWindow->close();
+    require(processUntilDeleted(guardedWindow, 2000),
+            "manual OCR pin was not deleted after the test");
 }
 
 void pinnedCloseAfterRecognizedText(SnowCanvasRuntime& sourceRuntime) {
@@ -1956,6 +1993,45 @@ void pinnedSettledWheelScalingAdvancesPastRoundedLevel(SnowCanvasRuntime& source
             "settled wheel scaling test pin was not deleted");
 }
 
+void pinnedWheelScalingUsesConfiguredAnchor(SnowCanvasRuntime& sourceRuntime) {
+    QScreen* screen = QGuiApplication::primaryScreen();
+    require(screen != nullptr, "a primary screen is required");
+
+    QImage background(320, 180, QImage::Format_ARGB32_Premultiplied);
+    background.fill(QColor(46, 97, 149));
+
+    auto* pinnedWindow = new ScreenshotPinnedWindow(sourceRuntime);
+    QPointer<ScreenshotPinnedWindow> guardedWindow(pinnedWindow);
+    ScreenshotPinnedWindow::Config config;
+    config.nativeGeometry = physicalPinGeometry(*screen, QPoint(120, 100), background.size());
+    config.canvasSourceRect = QRectF(QPointF(), QSizeF(background.size()));
+    config.backgroundImage = background;
+    config.screen = screen;
+    config.enableEditing = false;
+    config.mouseWheelZoomMode = QStringLiteral("top_left");
+    require(pinnedWindow->present(config), "configured wheel anchor pin presentation failed");
+    waitForUi(50);
+
+    auto* canvas = pinnedWindow->findChild<SnowCanvasWidget*>();
+    require(canvas != nullptr, "configured wheel anchor canvas was not found");
+    const QRect before = pinnedWindow->currentNativeGeometry();
+    const QPoint position = canvas->rect().bottomRight() - QPoint(8, 8);
+    QWheelEvent wheel(QPointF(position), QPointF(canvas->mapToGlobal(position)), QPoint(),
+                      QPoint(0, 120), Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+    QCoreApplication::sendEvent(canvas, &wheel);
+    waitForUi(20);
+
+    const QRect after = pinnedWindow->currentNativeGeometry();
+    require(wheel.isAccepted() && after.topLeft() == before.topLeft() &&
+                after.size() == QSize(qRound(before.width() * 1.1),
+                                      qRound(before.height() * 1.1)),
+            "configured top-left wheel scaling should preserve the native top-left anchor");
+
+    pinnedWindow->close();
+    require(processUntilDeleted(guardedWindow, 2000),
+            "configured wheel anchor pin was not deleted");
+}
+
 void pinnedFollowsPerMonitorDpiScaling(SnowCanvasRuntime& sourceRuntime) {
 #if defined(Q_OS_WIN) || defined(_WIN32)
     QScreen* sourceScreen = nullptr;
@@ -2164,6 +2240,14 @@ void pinnedEditToolbarControlsCanvasHistory(SnowCanvasRuntime& sourceRuntime) {
 
     SnowCanvasWidget* canvas = pinnedWindow->findChild<SnowCanvasWidget*>();
     require(canvas != nullptr, "pinned screenshot canvas was not found");
+    QKeyEvent brushShortcut(QEvent::KeyPress, Qt::Key_P, Qt::NoModifier);
+    QCoreApplication::sendEvent(canvas, &brushShortcut);
+    require(canvas->canvasTool() == SnowCanvasTool::FreeDraw,
+            "the configured Brush shortcut should activate in pinned drawing mode");
+    QKeyEvent shapeShortcut(QEvent::KeyPress, Qt::Key_1, Qt::NoModifier);
+    QCoreApplication::sendEvent(canvas, &shapeShortcut);
+    require(canvas->canvasTool() == SnowCanvasTool::Shape,
+            "the configured Shape shortcut should activate in pinned drawing mode");
     const QPoint canvasHitPosition(60, 60);
     require(QApplication::widgetAt(canvas->mapToGlobal(canvasHitPosition)) == canvas,
             "drawing mode should expose the canvas to native pointer hit testing");
@@ -2297,10 +2381,12 @@ int main(int argc, char* argv[]) {
         pinnedPhysicalPixelsFillClientArea(sourceRuntime);
         pinnedScalingAndAspectLockedResizing(sourceRuntime);
         pinnedSettledWheelScalingAdvancesPastRoundedLevel(sourceRuntime);
+        pinnedWheelScalingUsesConfiguredAnchor(sourceRuntime);
         pinnedFollowsPerMonitorDpiScaling(sourceRuntime);
         pinnedCopyIncludesSourceCanvasDrawing();
         pinnedContextMenuAndModes(sourceRuntime);
         pinnedCloseCancelsPendingRecognition(sourceRuntime);
+        pinnedAutomaticRecognitionCanBeDisabled(sourceRuntime);
         pinnedCloseAfterRecognizedText(sourceRuntime);
         pinnedRecognitionProviderLossEndsBusyState(sourceRuntime);
         pinnedControlsMatchReferenceStyle(sourceRuntime);

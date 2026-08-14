@@ -3,6 +3,7 @@
 #include "snow_shot/presentation/screenshotpinnedwindow.h"
 #include "snow_shot/presentation/screenshotocrrecognitionservice.h"
 #include "snow_shot/presentation/screenshotqrrecognitionservice.h"
+#include "snow_shot/storage/settingsadapters.h"
 #include "snow_shot/network/snowshotapiclient.h"
 #include "snow_shot/presentation/screenshotclipboardservice.h"
 #include "../pinned/screenshotpintoperfinstrumentation.h"
@@ -15,6 +16,17 @@
 #include <QTimer>
 
 #include <algorithm>
+
+namespace {
+void applyPinRuntimeSettings(ScreenshotPinnedWindow::Config* config) {
+    if (config == nullptr) {
+        return;
+    }
+    const snow_shot::storage::PinToScreenSettings settings;
+    config->mouseWheelZoomMode = settings.mouseWheelZoomMode();
+    config->automaticTextRecognition = settings.automaticTextRecognition();
+}
+} // namespace
 
 #if defined(Q_OS_WIN) || defined(_WIN32)
 #include <Windows.h>
@@ -170,6 +182,7 @@ bool ScreenshotSelectionExportUiServices::presentPinnedSelection(
     config.recognition = m_recognition;
     config.qrRecognition = m_qrRecognition;
     config.tableRecognition = m_tableRecognition;
+    applyPinRuntimeSettings(&config);
     return presentPinnedWindowAndSynchronize(pinnedWindow, config, m_showMainWindowRequested);
 }
 
@@ -208,5 +221,6 @@ bool ScreenshotSelectionExportUiServices::presentPinnedImage(const QImage& image
     config.recognition = m_recognition;
     config.qrRecognition = m_qrRecognition;
     config.tableRecognition = m_tableRecognition;
+    applyPinRuntimeSettings(&config);
     return presentPinnedWindowAndSynchronize(pinnedWindow, config, m_showMainWindowRequested);
 }

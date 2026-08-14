@@ -20,6 +20,7 @@ const QString kPinBorderColorKey = QStringLiteral("pin_to_screen/border_color");
 const QString kTrayEnabledKey = QStringLiteral("tray/enabled");
 const QString kTrayIconKey = QStringLiteral("tray/icon");
 const QString kTrayCustomIconKey = QStringLiteral("tray/custom_icon");
+const QString kTrayLeftClickActionKey = QStringLiteral("tray/left_click_action");
 } // namespace
 
 class ApplicationController::Impl {
@@ -53,6 +54,8 @@ class ApplicationController::Impl {
         applyRuntimeConfiguration(configuration.value(kTrayEnabledKey), kTrayEnabledKey);
         applyRuntimeConfiguration(configuration.value(kTrayIconKey), kTrayIconKey);
         applyRuntimeConfiguration(configuration.value(kTrayCustomIconKey), kTrayCustomIconKey);
+        applyRuntimeConfiguration(configuration.value(kTrayLeftClickActionKey),
+                                  kTrayLeftClickActionKey);
         QObject::connect(&configuration, &storage::ConfigurationStore::valueChanged, &q,
                          [this](const QString& key, const QJsonValue& value) {
                              applyRuntimeConfiguration(value, key);
@@ -99,6 +102,8 @@ class ApplicationController::Impl {
             systemTray.setIconSelection(value.toString(QStringLiteral("default")));
         } else if (key == kTrayCustomIconKey) {
             systemTray.setCustomIconPath(value.toString());
+        } else if (key == kTrayLeftClickActionKey) {
+            systemTray.setLeftClickAction(value.toString(QStringLiteral("screenshot")));
         }
     }
 
@@ -218,7 +223,9 @@ void ApplicationController::showMainWindow() {
 }
 
 void ApplicationController::handleLaunchRequest(const QStringList& arguments) {
-    Q_UNUSED(arguments)
+    if (arguments.contains(QStringLiteral("--autostart"))) {
+        return;
+    }
     m_impl->showMainWindow();
 }
 } // namespace snow_shot::app

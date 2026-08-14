@@ -15,7 +15,7 @@ use snow_capture::{
 use snow_screen_recorder::{
     EditingSession, ExportFormat, ExportRequest, RecordingAudioConfig, RecordingAudioTrackConfig,
     RecordingConfig, RecordingRegion, RecordingSession, RecordingState, RecordingTarget,
-    VideoEncodeConfig, VideoEncodingSpeed,
+    VideoCodec, VideoEncodeConfig, VideoEncodingSpeed,
 };
 
 pub struct SnowCaptureDesktopSessionImpl {
@@ -206,6 +206,32 @@ fn parse_wgc_update_mode(value: u8) -> Result<WgcUpdateMode, String> {
         _ => Err(format!("invalid WGC update mode: {value}")),
     }
 }
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct SnowCaptureRecordingExportConfig {
+    version: u32,
+    struct_size: u32,
+    output_file_utf8: *const c_char,
+    format: u32,
+    maximum_width: u32,
+    maximum_height: u32,
+    target_fps: u32,
+    codec: u32,
+    preset: u32,
+    reserved: [u8; 32],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct SnowCaptureRecordingExportConfigHeader {
+    version: u32,
+    struct_size: u32,
+}
+
+const RECORDING_EXPORT_CONFIG_VERSION: u32 = 1;
+const RECORDING_EXPORT_CONFIG_V1_SIZE: u32 =
+    std::mem::size_of::<SnowCaptureRecordingExportConfig>() as u32;
 
 fn default_options(
     config: *const SnowCaptureDesktopSessionConfig,
@@ -1227,17 +1253,125 @@ pub unsafe extern "C" fn snow_capture_recording_session_state(
     1
 }
 
-fn configure_recording_export_request(
-    mut request: ExportRequest,
+#[derive(Debug)]
+struct RecordingExportOptions {
+    output_path: PathBuf,
+    format: ExportFormat,
+    maximum_width: Option<u32>,
+    maximum_height: Option<u32>,
+    target_fps: Option<u32>,
+    codec: VideoCodec,
+    preset: VideoEncodingSpeed,
+}
+
+fn legacy_recording_export_options(
     output_path: PathBuf,
     export_gif: bool,
-) -> ExportRequest {
-    request.output_path = output_path;
-    request.format = if export_gif {
-        ExportFormat::Gif
-    } else {
-        ExportFormat::Mp4
+) -> RecordingExportOptions {
+    RecordingExportOptions {
+        output_path,
+        format: if export_gif {
+            ExportFormat::Gif
+        } else {
+            ExportFormat::Mp4
+        },
+        maximum_width: None,
+        maximum_height: None,
+        target_fps: None,
+        codec: VideoCodec::H264,
+        preset: VideoEncodingSpeed::UltraFast,
+    }
+}
+
+fn parse_recording_export_config(
+    config: &SnowCaptureRecordingExportConfig,
+) -> Result<RecordingExportOptions, String> {
+    if config.version != RECORDING_EXPORT_CONFIG_VERSION {
+        return Err(format!(
+            "unsupported recording export config version: {}",
+            config.version
+        ));
+    }
+    if config.struct_size < RECORDING_EXPORT_CONFIG_V1_SIZE {
+        return Err("recording export config is smaller than version 1".to_string());
+    }
+    if (config.maximum_width == 0) != (config.maximum_height == 0) {
+        return Err(
+            "recording export maximum_width and maximum_height must both be zero or non-zero"
+                .to_string(),
+        );
+    }
+
+    let output_path = path_from_utf8(config.output_file_utf8, "output file")?;
+    let format = match config.format {
+        0 => ExportFormat::Mp4,
+        1 => ExportFormat::Gif,
+        2 => ExportFormat::Apng,
+        3 => ExportFormat::Webp,
+        value => return Err(format!("invalid recording export format: {value}")),
     };
+    let codec = match config.codec {
+        0 => VideoCodec::H264,
+        1 => VideoCodec::H265,
+        value => return Err(format!("invalid recording video codec: {value}")),
+    };
+    let preset = match config.preset {
+        0 => VideoEncodingSpeed::UltraFast,
+        1 => VideoEncodingSpeed::VeryFast,
+        2 => VideoEncodingSpeed::Medium,
+        3 => VideoEncodingSpeed::VerySlow,
+        4 => VideoEncodingSpeed::Placebo,
+        value => return Err(format!("invalid recording encoding preset: {value}")),
+    };
+
+    Ok(RecordingExportOptions {
+        output_path,
+        format,
+        maximum_width: (config.maximum_width != 0).then_some(config.maximum_width),
+        maximum_height: (config.maximum_height != 0).then_some(config.maximum_height),
+        target_fps: (config.target_fps != 0).then_some(config.target_fps),
+        codec,
+        preset,
+    })
+}
+
+unsafe fn read_recording_export_config(
+    config: *const SnowCaptureRecordingExportConfig,
+) -> Result<SnowCaptureRecordingExportConfig, String> {
+    if config.is_null() {
+        return Err("recording export config is null".to_string());
+    }
+
+    // Read only the fixed header until the caller-provided size has been
+    // validated. This keeps undersized future/foreign-language inputs from
+    // being dereferenced as a complete version 1 structure.
+    let header = unsafe {
+        std::ptr::read_unaligned(config.cast::<SnowCaptureRecordingExportConfigHeader>())
+    };
+    if header.version != RECORDING_EXPORT_CONFIG_VERSION {
+        return Err(format!(
+            "unsupported recording export config version: {}",
+            header.version
+        ));
+    }
+    if header.struct_size < RECORDING_EXPORT_CONFIG_V1_SIZE {
+        return Err("recording export config is smaller than version 1".to_string());
+    }
+
+    Ok(unsafe { std::ptr::read_unaligned(config) })
+}
+
+fn configure_recording_export_request(
+    mut request: ExportRequest,
+    options: RecordingExportOptions,
+) -> ExportRequest {
+    request.output_path = options.output_path;
+    request.format = options.format;
+    request.maximum_width = options.maximum_width;
+    request.maximum_height = options.maximum_height;
+    request.target_fps = options.target_fps;
+    request.codec = options.codec;
+    request.video.speed = options.preset;
     request.mouse.visible = true;
     for track in &mut request.audio_tracks {
         track.enabled = true;
@@ -1245,21 +1379,12 @@ fn configure_recording_export_request(
     request
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn snow_capture_recording_session_stop_and_export(
+fn stop_and_export_recording(
     session: *mut SnowCaptureRecordingSessionImpl,
-    output_file_utf8: *const c_char,
-    export_gif: u8,
+    options: RecordingExportOptions,
 ) -> u8 {
     let Some(session) = recording_session_mut(session) else {
         return 0;
-    };
-    let output_path = match path_from_utf8(output_file_utf8, "output file") {
-        Ok(path) => path,
-        Err(error) => {
-            set_last_error(error);
-            return 0;
-        }
     };
     let Some(recording) = session.recording.take() else {
         set_last_error("recording session has already stopped");
@@ -1285,8 +1410,7 @@ pub extern "C" fn snow_capture_recording_session_stop_and_export(
             return 0;
         }
     };
-    let request =
-        configure_recording_export_request(editing.export_request(), output_path, export_gif != 0);
+    let request = configure_recording_export_request(editing.export_request(), options);
 
     let result = editing.export(request);
     let _ = std::fs::remove_file(bundle_path);
@@ -1300,6 +1424,47 @@ pub extern "C" fn snow_capture_recording_session_stop_and_export(
             0
         }
     }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn snow_capture_recording_session_stop_and_export(
+    session: *mut SnowCaptureRecordingSessionImpl,
+    output_file_utf8: *const c_char,
+    export_gif: u8,
+) -> u8 {
+    let output_path = match path_from_utf8(output_file_utf8, "output file") {
+        Ok(path) => path,
+        Err(error) => {
+            set_last_error(error);
+            return 0;
+        }
+    };
+    stop_and_export_recording(
+        session,
+        legacy_recording_export_options(output_path, export_gif != 0),
+    )
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn snow_capture_recording_session_stop_and_export_v1(
+    session: *mut SnowCaptureRecordingSessionImpl,
+    config: *const SnowCaptureRecordingExportConfig,
+) -> u8 {
+    let config = match unsafe { read_recording_export_config(config) } {
+        Ok(config) => config,
+        Err(error) => {
+            set_last_error(error);
+            return 0;
+        }
+    };
+    let options = match parse_recording_export_config(&config) {
+        Ok(options) => options,
+        Err(error) => {
+            set_last_error(error);
+            return 0;
+        }
+    };
+    stop_and_export_recording(session, options)
 }
 
 #[unsafe(no_mangle)]
@@ -1335,12 +1500,93 @@ mod tests {
     #[test]
     fn immediate_gif_export_includes_recorded_cursor_motion() {
         let output_path = PathBuf::from("recording.gif");
-        let request =
-            configure_recording_export_request(ExportRequest::default(), output_path.clone(), true);
+        let request = configure_recording_export_request(
+            ExportRequest::default(),
+            legacy_recording_export_options(output_path.clone(), true),
+        );
 
         assert_eq!(request.output_path, output_path);
         assert_eq!(request.format, ExportFormat::Gif);
         assert!(request.mouse.visible);
+    }
+
+    #[test]
+    fn versioned_export_config_maps_all_fields() {
+        let output = CString::new("recording.webp").unwrap();
+        let config = SnowCaptureRecordingExportConfig {
+            version: RECORDING_EXPORT_CONFIG_VERSION,
+            struct_size: std::mem::size_of::<SnowCaptureRecordingExportConfig>() as u32,
+            output_file_utf8: output.as_ptr(),
+            format: 3,
+            maximum_width: 1280,
+            maximum_height: 720,
+            target_fps: 24,
+            codec: 1,
+            preset: 4,
+            reserved: [0; 32],
+        };
+        let options = parse_recording_export_config(&config).unwrap();
+        let request = configure_recording_export_request(ExportRequest::default(), options);
+
+        assert_eq!(request.output_path, PathBuf::from("recording.webp"));
+        assert_eq!(request.format, ExportFormat::Webp);
+        assert_eq!(request.maximum_width, Some(1280));
+        assert_eq!(request.maximum_height, Some(720));
+        assert_eq!(request.target_fps, Some(24));
+        assert_eq!(request.codec, VideoCodec::H265);
+        assert_eq!(request.video.speed, VideoEncodingSpeed::Placebo);
+    }
+
+    #[test]
+    fn versioned_export_config_rejects_partial_size_caps() {
+        let output = CString::new("recording.mp4").unwrap();
+        let config = SnowCaptureRecordingExportConfig {
+            version: RECORDING_EXPORT_CONFIG_VERSION,
+            struct_size: std::mem::size_of::<SnowCaptureRecordingExportConfig>() as u32,
+            output_file_utf8: output.as_ptr(),
+            format: 0,
+            maximum_width: 1920,
+            maximum_height: 0,
+            target_fps: 30,
+            codec: 0,
+            preset: 1,
+            reserved: [0; 32],
+        };
+
+        assert!(parse_recording_export_config(&config).is_err());
+    }
+
+    #[test]
+    fn versioned_export_config_rejects_unknown_version_and_short_struct() {
+        let output = CString::new("recording.mp4").unwrap();
+        let mut config = SnowCaptureRecordingExportConfig {
+            version: RECORDING_EXPORT_CONFIG_VERSION + 1,
+            struct_size: std::mem::size_of::<SnowCaptureRecordingExportConfig>() as u32,
+            output_file_utf8: output.as_ptr(),
+            format: 0,
+            maximum_width: 1920,
+            maximum_height: 1080,
+            target_fps: 30,
+            codec: 0,
+            preset: 1,
+            reserved: [0; 32],
+        };
+        assert!(parse_recording_export_config(&config).is_err());
+
+        config.version = RECORDING_EXPORT_CONFIG_VERSION;
+        config.struct_size -= 1;
+        assert!(parse_recording_export_config(&config).is_err());
+    }
+
+    #[test]
+    fn versioned_export_config_reads_only_the_header_before_size_validation() {
+        let short = SnowCaptureRecordingExportConfigHeader {
+            version: RECORDING_EXPORT_CONFIG_VERSION,
+            struct_size: std::mem::size_of::<SnowCaptureRecordingExportConfigHeader>() as u32,
+        };
+        let config = (&raw const short).cast::<SnowCaptureRecordingExportConfig>();
+
+        assert!(unsafe { read_recording_export_config(config) }.is_err());
     }
 
     #[test]

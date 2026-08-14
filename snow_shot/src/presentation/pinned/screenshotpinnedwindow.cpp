@@ -20,6 +20,8 @@
 #include "snow_shot/presentation/screenshottoolpalette.h"
 #include "snow_shot/presentation/screenshottoolpalettehost.h"
 #include "snow_shot/presentation/screenshotclipboardservice.h"
+#include "snow_shot/storage/applicationstorage.h"
+#include "snow_shot/storage/settingsadapters.h"
 
 #include "snow_draw_engine_qt/snow_canvas_widget.h"
 
@@ -384,6 +386,25 @@ ScreenshotPinnedWindow::ScreenshotPinnedWindow(SnowCanvasRuntime* sourceRuntime,
     setAttribute(Qt::WA_AlwaysShowToolTips, true);
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
+
+    auto& applicationStorage = snow_shot::storage::ApplicationStorage::instance();
+    if (applicationStorage.isInitialized()) {
+        const auto applyDrawingPreferences = [this]() {
+            const auto tools = snow_shot::presentation::screenshotQuickSelectionDisabledTools(
+                snow_shot::storage::DrawingSettings().quickSelectionDisabledTools());
+            if (!m_runtime.setQuickSelectionDisabledTools(tools)) {
+                qWarning("Failed to apply pinned drawing quick-selection preferences");
+            }
+        };
+        applyDrawingPreferences();
+        connect(&applicationStorage.configuration(),
+                &snow_shot::storage::ConfigurationStore::valueChanged, this,
+                [applyDrawingPreferences](const QString& key, const QJsonValue&) {
+                    if (key == QStringLiteral("drawing/quick_selection_disabled_tools")) {
+                        applyDrawingPreferences();
+                    }
+                });
+    }
 
     if (mode == RuntimeMode::CloneDocument && sourceRuntime != nullptr &&
         !m_runtime.cloneDocumentSessionFrom(*sourceRuntime)) {
@@ -999,7 +1020,9 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
     m_ocrSupported = screenshotOcrImageWithinPixelLimit(m_originalPixelSize);
     m_ocrReady = false;
     m_ocrMode = false;
+    m_automaticTextRecognition = config.automaticTextRecognition;
     m_editingEnabled = config.enableEditing;
+    m_mouseWheelZoomMode = config.mouseWheelZoomMode;
     m_imageTransform.reset();
     m_recognition = config.recognition;
     m_qrRecognition = config.qrRecognition;
@@ -1279,10 +1302,10 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
     SNOW_SHOT_PIN_PERF_MILESTONE("window.pinned_toolbar_deferred");
     refreshContextMenu();
     SNOW_SHOT_PIN_PERF_MILESTONE("window.context_menu_ready");
-    if (m_recognitionSession != nullptr) {
+    if (m_automaticTextRecognition && m_recognitionSession != nullptr) {
         QTimer::singleShot(0, this, [this]() {
             if (m_recognitionSession != nullptr && m_recognition != nullptr &&
-                m_ocrSupported && !m_closing &&
+                m_automaticTextRecognition && m_ocrSupported && !m_closing &&
                 ensureMaterializedImage()) {
                 m_recognitionSession->prefetchText();
             }
@@ -2625,7 +2648,7 @@ void ScreenshotPinnedWindow::applyScale(int percent) {
     refreshContextMenu();
 }
 
-void ScreenshotPinnedWindow::applyScaleAroundCursor(int percent, const QPointF& nativeCursor) {
+void ScreenshotPinnedWindow::applyWheelScale(int percent, const QPointF& nativeCursor) {
     if (percent < kMinimumScalePercent || percent > kMaximumScalePercent) {
         return;
     }
@@ -2636,16 +2659,13 @@ void ScreenshotPinnedWindow::applyScaleAroundCursor(int percent, const QPointF& 
         return;
     }
 
-    const double normalizedX =
-        static_cast<double>(nativeCursor.x() - oldGeometry.left()) / oldGeometry.width();
-    const double normalizedY =
-        static_cast<double>(nativeCursor.y() - oldGeometry.top()) / oldGeometry.height();
     QSize nativeSize = orientedInitialPhysicalSize();
     nativeSize = QSize(std::max(1, qRound(nativeSize.width() * percent / 100.0)),
                        std::max(1, qRound(nativeSize.height() * percent / 100.0)));
-    const QPoint topLeft(qRound(nativeCursor.x() - normalizedX * nativeSize.width()),
-                         qRound(nativeCursor.y() - normalizedY * nativeSize.height()));
-    const QRect nativeTarget(topLeft, nativeSize);
+    const resize_geometry::ScaleAnchor anchor =
+        resize_geometry::scaleAnchorFromSetting(m_mouseWheelZoomMode);
+    const QRect nativeTarget =
+        resize_geometry::anchoredScaleRect(oldGeometry, nativeSize, anchor, nativeCursor);
     setEffectiveScale(percent, true);
     if (nativeTarget != oldGeometry) {
         // Keep wheel steps on their requested percentage. Re-adopting the
@@ -2727,7 +2747,7 @@ bool ScreenshotPinnedWindow::handleScaleWheel(QObject* watched, QWheelEvent* eve
         qBound(kMinimumScalePercent, qRound(level * kWheelScaleStep + steps * kWheelScaleStep),
                kMaximumScalePercent);
     if (targetPercent != qRound(m_scalePercent)) {
-        applyScaleAroundCursor(targetPercent, nativeCursor);
+        applyWheelScale(targetPercent, nativeCursor);
     }
     return true;
 }

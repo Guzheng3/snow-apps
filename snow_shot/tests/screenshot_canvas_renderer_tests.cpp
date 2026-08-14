@@ -255,6 +255,229 @@ void physicalViewportRenderingPreservesEveryPixelAtFractionalDprs() {
     }
 }
 
+QImage renderMaterializedImage(const QImage& source, const QSize& targetSize,
+                               const QRegion& exposedRegion, const QColor& background,
+                               bool smooth = false) {
+    SnowCanvasWidget canvas;
+    ScreenshotCanvasRenderer renderer(canvas);
+    renderer.setImage(source, QRectF(QPointF(), QSizeF(targetSize)));
+
+    QImage output(targetSize, QImage::Format_ARGB32_Premultiplied);
+    output.fill(background);
+    QPainter painter(&output);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform, smooth);
+    renderer.renderBeforeCanvas(
+        painter, SnowCanvasRenderContext{output.rect(), exposedRegion, QTransform(), 1.0});
+    painter.end();
+    return output;
+}
+
+QImage verticalRasterPattern(const QSize& size) {
+    QImage image(size, QImage::Format_ARGB32_Premultiplied);
+    for (int y = 0; y < image.height(); ++y) {
+        const QRgb pixel = qRgb((y * 17 + 3) % 256, (y * 29 + 11) % 256,
+                                (y * 47 + 19) % 256);
+        std::fill_n(reinterpret_cast<QRgb*>(image.scanLine(y)), image.width(), pixel);
+    }
+    return image;
+}
+
+QImage horizontalRasterPattern(const QSize& size) {
+    QImage image(size, QImage::Format_ARGB32_Premultiplied);
+    for (int y = 0; y < image.height(); ++y) {
+        auto* row = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            row[x] = qRgb((x * 13 + 5) % 256, (x * 31 + 7) % 256,
+                          (x * 43 + 23) % 256);
+        }
+    }
+    return image;
+}
+
+QImage renderWithSafeReferenceTiles(const QImage& source, const QSize& targetSize,
+                                    bool smooth = false, qreal devicePixelRatio = 1.0) {
+    const QSize deviceSize(qCeil(targetSize.width() * devicePixelRatio),
+                           qCeil(targetSize.height() * devicePixelRatio));
+    QImage output(deviceSize, QImage::Format_ARGB32_Premultiplied);
+    output.setDevicePixelRatio(devicePixelRatio);
+    output.fill(Qt::transparent);
+    QPainter painter(&output);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform, smooth);
+    constexpr int kTargetTileSize = 100;
+    for (int targetTop = 0; targetTop < targetSize.height(); targetTop += kTargetTileSize) {
+        const int targetBottom = qMin(targetTop + kTargetTileSize, targetSize.height());
+        for (int targetLeft = 0; targetLeft < targetSize.width();
+             targetLeft += kTargetTileSize) {
+            const int targetRight = qMin(targetLeft + kTargetTileSize, targetSize.width());
+            const QRectF targetTile(targetLeft, targetTop, targetRight - targetLeft,
+                                    targetBottom - targetTop);
+            const QRectF sampledTarget =
+                smooth ? targetTile.adjusted(-1.0, -1.0, 1.0, 1.0)
+                             .intersected(QRectF(QPointF(), QSizeF(targetSize)))
+                       : targetTile;
+            const QRectF sourceTile(
+                static_cast<qreal>(source.width()) * sampledTarget.left() / targetSize.width(),
+                static_cast<qreal>(source.height()) * sampledTarget.top() / targetSize.height(),
+                static_cast<qreal>(source.width()) * sampledTarget.width() / targetSize.width(),
+                static_cast<qreal>(source.height()) * sampledTarget.height() /
+                    targetSize.height());
+            const QRect sourceBounds = sourceTile.toAlignedRect().intersected(source.rect());
+            const QImage sourceWindow = source.copy(sourceBounds);
+            require(!sourceWindow.isNull(), "the safe reference source tile should be available");
+
+            painter.save();
+            painter.setClipRect(targetTile);
+            painter.drawImage(sampledTarget, sourceWindow,
+                              sourceTile.translated(-sourceBounds.topLeft()));
+            painter.restore();
+        }
+    }
+    painter.end();
+    return output;
+}
+
+void smoothLargeImageChunkBoundariesRemainPixelEquivalent() {
+    constexpr int kLargeDimension = 70000;
+    const QImage source = verticalRasterPattern(QSize(5, kLargeDimension));
+    const QSize targetSize(5, 7000);
+    const QImage expected = renderWithSafeReferenceTiles(source, targetSize, true);
+    const QImage actual = renderMaterializedImage(
+        source, targetSize, QRegion(QRect(QPoint(), targetSize)), QColor(1, 2, 3), true);
+    require(actual == expected,
+            "smooth large-image chunks should preserve sampling across every chunk boundary");
+}
+
+void largeRasterSourceExtentsRenderWithoutFixedPointWrap() {
+    constexpr int kLargeDimension = 70000;
+    constexpr int kScaledDimension = 7000;
+    const QColor background(1, 2, 3);
+
+    const QImage tall = verticalRasterPattern(QSize(5, kLargeDimension));
+    const QImage expectedTall = renderWithSafeReferenceTiles(tall, QSize(5, kScaledDimension));
+    const QImage actualTall =
+        renderMaterializedImage(tall, expectedTall.size(), QRegion(expectedTall.rect()), background);
+    require(actualTall == expectedTall,
+            "a source taller than the raster fixed-point range should downscale without wrapping");
+
+    const QImage wide = horizontalRasterPattern(QSize(kLargeDimension, 5));
+    const QImage expectedWide = renderWithSafeReferenceTiles(wide, QSize(kScaledDimension, 5));
+    const QImage actualWide =
+        renderMaterializedImage(wide, expectedWide.size(), QRegion(expectedWide.rect()), background);
+    require(actualWide == expectedWide,
+            "a source wider than the raster fixed-point range should downscale without wrapping");
+}
+
+void extremeImageDownscaleUsesSafePreprocessing() {
+    constexpr int kLargeDimension = 70000;
+    const QImage source = verticalRasterPattern(QSize(3, kLargeDimension));
+    const QImage expected =
+        source.scaled(QSize(3, 2), Qt::IgnoreAspectRatio, Qt::FastTransformation);
+    const QImage actual =
+        renderMaterializedImage(source, expected.size(), QRegion(expected.rect()), QColor(1, 2, 3));
+    require(actual == expected,
+            "an extreme source-to-target ratio should be reduced before raster painting");
+
+    const QImage smoothExpected =
+        source.scaled(QSize(3, 2), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    const QImage smoothActual = renderMaterializedImage(
+        source, smoothExpected.size(), QRegion(smoothExpected.rect()), QColor(1, 2, 3), true);
+    require(smoothActual == smoothExpected,
+            "an extreme smooth downscale should use the matching QImage transformation mode");
+}
+
+void indexedLargeImageWindowsPreserveTheirColorTable() {
+    constexpr int kLargeDimension = 70000;
+    QImage source(QSize(4, kLargeDimension), QImage::Format_Indexed8);
+    source.setColorTable({qRgb(17, 31, 47), qRgb(83, 97, 113), qRgb(149, 163, 179),
+                          qRgb(211, 223, 239)});
+    for (int y = 0; y < source.height(); ++y) {
+        std::fill_n(source.scanLine(y), source.width(), static_cast<uchar>((y / 7) % 4));
+    }
+
+    const QSize targetSize(4, 7000);
+    const QImage expected = renderWithSafeReferenceTiles(source, targetSize);
+    const QImage actual = renderMaterializedImage(
+        source, targetSize, QRegion(QRect(QPoint(), targetSize)), QColor(1, 2, 3));
+    require(actual == expected,
+            "rebased indexed image windows should preserve the source color table");
+}
+
+void disjointLargeImageExposureDoesNotPaintItsBoundingInterval() {
+    constexpr int kLargeDimension = 70000;
+    const QImage source = verticalRasterPattern(QSize(4, kLargeDimension));
+    const QSize targetSize(4, 7000);
+    const QImage reference = renderWithSafeReferenceTiles(source, targetSize);
+    const QColor background(9, 7, 5);
+    QRegion exposed(QRect(0, 100, targetSize.width(), 8));
+    exposed += QRect(0, 6980, targetSize.width(), 8);
+
+    const QImage actual = renderMaterializedImage(source, targetSize, exposed, background);
+    for (int y = 0; y < targetSize.height(); ++y) {
+        for (int x = 0; x < targetSize.width(); ++x) {
+            const QColor expected =
+                exposed.contains(QPoint(x, y)) ? reference.pixelColor(x, y) : background;
+            require(actual.pixelColor(x, y) == expected,
+                    "disjoint exposure must not repaint the interval between damaged rectangles");
+        }
+    }
+}
+
+void ordinaryExposedImageRenderingRemainsPixelEquivalent() {
+    const QImage source = verticalRasterPattern(QSize(31, 23));
+    const QSize targetSize(47, 37);
+    const QColor background(12, 14, 16);
+    QRegion exposed(QRect(2, 3, 11, 9));
+    exposed += QRect(31, 20, 13, 12);
+
+    QImage expected(targetSize, QImage::Format_ARGB32_Premultiplied);
+    expected.fill(background);
+    QPainter expectedPainter(&expected);
+    expectedPainter.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    expectedPainter.setClipRegion(exposed);
+    expectedPainter.drawImage(QRectF(QPointF(), QSizeF(targetSize)), source,
+                              QRectF(source.rect()));
+    expectedPainter.end();
+
+    const QImage actual =
+        renderMaterializedImage(source, targetSize, exposed, background, true);
+    require(actual == expected,
+            "ordinary exposed image rendering should remain pixel equivalent to one drawImage");
+}
+
+void tileCachePaintersRenderPastTheRasterCoordinateLimit() {
+    constexpr int kLargeDimension = 70000;
+    const QImage source = verticalRasterPattern(QSize(4, kLargeDimension));
+    SnowCanvasWidget canvas;
+    canvas.resize(source.size());
+    canvas.setClearBackgroundEnabled(false);
+    require(canvas.setViewportCamera(source.width() / 2.0, source.height() / 2.0, 1.0),
+            "the tall tile-cache camera should update");
+
+    ScreenshotCanvasRenderer renderer(canvas);
+    renderer.setImage(source, QRectF(QPointF(), QSizeF(source.size())));
+    canvas.setCustomRenderer(&renderer);
+    const qreal devicePixelRatio = canvas.devicePixelRatioF();
+    const QImage output = renderCanvas(canvas, devicePixelRatio);
+    const QImage expected =
+        renderWithSafeReferenceTiles(source, source.size(), false, devicePixelRatio);
+    require(output.size() == expected.size(),
+            "the tall tile-cache render should keep its physical dimensions");
+    for (int y = 0; y < output.height(); ++y) {
+        for (int x = 0; x < output.width(); ++x) {
+            const QColor actualColor = output.pixelColor(x, y);
+            const QColor expectedColor = expected.pixelColor(x, y);
+            const bool withinTileCompositingTolerance =
+                std::abs(actualColor.red() - expectedColor.red()) <= 1 &&
+                std::abs(actualColor.green() - expectedColor.green()) <= 1 &&
+                std::abs(actualColor.blue() - expectedColor.blue()) <= 1 &&
+                std::abs(actualColor.alpha() - expectedColor.alpha()) <= 1;
+            require(withinTileCompositingTolerance,
+                    "translated tile painters should preserve pixels above source coordinate 65535");
+        }
+    }
+    canvas.setCustomRenderer(nullptr);
+}
+
 void partialRoundedMaskMatchesFullViewportMaskAtFractionalDpr() {
     SnowCanvasWidget canvas;
     ScreenshotCanvasRenderer renderer(canvas);
@@ -2674,6 +2897,16 @@ void resettingDisplaySessionEditingStateResetsEveryCanvas() {
 
 int main(int argc, char** argv) {
     QApplication application(argc, argv);
+    if (application.arguments().contains(QStringLiteral("--large-image-slice-rendering"))) {
+        largeRasterSourceExtentsRenderWithoutFixedPointWrap();
+        smoothLargeImageChunkBoundariesRemainPixelEquivalent();
+        extremeImageDownscaleUsesSafePreprocessing();
+        indexedLargeImageWindowsPreserveTheirColorTable();
+        disjointLargeImageExposureDoesNotPaintItsBoundingInterval();
+        ordinaryExposedImageRenderingRemainsPixelEquivalent();
+        tileCachePaintersRenderPastTheRasterCoordinateLimit();
+        return 0;
+    }
     if (application.arguments().contains(QStringLiteral("--guide-line-initialization"))) {
         guideLinesInitializeFromGlobalCursorPosition();
         return 0;
@@ -2712,6 +2945,13 @@ int main(int argc, char** argv) {
     screenshotImageMaskAndSelectionRenderInTheirOwnedPasses();
     layeredImageSourceMatchesMaterializedOutput();
     physicalViewportRenderingPreservesEveryPixelAtFractionalDprs();
+    largeRasterSourceExtentsRenderWithoutFixedPointWrap();
+    smoothLargeImageChunkBoundariesRemainPixelEquivalent();
+    extremeImageDownscaleUsesSafePreprocessing();
+    indexedLargeImageWindowsPreserveTheirColorTable();
+    disjointLargeImageExposureDoesNotPaintItsBoundingInterval();
+    ordinaryExposedImageRenderingRemainsPixelEquivalent();
+    tileCachePaintersRenderPastTheRasterCoordinateLimit();
     partialRoundedMaskMatchesFullViewportMaskAtFractionalDpr();
     overlayWatermarkRendersOnlyInsideScreenshotSelection();
     reusedRendererReplacesCachedScreenshotImage();

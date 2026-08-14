@@ -186,9 +186,44 @@ if(NOT TARGET snow_image::snow_image)
     set(SNOW_IMAGE_BUILD_SHARED OFF CACHE BOOL "Build the shared snow_image library." FORCE)
     set(SNOW_IMAGE_BUILD_STATIC ON CACHE BOOL "Build the static snow_image library." FORCE)
     set(SNOW_IMAGE_CODEC_PNG ON CACHE BOOL "Enable the libpng codec." FORCE)
+    set(SNOW_IMAGE_CODEC_JPEG ON CACHE BOOL "Enable the libjpeg-turbo codec." FORCE)
+    set(SNOW_IMAGE_CODEC_HEIF ON CACHE BOOL "Enable HEIF and AVIF codecs." FORCE)
+    set(SNOW_IMAGE_CODEC_JXL ON CACHE BOOL "Enable JPEG XL codecs." FORCE)
     set(SNOW_IMAGE_CODEC_WEBP ON CACHE BOOL "Enable WebP codecs." FORCE)
     add_subdirectory("${SNOW_SHOT_SNOW_IMAGE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/snow_image")
 endif()
+if(NOT TARGET snow_image::snow_image_static)
+    message(FATAL_ERROR
+        "Snow Shot requires the snow_image static target for its isolated image codec backend.")
+endif()
+if(TARGET snow_image_static)
+    set_property(TARGET snow_image_static PROPERTY POSITION_INDEPENDENT_CODE ON)
+endif()
+
+set(SNOW_SHOT_IMAGE_CODEC_BACKEND_SOURCES
+    src/image/snowimagecodecbridge.h
+    src/image/snowimagecodecbackend.cpp
+)
+add_library(snow_shot_image_codec_backend SHARED
+    ${SNOW_SHOT_IMAGE_CODEC_BACKEND_SOURCES}
+)
+target_include_directories(snow_shot_image_codec_backend PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/image"
+)
+target_link_libraries(snow_shot_image_codec_backend PRIVATE
+    snow_image::snow_image_static
+)
+target_compile_definitions(snow_shot_image_codec_backend PRIVATE
+    SNOW_SHOT_IMAGE_CODEC_BACKEND_BUILD=1
+)
+target_compile_features(snow_shot_image_codec_backend PUBLIC cxx_std_20)
+set_target_properties(snow_shot_image_codec_backend PROPERTIES
+    AUTOMOC OFF
+    AUTORCC OFF
+    AUTOUIC OFF
+    CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN YES
+)
 
 set(SNOW_SHOT_IMAGE_CODEC_SOURCES
     src/image/snowimageqtcodec.h
@@ -198,13 +233,79 @@ add_library(snow_shot_image_codec STATIC ${SNOW_SHOT_IMAGE_CODEC_SOURCES})
 snow_enable_unity_build(snow_shot_image_codec)
 target_include_directories(snow_shot_image_codec PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/src/image"
+    "${SNOW_SHOT_SNOW_IMAGE_DIR}/include"
 )
 target_link_libraries(snow_shot_image_codec PUBLIC
-    snow_image::snow_image
+    snow_shot_image_codec_backend
     Qt6::Core
     Qt6::Gui
 )
 target_compile_features(snow_shot_image_codec PUBLIC cxx_std_20)
+
+if(WIN32)
+    set(_SNOW_SHOT_IMAGE_RUNTIME_STAGING_SCRIPT
+        "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/StageRuntimeDependencies.cmake"
+    )
+    if(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
+        set(_SNOW_SHOT_IMAGE_RUNTIME_SEARCH_DIRECTORY
+            "$<IF:$<CONFIG:Debug>,${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin,${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin>"
+        )
+    else()
+        set(_SNOW_SHOT_IMAGE_RUNTIME_SEARCH_DIRECTORY
+            "$<TARGET_FILE_DIR:snow_shot_image_codec_backend>"
+        )
+    endif()
+
+    function(_snow_shot_stage_image_runtime target)
+        add_custom_command(TARGET ${target} POST_BUILD
+            COMMAND "${CMAKE_COMMAND}"
+                "-DSNOW_RUNTIME_ROOT_LIBRARY=$<TARGET_FILE:snow_shot_image_codec_backend>"
+                "-DSNOW_RUNTIME_DESTINATION=$<TARGET_FILE_DIR:${target}>"
+                "-DSNOW_RUNTIME_SEARCH_DIRECTORY=${_SNOW_SHOT_IMAGE_RUNTIME_SEARCH_DIRECTORY}"
+                -P "${_SNOW_SHOT_IMAGE_RUNTIME_STAGING_SCRIPT}"
+            COMMENT "Staging Snow Image runtime dependencies for ${target}"
+            VERBATIM
+        )
+    endfunction()
+
+    function(_snow_shot_target_uses_image_codec target output visited_targets)
+        if("${target}" IN_LIST visited_targets)
+            set(${output} FALSE PARENT_SCOPE)
+            return()
+        endif()
+        list(APPEND visited_targets "${target}")
+
+        get_target_property(_snow_shot_link_libraries "${target}" LINK_LIBRARIES)
+        if(NOT _snow_shot_link_libraries)
+            set(${output} FALSE PARENT_SCOPE)
+            return()
+        endif()
+
+        foreach(_snow_shot_link_library IN LISTS _snow_shot_link_libraries)
+            if(_snow_shot_link_library MATCHES "snow_shot_image_codec")
+                set(${output} TRUE PARENT_SCOPE)
+                return()
+            endif()
+            if(TARGET "${_snow_shot_link_library}")
+                get_target_property(_snow_shot_link_target_imported
+                    "${_snow_shot_link_library}" IMPORTED)
+                if(NOT _snow_shot_link_target_imported)
+                    _snow_shot_target_uses_image_codec(
+                        "${_snow_shot_link_library}"
+                        _snow_shot_transitively_uses_image_codec
+                        "${visited_targets}"
+                    )
+                    if(_snow_shot_transitively_uses_image_codec)
+                        set(${output} TRUE PARENT_SCOPE)
+                        return()
+                    endif()
+                endif()
+            endif()
+        endforeach()
+
+        set(${output} FALSE PARENT_SCOPE)
+    endfunction()
+endif()
 
 set(
     SNOW_SHOT_ADQT_DIR
@@ -217,6 +318,68 @@ if(NOT EXISTS "${SNOW_SHOT_ADQT_DIR}/packages/ant_design_qt")
     message(
         FATAL_ERROR
         "Unable to locate ant_design_qt. Set SNOW_SHOT_ADQT_DIR to an external source tree for a standalone build."
+    )
+endif()
+
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+set(SNOW_SHOT_ICON_MANIFEST
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons.manifest.json"
+)
+set(SNOW_SHOT_ICON_MANIFEST_BUILDER
+    "${CMAKE_CURRENT_SOURCE_DIR}/tools/build_icon_manifest.py"
+)
+set(SNOW_SHOT_ICON_PACK_GENERATOR
+    "${SNOW_SHOT_ADQT_DIR}/tools/generate_icon_pack.py"
+)
+set(SNOW_SHOT_ICON_HEADER
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/snow_shot/presentation/components/icons/snowshoticons.h"
+)
+set(SNOW_SHOT_ICON_SOURCE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/presentation/components/icons/snowshoticons.cpp"
+)
+file(GLOB SNOW_SHOT_ICON_ASSETS CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/presentation/components/icons/resources/*.svg"
+)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${SNOW_SHOT_ICON_MANIFEST}"
+    "${SNOW_SHOT_ICON_MANIFEST_BUILDER}"
+    "${SNOW_SHOT_ICON_PACK_GENERATOR}"
+    ${SNOW_SHOT_ICON_ASSETS}
+)
+
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}" "${SNOW_SHOT_ICON_MANIFEST_BUILDER}" --check
+    RESULT_VARIABLE _snow_shot_icon_manifest_is_stale
+    OUTPUT_QUIET
+    ERROR_QUIET
+)
+if(_snow_shot_icon_manifest_is_stale)
+    execute_process(
+        COMMAND "${Python3_EXECUTABLE}" "${SNOW_SHOT_ICON_MANIFEST_BUILDER}"
+        COMMAND_ERROR_IS_FATAL ANY
+    )
+endif()
+
+execute_process(
+    COMMAND
+        "${Python3_EXECUTABLE}" "${SNOW_SHOT_ICON_PACK_GENERATOR}"
+        "${SNOW_SHOT_ICON_MANIFEST}"
+        --header "${SNOW_SHOT_ICON_HEADER}"
+        --source "${SNOW_SHOT_ICON_SOURCE}"
+        --check
+    RESULT_VARIABLE _snow_shot_icon_pack_is_stale
+    OUTPUT_QUIET
+    ERROR_QUIET
+)
+if(_snow_shot_icon_pack_is_stale)
+    execute_process(
+        COMMAND
+            "${Python3_EXECUTABLE}" "${SNOW_SHOT_ICON_PACK_GENERATOR}"
+            "${SNOW_SHOT_ICON_MANIFEST}"
+            --header "${SNOW_SHOT_ICON_HEADER}"
+            --source "${SNOW_SHOT_ICON_SOURCE}"
+        COMMAND_ERROR_IS_FATAL ANY
     )
 endif()
 
@@ -324,6 +487,8 @@ target_link_libraries(snow_shot_settings_search PUBLIC
 )
 
 set(SNOW_SHOT_SETTINGS_SOURCES
+    include/snow_shot/platform/windows/autostartregistration.h
+    include/snow_shot/platform/windows/focusedfullscreenwindow.h
     include/snow_shot/presentation/globalshortcutmanager.h
     include/snow_shot/presentation/components/drawingtoolbareditorsettingswidget.h
     include/snow_shot/presentation/components/infotooltipicon.h
@@ -355,6 +520,8 @@ set(SNOW_SHOT_SETTINGS_SOURCES
     src/presentation/styles/mainwindowcomponenttoken.cpp
     src/presentation/styles/themecolorscheme.cpp
     src/presentation/styles/thememanager.cpp
+    src/platform/windows/autostartregistration.cpp
+    src/platform/windows/focusedfullscreenwindow.cpp
 )
 add_library(snow_shot_settings STATIC ${SNOW_SHOT_SETTINGS_SOURCES})
 snow_enable_unity_build(snow_shot_settings)
@@ -371,7 +538,7 @@ target_link_libraries(snow_shot_settings PUBLIC
     Qt6::Widgets
 )
 if(WIN32)
-    target_link_libraries(snow_shot_settings PUBLIC user32 bcrypt ntdll)
+    target_link_libraries(snow_shot_settings PUBLIC advapi32 bcrypt dwmapi ntdll user32)
 endif()
 
 set(PROJECT_HEADERS
@@ -380,6 +547,8 @@ set(PROJECT_HEADERS
     include/snow_shot/presentation/screenshottableeditor.h
     include/snow_shot/app/applicationcontroller.h
     include/snow_shot/app/singleinstancecoordinator.h
+    include/snow_shot/platform/windows/autostartregistration.h
+    include/snow_shot/platform/windows/focusedfullscreenwindow.h
     include/snow_shot/platform/windows/windowchrome.h
     include/snow_shot/presentation/components/contentcardwidget.h
     include/snow_shot/presentation/components/maincontentheaderwidget.h
@@ -405,6 +574,7 @@ set(PROJECT_HEADERS
     include/snow_shot/presentation/screenshotdisplayconfigurationobserver.h
     include/snow_shot/presentation/screenshotdisplaysession.h
     include/snow_shot/presentation/screenshotexportservice.h
+    include/snow_shot/presentation/screenshotimagefileservice.h
     include/snow_shot/presentation/screenshotfloatingtoolpalettewindow.h
     include/snow_shot/presentation/screenshotgeometry.h
     include/snow_shot/presentation/screenshotguidelinerendering.h
@@ -507,6 +677,7 @@ set(PROJECT_CXX_SOURCES
     src/presentation/services/screenshothistoryservice.cpp
     src/presentation/services/screenshotdisplayconfigurationobserver.cpp
     src/presentation/services/screenshotexportservice.cpp
+    src/presentation/services/screenshotimagefileservice.cpp
     src/presentation/tools/screenshotfloatingtoolpalettenative.cpp
     src/presentation/tools/screenshotfloatingtoolpalettewindow.cpp
     src/presentation/core/screenshotgeometry.cpp
@@ -603,13 +774,6 @@ endif()
 target_compile_definitions(snow_shot PRIVATE
     SNOW_SHOT_API_BASE_URL=\"${SNOW_SHOT_API_BASE_URL}\"
 )
-if(MSVC AND TARGET Qt6::BundledLibpng)
-    # Snow Image also links libpng. Load the implementation used to build
-    # static Qt first so Qt's PNG image handler cannot bind to another ABI.
-    target_link_libraries(snow_shot PRIVATE
-        "$<LINK_LIBRARY:WHOLE_ARCHIVE,Qt6::BundledLibpng>"
-    )
-endif()
 target_link_libraries(snow_shot PRIVATE snow_shot_image_codec)
 
 qt_add_resources(snow_shot "snow_shot_app_assets"
@@ -640,6 +804,20 @@ if(SNOW_SHOT_BUILD_TESTS)
     )
 
     enable_testing()
+
+    add_executable(snow-shot-image-codec-backend-smoke-tests
+        tests/snowimage_codec_backend_smoke_tests.cpp
+    )
+    target_link_libraries(snow-shot-image-codec-backend-smoke-tests PRIVATE
+        snow_shot_image_codec_backend
+    )
+    set_target_properties(snow-shot-image-codec-backend-smoke-tests PROPERTIES
+        AUTOMOC OFF
+        AUTORCC OFF
+        AUTOUIC OFF
+    )
+    add_test(NAME snow-shot-image-codec-backend-smoke-tests
+             COMMAND snow-shot-image-codec-backend-smoke-tests)
 
     add_executable(snow-shot-application-storage-tests
         tests/application_storage_tests.cpp
@@ -900,7 +1078,9 @@ if(SNOW_SHOT_BUILD_TESTS)
 
     add_executable(snow-shot-global-shortcut-manager-tests
         tests/global_shortcut_manager_tests.cpp
+        include/snow_shot/platform/windows/focusedfullscreenwindow.h
         include/snow_shot/presentation/globalshortcutmanager.h
+        src/platform/windows/focusedfullscreenwindow.cpp
         src/presentation/services/globalshortcutmanager.cpp
     )
     target_include_directories(snow-shot-global-shortcut-manager-tests PRIVATE
@@ -910,7 +1090,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         Qt6::Widgets
     )
     if(WIN32)
-        target_link_libraries(snow-shot-global-shortcut-manager-tests PRIVATE user32)
+        target_link_libraries(snow-shot-global-shortcut-manager-tests PRIVATE dwmapi user32)
     endif()
     add_test(
         NAME snow-shot-global-shortcut-manager-tests
@@ -1330,6 +1510,7 @@ if(SNOW_SHOT_BUILD_TESTS)
     add_executable(snow-shot-pinned-window-tests
         tests/screenshot_pinned_window_tests.cpp
         include/snow_shot/presentation/screenshotfloatingtoolpalettewindow.h
+        include/snow_shot/presentation/languagemanager.h
         include/snow_shot/presentation/screenshotpinnededitcontroller.h
         include/snow_shot/presentation/screenshotpinnedcopyservice.h
         include/snow_shot/presentation/screenshotpinnedwindow.h
@@ -1367,6 +1548,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         src/presentation/pinned/screenshotpinnedresizegeometry.cpp
         src/presentation/pinned/screenshotpinnedwindow.cpp
         src/presentation/pinned/screenshotpinnedwindownative.cpp
+        src/presentation/services/languagemanager.cpp
         src/presentation/styles/buttonborder.cpp
         src/presentation/styles/floatingcontroltoolbarstyle.cpp
         src/presentation/styles/themecolorscheme.cpp
@@ -1406,6 +1588,29 @@ if(SNOW_SHOT_BUILD_TESTS)
     add_test(
         NAME snow-shot-pinned-recognition-provider-loss-tests
         COMMAND snow-shot-pinned-window-tests --recognition-provider-loss-only
+    )
+
+    add_executable(snow-shot-screenshot-image-file-service-tests
+        tests/screenshot_image_file_service_tests.cpp
+        include/snow_shot/presentation/screenshotimagefileservice.h
+        src/presentation/services/screenshotimagefileservice.cpp
+    )
+    target_include_directories(snow-shot-screenshot-image-file-service-tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/image"
+    )
+    target_link_libraries(snow-shot-screenshot-image-file-service-tests PRIVATE
+        snow_shot_image_codec
+        Qt6::Gui
+    )
+    add_test(
+        NAME snow-shot-screenshot-image-file-service-tests
+        COMMAND snow-shot-screenshot-image-file-service-tests
+    )
+    set_tests_properties(snow-shot-screenshot-image-file-service-tests PROPERTIES
+        RUN_SERIAL TRUE
+        ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
     add_test(
         NAME snow-shot-pinned-recognition-priority-tests
@@ -2398,6 +2603,9 @@ if(WIN32)
             "swresample-*.dll"
             "swscale-*.dll"
             "libx264-*.dll"
+            "libx265*.dll"
+            "libwebp*.dll"
+            "libsharpyuv*.dll"
             "openh264-*.dll"
         )
         set(SNOW_SHOT_FFMPEG_DLLS)
@@ -2512,14 +2720,27 @@ if(MSVC AND SNOW_SHOT_RELEASE_STATIC AND NOT SNOW_SHOT_QT_STATIC)
     set_property(TARGET snow_shot PROPERTY qt_no_entrypoint TRUE)
     target_link_options(snow_shot PRIVATE /ENTRY:mainCRTStartup)
 endif()
-if(MSVC AND (SNOW_SHOT_RELEASE_STATIC OR
-             (CMAKE_MSVC_RUNTIME_LIBRARY MATCHES "^MultiThreaded" AND
-              NOT CMAKE_MSVC_RUNTIME_LIBRARY MATCHES "DLL")))
-    # Each independently built Rust staticlib carries its own copy of Rust's
-    # runtime support. Static Qt can also bundle codec symbols supplied by
-    # Snow Image. These implementations are ABI-identical and intentionally
-    # coalesced by the final executable link.
-    target_link_options(snow_shot PRIVATE /FORCE:MULTIPLE)
+
+if(WIN32)
+    get_property(_snow_shot_directory_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(_snow_shot_directory_target IN LISTS _snow_shot_directory_targets)
+        get_target_property(_snow_shot_directory_target_type
+            "${_snow_shot_directory_target}" TYPE)
+        if(_snow_shot_directory_target_type STREQUAL "EXECUTABLE")
+            _snow_shot_target_uses_image_codec(
+                "${_snow_shot_directory_target}"
+                _snow_shot_needs_image_runtime
+                ""
+            )
+            if(_snow_shot_needs_image_runtime)
+                _snow_shot_stage_image_runtime("${_snow_shot_directory_target}")
+            endif()
+        endif()
+    endforeach()
+    unset(_snow_shot_directory_target)
+    unset(_snow_shot_directory_target_type)
+    unset(_snow_shot_directory_targets)
+    unset(_snow_shot_needs_image_runtime)
 endif()
 
 include(GNUInstallDirs)
@@ -2528,6 +2749,27 @@ install(TARGETS snow_shot
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+install(TARGETS snow_shot_image_codec_backend
+    RUNTIME_DEPENDENCY_SET snow_shot_image_runtime_dependencies
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+if(WIN32)
+    install(RUNTIME_DEPENDENCY_SET snow_shot_image_runtime_dependencies
+        DIRECTORIES
+            "$<TARGET_FILE_DIR:snow_shot_image_codec_backend>"
+            "${_SNOW_SHOT_IMAGE_RUNTIME_SEARCH_DIRECTORY}"
+        PRE_EXCLUDE_REGEXES
+            "api-ms-.*"
+            "ext-ms-.*"
+            "msvcp.*\\.dll"
+            "ucrtbased\\.dll"
+            "vcruntime.*\\.dll"
+        POST_EXCLUDE_REGEXES
+            ".*[\\\\/][Ww][Ii][Nn][Dd][Oo][Ww][Ss][\\\\/][Ss][Yy][Ss][Tt][Ee][Mm]32[\\\\/].*"
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
 if(WIN32 AND NOT SNOW_SHOT_RELEASE_STATIC)
     install(FILES "$<TARGET_FILE:onnxruntime::onnxruntime>"
         DESTINATION ${CMAKE_INSTALL_BINDIR}

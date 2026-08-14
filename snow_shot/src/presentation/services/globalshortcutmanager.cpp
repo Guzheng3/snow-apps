@@ -1,4 +1,5 @@
 #include "snow_shot/presentation/globalshortcutmanager.h"
+#include "snow_shot/platform/windows/focusedfullscreenwindow.h"
 #include "snow_shot/storage/settingsadapters.h"
 
 #include <QAbstractNativeEventFilter>
@@ -601,8 +602,13 @@ class GlobalShortcutManager::Impl {
     };
 
     Impl(GlobalShortcutManager& owner, std::unique_ptr<GlobalShortcutBackend> backend,
-         const QString&, const QString&)
-        : q(owner), m_backend(backend != nullptr ? std::move(backend) : createPlatformBackend()) {
+         const QString&, const QString&, std::function<bool()> focusedFullscreenDetector)
+        : q(owner), m_backend(backend != nullptr ? std::move(backend) : createPlatformBackend()),
+          m_focusedFullscreenDetector(
+              focusedFullscreenDetector
+                  ? std::move(focusedFullscreenDetector)
+                  : std::function<bool()>(
+                        &snow_shot::platform::windows::focusedFullscreenWindowExists)) {
         for (GlobalShortcutAction action : ALL_ACTIONS) {
             GlobalShortcutRegistrationState initialState;
             initialState.action = action;
@@ -613,6 +619,13 @@ class GlobalShortcutManager::Impl {
             const QString activeKey = m_registrationKeysById.value(registrationId);
             const auto active = m_activeRegistrations.constFind(activeKey);
             if (active != m_activeRegistrations.cend()) {
+                const bool suppressionEnabled =
+                    snow_shot::storage::GlobalShortcutSettings()
+                        .disableOnFocusedFullscreenWindow();
+                if (suppressionEnabled && m_focusedFullscreenDetector &&
+                    m_focusedFullscreenDetector()) {
+                    return;
+                }
                 emit q.activated(active->action);
             }
         });
@@ -762,6 +775,7 @@ class GlobalShortcutManager::Impl {
 
     GlobalShortcutManager& q;
     std::unique_ptr<GlobalShortcutBackend> m_backend;
+    std::function<bool()> m_focusedFullscreenDetector;
     std::array<QStringList, ACTION_COUNT> m_shortcuts;
     std::array<GlobalShortcutRegistrationState, ACTION_COUNT> m_states;
     QHash<QString, ActiveRegistration> m_activeRegistrations;
@@ -771,13 +785,15 @@ class GlobalShortcutManager::Impl {
 };
 
 GlobalShortcutManager::GlobalShortcutManager(QObject* parent)
-    : GlobalShortcutManager(nullptr, {}, {}, parent) {}
+    : GlobalShortcutManager(nullptr, {}, {}, parent, {}) {}
 
 GlobalShortcutManager::GlobalShortcutManager(std::unique_ptr<GlobalShortcutBackend> backend,
                                              const QString& organization,
-                                             const QString& application, QObject* parent)
+                                             const QString& application, QObject* parent,
+                                             std::function<bool()> focusedFullscreenDetector)
     : QObject(parent),
-      m_impl(std::make_unique<Impl>(*this, std::move(backend), organization, application)) {}
+      m_impl(std::make_unique<Impl>(*this, std::move(backend), organization, application,
+                                    std::move(focusedFullscreenDetector))) {}
 
 GlobalShortcutManager::~GlobalShortcutManager() = default;
 

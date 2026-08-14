@@ -38,6 +38,11 @@ struct ScreenshotOverlayInputActions {
     std::function<bool(int delta)> stepPenFilterStrokeWidth = [](int) { return false; };
     std::function<bool(int delta)> stepWatermarkFontSize = [](int) { return false; };
     std::function<void()> copySelectionToClipboard = []() {};
+    std::function<void(const QString& action)> executeConfiguredCompletionAction =
+        [](const QString&) {};
+    std::function<bool()> drawingShortcutInputAllowed = []() { return true; };
+    std::function<bool(const QString& toolId)> activateDrawingShortcut =
+        [](const QString&) { return false; };
     std::function<bool()> navigateHistoryPrevious = []() { return false; };
     std::function<bool()> navigateHistoryNext = []() { return false; };
     std::function<bool()> returnToCurrentScreenshot = []() { return false; };
@@ -81,6 +86,8 @@ class ScreenshotOverlayInputHandler final {
     void handleMouseRelease(ScreenshotOverlayWindow* overlay, const QPointF& localPosition);
     [[nodiscard]] bool handleRightClick(ScreenshotOverlayWindow* overlay,
                                         const QPointF& localPosition);
+    void handleUnhandledLeftDoubleClick();
+    void handleUnhandledMiddleClick();
     [[nodiscard]] bool handleWheel(ScreenshotOverlayWindow* overlay, const QPointF& localPosition,
                                    const QPoint& angleDelta, const QPoint& pixelDelta);
     [[nodiscard]] bool handleKeyPress(int key, Qt::KeyboardModifiers modifiers);
@@ -106,6 +113,7 @@ class ScreenshotOverlayInputHandler final {
     void handleManualSelectionRelease(ScreenshotOverlayWindow* overlay,
                                       const QPointF& localPosition, const QPointF& virtualPosition);
     [[nodiscard]] bool handleColorPickerKeyPress(int key, Qt::KeyboardModifiers modifiers);
+    [[nodiscard]] bool handleDrawingShortcut(int key, Qt::KeyboardModifiers modifiers);
     void requestIntelligentSelectionHitTest(const QPointF& virtualPosition);
     void setIntelligentSelectionIndex(int index);
   public:

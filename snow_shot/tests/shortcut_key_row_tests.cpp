@@ -340,6 +340,57 @@ void recorderAcceptsOnlyBackendSupportedShortcuts() {
             "a keypad plus should not be displayed as two shortcut separators");
 }
 
+void drawingRecorderUsesLocalValidationLanguage() {
+    const styles::ThemeColorScheme scheme = styles::ThemeManager::instance().themeColorScheme();
+    const auto mainWindowMetric = styles::buildMainWindowComponentMetricToken(scheme);
+
+    ShortcutKeyRowConfig config;
+    config.title = QStringLiteral("Shape tool");
+    config.maxShortcutCount = 2;
+    config.showRegistrationStatus = false;
+    config.validationScope = ShortcutKeyRowConfig::ValidationScope::DrawingShortcut;
+    config.shortcutValidator = [](const QString& shortcut) {
+        return shortcuts::GlobalShortcutValidationResult{
+            shortcut,
+            false,
+            shortcuts::GlobalShortcutFailureReason::AlreadyInUse,
+        };
+    };
+
+    ShortcutKeyRow row(config, scheme.metricAlias, mainWindowMetric);
+    row.resize(720, row.height());
+    row.show();
+    QApplication::processEvents();
+
+    auto* shortcutButton =
+        row.findChild<adqt::widgets::AdButton*>(QStringLiteral("shortcutKeyButton"));
+    require(shortcutButton != nullptr, "drawing shortcut control should open the recorder");
+    shortcutButton->click();
+    QApplication::processEvents();
+
+    auto* configContent = row.findChild<QWidget*>(QStringLiteral("shortcutConfigContent"));
+    require(configContent != nullptr, "drawing shortcut recorder should be created");
+    QKeyEvent duplicateEvent(QEvent::KeyPress, Qt::Key_S, Qt::NoModifier);
+    QCoreApplication::sendEvent(configContent, &duplicateEvent);
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    QApplication::processEvents();
+
+    auto* keyButton =
+        row.findChild<adqt::widgets::AdButton*>(QStringLiteral("shortcutConfigKeyButton"));
+    auto* validationInfo =
+        row.findChild<InfoTooltipIcon*>(QStringLiteral("shortcutConfigValidationTooltipTrigger"));
+    require(keyButton != nullptr && validationInfo != nullptr &&
+                keyButton->property("shortcutValidationState").toString() ==
+                    QStringLiteral("invalid") &&
+                validationInfo->accessibleName() == QStringLiteral("Invalid drawing shortcut") &&
+                validationInfo->tooltipText().contains(
+                    QStringLiteral("already assigned to another drawing tool")) &&
+                !validationInfo->tooltipText().contains(
+                    QStringLiteral("Windows global shortcut")) &&
+                keyButton->accessibleDescription() == validationInfo->tooltipText(),
+            "drawing shortcut conflicts must use local validation and accessibility wording");
+}
+
 void adjustableDelayUsesWheelAndClampsRange() {
     const styles::ThemeColorScheme scheme = styles::ThemeManager::instance().themeColorScheme();
     const auto mainWindowMetric = styles::buildMainWindowComponentMetricToken(scheme);
@@ -450,6 +501,7 @@ int main(int argc, char** argv) {
     QApplication application(argc, argv);
     statusPresentationUsesSemanticTokens();
     recorderAcceptsOnlyBackendSupportedShortcuts();
+    drawingRecorderUsesLocalValidationLanguage();
     adjustableDelayUsesWheelAndClampsRange();
     return 0;
 }

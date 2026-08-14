@@ -42,6 +42,11 @@ class SettingsRuntimeBindings : public QObject {
     }
     [[nodiscard]] virtual bool applySwitchValue(SettingsSwitchBinding binding, bool value) = 0;
 
+    [[nodiscard]] virtual QVariantList
+    multiSelectValue(SettingsMultiSelectBinding binding) const = 0;
+    [[nodiscard]] virtual bool applyMultiSelectValue(SettingsMultiSelectBinding binding,
+                                                     const QVariantList& value) = 0;
+
     [[nodiscard]] virtual int integerValue(SettingsIntegerBinding binding) const = 0;
     [[nodiscard]] virtual bool applyIntegerValue(SettingsIntegerBinding binding, int value) = 0;
 
@@ -70,6 +75,11 @@ class SettingsRuntimeBindings : public QObject {
     validateShortcut(const QString& shortcut) const = 0;
     [[nodiscard]] virtual bool applyShortcuts(GlobalShortcutAction action,
                                               const QStringList& shortcuts) = 0;
+    [[nodiscard]] virtual QStringList localShortcuts(const QString& toolId) const = 0;
+    [[nodiscard]] virtual GlobalShortcutValidationResult
+    validateLocalShortcut(const QString& toolId, const QString& shortcut) const = 0;
+    [[nodiscard]] virtual bool applyLocalShortcuts(const QString& toolId,
+                                                  const QStringList& shortcuts) = 0;
 
     [[nodiscard]] virtual SettingsActionState
     actionState(SettingsActionBinding binding) const = 0;
@@ -98,6 +108,10 @@ class BuiltInSettingsRuntimeBindings final : public SettingsRuntimeBindings {
     [[nodiscard]] bool switchValue(SettingsSwitchBinding binding) const override;
     [[nodiscard]] bool switchEnabled(SettingsSwitchBinding binding) const override;
     [[nodiscard]] bool applySwitchValue(SettingsSwitchBinding binding, bool value) override;
+    [[nodiscard]] QVariantList
+    multiSelectValue(SettingsMultiSelectBinding binding) const override;
+    [[nodiscard]] bool applyMultiSelectValue(SettingsMultiSelectBinding binding,
+                                             const QVariantList& value) override;
     [[nodiscard]] int integerValue(SettingsIntegerBinding binding) const override;
     [[nodiscard]] bool applyIntegerValue(SettingsIntegerBinding binding, int value) override;
     [[nodiscard]] int sliderValue(SettingsSliderBinding binding) const override;
@@ -120,6 +134,11 @@ class BuiltInSettingsRuntimeBindings final : public SettingsRuntimeBindings {
     validateShortcut(const QString& shortcut) const override;
     [[nodiscard]] bool applyShortcuts(GlobalShortcutAction action,
                                       const QStringList& shortcuts) override;
+    [[nodiscard]] QStringList localShortcuts(const QString& toolId) const override;
+    [[nodiscard]] GlobalShortcutValidationResult
+    validateLocalShortcut(const QString& toolId, const QString& shortcut) const override;
+    [[nodiscard]] bool applyLocalShortcuts(const QString& toolId,
+                                          const QStringList& shortcuts) override;
     [[nodiscard]] SettingsActionState
     actionState(SettingsActionBinding binding) const override;
     [[nodiscard]] bool triggerAction(SettingsActionBinding binding) override;

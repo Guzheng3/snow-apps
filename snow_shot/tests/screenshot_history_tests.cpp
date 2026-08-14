@@ -854,6 +854,92 @@ void moveToolCanStartManualSelectionOutsideConfirmedBox() {
     require(overlayUpdates == 1, "manual drag did not refresh the overlay");
     require(guideLineUpdates == 1, "manual drag did not update the cursor guide lines");
 }
+
+void completionGesturesRequireAConfirmedSelectionAndSupportedTool() {
+    ScreenshotCaptureState captureState;
+    ScreenshotDisplaySession displays;
+    ScreenshotGeometryMapper geometry;
+    ScreenshotSelectionModel selection;
+    ScreenshotIntelligentSelectionModel intelligent;
+    ScreenshotInteractionState interaction;
+    interaction.enterOverlayVisible(true);
+
+    int actionCount = 0;
+    ScreenshotOverlayInputActions actions;
+    actions.executeConfiguredCompletionAction = [&actionCount](const QString&) { ++actionCount; };
+    ScreenshotOverlayInputHandler handler({
+        captureState,
+        interaction,
+        selection,
+        intelligent,
+        geometry,
+        displays,
+        std::move(actions),
+    });
+
+    handler.handleUnhandledLeftDoubleClick();
+    handler.handleUnhandledMiddleClick();
+    require(actionCount == 0,
+            "completion gestures must not run while the initial selection is active");
+
+    selection.setSelectionRect(QRectF(1, 2, 20, 21));
+    interaction.confirmSelection();
+    handler.handleUnhandledLeftDoubleClick();
+    require(actionCount == 1, "double-click must run for the confirmed Move tool");
+
+    interaction.setCanvasTool(ScreenshotActiveTool::Shape);
+    handler.handleUnhandledMiddleClick();
+    require(actionCount == 2, "middle-click must run for a drawing tool");
+
+    interaction.setCanvasTool(ScreenshotActiveTool::Select);
+    handler.handleUnhandledLeftDoubleClick();
+    interaction.enterScrollingCapture();
+    handler.handleUnhandledMiddleClick();
+    require(actionCount == 2,
+            "completion gestures must ignore Select and scrolling screenshot modes");
+}
+
+void drawingShortcutsTakePriorityOverMoveColorPickerKeys() {
+    ScreenshotCaptureState captureState;
+    ScreenshotDisplaySession displays;
+    ScreenshotGeometryMapper geometry;
+    ScreenshotSelectionModel selection;
+    selection.setSelectionRect(QRectF(1, 2, 20, 21));
+    ScreenshotIntelligentSelectionModel intelligent;
+    ScreenshotInteractionState interaction;
+    interaction.confirmSelection();
+
+    QString activatedTool;
+    int colorPickerMoves = 0;
+    ScreenshotOverlayInputActions actions;
+    actions.activateDrawingShortcut = [&activatedTool](const QString& toolId) {
+        activatedTool = toolId;
+        return true;
+    };
+    actions.moveColorPickerCursor = [&colorPickerMoves](int, int) {
+        ++colorPickerMoves;
+        return true;
+    };
+    ScreenshotOverlayInputHandler handler({
+        captureState,
+        interaction,
+        selection,
+        intelligent,
+        geometry,
+        displays,
+        std::move(actions),
+    });
+
+    require(handler.handleKeyPress(Qt::Key_S, {}), "default Shape shortcut was not handled");
+    require(activatedTool == QStringLiteral("shape") && colorPickerMoves == 0,
+            "default Shape shortcut must win over Move color-picker navigation");
+
+    activatedTool.clear();
+    require(handler.handleKeyPress(Qt::Key_Up, {}),
+            "non-conflicting color-picker navigation was not handled");
+    require(activatedTool.isEmpty() && colorPickerMoves == 1,
+            "arrow-key color-picker navigation should remain available");
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -888,5 +974,7 @@ int main(int argc, char** argv) {
         QDir(temporary.path()).filePath(QStringLiteral("blocked-history-root")));
     historyKeysOnlyWorkDuringSelectionStates();
     moveToolCanStartManualSelectionOutsideConfirmedBox();
+    completionGesturesRequireAConfirmedSelectionAndSupportedTool();
+    drawingShortcutsTakePriorityOverMoveColorPickerKeys();
     return 0;
 }

@@ -22,6 +22,8 @@ class SystemTrayController final : public QObject {
     [[nodiscard]] QString iconSelection() const;
     void setCustomIconPath(const QString& path);
     [[nodiscard]] QString customIconPath() const;
+    void setLeftClickAction(const QString& action);
+    [[nodiscard]] QString leftClickAction() const;
 
   signals:
     void screenshotRequested();

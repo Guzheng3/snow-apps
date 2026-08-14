@@ -8,8 +8,11 @@
 #include "snow_shot/presentation/screenshotselectionlimits.h"
 #include "snow_shot/presentation/screenshotselectionmodel.h"
 #include "snow_shot/presentation/screenshotoverlaywindow.h"
+#include "snow_shot/storage/settingsadapters.h"
 
 #include <QApplication>
+#include <QKeyCombination>
+#include <QKeySequence>
 
 #include <utility>
 
@@ -33,6 +36,11 @@ bool wheelAdjustsStrokeWidth(ScreenshotActiveTool tool) {
 bool recognitionTool(ScreenshotActiveTool tool) {
     return tool == ScreenshotActiveTool::Ocr || tool == ScreenshotActiveTool::Table ||
            tool == ScreenshotActiveTool::Qr;
+}
+
+bool screenshotCompletionGestureTool(ScreenshotActiveTool tool) {
+    return tool != ScreenshotActiveTool::Select && tool != ScreenshotActiveTool::Ocr &&
+           tool != ScreenshotActiveTool::Table && tool != ScreenshotActiveTool::Qr;
 }
 } // namespace
 
@@ -377,7 +385,42 @@ bool ScreenshotOverlayInputHandler::handleKeyPress(int key, Qt::KeyboardModifier
         return true;
     }
 
-    return handleColorPickerKeyPress(key, modifiers);
+    // Configured drawing shortcuts are explicit user commands and include S,
+    // A, and W by default, so they take precedence over the Move tool's legacy
+    // WASD color-picker navigation. Arrow-key navigation remains available.
+    if (handleDrawingShortcut(key, modifiers)) {
+        return true;
+    }
+    return m_context.interaction.moveToolActive() &&
+           handleColorPickerKeyPress(key, modifiers);
+}
+
+bool ScreenshotOverlayInputHandler::handleDrawingShortcut(
+    int key, Qt::KeyboardModifiers modifiers) {
+    if (!(m_context.interaction.movingSelection() || m_context.interaction.editing()) ||
+        recognitionTool(m_context.interaction.activeTool()) ||
+        !m_context.actions.drawingShortcutInputAllowed()) {
+        return false;
+    }
+
+    const QString pressed =
+        QKeySequence(QKeyCombination(modifiers, Qt::Key(key)))
+            .toString(QKeySequence::PortableText)
+            .trimmed();
+    if (pressed.isEmpty() ||
+        snow_shot::storage::DrawingShortcutSettings::isReservedShortcut(pressed)) {
+        return false;
+    }
+
+    const auto shortcutsByTool = snow_shot::storage::DrawingShortcutSettings().allShortcuts();
+    for (auto toolIt = shortcutsByTool.cbegin(); toolIt != shortcutsByTool.cend(); ++toolIt) {
+        for (const QString& shortcut : toolIt.value()) {
+            if (shortcut.compare(pressed, Qt::CaseInsensitive) == 0) {
+                return m_context.actions.activateDrawingShortcut(toolIt.key());
+            }
+        }
+    }
+    return false;
 }
 
 bool ScreenshotOverlayInputHandler::handleColorPickerKeyPress(int key,
@@ -440,6 +483,26 @@ void ScreenshotOverlayInputHandler::confirmSelection() {
     m_context.actions.updateOverlayState();
     m_context.actions.showToolbar();
     m_context.actions.selectionConfirmed();
+}
+
+void ScreenshotOverlayInputHandler::handleUnhandledLeftDoubleClick() {
+    if (!(m_context.interaction.movingSelection() || m_context.interaction.editing()) ||
+        !m_context.selection.hasPixelSelection() ||
+        !screenshotCompletionGestureTool(m_context.interaction.activeTool())) {
+        return;
+    }
+    m_context.actions.executeConfiguredCompletionAction(
+        snow_shot::storage::ScreenshotSettings().doubleClickAction());
+}
+
+void ScreenshotOverlayInputHandler::handleUnhandledMiddleClick() {
+    if (!(m_context.interaction.movingSelection() || m_context.interaction.editing()) ||
+        !m_context.selection.hasPixelSelection() ||
+        !screenshotCompletionGestureTool(m_context.interaction.activeTool())) {
+        return;
+    }
+    m_context.actions.executeConfiguredCompletionAction(
+        snow_shot::storage::ScreenshotSettings().middleMouseButtonAction());
 }
 
 void ScreenshotOverlayInputHandler::updateGuideLines(ScreenshotOverlayWindow* overlay,

@@ -53,6 +53,7 @@ class ScreenshotToolbarCommandSink {
     virtual void startScrollingScreenshot() = 0;
     virtual void setScrollingScreenshotRecognitionMode(ScreenshotScrollingRecognitionMode) {}
     virtual void pinSelectionToScreen() = 0;
+    virtual void saveSelectionToFile() {}
     virtual void cancelCapture() = 0;
     virtual void copySelectionToClipboard() = 0;
     virtual void startVideoRecording() = 0;

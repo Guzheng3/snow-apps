@@ -88,7 +88,10 @@ if(SNOW_IMAGE_PROFILE STREQUAL "full")
         ${_snow_workspace_all_image_codecs}
     )
 elseif(SNOW_APPS_BUILD_SNOW_SHOT)
-    set(_snow_workspace_image_codecs PNG WEBP)
+    # Snow Shot's Save As workflow supports all five raster formats in every
+    # application profile, so keep the corresponding codecs in the minimal
+    # workspace configuration as well as the full profile.
+    set(_snow_workspace_image_codecs PNG JPEG HEIF JXL WEBP)
 else()
     set(_snow_workspace_image_codecs)
 endif()

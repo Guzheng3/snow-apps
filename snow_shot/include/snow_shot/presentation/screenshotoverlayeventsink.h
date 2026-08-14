@@ -22,6 +22,11 @@ class ScreenshotOverlayEventSink {
                                            const QPointF& localPosition) = 0;
     [[nodiscard]] virtual bool handleOverlayRightClick(ScreenshotOverlayWindow* overlay,
                                                        const QPointF& localPosition) = 0;
+    // Optional completion-gesture notifications. Keeping these callbacks
+    // non-pure preserves source compatibility for lightweight event sinks
+    // that only care about the original overlay event surface.
+    virtual void handleUnhandledLeftDoubleClick() {}
+    virtual void handleUnhandledMiddleClick() {}
     [[nodiscard]] virtual bool handleOverlayWheel(ScreenshotOverlayWindow* overlay,
                                                   const QPointF& localPosition,
                                                   const QPoint& angleDelta,

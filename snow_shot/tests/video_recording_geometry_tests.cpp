@@ -178,6 +178,42 @@ void encoderCompatibilityNeverShrinksTheSelection() {
     require(edgeExpanded.width() == 642 && edgeExpanded.height() == 360,
             "screen-edge capture dimensions should remain encoder compatible");
 }
+
+void claritySettingsMapToMaximumOutputSizes() {
+    require(recording::videoRecordingMaximumSizeForClarity(QStringLiteral("4k")) ==
+                QSize(3840, 2160),
+            "4K clarity should cap output at 3840x2160");
+    require(recording::videoRecordingMaximumSizeForClarity(QStringLiteral("2k")) ==
+                QSize(2560, 1440),
+            "2K clarity should cap output at 2560x1440");
+    require(recording::videoRecordingMaximumSizeForClarity(QStringLiteral("1080p")) ==
+                QSize(1920, 1080),
+            "1080p clarity should cap output at 1920x1080");
+    require(recording::videoRecordingMaximumSizeForClarity(QStringLiteral("720p")) ==
+                QSize(1280, 720),
+            "720p clarity should cap output at 1280x720");
+    require(recording::videoRecordingMaximumSizeForClarity(QStringLiteral("480p")) ==
+                QSize(854, 480),
+            "480p clarity should use an encoder-compatible 16:9 size");
+    require(recording::videoRecordingMaximumSizeForClarity(QStringLiteral("invalid")) ==
+                QSize(1920, 1080),
+            "invalid clarity should use the persisted setting's 1080p default");
+}
+
+void clarityBoundsFollowCaptureOrientation() {
+    require(recording::videoRecordingOrientedMaximumSize(QSize(1920, 1080), QSize(1080, 1920)) ==
+                QSize(1080, 1920),
+            "portrait captures should transpose landscape clarity bounds");
+    require(recording::videoRecordingOrientedMaximumSize(QSize(1920, 1080), QSize(1920, 1080)) ==
+                QSize(1920, 1080),
+            "landscape captures should retain landscape clarity bounds");
+    require(recording::videoRecordingOrientedMaximumSize(QSize(1080, 1920), QSize(1920, 1080)) ==
+                QSize(1920, 1080),
+            "landscape captures should transpose portrait bounds");
+    require(recording::videoRecordingOrientedMaximumSize(QSize(1920, 1080), QSize(1000, 1000)) ==
+                QSize(1920, 1080),
+            "square captures should retain the configured orientation");
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -189,5 +225,7 @@ int main(int argc, char** argv) {
     toolbarUsesBottomRightThenTopRight();
     toolbarRemainsInsideTheAvailableScreen();
     encoderCompatibilityNeverShrinksTheSelection();
+    claritySettingsMapToMaximumOutputSizes();
+    clarityBoundsFollowCaptureOrientation();
     return 0;
 }

@@ -103,6 +103,7 @@ constexpr int TOOLBAR_ITEM_SPACING = 8;
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Half-width"),
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Full-width"),
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Scrolling screenshot"),
+    QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Save as file"),
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Cancel screenshot"),
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Copy to clipboard"),
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Confirm edit"),
@@ -114,7 +115,7 @@ constexpr int TOOLBAR_ITEM_SPACING = 8;
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Record speakers"),
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Open recording folder"),
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Close recording"),
-    QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Copy GIF"),
+    QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Copy animated image"),
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Copy video"),
 };
 constexpr int TOOLBAR_SEPARATOR_HEIGHT = 16;
@@ -2387,7 +2388,7 @@ void ScreenshotToolPalette::createMainToolbar(const Options& options) {
     const bool hasEditingTools = addMainToolButtons(options, panelLayout);
     const bool hasSecondaryTools =
         options.showVideoRecordButton || options.showOcrTool || options.showTableTool ||
-        options.showQrTool || options.showScrollingScreenshotTool ||
+        options.showQrTool || options.showScrollingScreenshotTool || options.showSaveButton ||
         (!options.showRecordingControls && (options.actions & PinAction) != 0);
     if (hasEditingTools && hasSecondaryTools) {
         addMainToolbarSeparator();
@@ -2716,7 +2717,7 @@ void ScreenshotToolPalette::applyMainToolbarLayout(bool notify) {
     addFixedWidget(m_redoButton);
 
     QVector<QWidget*> secondaryTools{m_tableButton, m_videoRecordButton, m_pinButton, m_ocrButton,
-                                     m_scrollingScreenshotButton};
+                                     m_scrollingScreenshotButton, m_saveButton};
     secondaryTools.erase(std::remove(secondaryTools.begin(), secondaryTools.end(), nullptr),
                          secondaryTools.end());
     if (!secondaryTools.isEmpty() && hasContent) {
@@ -3074,7 +3075,52 @@ bool ScreenshotToolPalette::addMainSecondaryButtons(const Options& options, QBox
         });
     }
 
+    if (options.showSaveButton) {
+        m_saveButton = addActionButton("Save as file", outlined_icons::Save());
+        m_saveButton->setObjectName(QStringLiteral("screenshotSaveAsFileButton"));
+        addButton(m_saveButton);
+        connect(m_saveButton, &adqt::widgets::AdButton::clicked, this,
+                &ScreenshotToolPalette::saveRequested);
+    }
+
     return hasButton;
+}
+
+ScreenshotToolPalette::Tool ScreenshotToolPalette::drawingShortcutEntryTool(
+    const QString& itemId, Tool fallback) const {
+    for (const DrawingToolGroup& group : m_drawingToolGroups) {
+        if (group.itemIds.contains(itemId)) {
+            return group.entryTool;
+        }
+    }
+    return fallback;
+}
+
+bool ScreenshotToolPalette::activateDrawingShortcut(const QString& toolId) {
+    Tool tool = Tool::Move;
+    if (toolId == QStringLiteral("shape")) {
+        tool = Tool::Shape;
+    } else if (toolId == QStringLiteral("arrow")) {
+        tool = Tool::Arrow;
+    } else if (toolId == QStringLiteral("brush")) {
+        tool = Tool::FreeDraw;
+    } else if (toolId == QStringLiteral("highlight")) {
+        tool = drawingShortcutEntryTool(QStringLiteral("highlighter"), Tool::PenHighlight);
+    } else if (toolId == QStringLiteral("text")) {
+        tool = Tool::Text;
+    } else if (toolId == QStringLiteral("serial_number")) {
+        tool = Tool::SerialNumber;
+    } else if (toolId == QStringLiteral("filter")) {
+        tool = drawingShortcutEntryTool(QStringLiteral("filter"), Tool::PenFilter);
+    } else if (toolId == QStringLiteral("eraser")) {
+        tool = Tool::Eraser;
+    } else if (toolId == QStringLiteral("watermark")) {
+        tool = Tool::Watermark;
+    } else {
+        return false;
+    }
+    activateDrawingTool(tool);
+    return true;
 }
 
 void ScreenshotToolPalette::addMainActionButtons(const Options& options, QBoxLayout* layout) {
@@ -3833,13 +3879,14 @@ void ScreenshotToolPalette::addRecordingControls(QBoxLayout* layout) {
     m_recordOpenFolderButton =
         addActionButton("Open recording folder", custom_outlined_icons::RecordingFolder());
     m_recordCloseButton = addActionButton("Close recording", outlined_icons::Close(), true);
-    m_recordCopyGifButton = addActionButton("Copy GIF", outlined_icons::Gif());
+    m_recordCopyAnimatedImageButton =
+        addActionButton("Copy animated image", outlined_icons::Gif());
     m_recordCopyVideoButton = addActionButton("Copy video", outlined_icons::Copy());
     layout->addWidget(m_recordOpenFolderButton);
     addItemSpacing();
     layout->addWidget(m_recordCloseButton);
     addItemSpacing();
-    layout->addWidget(m_recordCopyGifButton);
+    layout->addWidget(m_recordCopyAnimatedImageButton);
     addItemSpacing();
     layout->addWidget(m_recordCopyVideoButton);
 
@@ -3863,8 +3910,8 @@ void ScreenshotToolPalette::addRecordingControls(QBoxLayout* layout) {
             &ScreenshotToolPalette::recordingOpenFolderRequested);
     connect(m_recordCloseButton, &adqt::widgets::AdButton::clicked, this,
             &ScreenshotToolPalette::recordingCloseRequested);
-    connect(m_recordCopyGifButton, &adqt::widgets::AdButton::clicked, this,
-            &ScreenshotToolPalette::recordingCopyGifRequested);
+    connect(m_recordCopyAnimatedImageButton, &adqt::widgets::AdButton::clicked, this,
+            &ScreenshotToolPalette::recordingCopyAnimatedImageRequested);
     connect(m_recordCopyVideoButton, &adqt::widgets::AdButton::clicked, this,
             &ScreenshotToolPalette::recordingCopyVideoRequested);
 
@@ -4156,7 +4203,7 @@ void ScreenshotToolPalette::updateRecordingControls() {
     if (m_recordCloseButton != nullptr) {
         m_recordCloseButton->setEnabled(!m_recordingBusy);
     }
-    if (m_recordCopyGifButton != nullptr) {
+    if (m_recordCopyAnimatedImageButton != nullptr) {
         const bool copyGifEnabled = active && !m_recordingBusy;
         const auto scheme = snow_shot::presentation::styles::generateThemeColorScheme();
 
@@ -4164,13 +4211,16 @@ void ScreenshotToolPalette::updateRecordingControls() {
         // GIF glyph in the primary color only while an active recording can be
         // copied.  Leave the icon untinted when disabled so the button's
         // disabled palette supplies the correct gray.
-        m_recordCopyGifButton->setButtonStyle(adqt::widgets::AdButton::ButtonStyle::Text);
-        m_recordCopyGifButton->setAccentRole(adqt::widgets::AdButton::AccentRole::Neutral);
-        m_recordCopyGifButton->setIconRef(copyGifEnabled
-                                              ? snow_shot::presentation::icons::withPrimaryColor(
-                                                    outlined_icons::Gif(), scheme.map.colorPrimary)
-                                              : outlined_icons::Gif());
-        m_recordCopyGifButton->setEnabled(copyGifEnabled);
+        m_recordCopyAnimatedImageButton->setButtonStyle(
+            adqt::widgets::AdButton::ButtonStyle::Text);
+        m_recordCopyAnimatedImageButton->setAccentRole(
+            adqt::widgets::AdButton::AccentRole::Neutral);
+        m_recordCopyAnimatedImageButton->setIconRef(
+            copyGifEnabled
+                ? snow_shot::presentation::icons::withPrimaryColor(outlined_icons::Gif(),
+                                                                    scheme.map.colorPrimary)
+                : outlined_icons::Gif());
+        m_recordCopyAnimatedImageButton->setEnabled(copyGifEnabled);
     }
     if (m_recordCopyVideoButton != nullptr) {
         const bool copyVideoEnabled = active && !m_recordingBusy;

@@ -5,10 +5,14 @@
 #include <QSize>
 #include <QString>
 
+#include <snow/image/codec.h>
 #include <snow/image/format.h>
 
 namespace snow_shot::image_codec {
 
+[[nodiscard]] QByteArray encode(const QImage& image, snow::image::Format format,
+                                const snow::image::EncodeOptions& options,
+                                QString* error = nullptr);
 [[nodiscard]] QByteArray encodePng(const QImage& image);
 [[nodiscard]] QByteArray encodeWebp(const QImage& image, int quality = 75);
 [[nodiscard]] QImage decode(const QByteArray& encoded, snow::image::Format expectedFormat,

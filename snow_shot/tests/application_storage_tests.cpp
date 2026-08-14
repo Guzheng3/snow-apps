@@ -95,6 +95,8 @@ void defaultsAndTypedRoundTrip() {
     require(store.isDirty() && store.flushNow().success,
             "default configuration was not materialized");
     const QJsonObject root = readObject(config);
+    require(root == storage::ConfigurationSchema::completeDefaultDocument(),
+            "materialized defaults must exactly match the complete schema document");
     const QJsonObject history = root.value(QStringLiteral("capture_history")).toObject();
     const QJsonObject screenshotUi = root.value(QStringLiteral("screenshot_ui")).toObject();
     const QJsonObject toolbarLayout = root.value(QStringLiteral("screenshot_toolbar"))
@@ -171,6 +173,166 @@ void defaultsAndTypedRoundTrip() {
             reloaded.value(QStringLiteral("screenshot_ui/shortcut_hint_opacity")).toInt() == 42 &&
             reloaded.value(QStringLiteral("tray/icon")).toString() == QStringLiteral("snow-dark"),
         "typed values did not normalize and round-trip");
+}
+
+void newSettingsSchemaDefaultsAndValidationAreComplete() {
+    const auto defaultValue = [](const char* key) {
+        return storage::ConfigurationSchema::defaultValue(QString::fromLatin1(key));
+    };
+    require(!defaultValue("system/auto_start_at_boot").toBool() &&
+                !defaultValue("global_shortcuts/disable_on_focused_fullscreen_window").toBool() &&
+                defaultValue("screenshot/auto_execute_after_text_recognition").toString() ==
+                    QStringLiteral("no_action") &&
+                defaultValue("screenshot/double_click_action").toString() ==
+                    QStringLiteral("copy") &&
+                defaultValue("screenshot/middle_mouse_button_action").toString() ==
+                    QStringLiteral("pin") &&
+                !defaultValue("screenshot/auto_save_after_copy").toBool() &&
+                !defaultValue("screenshot/copy_image_file_to_clipboard").toBool() &&
+                defaultValue("drawing/quick_selection_disabled_tools").toArray() ==
+                    QJsonArray{QStringLiteral("free-draw"), QStringLiteral("pen-filter")} &&
+                defaultValue("pin_to_screen/mouse_wheel_zoom_mode").toString() ==
+                    QStringLiteral("mouse_position") &&
+                defaultValue("pin_to_screen/automatic_text_recognition").toBool() &&
+                defaultValue("pin_to_screen/auto_resize_window").toBool() &&
+                defaultValue("video_recording/video_clarity").toString() ==
+                    QStringLiteral("1080p") &&
+                defaultValue("video_recording/frame_rate").toInt() == 30 &&
+                defaultValue("video_recording/animated_image_clarity").toString() ==
+                    QStringLiteral("1080p") &&
+                defaultValue("video_recording/animated_image_frame_rate").toInt() == 10 &&
+                defaultValue("video_recording/animated_image_format").toString() ==
+                    QStringLiteral("gif") &&
+                defaultValue("video_recording/encoder").toString() ==
+                    QStringLiteral("h264") &&
+                defaultValue("video_recording/encoding_preset").toString() ==
+                    QStringLiteral("veryfast") &&
+                defaultValue("video_recording/hide_toolbar_in_recording").toBool() &&
+                defaultValue("tray/left_click_action").toString() ==
+                    QStringLiteral("screenshot"),
+            "new settings defaults do not match the requested contract");
+
+    const QMap<QString, QJsonArray> drawingShortcutDefaults{
+        {QStringLiteral("shape"),
+         QJsonArray{QStringLiteral("1"), QStringLiteral("S")}},
+        {QStringLiteral("arrow"),
+         QJsonArray{QStringLiteral("2"), QStringLiteral("A")}},
+        {QStringLiteral("brush"),
+         QJsonArray{QStringLiteral("3"), QStringLiteral("P")}},
+        {QStringLiteral("highlight"),
+         QJsonArray{QStringLiteral("4"), QStringLiteral("H")}},
+        {QStringLiteral("text"),
+         QJsonArray{QStringLiteral("5"), QStringLiteral("T")}},
+        {QStringLiteral("serial_number"),
+         QJsonArray{QStringLiteral("6"), QStringLiteral("N")}},
+        {QStringLiteral("filter"),
+         QJsonArray{QStringLiteral("7"), QStringLiteral("F")}},
+        {QStringLiteral("eraser"),
+         QJsonArray{QStringLiteral("8"), QStringLiteral("E")}},
+        {QStringLiteral("watermark"),
+         QJsonArray{QStringLiteral("9"), QStringLiteral("W")}},
+    };
+    for (auto it = drawingShortcutDefaults.cbegin(); it != drawingShortcutDefaults.cend(); ++it) {
+        const QString key = QStringLiteral("drawing_shortcuts/") + it.key();
+        const auto* entry = storage::ConfigurationSchema::entry(key);
+        require(entry != nullptr && entry->defaultValue.toArray() == it.value() &&
+                    entry->maximumListItems == 2,
+                "drawing shortcut defaults and list limits must remain stable");
+    }
+
+    for (const QString& malformed : {QStringLiteral("Ctrl+K, Ctrl+C"),
+                                     QStringLiteral("Ctrl"),
+                                     QStringLiteral("NotARealKey")}) {
+        const auto normalized = storage::ConfigurationSchema::normalize(
+            QStringLiteral("drawing_shortcuts/shape"), QJsonArray{malformed});
+        require(normalized.valid && normalized.changed && normalized.value.toArray().isEmpty(),
+                "malformed drawing shortcuts must be removed during normalization");
+    }
+
+    const auto normalizedDrawingTools = storage::ConfigurationSchema::normalize(
+        QStringLiteral("drawing/quick_selection_disabled_tools"),
+        QJsonArray{QStringLiteral(" FREE-DRAW "), QStringLiteral("pen-filter"),
+                   QStringLiteral("PEN-FILTER"), QStringLiteral("unknown"), 42});
+    require(normalizedDrawingTools.valid && normalizedDrawingTools.changed &&
+                normalizedDrawingTools.value.toArray() ==
+                    QJsonArray{QStringLiteral("free-draw"), QStringLiteral("pen-filter")},
+            "drawing-tool lists must trim, canonicalize, deduplicate, and drop invalid entries");
+    require(!storage::ConfigurationSchema::normalize(
+                 QStringLiteral("drawing/quick_selection_disabled_tools"),
+                 QStringLiteral("free-draw"))
+                 .valid,
+            "drawing-tool lists must reject non-array values");
+
+    for (const int frameRate : {10, 15, 24, 30, 60, 120, 83}) {
+        require(storage::ConfigurationSchema::normalize(
+                    QStringLiteral("video_recording/frame_rate"), frameRate)
+                    .valid,
+                "every advertised video frame rate must be accepted");
+    }
+    for (const int frameRate : {0, 25, 29, 84, 121}) {
+        require(!storage::ConfigurationSchema::normalize(
+                     QStringLiteral("video_recording/frame_rate"), frameRate)
+                     .valid,
+                "unadvertised video frame rates must be rejected");
+    }
+    for (const int frameRate : {10, 15, 24}) {
+        require(storage::ConfigurationSchema::normalize(
+                    QStringLiteral("video_recording/animated_image_frame_rate"), frameRate)
+                    .valid,
+                "every advertised animated-image frame rate must be accepted");
+    }
+    require(!storage::ConfigurationSchema::normalize(
+                 QStringLiteral("video_recording/animated_image_frame_rate"), 30)
+                 .valid &&
+                !storage::ConfigurationSchema::normalize(
+                     QStringLiteral("video_recording/frame_rate"), 30.5)
+                     .valid,
+            "frame-rate settings must reject unsupported and non-integral values");
+
+    const QMap<QString, QStringList> allowedStringValues{
+        {QStringLiteral("screenshot/auto_execute_after_text_recognition"),
+         {QStringLiteral("no_action"), QStringLiteral("copy_text"),
+          QStringLiteral("copy_text_and_end_screenshot"), QStringLiteral("quick_copy_text"),
+          QStringLiteral("quick_copy_text_and_end_screenshot"),
+          QStringLiteral("enable_edit_mode")}},
+        {QStringLiteral("screenshot/double_click_action"),
+         {QStringLiteral("copy"), QStringLiteral("save"), QStringLiteral("pin"),
+          QStringLiteral("none")}},
+        {QStringLiteral("screenshot/middle_mouse_button_action"),
+         {QStringLiteral("copy"), QStringLiteral("save"), QStringLiteral("pin"),
+          QStringLiteral("none")}},
+        {QStringLiteral("pin_to_screen/mouse_wheel_zoom_mode"),
+         {QStringLiteral("mouse_position"), QStringLiteral("top_left"),
+          QStringLiteral("top_right"), QStringLiteral("bottom_left"),
+          QStringLiteral("bottom_right"), QStringLiteral("center")}},
+        {QStringLiteral("video_recording/video_clarity"),
+         {QStringLiteral("4k"), QStringLiteral("2k"), QStringLiteral("1080p"),
+          QStringLiteral("720p"), QStringLiteral("480p")}},
+        {QStringLiteral("video_recording/animated_image_clarity"),
+         {QStringLiteral("1080p"), QStringLiteral("720p"), QStringLiteral("480p")}},
+        {QStringLiteral("video_recording/animated_image_format"),
+         {QStringLiteral("gif"), QStringLiteral("apng"), QStringLiteral("webp")}},
+        {QStringLiteral("video_recording/encoder"),
+         {QStringLiteral("h264"), QStringLiteral("h265")}},
+        {QStringLiteral("video_recording/encoding_preset"),
+         {QStringLiteral("ultrafast"), QStringLiteral("veryfast"),
+          QStringLiteral("medium"), QStringLiteral("veryslow"), QStringLiteral("placebo")}},
+        {QStringLiteral("tray/left_click_action"),
+         {QStringLiteral("screenshot"), QStringLiteral("show_main_window")}},
+    };
+    for (auto it = allowedStringValues.cbegin(); it != allowedStringValues.cend(); ++it) {
+        const auto* entry = storage::ConfigurationSchema::entry(it.key());
+        require(entry != nullptr && entry->allowedStringValues == it.value(),
+                "select schema options must exactly match the UI contract");
+        for (const QString& value : it.value()) {
+            require(storage::ConfigurationSchema::normalize(it.key(), value).valid,
+                    "every advertised select value must be accepted");
+        }
+        require(!storage::ConfigurationSchema::normalize(
+                     it.key(), QStringLiteral("unsupported-value"))
+                     .valid,
+                "select settings must reject unsupported values");
+    }
 }
 
 void screenshotUiSchemaRepairsStructuredValues() {
@@ -322,6 +484,146 @@ void screenshotTranslationSettingsRoundTripSupportedValues() {
     require(normalizedSource.valid && normalizedSource.changed &&
                 normalizedSource.value.toString() == QStringLiteral("zh-Hans"),
             "translation language codes should normalize to their canonical persisted form");
+}
+
+void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "failed to create new-settings adapter directory");
+    const QString executable = QDir(temporary.path()).filePath(QStringLiteral("bin"));
+    require(QDir().mkpath(executable), "failed to create new-settings executable directory");
+    auto& applicationStorage = initialize(executable, temporary.path());
+
+    const storage::ScreenshotSettings screenshot;
+    require(screenshot.autoExecuteAfterTextRecognition() == QStringLiteral("no_action") &&
+                screenshot.doubleClickAction() == QStringLiteral("copy") &&
+                screenshot.middleMouseButtonAction() == QStringLiteral("pin") &&
+                !screenshot.autoSaveAfterCopy() && !screenshot.copyImageFileToClipboard(),
+            "screenshot adapters must expose requested defaults");
+    require(screenshot.setAutoExecuteAfterTextRecognition(
+                QStringLiteral("quick_copy_text_and_end_screenshot")) &&
+                screenshot.setDoubleClickAction(QStringLiteral("save")) &&
+                screenshot.setMiddleMouseButtonAction(QStringLiteral("none")) &&
+                screenshot.setAutoSaveAfterCopy(true) &&
+                screenshot.setCopyImageFileToClipboard(true) &&
+                screenshot.autoExecuteAfterTextRecognition() ==
+                    QStringLiteral("quick_copy_text_and_end_screenshot") &&
+                screenshot.doubleClickAction() == QStringLiteral("save") &&
+                screenshot.middleMouseButtonAction() == QStringLiteral("none") &&
+                screenshot.autoSaveAfterCopy() && screenshot.copyImageFileToClipboard(),
+            "screenshot adapters must persist every new value type");
+    require(!screenshot.setDoubleClickAction(QStringLiteral("unsupported")) &&
+                screenshot.doubleClickAction() == QStringLiteral("save"),
+            "invalid screenshot actions must be rejected without changing the stored value");
+
+    const storage::DrawingSettings drawing;
+    require(drawing.quickSelectionDisabledTools() ==
+                QStringList{QStringLiteral("free-draw"), QStringLiteral("pen-filter")} &&
+                drawing.setQuickSelectionDisabledTools(
+                    {QStringLiteral(" PEN-FILTER "), QStringLiteral("shape"),
+                     QStringLiteral("pen-filter"), QStringLiteral("unsupported")}) &&
+                drawing.quickSelectionDisabledTools() ==
+                    QStringList{QStringLiteral("pen-filter"), QStringLiteral("shape")},
+            "drawing exclusion adapter must use schema canonicalization");
+
+    const storage::PinToScreenSettings pin;
+    require(pin.mouseWheelZoomMode() == QStringLiteral("mouse_position") &&
+                pin.automaticTextRecognition() && pin.autoResizeWindow() &&
+                pin.setMouseWheelZoomMode(QStringLiteral("bottom_right")) &&
+                pin.setAutomaticTextRecognition(false) && pin.setAutoResizeWindow(false) &&
+                pin.mouseWheelZoomMode() == QStringLiteral("bottom_right") &&
+                !pin.automaticTextRecognition() && !pin.autoResizeWindow(),
+            "pin-to-screen adapters must round-trip requested settings");
+    require(!pin.setMouseWheelZoomMode(QStringLiteral("unsupported")) &&
+                pin.mouseWheelZoomMode() == QStringLiteral("bottom_right"),
+            "invalid pin zoom modes must not replace the stored mode");
+
+    const storage::RecordingSettings recording;
+    require(recording.videoClarity() == QStringLiteral("1080p") &&
+                recording.frameRate() == 30 &&
+                recording.animatedImageClarity() == QStringLiteral("1080p") &&
+                recording.animatedImageFrameRate() == 10 &&
+                recording.animatedImageFormat() == QStringLiteral("gif") &&
+                recording.encoder() == QStringLiteral("h264") &&
+                recording.encodingPreset() == QStringLiteral("veryfast") &&
+                recording.hideToolbarInRecording(),
+            "recording adapters must expose requested defaults");
+    require(recording.setVideoClarity(QStringLiteral("2k")) && recording.setFrameRate(83) &&
+                recording.setAnimatedImageClarity(QStringLiteral("720p")) &&
+                recording.setAnimatedImageFrameRate(24) &&
+                recording.setAnimatedImageFormat(QStringLiteral("webp")) &&
+                recording.setEncoder(QStringLiteral("h265")) &&
+                recording.setEncodingPreset(QStringLiteral("placebo")) &&
+                recording.setHideToolbarInRecording(false) &&
+                recording.videoClarity() == QStringLiteral("2k") &&
+                recording.frameRate() == 83 &&
+                recording.animatedImageClarity() == QStringLiteral("720p") &&
+                recording.animatedImageFrameRate() == 24 &&
+                recording.animatedImageFormat() == QStringLiteral("webp") &&
+                recording.encoder() == QStringLiteral("h265") &&
+                recording.encodingPreset() == QStringLiteral("placebo") &&
+                !recording.hideToolbarInRecording(),
+            "recording adapters must round-trip every requested option");
+    require(!recording.setFrameRate(25) && !recording.setAnimatedImageFrameRate(30) &&
+                !recording.setVideoClarity(QStringLiteral("8k")) &&
+                recording.frameRate() == 83 && recording.animatedImageFrameRate() == 24 &&
+                recording.videoClarity() == QStringLiteral("2k"),
+            "recording adapters must reject unadvertised values atomically");
+
+    const storage::TraySettings tray;
+    const storage::GlobalShortcutSettings globalShortcuts;
+    require(tray.leftClickAction() == QStringLiteral("screenshot") &&
+                tray.setLeftClickAction(QStringLiteral("show_main_window")) &&
+                tray.leftClickAction() == QStringLiteral("show_main_window") &&
+                !tray.setLeftClickAction(QStringLiteral("unsupported")) &&
+                !globalShortcuts.disableOnFocusedFullscreenWindow() &&
+                globalShortcuts.setDisableOnFocusedFullscreenWindow(true) &&
+                globalShortcuts.disableOnFocusedFullscreenWindow(),
+            "tray and global-hotkey adapters must round-trip and validate their settings");
+
+    const storage::DrawingShortcutSettings drawingShortcuts;
+    const QMap<QString, QStringList> defaults = drawingShortcuts.allShortcuts();
+    require(defaults.size() == 9 &&
+                defaults.value(QStringLiteral("shape")) ==
+                    QStringList{QStringLiteral("1"), QStringLiteral("S")} &&
+                defaults.value(QStringLiteral("watermark")) ==
+                    QStringList{QStringLiteral("9"), QStringLiteral("W")} &&
+                drawingShortcuts.shortcuts(QStringLiteral("unsupported")).isEmpty() &&
+                !drawingShortcuts.setShortcuts(QStringLiteral("unsupported"),
+                                               {QStringLiteral("Q")}),
+            "drawing shortcut adapter must expose nine stable tools only");
+
+    require(drawingShortcuts.setShape({QStringLiteral("Ctrl+Shift+K"),
+                                       QStringLiteral("Alt+1")}) &&
+                drawingShortcuts.shape() ==
+                    QStringList{QStringLiteral("Ctrl+Shift+K"), QStringLiteral("Alt+1")},
+            "drawing shortcut adapter must persist normalized tool shortcuts");
+    const QMap<QString, QStringList> beforeCollision = drawingShortcuts.allShortcuts();
+    require(!drawingShortcuts.setArrow({QStringLiteral("ctrl+shift+k")}) &&
+                drawingShortcuts.allShortcuts() == beforeCollision,
+            "case-insensitive cross-tool collisions must reject the complete atomic update");
+
+    for (const QString& reserved : {QStringLiteral("Escape"), QStringLiteral("Delete"),
+                                    QStringLiteral("Ctrl+C"), QStringLiteral("Ctrl+Shift+Z"),
+                                    QStringLiteral(","), QStringLiteral("F4")}) {
+        require(!drawingShortcuts.setArrow({reserved}) &&
+                    drawingShortcuts.allShortcuts() == beforeCollision,
+                "canvas and screenshot commands must remain reserved from drawing shortcuts");
+    }
+
+    QMap<QString, QStringList> incomplete = beforeCollision;
+    incomplete.remove(QStringLiteral("watermark"));
+    require(!drawingShortcuts.setAllShortcutsAtomic(incomplete) &&
+                drawingShortcuts.allShortcuts() == beforeCollision,
+            "atomic drawing shortcut updates must require all nine tools");
+
+    QMap<QString, QStringList> emptyAssignment = beforeCollision;
+    emptyAssignment.insert(QStringLiteral("shape"), {});
+    require(drawingShortcuts.setAllShortcutsAtomic(emptyAssignment) &&
+                drawingShortcuts.shape().isEmpty(),
+            "drawing shortcuts must allow a tool to be deliberately left unassigned");
+
+    require(applicationStorage.configuration().flushNow().success,
+            "new settings adapter mutations must be flushable");
 }
 
 void smartSelectionAccessorAndSignal() {
@@ -553,9 +855,11 @@ int main(int argc, char** argv) {
     QCoreApplication::setApplicationName(QStringLiteral("storage-tests"));
     markerResolutionAndStatus();
     defaultsAndTypedRoundTrip();
+    newSettingsSchemaDefaultsAndValidationAreComplete();
     screenshotUiSchemaRepairsStructuredValues();
     screenshotUiAdaptersRoundTripTypedValues();
     screenshotTranslationSettingsRoundTripSupportedValues();
+    newSettingsAdaptersRoundTripAndRejectInvalidValues();
     smartSelectionAccessorAndSignal();
     unknownFieldsArePreserved();
     malformedConfigurationIsCopiedAndReplaced();

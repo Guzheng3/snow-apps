@@ -60,6 +60,10 @@ ScreenshotOverlayWindow::ScreenshotOverlayWindow(ScreenshotOverlayEventSink& eve
         m_canvas->installEventFilter(this);
         m_canvas->setFocusPolicy(Qt::StrongFocus);
         m_canvas->setMouseTracking(true);
+        connect(m_canvas, &SnowCanvasWidget::unhandledLeftDoubleClick, this,
+                [this]() { m_eventSink.handleUnhandledLeftDoubleClick(); });
+        connect(m_canvas, &SnowCanvasWidget::unhandledMiddleClick, this,
+                [this]() { m_eventSink.handleUnhandledMiddleClick(); });
     }
 
     initializeScreenshotSurface();
@@ -314,7 +318,6 @@ void ScreenshotOverlayWindow::updateScrollingThumbnail(const QImage& previewImag
                                            replacePreview, replacedPreviewRows);
     m_scrollingThumbnail->show();
     layoutScrollingThumbnail();
-    m_scrollingThumbnail->repaint();
 }
 
 void ScreenshotOverlayWindow::clearScrollingThumbnail() {
@@ -433,6 +436,13 @@ bool ScreenshotOverlayWindow::eventFilter(QObject* watched, QEvent* event) {
 }
 
 void ScreenshotOverlayWindow::keyPressEvent(QKeyEvent* event) {
+    // Key events can bubble from the canvas after its event filter declines to
+    // consume them. Inline text editing owns those keys; do not dispatch
+    // screenshot shortcuts from the parent window in that state.
+    if (m_canvas != nullptr && m_canvas->hasActiveTextEditing()) {
+        QWidget::keyPressEvent(event);
+        return;
+    }
     if (m_eventSink.handleOverlayKeyPress(event->key(), event->modifiers())) {
         event->accept();
         return;
@@ -579,6 +589,9 @@ bool ScreenshotOverlayWindow::handleCanvasEvent(QEvent* event) {
 
 bool ScreenshotOverlayWindow::handleCanvasKeyPress(QKeyEvent* event) {
     if (event == nullptr) {
+        return false;
+    }
+    if (m_canvas != nullptr && m_canvas->hasActiveTextEditing()) {
         return false;
     }
     if (!m_eventSink.handleOverlayKeyPress(event->key(), event->modifiers())) {

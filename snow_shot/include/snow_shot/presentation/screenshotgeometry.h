@@ -144,6 +144,9 @@ class ScreenshotGeometryMapper final {
         const QSize& fullResolutionSize, const QRect& availableLogicalGeometry,
         const QRect& screenLogicalGeometry, const QRect& screenNativeGeometry,
         int logicalMargin = 16);
+    [[nodiscard]] static ScreenshotPinnedImageFit centerImageAtFullResolution(
+        const QSize& fullResolutionSize, const QRect& availableLogicalGeometry,
+        const QRect& screenLogicalGeometry, const QRect& screenNativeGeometry);
     [[nodiscard]] static QPoint clampContentPositionToRect(const QPoint& desiredPosition,
                                                            const QRect& contentRect,
                                                            const QRect& bounds);

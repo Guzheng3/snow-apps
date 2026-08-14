@@ -59,7 +59,7 @@ class CatalogTranslator final : public QTranslator {
 void builtInCatalogIsCompleteAndValid() {
     const settings::SettingsCatalog& catalog = settings::builtInSettingsCatalog();
     require(catalog.validationErrors().isEmpty(), "built-in settings catalog must validate");
-    require(catalog.pages().size() == 6, "catalog must contain six pages");
+    require(catalog.pages().size() == 7, "catalog must contain seven pages");
 
     qsizetype sectionCount = 0;
     qsizetype itemCount = 0;
@@ -90,8 +90,8 @@ void builtInCatalogIsCompleteAndValid() {
             }
         }
     }
-    require(sectionCount == 13 && itemCount == 35,
-            "catalog must contain the expected thirteen sections and thirty-five items");
+    require(sectionCount == 17 && itemCount == 64,
+            "catalog must contain the expected seventeen sections and sixty-four items");
     const auto* functionPage = catalog.page(QStringLiteral("function-settings"));
     const auto* smartSelection =
         catalog.item({QStringLiteral("function-settings"), QStringLiteral("screenshot-settings"),
@@ -115,19 +115,26 @@ void builtInCatalogIsCompleteAndValid() {
                 settingsGroup->pages.size() == 4 &&
                 settingsGroup->pages.constLast().pageId == QStringLiteral("system-settings"),
             "Settings navigation group must expose System Settings");
+    const auto* hotkeyNavigation =
+        std::get_if<settings::SettingsNavigationPageDefinition>(&catalog.navigation().at(3));
+    require(hotkeyNavigation != nullptr &&
+                hotkeyNavigation->pageId == QStringLiteral("hotkey-settings") &&
+                catalog.page(QStringLiteral("hotkey-settings"))->route ==
+                    QStringLiteral("/settings/hotKeySettings"),
+            "Hotkey Settings must be a standalone entry below Settings");
 
     const auto* interfacePage = catalog.page(QStringLiteral("interface-settings"));
     require(interfacePage != nullptr && interfacePage->sections.size() == 5 &&
                 interfacePage->sections.at(1).id == QStringLiteral("interface-screenshot") &&
-                interfacePage->sections.at(2).id == QStringLiteral("toolbar") &&
+                interfacePage->sections.at(2).id == QStringLiteral("drawing") &&
                 interfacePage->sections.at(3).id == QStringLiteral("pin-to-screen") &&
                 interfacePage->sections.at(4).id == QStringLiteral("tray"),
-            "Interface Settings must expose Screenshot, Toolbar, Pin to Screen, and Tray");
+            "Interface Settings must expose Screenshot, Drawing, Pin to Screen, and Tray");
     const auto* toolbarSize =
         catalog.item({QStringLiteral("interface-settings"), QStringLiteral("interface-screenshot"),
                       QStringLiteral("interface.screenshot.toolbar-size")});
     const auto* toolbarEditor =
-        catalog.item({QStringLiteral("interface-settings"), QStringLiteral("toolbar"),
+        catalog.item({QStringLiteral("interface-settings"), QStringLiteral("drawing"),
                       QStringLiteral("interface.toolbar.drawing-toolbar-editor")});
     const auto& toolbarSection = interfacePage->sections.at(2);
     const auto* trayIcon =
@@ -136,9 +143,9 @@ void builtInCatalogIsCompleteAndValid() {
     require(toolbarSize != nullptr && toolbarEditor != nullptr && trayIcon != nullptr &&
                 toolbarSize->configurationKey == QStringLiteral("screenshot_ui/toolbar_size") &&
                 toolbarEditor->configurationKey == QStringLiteral("screenshot_toolbar/layout") &&
-                toolbarSection.title.translated() == QStringLiteral("Drawing toolbar") &&
+                toolbarSection.title.translated() == QStringLiteral("Drawing") &&
                 toolbarSection.searchDescription.translated() ==
-                    QStringLiteral("Position and stack drawing tools on the screenshot toolbar") &&
+                    QStringLiteral("Configure drawing tools and the screenshot drawing toolbar") &&
                 toolbarEditor->title.translated() == QStringLiteral("Drawing toolbar settings") &&
                 toolbarEditor->description.translated() ==
                     QStringLiteral("Drag drawing tools to reorder them or stack them in the same "
@@ -395,8 +402,8 @@ void invalidCatalogReportsAllConformanceErrors() {
 
 void searchIndexIsGeneratedAndRanked() {
     settings::SettingsSearchIndex index(settings::builtInSettingsCatalog());
-    require(index.entries().size() == 54 && index.search(QString()).size() == 54,
-            "search must generate all fifty-four catalog nodes in catalog order");
+    require(index.entries().size() == 88 && index.search(QString()).size() == 88,
+            "search must generate all eighty-eight catalog nodes in catalog order");
 
     int pages = 0;
     int sections = 0;
@@ -423,7 +430,7 @@ void searchIndexIsGeneratedAndRanked() {
             break;
         }
     }
-    require(pages == 6 && sections == 13 && items == 35,
+    require(pages == 7 && sections == 17 && items == 64,
             "search node counts must match catalog page, section, and item counts");
 
     const auto theme = index.search(QStringLiteral("theme"));
@@ -516,7 +523,7 @@ void addingCatalogNodesAutomaticallyExpandsSearch() {
     require(expanded.validationErrors().isEmpty(),
             "a normal additional catalog page must validate without consumer changes");
     settings::SettingsSearchIndex index(expanded);
-    require(index.entries().size() == 57 &&
+    require(index.entries().size() == 91 &&
                 index.search(QStringLiteral("extra item")).constFirst().location ==
                     settings::SettingsLocation{QStringLiteral("extra-page"),
                                                QStringLiteral("extra-section"),

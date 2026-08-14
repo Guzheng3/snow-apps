@@ -9,6 +9,7 @@
 
 class QScreen;
 class QEvent;
+class QKeyEvent;
 class ScreenshotFloatingToolPaletteWindow;
 class ScreenshotPinnedWindow;
 class ScreenshotToolPaletteHost;
@@ -38,6 +39,7 @@ class ScreenshotPinnedEditController final : public QObject {
 
   private:
     bool eventFilter(QObject* watched, QEvent* event) override;
+    bool handleDrawingShortcut(QKeyEvent* event);
     QScreen* placementScreen() const;
     QRect placementLogicalBounds() const;
     QRect placementPhysicalBounds() const;

@@ -4,6 +4,7 @@
 #include "snow_shot/storage/capturehistorytypes.h"
 
 #include <QColor>
+#include <QMap>
 #include <QString>
 #include <QStringList>
 #include <QVector>
@@ -66,10 +67,61 @@ class ShortcutSettings final {
     bool setOpenSettings(const QStringList& shortcuts) const;
 };
 
+class GlobalShortcutSettings final {
+  public:
+    [[nodiscard]] bool disableOnFocusedFullscreenWindow() const;
+    bool setDisableOnFocusedFullscreenWindow(bool disabled) const;
+};
+
 class ScreenshotSettings final {
   public:
     [[nodiscard]] int delaySeconds() const;
     bool setDelaySeconds(int seconds) const;
+    [[nodiscard]] QString autoExecuteAfterTextRecognition() const;
+    bool setAutoExecuteAfterTextRecognition(const QString& action) const;
+    [[nodiscard]] QString doubleClickAction() const;
+    bool setDoubleClickAction(const QString& action) const;
+    [[nodiscard]] QString middleMouseButtonAction() const;
+    bool setMiddleMouseButtonAction(const QString& action) const;
+    [[nodiscard]] bool autoSaveAfterCopy() const;
+    bool setAutoSaveAfterCopy(bool enabled) const;
+    [[nodiscard]] bool copyImageFileToClipboard() const;
+    bool setCopyImageFileToClipboard(bool enabled) const;
+};
+
+class DrawingSettings final {
+  public:
+    [[nodiscard]] QStringList quickSelectionDisabledTools() const;
+    bool setQuickSelectionDisabledTools(const QStringList& tools) const;
+};
+
+class DrawingShortcutSettings final {
+  public:
+    [[nodiscard]] static bool isReservedShortcut(const QString& shortcut);
+
+    [[nodiscard]] QStringList shape() const;
+    bool setShape(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList arrow() const;
+    bool setArrow(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList brush() const;
+    bool setBrush(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList highlight() const;
+    bool setHighlight(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList text() const;
+    bool setText(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList serialNumber() const;
+    bool setSerialNumber(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList filter() const;
+    bool setFilter(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList eraser() const;
+    bool setEraser(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList watermark() const;
+    bool setWatermark(const QStringList& shortcuts) const;
+
+    [[nodiscard]] QStringList shortcuts(const QString& toolId) const;
+    bool setShortcuts(const QString& toolId, const QStringList& shortcuts) const;
+    [[nodiscard]] QMap<QString, QStringList> allShortcuts() const;
+    bool setAllShortcutsAtomic(const QMap<QString, QStringList>& shortcutsByTool) const;
 };
 
 struct ScreenshotTranslationConfiguration {
@@ -113,6 +165,22 @@ class RecordingSettings final {
     bool setMicrophoneEnabled(bool enabled) const;
     [[nodiscard]] bool systemAudioEnabled() const;
     bool setSystemAudioEnabled(bool enabled) const;
+    [[nodiscard]] QString videoClarity() const;
+    bool setVideoClarity(const QString& clarity) const;
+    [[nodiscard]] int frameRate() const;
+    bool setFrameRate(int frameRate) const;
+    [[nodiscard]] QString animatedImageClarity() const;
+    bool setAnimatedImageClarity(const QString& clarity) const;
+    [[nodiscard]] int animatedImageFrameRate() const;
+    bool setAnimatedImageFrameRate(int frameRate) const;
+    [[nodiscard]] QString animatedImageFormat() const;
+    bool setAnimatedImageFormat(const QString& format) const;
+    [[nodiscard]] QString encoder() const;
+    bool setEncoder(const QString& encoder) const;
+    [[nodiscard]] QString encodingPreset() const;
+    bool setEncodingPreset(const QString& preset) const;
+    [[nodiscard]] bool hideToolbarInRecording() const;
+    bool setHideToolbarInRecording(bool hide) const;
 };
 
 class ScreenshotToolbarSettings final {
@@ -131,6 +199,12 @@ class PinToScreenSettings final {
   public:
     [[nodiscard]] QColor borderColor() const;
     bool setBorderColor(const QColor& color) const;
+    [[nodiscard]] QString mouseWheelZoomMode() const;
+    bool setMouseWheelZoomMode(const QString& mode) const;
+    [[nodiscard]] bool automaticTextRecognition() const;
+    bool setAutomaticTextRecognition(bool enabled) const;
+    [[nodiscard]] bool autoResizeWindow() const;
+    bool setAutoResizeWindow(bool enabled) const;
 };
 
 class TraySettings final {
@@ -141,6 +215,14 @@ class TraySettings final {
     bool setIcon(const QString& icon) const;
     [[nodiscard]] QString customIcon() const;
     bool setCustomIcon(const QString& path) const;
+    [[nodiscard]] QString leftClickAction() const;
+    bool setLeftClickAction(const QString& action) const;
+};
+
+class SystemSettings final {
+  public:
+    [[nodiscard]] bool autoStartAtBoot() const;
+    bool setAutoStartAtBoot(bool enabled) const;
 };
 
 class HistorySettings final {

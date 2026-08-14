@@ -7,6 +7,10 @@
 #include "videorecordinggeometry.h"
 #include "snow_shot/storage/settingsadapters.h"
 
+#if defined(Q_OS_WIN) || defined(_WIN32)
+#include "snow_shot/platform/windows/windowchrome.h"
+#endif
+
 #include "snow_capture.h"
 
 #include <QApplication>
@@ -23,12 +27,88 @@
 #include <QUrl>
 
 #include <chrono>
+#include <cstdint>
 #include <future>
 #include <utility>
 
 namespace {
-constexpr int kRecordingFps = 30;
 constexpr int kDurationTickMilliseconds = 100;
+
+struct RecordingExportSettings {
+    SnowCaptureRecordingExportFormat format = SNOW_CAPTURE_RECORDING_EXPORT_FORMAT_MP4;
+    SnowCaptureVideoCodec codec = SNOW_CAPTURE_VIDEO_CODEC_H264;
+    SnowCaptureVideoEncodingPreset preset = SNOW_CAPTURE_VIDEO_ENCODING_PRESET_VERYFAST;
+    QSize maximumSize{1920, 1080};
+    uint32_t targetFps = 30;
+    QString extension = QStringLiteral("mp4");
+};
+
+int validRecordingFrameRate(int frameRate) {
+    return frameRate > 0 ? frameRate : 30;
+}
+
+int validAnimatedImageFrameRate(int frameRate) {
+    return frameRate > 0 ? frameRate : 10;
+}
+
+SnowCaptureVideoCodec videoCodec(const QString& encoder) {
+    return encoder == QStringLiteral("h265") ? SNOW_CAPTURE_VIDEO_CODEC_H265
+                                              : SNOW_CAPTURE_VIDEO_CODEC_H264;
+}
+
+SnowCaptureVideoEncodingPreset videoEncodingPreset(const QString& preset) {
+    if (preset == QStringLiteral("ultrafast")) {
+        return SNOW_CAPTURE_VIDEO_ENCODING_PRESET_ULTRAFAST;
+    }
+    if (preset == QStringLiteral("medium")) {
+        return SNOW_CAPTURE_VIDEO_ENCODING_PRESET_MEDIUM;
+    }
+    if (preset == QStringLiteral("veryslow")) {
+        return SNOW_CAPTURE_VIDEO_ENCODING_PRESET_VERYSLOW;
+    }
+    if (preset == QStringLiteral("placebo")) {
+        return SNOW_CAPTURE_VIDEO_ENCODING_PRESET_PLACEBO;
+    }
+    return SNOW_CAPTURE_VIDEO_ENCODING_PRESET_VERYFAST;
+}
+
+RecordingExportSettings recordingExportSettings(bool animatedImage, const QSize& captureSize) {
+    const snow_shot::storage::RecordingSettings settings;
+    RecordingExportSettings result;
+    result.codec = videoCodec(settings.encoder());
+    result.preset = videoEncodingPreset(settings.encodingPreset());
+
+    if (!animatedImage) {
+        result.maximumSize =
+            snow_shot::presentation::recording::videoRecordingMaximumSizeForClarity(
+                settings.videoClarity());
+        result.maximumSize =
+            snow_shot::presentation::recording::videoRecordingOrientedMaximumSize(
+                result.maximumSize, captureSize);
+        result.targetFps = static_cast<uint32_t>(validRecordingFrameRate(settings.frameRate()));
+        return result;
+    }
+
+    result.maximumSize =
+        snow_shot::presentation::recording::videoRecordingMaximumSizeForClarity(
+            settings.animatedImageClarity());
+    result.maximumSize = snow_shot::presentation::recording::videoRecordingOrientedMaximumSize(
+        result.maximumSize, captureSize);
+    result.targetFps =
+        static_cast<uint32_t>(validAnimatedImageFrameRate(settings.animatedImageFrameRate()));
+    const QString format = settings.animatedImageFormat();
+    if (format == QStringLiteral("apng")) {
+        result.format = SNOW_CAPTURE_RECORDING_EXPORT_FORMAT_APNG;
+        result.extension = QStringLiteral("apng");
+    } else if (format == QStringLiteral("webp")) {
+        result.format = SNOW_CAPTURE_RECORDING_EXPORT_FORMAT_WEBP;
+        result.extension = QStringLiteral("webp");
+    } else {
+        result.format = SNOW_CAPTURE_RECORDING_EXPORT_FORMAT_GIF;
+        result.extension = QStringLiteral("gif");
+    }
+    return result;
+}
 
 QString recordingDirectory() {
     QString root = QStandardPaths::writableLocation(QStandardPaths::MoviesLocation);
@@ -38,8 +118,7 @@ QString recordingDirectory() {
     return QDir(root).filePath(QStringLiteral("SnowShot"));
 }
 
-QString recordingFilePath(bool gif) {
-    const QString extension = gif ? QStringLiteral("gif") : QStringLiteral("mp4");
+QString recordingFilePath(const QString& extension) {
     const QString fileName =
         QStringLiteral("SnowShot_Video_%1.%2")
             .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd_HH-mm-ss")))
@@ -96,6 +175,7 @@ struct VideoRecordingController::Impl {
             snow_capture_recording_session_destroy(recordingSession);
         }
         recordingSession = nullptr;
+        restoreToolbarCaptureVisibility();
         if (toolbarWindow != nullptr) {
             toolbarWindow->hide();
             toolbarWindow->deleteLater();
@@ -178,7 +258,8 @@ struct VideoRecordingController::Impl {
                          [this]() { openFolder(); });
         QObject::connect(palette, &ScreenshotToolPalette::recordingCloseRequested, &owner,
                          [this]() { close(); });
-        QObject::connect(palette, &ScreenshotToolPalette::recordingCopyGifRequested, &owner,
+        QObject::connect(palette, &ScreenshotToolPalette::recordingCopyAnimatedImageRequested,
+                         &owner,
                          [this]() { stop(true, true, false); });
         QObject::connect(palette, &ScreenshotToolPalette::recordingCopyVideoRequested, &owner,
                          [this]() { stop(false, true, false); });
@@ -210,12 +291,13 @@ struct VideoRecordingController::Impl {
 
             const QByteArray workingDirectoryUtf8 =
                 QDir::toNativeSeparators(workingDirectory.absolutePath()).toUtf8();
+            const snow_shot::storage::RecordingSettings settings;
             const SnowCaptureRecordingConfig config{
                 captureRegion.x(),
                 captureRegion.y(),
                 static_cast<uint32_t>(captureRegion.width()),
                 static_cast<uint32_t>(captureRegion.height()),
-                kRecordingFps,
+                static_cast<uint32_t>(validRecordingFrameRate(settings.frameRate())),
                 static_cast<uint8_t>(microphoneEnabled),
                 static_cast<uint8_t>(systemAudioEnabled),
                 {0, 0},
@@ -223,6 +305,9 @@ struct VideoRecordingController::Impl {
                 {},
             };
             recordingSession = snow_capture_recording_session_create(&config);
+            if (recordingSession != nullptr && settings.hideToolbarInRecording()) {
+                excludeToolbarFromCapture();
+            }
             if (recordingSession == nullptr ||
                 snow_capture_recording_session_start(recordingSession) == 0) {
                 const QString error = captureError();
@@ -230,6 +315,7 @@ struct VideoRecordingController::Impl {
                     snow_capture_recording_session_destroy(recordingSession);
                     recordingSession = nullptr;
                 }
+                restoreToolbarCaptureVisibility();
                 busy = false;
                 syncUi();
                 if (areaWindow != nullptr) {
@@ -253,8 +339,10 @@ struct VideoRecordingController::Impl {
                 areaWindow->raise();
             }
             if (toolbarWindow != nullptr) {
-                toolbarWindow->show();
-                toolbarWindow->raise();
+                if (!toolbarHiddenForCapture) {
+                    toolbarWindow->show();
+                    toolbarWindow->raise();
+                }
             }
             durationTimer.start();
         });
@@ -288,7 +376,7 @@ struct VideoRecordingController::Impl {
         syncUi();
     }
 
-    void stop(bool gif, bool copyToClipboard, bool closeAfter) {
+    void stop(bool animatedImage, bool copyToClipboard, bool closeAfter) {
         if (busy) {
             return;
         }
@@ -303,12 +391,25 @@ struct VideoRecordingController::Impl {
         durationMilliseconds = 0;
         busy = true;
         syncUi();
-        const QString outputPath = recordingFilePath(gif);
+        const RecordingExportSettings exportSettings =
+            recordingExportSettings(animatedImage, captureRegion.size());
+        const QString outputPath = recordingFilePath(exportSettings.extension);
         const QByteArray outputUtf8 = QDir::toNativeSeparators(outputPath).toUtf8();
         SnowCaptureRecordingSession* session = recordingSession;
-        exportFuture = std::async(std::launch::async, [session, outputUtf8, gif]() {
-            const bool ok = snow_capture_recording_session_stop_and_export(
-                                session, outputUtf8.constData(), static_cast<uint8_t>(gif)) != 0;
+        exportFuture = std::async(std::launch::async, [session, outputUtf8, exportSettings]() {
+            const SnowCaptureRecordingExportConfig config{
+                SNOW_CAPTURE_RECORDING_EXPORT_CONFIG_VERSION,
+                sizeof(SnowCaptureRecordingExportConfig),
+                outputUtf8.constData(),
+                static_cast<uint32_t>(exportSettings.format),
+                static_cast<uint32_t>(exportSettings.maximumSize.width()),
+                static_cast<uint32_t>(exportSettings.maximumSize.height()),
+                exportSettings.targetFps,
+                static_cast<uint32_t>(exportSettings.codec),
+                static_cast<uint32_t>(exportSettings.preset),
+                {},
+            };
+            const bool ok = snow_capture_recording_session_stop_and_export_v1(session, &config) != 0;
             return std::make_pair(ok, ok ? QString() : captureError());
         });
         pendingOutputPath = outputPath;
@@ -330,6 +431,7 @@ struct VideoRecordingController::Impl {
             snow_capture_recording_session_destroy(recordingSession);
             recordingSession = nullptr;
         }
+        restoreToolbarCaptureVisibility();
         state = ScreenshotToolPalette::RecordingState::Idle;
         busy = false;
         durationMilliseconds = 0;
@@ -362,11 +464,49 @@ struct VideoRecordingController::Impl {
     }
 
     void hideWindows() {
+        restoreToolbarCaptureVisibility();
         if (toolbarWindow != nullptr) {
             toolbarWindow->hide();
         }
         if (areaWindow != nullptr) {
             areaWindow->hide();
+        }
+    }
+
+    void excludeToolbarFromCapture() {
+        restoreToolbarCaptureVisibility();
+        if (toolbarWindow == nullptr) {
+            return;
+        }
+#if defined(Q_OS_WIN) || defined(_WIN32)
+        if (snow_shot::platform::windows::setWindowExcludedFromCapture(toolbarWindow, true)) {
+            toolbarExcludedFromCapture = true;
+            return;
+        }
+#endif
+        toolbarWindow->hide();
+        toolbarHiddenForCapture = true;
+    }
+
+    void restoreToolbarCaptureVisibility() {
+        if (toolbarWindow == nullptr) {
+            toolbarExcludedFromCapture = false;
+            toolbarHiddenForCapture = false;
+            return;
+        }
+#if defined(Q_OS_WIN) || defined(_WIN32)
+        if (toolbarExcludedFromCapture) {
+            static_cast<void>(snow_shot::platform::windows::setWindowExcludedFromCapture(
+                toolbarWindow, false));
+        }
+#endif
+        const bool showToolbar = toolbarHiddenForCapture &&
+                                 (areaWindow == nullptr || areaWindow->isVisible());
+        toolbarExcludedFromCapture = false;
+        toolbarHiddenForCapture = false;
+        if (showToolbar) {
+            toolbarWindow->show();
+            toolbarWindow->raise();
         }
     }
 
@@ -416,6 +556,8 @@ struct VideoRecordingController::Impl {
     bool startScheduled = false;
     bool pendingCopyToClipboard = false;
     bool pendingCloseAfter = false;
+    bool toolbarExcludedFromCapture = false;
+    bool toolbarHiddenForCapture = false;
 };
 
 VideoRecordingController::VideoRecordingController(QObject* parent)
