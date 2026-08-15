@@ -100,10 +100,49 @@ const QHash<QString, QStringList>& screenshotShortcutDefaults() {
         {QStringLiteral("qr_code_recognition"), {QStringLiteral("Ctrl+Q")}},
         {QStringLiteral("video_recording"), {QStringLiteral("Ctrl+R")}},
         {QStringLiteral("text_recognition"), {QStringLiteral("Ctrl+D")}},
+        {QStringLiteral("text_translation"), {QStringLiteral("Ctrl+T")}},
         {QStringLiteral("scrolling_screenshot"), {QStringLiteral("L")}},
         {QStringLiteral("save_as_file"), {QStringLiteral("Ctrl+S")}},
+        {QStringLiteral("pin_to_screen"), {QStringLiteral("Ctrl+F")}},
+        {QStringLiteral("cancel_screenshot"), {QStringLiteral("Esc")}},
+        {QStringLiteral("copy_to_clipboard"), {QStringLiteral("Ctrl+C")}},
+        {QStringLiteral("undo"), {QStringLiteral("Ctrl+Z")}},
+        {QStringLiteral("redo"), {QStringLiteral("Ctrl+Y")}},
     };
     return defaults;
+}
+
+const QStringList& screenshotCategoryShortcutIds() {
+    static const QStringList ids{
+        QStringLiteral("move_tool"),
+        QStringLiteral("move_cursor_up"),
+        QStringLiteral("move_cursor_down"),
+        QStringLiteral("move_cursor_left"),
+        QStringLiteral("move_cursor_right"),
+        QStringLiteral("move_entire_selection"),
+        QStringLiteral("keep_selection_width_and_height_consistent"),
+        QStringLiteral("switch_selection_between_window_and_window_sub_element"),
+        QStringLiteral("previous_screenshot_history"),
+        QStringLiteral("next_screenshot_history"),
+        QStringLiteral("select_previously_selected_area"),
+        QStringLiteral("copy_color"),
+        QStringLiteral("pin_to_screen"),
+        QStringLiteral("video_recording"),
+        QStringLiteral("scrolling_screenshot"),
+        QStringLiteral("save_as_file"),
+        QStringLiteral("cancel_screenshot"),
+        QStringLiteral("copy_to_clipboard"),
+    };
+    return ids;
+}
+
+const QStringList& otherShortcutIds() {
+    static const QStringList ids{
+        QStringLiteral("table_recognition"), QStringLiteral("qr_code_recognition"),
+        QStringLiteral("text_recognition"),  QStringLiteral("text_translation"),
+        QStringLiteral("undo"),              QStringLiteral("redo"),
+    };
+    return ids;
 }
 
 const QHash<QString, QStringList>& pinToScreenShortcutDefaults() {
@@ -553,19 +592,13 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
         } else if (reset == settings::SettingsSectionReset::ScreenshotSettings) {
             m_smartSelection = true;
         } else if (reset == settings::SettingsSectionReset::ScreenshotEditorShortcuts) {
-            for (auto it = screenshotShortcutDefaults().cbegin();
-                 it != screenshotShortcutDefaults().cend(); ++it) {
+            for (const QString& actionId : screenshotCategoryShortcutIds()) {
                 m_localShortcuts.insert(
-                    localShortcutKey(settings::SettingsLocalShortcutScope::Screenshot, it.key()),
-                    it.value());
+                    localShortcutKey(settings::SettingsLocalShortcutScope::Screenshot, actionId),
+                    screenshotShortcutDefaults().value(actionId));
             }
         } else if (reset == settings::SettingsSectionReset::ScreenshotOtherShortcuts) {
-            for (const QString& actionId : {QStringLiteral("table_recognition"),
-                                            QStringLiteral("qr_code_recognition"),
-                                            QStringLiteral("video_recording"),
-                                            QStringLiteral("text_recognition"),
-                                            QStringLiteral("scrolling_screenshot"),
-                                            QStringLiteral("save_as_file")}) {
+            for (const QString& actionId : otherShortcutIds()) {
                 m_localShortcuts.insert(
                     localShortcutKey(settings::SettingsLocalShortcutScope::Screenshot, actionId),
                     screenshotShortcutDefaults().value(actionId));
@@ -1304,7 +1337,7 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                              ? trayMenuOptions->findChild<QWidget*>(
                                    QStringLiteral("settings-tray-menu-options-grid"))
                              : nullptr;
-    require(trayMenuCheckboxes.size() == 14 && trayMenuSeparators.size() == 3 &&
+    require(trayMenuCheckboxes.size() == 15 && trayMenuSeparators.size() == 3 &&
                 trayMenuGrid != nullptr && trayMenuGrid->layout() != nullptr &&
                 qobject_cast<QGridLayout*>(trayMenuGrid->layout())->columnCount() == 2 &&
                 std::all_of(trayMenuSeparators.cbegin(), trayMenuSeparators.cend(),
@@ -1379,9 +1412,9 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
         otherShortcutList != nullptr ? otherShortcutList->findChildren<ShortcutKeyRow*>()
                                      : QList<ShortcutKeyRow*>{};
     const auto localShortcutRows = hotkeyPage.findChildren<ShortcutKeyRow*>();
-    require(screenshotShortcutRows.size() == 12 && drawingShortcutRows.size() == 10 &&
+    require(screenshotShortcutRows.size() == 18 && drawingShortcutRows.size() == 10 &&
                 pinToScreenShortcutRows.size() == 10 && otherShortcutRows.size() == 6 &&
-                localShortcutRows.size() == 38 &&
+                localShortcutRows.size() == 44 &&
                 std::all_of(localShortcutRows.cbegin(), localShortcutRows.cend(),
                             [](const ShortcutKeyRow* row) {
                                 const auto* status =
@@ -1432,9 +1465,9 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                 otherShortcutList->layout()->count() == 1
             ? qobject_cast<QGridLayout*>(otherShortcutList->layout()->itemAt(0)->layout())
             : nullptr;
-    require(screenshotShortcutGrid != nullptr && screenshotShortcutGrid->count() == 12 &&
+    require(screenshotShortcutGrid != nullptr && screenshotShortcutGrid->count() == 18 &&
                 screenshotShortcutGrid->columnCount() == 2 &&
-                screenshotShortcutGrid->rowCount() == 6 && drawingShortcutGrid != nullptr &&
+                screenshotShortcutGrid->rowCount() == 9 && drawingShortcutGrid != nullptr &&
                 drawingShortcutGrid->count() == 10 &&
                 drawingShortcutGrid->columnCount() == 2 && drawingShortcutGrid->rowCount() == 5 &&
                 pinToScreenShortcutGrid != nullptr && pinToScreenShortcutGrid->count() == 10 &&
@@ -1492,7 +1525,7 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
     require(generalList != nullptr && generalList->layout() != nullptr &&
                 generalList->layout()->count() == 2 && screenshotActions != nullptr &&
                 screenshotActions->layout() != nullptr &&
-                screenshotActions->layout()->count() == 7 &&
+                screenshotActions->layout()->count() == 8 &&
                 generalList->layout()->spacing() == settingMetrics.paddingLG &&
                 screenshotActions->layout()->spacing() == settingMetrics.padding &&
                 themeRow != nullptr && themeRow->layout() != nullptr &&
@@ -1702,20 +1735,18 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
     auto* screenshotShortcutHeader = hotkeyPage.findChild<SectionHeaderWidget*>(
         QStringLiteral("settings-section-hotkey-settings-screenshot-shortcuts"));
     bool screenshotShortcutDefaultsMutated = true;
-    for (auto it = screenshotShortcutDefaults().cbegin();
-         it != screenshotShortcutDefaults().cend(); ++it) {
+    for (const QString& actionId : screenshotCategoryShortcutIds()) {
         screenshotShortcutDefaultsMutated =
             screenshotShortcutDefaultsMutated &&
             bindings.applyLocalShortcuts(settings::SettingsLocalShortcutScope::Screenshot,
-                                         it.key(), {QStringLiteral("Alt+Q")}) &&
-            bindings.localShortcuts(settings::SettingsLocalShortcutScope::Screenshot, it.key()) ==
+                                         actionId, {QStringLiteral("Alt+Q")}) &&
+            bindings.localShortcuts(settings::SettingsLocalShortcutScope::Screenshot, actionId) ==
                 QStringList{QStringLiteral("Alt+Q")};
     }
     const auto screenshotShortcutDefaultsAreRestored = [&bindings]() {
-        for (auto it = screenshotShortcutDefaults().cbegin();
-             it != screenshotShortcutDefaults().cend(); ++it) {
+        for (const QString& actionId : screenshotCategoryShortcutIds()) {
             if (bindings.localShortcuts(settings::SettingsLocalShortcutScope::Screenshot,
-                                        it.key()) != it.value()) {
+                                        actionId) != screenshotShortcutDefaults().value(actionId)) {
                 return false;
             }
         }
@@ -1728,6 +1759,32 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                     settings::SettingsSectionReset::ScreenshotEditorShortcuts &&
                 screenshotShortcutDefaultsAreRestored(),
             "Screenshot shortcut reset must restore every Screenshot shortcut default");
+
+    auto* otherShortcutHeader = hotkeyPage.findChild<SectionHeaderWidget*>(
+        QStringLiteral("settings-section-hotkey-settings-other-shortcuts"));
+    bool otherShortcutDefaultsMutated = true;
+    for (const QString& actionId : otherShortcutIds()) {
+        otherShortcutDefaultsMutated =
+            otherShortcutDefaultsMutated &&
+            bindings.applyLocalShortcuts(settings::SettingsLocalShortcutScope::Screenshot,
+                                         actionId, {QStringLiteral("Alt+W")});
+    }
+    const auto otherShortcutDefaultsAreRestored = [&bindings]() {
+        for (const QString& actionId : otherShortcutIds()) {
+            if (bindings.localShortcuts(settings::SettingsLocalShortcutScope::Screenshot,
+                                        actionId) != screenshotShortcutDefaults().value(actionId)) {
+                return false;
+            }
+        }
+        return true;
+    };
+    require(otherShortcutHeader != nullptr && otherShortcutDefaultsMutated &&
+                QMetaObject::invokeMethod(otherShortcutHeader, "resetRequested",
+                                          Qt::DirectConnection) &&
+                bindings.resetRequested ==
+                    settings::SettingsSectionReset::ScreenshotOtherShortcuts &&
+                otherShortcutDefaultsAreRestored(),
+            "Other shortcut reset must restore recognition, Undo, and Redo defaults");
 
     auto* pinToScreenShortcutHeader = hotkeyPage.findChild<SectionHeaderWidget*>(
         QStringLiteral("settings-section-hotkey-settings-pin-to-screen-shortcuts"));
@@ -1902,6 +1959,7 @@ void quickActionCommandsDispatchThroughContentCard() {
         {QStringLiteral("quick-screenshot-delay"), Action::ScreenshotDelay},
         {QStringLiteral("quick-screenshot-fixed"), Action::ScreenshotFixed},
         {QStringLiteral("quick-screenshot-ocr"), Action::ScreenshotOcr},
+        {QStringLiteral("quick-screenshot-translation"), Action::ScreenshotTranslation},
         {QStringLiteral("quick-screenshot-copy"), Action::ScreenshotCopy},
         {QStringLiteral("quick-screenshot-full-screen"), Action::ScreenshotFullScreen},
         {QStringLiteral("quick-screenshot-focused-window"), Action::ScreenshotFocusedWindow},
@@ -2072,6 +2130,96 @@ void pinToScreenShortcutSettingsRenderAndReset() {
         require(bindings.localShortcuts(settings::SettingsLocalShortcutScope::PinToScreen,
                                         it.key()) == it.value(),
                 "Pin to Screen shortcut reset must restore every default");
+    }
+}
+
+void screenshotShortcutSettingsRenderAndReset() {
+    FakeRuntimeBindings bindings;
+    SettingsPageWidget hotkeyPage(settings::builtInSettingsCatalog(),
+                                  QStringLiteral("hotkey-settings"), bindings);
+    hotkeyPage.resize(720, 640);
+    hotkeyPage.show();
+    flushEvents();
+
+    auto* screenshotList = hotkeyPage.findChild<QWidget*>(
+        QStringLiteral("settings-section-list-hotkey-settings-screenshot-shortcuts"));
+    auto* otherList = hotkeyPage.findChild<QWidget*>(
+        QStringLiteral("settings-section-list-hotkey-settings-other-shortcuts"));
+    const auto shortcutGrid = [](QWidget* list) {
+        return list != nullptr && list->layout() != nullptr && list->layout()->count() == 1
+                   ? qobject_cast<QGridLayout*>(list->layout()->itemAt(0)->layout())
+                   : nullptr;
+    };
+    QGridLayout* screenshotGrid = shortcutGrid(screenshotList);
+    QGridLayout* otherGrid = shortcutGrid(otherList);
+    require(screenshotList != nullptr && screenshotGrid != nullptr &&
+                screenshotList->findChildren<ShortcutKeyRow*>().size() == 18 &&
+                screenshotGrid->count() == 18 && screenshotGrid->columnCount() == 2 &&
+                screenshotGrid->rowCount() == 9 && otherList != nullptr &&
+                otherGrid != nullptr && otherList->findChildren<ShortcutKeyRow*>().size() == 6 &&
+                otherGrid->count() == 6 && otherGrid->columnCount() == 2 &&
+                otherGrid->rowCount() == 3,
+            "Screenshot and Other shortcut categories must render their complete two-column grids");
+
+    const QStringList screenshotActions{
+        QStringLiteral("pin_to_screen"),       QStringLiteral("video_recording"),
+        QStringLiteral("scrolling_screenshot"), QStringLiteral("save_as_file"),
+        QStringLiteral("cancel_screenshot"),   QStringLiteral("copy_to_clipboard"),
+    };
+    for (const QString& actionId : screenshotActions) {
+        auto* row = hotkeyPage.findChild<ShortcutKeyRow*>(settings::generatedObjectName(
+            QStringLiteral("settings-item"), QStringLiteral("screenshot-shortcut.") + actionId));
+        require(row != nullptr && screenshotList->isAncestorOf(row),
+                "requested screenshot shortcut action must render in the Screenshot category");
+    }
+    for (const QString& actionId : {QStringLiteral("undo"), QStringLiteral("redo")}) {
+        auto* row = hotkeyPage.findChild<ShortcutKeyRow*>(settings::generatedObjectName(
+            QStringLiteral("settings-item"), QStringLiteral("screenshot-shortcut.") + actionId));
+        require(row != nullptr && otherList->isAncestorOf(row),
+                "Undo and Redo must render in the Other shortcut category");
+    }
+
+    for (const QString& actionId : screenshotCategoryShortcutIds()) {
+        require(bindings.applyLocalShortcuts(settings::SettingsLocalShortcutScope::Screenshot,
+                                             actionId, {QStringLiteral("Alt+Q")}),
+                "Screenshot shortcut fixtures must be mutable");
+    }
+    for (const QString& actionId : otherShortcutIds()) {
+        require(bindings.applyLocalShortcuts(settings::SettingsLocalShortcutScope::Screenshot,
+                                             actionId, {QStringLiteral("Alt+W")}),
+                "Other shortcut fixtures must be mutable");
+    }
+
+    auto* screenshotHeader = hotkeyPage.findChild<SectionHeaderWidget*>(
+        QStringLiteral("settings-section-hotkey-settings-screenshot-shortcuts"));
+    require(screenshotHeader != nullptr &&
+                QMetaObject::invokeMethod(screenshotHeader, "resetRequested",
+                                          Qt::DirectConnection) &&
+                bindings.resetRequested ==
+                    settings::SettingsSectionReset::ScreenshotEditorShortcuts,
+            "Screenshot shortcut settings must expose their category reset action");
+    for (const QString& actionId : screenshotCategoryShortcutIds()) {
+        require(bindings.localShortcuts(settings::SettingsLocalShortcutScope::Screenshot,
+                                        actionId) == screenshotShortcutDefaults().value(actionId),
+                "Screenshot shortcut reset must restore every category default");
+    }
+    for (const QString& actionId : otherShortcutIds()) {
+        require(bindings.localShortcuts(settings::SettingsLocalShortcutScope::Screenshot,
+                                        actionId) == QStringList{QStringLiteral("Alt+W")},
+                "Screenshot shortcut reset must preserve the Other category");
+    }
+
+    auto* otherHeader = hotkeyPage.findChild<SectionHeaderWidget*>(
+        QStringLiteral("settings-section-hotkey-settings-other-shortcuts"));
+    require(otherHeader != nullptr &&
+                QMetaObject::invokeMethod(otherHeader, "resetRequested", Qt::DirectConnection) &&
+                bindings.resetRequested ==
+                    settings::SettingsSectionReset::ScreenshotOtherShortcuts,
+            "Other shortcut settings must expose their category reset action");
+    for (const QString& actionId : otherShortcutIds()) {
+        require(bindings.localShortcuts(settings::SettingsLocalShortcutScope::Screenshot,
+                                        actionId) == screenshotShortcutDefaults().value(actionId),
+                "Other shortcut reset must restore recognition, Undo, and Redo defaults");
     }
 }
 
@@ -2319,6 +2467,7 @@ int main(int argc, char** argv) {
     bool screenshotHistoryOnly = false;
     bool settingsLayoutOnly = false;
     bool pinnedShortcutsOnly = false;
+    bool screenshotShortcutsOnly = false;
     for (int argumentIndex = 1; argumentIndex < argc; ++argumentIndex) {
         if (QString::fromLocal8Bit(argv[argumentIndex]) ==
             QStringLiteral("--drawing-toolbar-editor-only")) {
@@ -2332,10 +2481,14 @@ int main(int argc, char** argv) {
         } else if (QString::fromLocal8Bit(argv[argumentIndex]) ==
                    QStringLiteral("--pinned-shortcuts-only")) {
             pinnedShortcutsOnly = true;
+        } else if (QString::fromLocal8Bit(argv[argumentIndex]) ==
+                   QStringLiteral("--screenshot-shortcuts-only")) {
+            screenshotShortcutsOnly = true;
         }
     }
 #if defined(Q_OS_WIN)
-    if (drawingToolbarEditorOnly || settingsLayoutOnly || pinnedShortcutsOnly) {
+    if (drawingToolbarEditorOnly || settingsLayoutOnly || pinnedShortcutsOnly ||
+        screenshotShortcutsOnly) {
         qunsetenv("QT_QPA_PLATFORM");
     } else if (!qEnvironmentVariableIsSet("QT_QPA_PLATFORM")) {
         qputenv("QT_QPA_PLATFORM", "offscreen");
@@ -2372,6 +2525,11 @@ int main(int argc, char** argv) {
     }
     if (pinnedShortcutsOnly) {
         pinToScreenShortcutSettingsRenderAndReset();
+        snow_shot::storage::ApplicationStorage::instance().shutdown();
+        return 0;
+    }
+    if (screenshotShortcutsOnly) {
+        screenshotShortcutSettingsRenderAndReset();
         snow_shot::storage::ApplicationStorage::instance().shutdown();
         return 0;
     }

@@ -1369,7 +1369,7 @@ void sharedShiftShortcutChoosesResizeOrColorFormat() {
             "failed to restore the aspect shortcut after contextual input test");
 }
 
-void configuredSelectionShortcutsRouteTabHistoryAndColorActions() {
+void configuredSelectionShortcutsRouteTabHistoryAndColorActions(bool targetSwitchOnly = false) {
     const storage::ScreenshotShortcutSettings shortcutSettings;
     const QMap<QString, QStringList> originalShortcuts = shortcutSettings.allShortcuts();
     QMap<QString, QStringList> defaults = originalShortcuts;
@@ -1395,9 +1395,8 @@ void configuredSelectionShortcutsRouteTabHistoryAndColorActions() {
     const QRectF windowSelection(10, 10, 40, 30);
     const QRectF childSelection(15, 15, 20, 12);
     const QRectF nestedChildSelection(17, 17, 12, 8);
-    require(intelligent.applyCanvasHitPath(
-                {windowSelection, childSelection, nestedChildSelection},
-                QRectF(0, 0, 100, 100), 1.0),
+    require(intelligent.applyCanvasHitPath({nestedChildSelection, childSelection, windowSelection},
+                                           QRectF(0, 0, 100, 100), 1.0),
             "failed to seed intelligent-selection candidates");
     selection.setSelectionRect(windowSelection);
 
@@ -1449,37 +1448,38 @@ void configuredSelectionShortcutsRouteTabHistoryAndColorActions() {
     require(dispatchShortcut(shortcutWindow, Qt::Key_Tab) &&
                 intelligent.selectionTarget() ==
                     ScreenshotIntelligentSelectionTarget::WindowSubElement &&
-                intelligent.index() == 1 &&
-                selection.normalizedSelection() == childSelection &&
+                intelligent.index() == 0 &&
+                selection.normalizedSelection() == nestedChildSelection &&
                 !intelligent.pressActive() && selectorHitTestRequests == 1,
             "Tab did not switch intelligent selection to window sub-elements");
-    require(intelligent.setIndex(0) && intelligent.index() == 1,
-            "window sub-element mode allowed the window selection level");
-    require(intelligent.setIndex(2) && intelligent.index() == 2 &&
-                intelligent.applyCanvasHitPath({QRectF(50, 10, 40, 30),
-                                                QRectF(55, 15, 20, 12),
-                                                QRectF(57, 17, 12, 8)},
-                                               QRectF(0, 0, 100, 100), 1.0) &&
-                intelligent.index() == 2,
-            "window sub-element mode did not persist across smart hit tests");
+    require(intelligent.setIndex(1) && intelligent.index() == 1 &&
+                intelligent.currentSelection() == childSelection,
+            "window sub-element mode did not retain full-path navigation");
+    const QRectF nextWindowSelection(50, 10, 40, 30);
+    const QRectF nextChildSelection(55, 15, 20, 12);
+    const QRectF nextNestedChildSelection(57, 17, 12, 8);
+    require(intelligent.applyCanvasHitPath(
+                {nextNestedChildSelection, nextChildSelection, nextWindowSelection},
+                QRectF(0, 0, 100, 100), 1.0) &&
+                intelligent.index() == 0 &&
+                intelligent.currentSelection() == nextNestedChildSelection,
+            "window sub-element mode did not reset a changed hit path to its deepest element");
     require(dispatchShortcut(shortcutWindow, Qt::Key_Tab) &&
                 intelligent.selectionTarget() == ScreenshotIntelligentSelectionTarget::Window &&
-                intelligent.index() == 0 &&
-                selection.normalizedSelection() == QRectF(50, 10, 40, 30) &&
+                intelligent.index() == 2 &&
+                selection.normalizedSelection() == nextWindowSelection &&
                 selectorHitTestRequests == 2,
             "Tab did not switch intelligent selection back to windows");
-    require(intelligent.setIndex(2) && intelligent.index() == 0,
+    require(intelligent.setIndex(0) && intelligent.index() == 2,
             "window mode allowed a window sub-element selection level");
-    require(intelligent.applyCanvasHitPath(
-                {windowSelection, childSelection, nestedChildSelection},
-                QRectF(0, 0, 100, 100), 1.0) &&
+    require(intelligent.applyCanvasHitPath({nestedChildSelection, childSelection, windowSelection},
+                                           QRectF(0, 0, 100, 100), 1.0) &&
                 intelligent.currentSelection() == windowSelection,
             "window mode did not persist across smart hit tests");
     require(dispatchShortcut(shortcutWindow, Qt::Key_Tab) &&
-                !intelligent.applyCanvasHitPath({windowSelection},
-                                                QRectF(0, 0, 100, 100), 1.0) &&
-                !intelligent.hasCurrentSelection() && selectorHitTestRequests == 3,
-            "window sub-element mode fell back to a window without a sub-element");
+                intelligent.applyCanvasHitPath({windowSelection}, QRectF(0, 0, 100, 100), 1.0) &&
+                intelligent.currentSelection() == windowSelection && selectorHitTestRequests == 3,
+            "window sub-element mode did not retain the original window fallback");
     require(handler.handleWheel(nullptr, QPointF(), QPoint(0, 120), QPoint()) &&
                 intelligent.selectionTarget() ==
                     ScreenshotIntelligentSelectionTarget::WindowSubElement &&
@@ -1494,6 +1494,11 @@ void configuredSelectionShortcutsRouteTabHistoryAndColorActions() {
             "window mode did not restore the available window selection");
     require(selectorHitTestRequests == 5,
             "switching back to window mode did not request a fresh hit test");
+    if (targetSwitchOnly) {
+        require(shortcutSettings.setAllShortcutsAtomic(originalShortcuts),
+                "failed to restore selection shortcuts after target-switch test");
+        return;
+    }
 
     intelligent.beginPress(QPointF(18, 18), windowSelection);
     previousSelectionAvailable = false;
@@ -1524,7 +1529,7 @@ void configuredSelectionShortcutsRouteTabHistoryAndColorActions() {
     remapped.insert(QStringLiteral("switch_selection_between_window_and_window_sub_element"),
                     {QStringLiteral("J")});
     remapped.insert(QStringLiteral("select_previously_selected_area"), {QStringLiteral("K")});
-    remapped.insert(QStringLiteral("copy_color"), {QStringLiteral("L")});
+    remapped.insert(QStringLiteral("copy_color"), {QStringLiteral("B")});
     remapped.insert(QStringLiteral("previous_screenshot_history"), {QStringLiteral("Y")});
     remapped.insert(QStringLiteral("next_screenshot_history"), {QStringLiteral("U")});
     require(shortcutSettings.setAllShortcutsAtomic(remapped),
@@ -1543,7 +1548,7 @@ void configuredSelectionShortcutsRouteTabHistoryAndColorActions() {
     require(!dispatchShortcut(shortcutWindow, Qt::Key_R) &&
                 dispatchShortcut(shortcutWindow, Qt::Key_K) &&
                 !dispatchShortcut(shortcutWindow, Qt::Key_C) &&
-                dispatchShortcut(shortcutWindow, Qt::Key_L) && previousSelectionCalls == 3 &&
+                dispatchShortcut(shortcutWindow, Qt::Key_B) && previousSelectionCalls == 3 &&
                 copyColorCalls == 2,
             "remapped R and C shortcuts did not replace their default keys");
     require(!dispatchShortcut(shortcutWindow, Qt::Key_Comma) &&
@@ -1604,6 +1609,11 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
                     {QStringLiteral("A"), QStringLiteral("Left")});
     defaults.insert(QStringLiteral("move_cursor_right"),
                     {QStringLiteral("D"), QStringLiteral("Right")});
+    defaults.insert(QStringLiteral("pin_to_screen"), {QStringLiteral("Ctrl+F")});
+    defaults.insert(QStringLiteral("cancel_screenshot"), {QStringLiteral("Esc")});
+    defaults.insert(QStringLiteral("copy_to_clipboard"), {QStringLiteral("Ctrl+C")});
+    defaults.insert(QStringLiteral("undo"), {QStringLiteral("Ctrl+Z")});
+    defaults.insert(QStringLiteral("redo"), {QStringLiteral("Ctrl+Y")});
     require(shortcutSettings.setAllShortcutsAtomic(defaults),
             "failed to establish screenshot shortcut defaults");
 
@@ -1621,6 +1631,11 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
 
     int moveToolActivations = 0;
     int drawingToolActivations = 0;
+    int pinActivations = 0;
+    int cancelActivations = 0;
+    int copyActivations = 0;
+    int undoActivations = 0;
+    int redoActivations = 0;
     bool cursorMoveHandles = true;
     QVector<QPoint> colorPickerMoves;
     ScreenshotOverlayInputActions actions;
@@ -1641,6 +1656,20 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
             return false;
         }
         ++drawingToolActivations;
+        return true;
+    };
+    actions.pinSelectionToScreen = [&pinActivations]() {
+        ++pinActivations;
+        return true;
+    };
+    actions.cancelCapture = [&cancelActivations]() { ++cancelActivations; };
+    actions.copySelectionToClipboard = [&copyActivations]() { ++copyActivations; };
+    actions.undo = [&undoActivations]() {
+        ++undoActivations;
+        return true;
+    };
+    actions.redo = [&redoActivations]() {
+        ++redoActivations;
         return true;
     };
     ScreenshotOverlayInputHandler handler({
@@ -1667,6 +1696,15 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
             "default Move shortcut was not handled");
     require(moveToolActivations == 1 && interaction.moveToolActive(),
             "default Move shortcut must activate the Move tool");
+
+    require(dispatchShortcut(shortcutWindow, Qt::Key_F, Qt::ControlModifier) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_Escape) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_C, Qt::ControlModifier) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_Z, Qt::ControlModifier) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_Y, Qt::ControlModifier) &&
+                pinActivations == 1 && cancelActivations == 1 && copyActivations == 1 &&
+                undoActivations == 1 && redoActivations == 1,
+            "default toolbar command shortcuts must invoke their configured actions");
 
     require(dispatchShortcut(shortcutWindow, Qt::Key_W) &&
                 dispatchShortcut(shortcutWindow, Qt::Key_Up),
@@ -1707,6 +1745,30 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
                 moveToolActivations == 2 && interaction.moveToolActive(),
             "customized Move shortcut must replace the default key immediately");
 
+    QMap<QString, QStringList> remappedCommands = shortcutSettings.allShortcuts();
+    remappedCommands.insert(QStringLiteral("pin_to_screen"), {QStringLiteral("Alt+F")});
+    remappedCommands.insert(QStringLiteral("cancel_screenshot"), {QStringLiteral("Alt+Esc")});
+    remappedCommands.insert(QStringLiteral("copy_to_clipboard"), {QStringLiteral("Alt+C")});
+    remappedCommands.insert(QStringLiteral("undo"), {QStringLiteral("Alt+Z")});
+    remappedCommands.insert(QStringLiteral("redo"), {QStringLiteral("Alt+Y")});
+    require(shortcutSettings.setAllShortcutsAtomic(remappedCommands),
+            "failed to customize toolbar command shortcuts");
+    shortcutController.reloadConfiguredShortcuts();
+    require(!dispatchShortcut(shortcutWindow, Qt::Key_F, Qt::ControlModifier) &&
+                !dispatchShortcut(shortcutWindow, Qt::Key_Escape) &&
+                !dispatchShortcut(shortcutWindow, Qt::Key_C, Qt::ControlModifier) &&
+                !dispatchShortcut(shortcutWindow, Qt::Key_Z, Qt::ControlModifier) &&
+                !dispatchShortcut(shortcutWindow, Qt::Key_Y, Qt::ControlModifier),
+            "custom toolbar bindings must remove every default shortcut");
+    require(dispatchShortcut(shortcutWindow, Qt::Key_F, Qt::AltModifier) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_Escape, Qt::AltModifier) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_C, Qt::AltModifier) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_Z, Qt::AltModifier) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_Y, Qt::AltModifier) &&
+                pinActivations == 2 && cancelActivations == 2 && copyActivations == 2 &&
+                undoActivations == 2 && redoActivations == 2,
+            "custom toolbar bindings must invoke the same commands immediately");
+
     require(shortcutSettings.setAllShortcutsAtomic(originalShortcuts),
             "failed to restore screenshot shortcuts after input test");
     require(drawingShortcutSettings.setAllShortcutsAtomic(originalDrawingShortcuts),
@@ -1716,6 +1778,54 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
             "restored cursor shortcut was not handled");
     require(colorPickerMoves == QVector<QPoint>{QPoint(0, -1)},
             "restored cursor shortcut must use the persisted configuration");
+}
+
+void intelligentSelectionSupportsCursorMovementShortcuts() {
+    ScreenshotCaptureState captureState;
+    ScreenshotDisplaySession displays;
+    ScreenshotGeometryMapper geometry;
+    ScreenshotSelectionModel selection;
+    ScreenshotIntelligentSelectionModel intelligent;
+    ScreenshotInteractionState interaction;
+    interaction.enterOverlayVisible(true);
+    QWidget shortcutWindow;
+    snow_shot::presentation::WindowShortcutManager shortcutManager;
+    shortcutManager.addScopeWindow(&shortcutWindow);
+
+    QVector<QPoint> cursorMoves;
+    ScreenshotOverlayInputActions actions;
+    actions.moveColorPickerCursor = [&cursorMoves](int dx, int dy) {
+        cursorMoves.push_back(QPoint(dx, dy));
+        return true;
+    };
+    ScreenshotOverlayInputHandler handler({
+        captureState,
+        interaction,
+        selection,
+        intelligent,
+        geometry,
+        displays,
+        actions,
+    });
+    ScreenshotOverlayShortcutController shortcutController(
+        shortcutManager, handler, interaction, intelligent, actions);
+
+    require(dispatchShortcut(shortcutWindow, Qt::Key_W) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_Up) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_S) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_Down) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_A) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_Left) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_D) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_Right) &&
+                dispatchShortcut(shortcutWindow, Qt::Key_Right, Qt::NoModifier, true),
+            "cursor movement shortcuts were not handled during intelligent selection");
+    require(cursorMoves == QVector<QPoint>{
+                               QPoint(0, -1), QPoint(0, -1), QPoint(0, 1),
+                               QPoint(0, 1),  QPoint(-1, 0), QPoint(-1, 0),
+                               QPoint(1, 0),  QPoint(1, 0),  QPoint(1, 0),
+                           },
+            "configured cursor shortcuts must move in every direction and auto-repeat");
 }
 
 void hiddenToolbarDisablesToolSwitchShortcutsDuringSelectionResize() {
@@ -1909,9 +2019,22 @@ int main(int argc, char** argv) {
     };
     require(storage::ApplicationStorage::instance().initialize(storageOptions).success,
             "failed to initialize isolated shortcut settings");
+    if (QCoreApplication::arguments().contains(
+            QStringLiteral("--intelligent-selection-target-shortcut-only"))) {
+        configuredSelectionShortcutsRouteTabHistoryAndColorActions(true);
+        storage::ApplicationStorage::instance().shutdown();
+        return 0;
+    }
+    if (QCoreApplication::arguments().contains(
+            QStringLiteral("--intelligent-selection-cursor-shortcut-only"))) {
+        intelligentSelectionSupportsCursorMovementShortcuts();
+        storage::ApplicationStorage::instance().shutdown();
+        return 0;
+    }
     if (QCoreApplication::arguments().contains(QStringLiteral("--shortcut-input-only"))) {
         sharedShiftShortcutChoosesResizeOrColorFormat();
         configuredSelectionShortcutsRouteTabHistoryAndColorActions();
+        intelligentSelectionSupportsCursorMovementShortcuts();
         configuredScreenshotShortcutsControlMoveAndCursorNavigation();
         hiddenToolbarDisablesToolSwitchShortcutsDuringSelectionResize();
         storage::ApplicationStorage::instance().shutdown();
@@ -1952,6 +2075,7 @@ int main(int argc, char** argv) {
     completionGesturesRequireAConfirmedSelectionAndSupportedTool();
     sharedShiftShortcutChoosesResizeOrColorFormat();
     configuredSelectionShortcutsRouteTabHistoryAndColorActions();
+    intelligentSelectionSupportsCursorMovementShortcuts();
     configuredScreenshotShortcutsControlMoveAndCursorNavigation();
     hiddenToolbarDisablesToolSwitchShortcutsDuringSelectionResize();
     canvasColorSamplingConsumesOneCanvasClick();

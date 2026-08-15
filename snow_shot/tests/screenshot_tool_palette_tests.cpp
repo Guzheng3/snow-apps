@@ -466,11 +466,11 @@ void screenshotToolbarUsesCanonicalOrderAndSectionSeparators() {
         QStringLiteral("Watermark (9)"),
         QStringLiteral("Table recognition (Ctrl+X)"),
         QStringLiteral("Record screen (Ctrl+R)"),
-        QStringLiteral("Pin to screen"),
+        QStringLiteral("Pin to screen (Ctrl+F)"),
         QStringLiteral("Text recognition (Ctrl+D)"),
         QStringLiteral("Scrolling screenshot (L)"),
-        QStringLiteral("Cancel screenshot"),
-        QStringLiteral("Copy to clipboard"),
+        QStringLiteral("Cancel screenshot (Esc)"),
+        QStringLiteral("Copy to clipboard (Ctrl+C)"),
     };
     require(buttons.size() == expected.size(),
             "canonical screenshot toolbar should expose one entry per main group");
@@ -518,6 +518,51 @@ void screenshotToolbarUsesCanonicalOrderAndSectionSeparators() {
                 !hasSeparatorBetween(buttons.at(11), buttons.at(12)) &&
                 !hasSeparatorBetween(buttons.at(12), buttons.at(13)),
             "Arrow and Line grouping should not introduce an internal separator");
+}
+
+void screenshotActionTooltipsUseConfiguredShortcuts() {
+    ScreenshotToolPalette::Options options;
+    options.showHistoryActions = true;
+    options.showSelectTool = false;
+    options.showShapeTool = false;
+    options.enableStyleToolbar = false;
+    options.actions = ScreenshotToolPalette::PinAction | ScreenshotToolPalette::CancelAction |
+                      ScreenshotToolPalette::CopyAction;
+    ScreenshotToolPalette palette(options);
+
+    auto* pin =
+        palette.findChild<adqt::widgets::AdButton*>(QStringLiteral("screenshotPinToScreenButton"));
+    auto* undo =
+        palette.findChild<adqt::widgets::AdButton*>(QStringLiteral("screenshotUndoButton"));
+    auto* redo =
+        palette.findChild<adqt::widgets::AdButton*>(QStringLiteral("screenshotRedoButton"));
+    auto* cancel = qobject_cast<adqt::widgets::AdButton*>(
+        controlWithTooltip(palette, "Cancel screenshot"));
+    auto* copy = qobject_cast<adqt::widgets::AdButton*>(
+        controlWithTooltip(palette, "Copy to clipboard"));
+    require(pin != nullptr && cancel != nullptr && copy != nullptr && undo != nullptr &&
+                redo != nullptr && pin->toolTip() == QStringLiteral("Pin to screen (Ctrl+F)") &&
+                cancel->toolTip() == QStringLiteral("Cancel screenshot (Esc)") &&
+                copy->toolTip() == QStringLiteral("Copy to clipboard (Ctrl+C)") &&
+                undo->toolTip() == QStringLiteral("Undo (Ctrl+Z)") &&
+                redo->toolTip() == QStringLiteral("Redo (Ctrl+Y)"),
+            "screenshot toolbar actions must show their configured shortcuts");
+
+    const snow_shot::storage::ScreenshotShortcutSettings shortcutSettings;
+    const QMap<QString, QStringList> originalShortcuts = shortcutSettings.allShortcuts();
+    require(shortcutSettings.setShortcuts(QStringLiteral("pin_to_screen"),
+                                          {QStringLiteral("Alt+F")}),
+            "pin shortcut fixture must support a non-default mapping");
+    require(shortcutSettings.shortcuts(QStringLiteral("pin_to_screen")) ==
+                QStringList{QStringLiteral("Alt+F")},
+            "pin shortcut fixture must expose the updated mapping immediately");
+    QEvent languageChange(QEvent::LanguageChange);
+    QCoreApplication::sendEvent(&palette, &languageChange);
+    require(pin->toolTip() == QStringLiteral("Pin to screen (Alt+F)"),
+            "screenshot toolbar shortcuts must survive runtime retranslation");
+    require(shortcutSettings.setAllShortcutsAtomic(originalShortcuts),
+            "pin shortcut fixture must restore the original mapping");
+    QCoreApplication::sendEvent(&palette, &languageChange);
 }
 
 void configurableToolbarLayoutSupportsArbitraryPopoverGroups() {
@@ -869,6 +914,7 @@ void confirmActionRemainsSeparatedAndCallableForPinnedEditing() {
 void ocrControlReflectsLoadingState() {
     ScreenshotToolPalette::Options options;
     options.showOcrTool = true;
+    options.showTextTranslationTool = true;
     options.showTableTool = true;
     options.enableStyleToolbar = false;
 
@@ -892,6 +938,27 @@ void ocrControlReflectsLoadingState() {
     palette.setOcrBusy(false);
     require(!ocrButton->busy(),
             "OCR toolbar control should leave its loading state after recognition");
+
+    auto* translationButton = palette.findChild<adqt::widgets::AdButton*>(
+        QStringLiteral("screenshotTextTranslationButton"));
+    require(translationButton != nullptr,
+            "text translation toolbar control should be present");
+    translationButton->click();
+    require(palette.activeToolForTests() == ScreenshotToolPalette::Tool::TextTranslation &&
+                translationButton->buttonStyle() ==
+                    adqt::widgets::AdButton::ButtonStyle::Solid &&
+                ocrButton->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Text,
+            "text translation should have its own active toolbar presentation");
+    palette.setOcrBusy(true);
+    require(translationButton->busy() && !ocrButton->busy(),
+            "text translation should show recognition loading on its active toolbar control");
+    palette.setOcrBusy(false);
+    palette.setTextTranslationState(true, true, true);
+    require(translationButton->busy(),
+            "text translation should keep loading while translation is streaming");
+    palette.setTextTranslationState(true, true, false);
+    require(!translationButton->busy(),
+            "text translation should stop loading after translation completes");
 
     auto* tableButton =
         qobject_cast<adqt::widgets::AdButton*>(controlWithTooltip(palette, "Table recognition"));
@@ -1027,7 +1094,7 @@ void ocrToolReplacesSelectionActionToolbarContents() {
     };
     adqt::widgets::AdButton* sendToBack = buttonWithTooltip("Send to back");
     adqt::widgets::AdButton* edit = buttonWithTooltip("Edit");
-    adqt::widgets::AdButton* translate = buttonWithTooltip("Translate");
+    adqt::widgets::AdButton* translate = buttonWithTooltip("Text Translation");
     adqt::widgets::AdButton* reset = buttonWithTooltip("Reset");
     adqt::widgets::AdButton* settings = buttonWithTooltip("Translation settings");
     auto* undo =
@@ -1042,6 +1109,9 @@ void ocrToolReplacesSelectionActionToolbarContents() {
                 reset != nullptr && settings != nullptr && undo != nullptr && redo != nullptr &&
                 textSelects.size() == 2,
             "the shared action panel should contain the OCR editing controls");
+    require(undo->toolTip() == QStringLiteral("Undo (Ctrl+Z)") &&
+                redo->toolTip() == QStringLiteral("Redo (Ctrl+Y)"),
+            "toolbar history actions must show their configured shortcuts");
     require(opacityIcon != nullptr, "the selection action panel should contain an opacity icon");
 
     palette.setActiveTool(ScreenshotToolPalette::Tool::Select);
@@ -5228,6 +5298,17 @@ int main(int argc, char** argv) {
             "failed to initialize isolated toolbar test storage");
     if (application.arguments().contains(QStringLiteral("--ocr-translation-only"))) {
         ocrToolReplacesSelectionActionToolbarContents();
+        return 0;
+    }
+    if (application.arguments().contains(QStringLiteral("--screenshot-actions-tooltips-only"))) {
+        screenshotActionTooltipsUseConfiguredShortcuts();
+        snow_shot::storage::ApplicationStorage::instance().shutdown();
+        return 0;
+    }
+    if (application.arguments().contains(QStringLiteral("--shortcut-tooltips-only"))) {
+        screenshotActionTooltipsUseConfiguredShortcuts();
+        ocrToolReplacesSelectionActionToolbarContents();
+        snow_shot::storage::ApplicationStorage::instance().shutdown();
         return 0;
     }
     if (application.arguments().contains(QStringLiteral("--canvas-color-sampling-only"))) {

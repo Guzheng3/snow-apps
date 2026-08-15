@@ -382,6 +382,7 @@ class ScreenshotScrollingCaptureProducer final : public QObject {
         config.height = static_cast<std::uint32_t>(m_physicalSelection.height());
         config.capture_retry_count = 1;
         config.wgc_update_mode = SNOW_CAPTURE_WGC_UPDATE_MODE_COMPLETE_ONLY;
+        config.capture_backend = SNOW_CAPTURE_BACKEND_WGC;
         m_regionSession = snow_capture_region_session_create(&config);
         if (m_regionSession == nullptr ||
             snow_capture_region_session_prepare(m_regionSession) == 0) {
@@ -408,6 +409,7 @@ class ScreenshotScrollingCaptureProducer final : public QObject {
         SnowCaptureDesktopSessionConfig config{};
         config.capture_retry_count = 1;
         config.wgc_update_mode = SNOW_CAPTURE_WGC_UPDATE_MODE_COMPLETE_ONLY;
+        config.capture_backend = SNOW_CAPTURE_BACKEND_WGC;
         m_captureSession = snow_capture_desktop_session_create(&config);
         if (m_captureSession == nullptr) {
             qWarning("Failed to create scrolling desktop capture session: %s",

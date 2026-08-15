@@ -14,6 +14,13 @@ typedef struct SnowCaptureSnapshotImpl SnowCaptureSnapshot;
 typedef struct SnowCaptureFrameLeaseImpl SnowCaptureFrameLease;
 typedef struct SnowCaptureRecordingSessionImpl SnowCaptureRecordingSession;
 
+typedef enum SnowCaptureBackendKind {
+    SNOW_CAPTURE_BACKEND_AUTO = 0,
+    SNOW_CAPTURE_BACKEND_DXGI = 1,
+    SNOW_CAPTURE_BACKEND_WGC = 2,
+    SNOW_CAPTURE_BACKEND_GDI = 3,
+} SnowCaptureBackendKind;
+
 typedef enum SnowCaptureWgcUpdateMode {
     SNOW_CAPTURE_WGC_UPDATE_MODE_AUTO = 0,
     SNOW_CAPTURE_WGC_UPDATE_MODE_COMPLETE_ONLY = 1,
@@ -23,7 +30,8 @@ typedef enum SnowCaptureWgcUpdateMode {
 typedef struct SnowCaptureDesktopSessionConfig {
     size_t capture_retry_count;
     uint8_t wgc_update_mode;
-    uint8_t reserved[31];
+    uint8_t capture_backend;
+    uint8_t reserved[30];
 } SnowCaptureDesktopSessionConfig;
 
 typedef struct SnowCaptureDesktopSessionState {
@@ -55,7 +63,8 @@ typedef struct SnowCaptureRegionSessionConfig {
     uint32_t height;
     size_t capture_retry_count;
     uint8_t wgc_update_mode;
-    uint8_t reserved[31];
+    uint8_t capture_backend;
+    uint8_t reserved[30];
 } SnowCaptureRegionSessionConfig;
 
 typedef struct SnowCaptureRegionFrameInfo {
@@ -96,7 +105,8 @@ typedef struct SnowCaptureRecordingConfig {
     uint32_t fps;
     uint8_t enable_microphone;
     uint8_t enable_system_audio;
-    uint8_t reserved0[2];
+    uint8_t capture_backend;
+    uint8_t reserved0;
     const char* working_directory_utf8;
     uint8_t reserved[32];
 } SnowCaptureRecordingConfig;

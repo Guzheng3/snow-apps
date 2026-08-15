@@ -611,23 +611,29 @@ void screenshotUiPreferencesNormalizeAndApplyPickerVisibilityPolicies() {
 }
 
 void shortcutHintStagesUseTheExactRequiredLines() {
+    const QStringList cursorLines{
+        QStringLiteral("Move cursor up: W / Up"),
+        QStringLiteral("Move cursor down: S / Down"),
+        QStringLiteral("Move cursor left: A / Left"),
+        QStringLiteral("Move cursor right: D / Right"),
+    };
     const QStringList commonLines{
-      QStringLiteral("Move cursor: W, S, A, D, Arrow keys"),
         QStringLiteral("Select Previously Selected Area: R"),
         QStringLiteral("Copy Color: C"),
         QStringLiteral("Switch Color Format: Shift"),
-        QStringLiteral("Switch Screenshot History: [ , ] [ . ]"),
+        QStringLiteral("Switch Screenshot History: , / ."),
     };
-    const QStringList selectionLines{
+    QStringList selectionLines = cursorLines;
+    selectionLines.append({
         QStringLiteral("Move Entire Selection: Space"),
         QStringLiteral("Keep Selection Width and Height Consistent: Shift"),
-    };
-    QStringList resizeLines = selectionLines;
-    resizeLines.append(commonLines);
-    QStringList smartLines{
+    });
+    selectionLines.append(commonLines);
+    QStringList smartLines = cursorLines;
+    smartLines.append({
         QStringLiteral("Switch element level: mouse wheel"),
         QStringLiteral("Select Window/Window Sub-element: Tab"),
-    };
+    });
     smartLines.append(commonLines);
 
     ScreenshotShortcutHintContext hintContext;
@@ -650,12 +656,12 @@ void shortcutHintStagesUseTheExactRequiredLines() {
 
     require(smartMode == ScreenshotShortcutHintMode::SmartSelection &&
                 smartContextLines == smartLines,
-            "smart selection must show the exact six context-appropriate shortcut hint lines");
+            "smart selection must show the context-appropriate shortcut hint lines");
     require(manualMode == ScreenshotShortcutHintMode::Selection &&
-                manualContextLines == resizeLines,
-            "manual selection must show the exact six shortcut hint lines");
+                manualContextLines == selectionLines,
+            "manual selection must show the exact shortcut hint lines");
     require(confirmedMoveMode == ScreenshotShortcutHintMode::Selection &&
-                confirmedMoveContextLines == resizeLines,
+                confirmedMoveContextLines == selectionLines,
             "a confirmed selection with Move active must show the manual hint lines");
 
     hintContext.activeTool = ScreenshotActiveTool::Select;

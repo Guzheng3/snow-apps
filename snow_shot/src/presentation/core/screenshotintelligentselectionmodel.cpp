@@ -49,11 +49,10 @@ bool ScreenshotIntelligentSelectionModel::applyCanvasHitPath(const QVector<QRect
         return setIndex(m_index);
     }
 
-    const int preferredIndex = m_index;
     m_hitRects = boundedHitRects;
     return setIndex(m_selectionTarget == ScreenshotIntelligentSelectionTarget::Window
-                        ? 0
-                        : std::max(1, preferredIndex));
+                        ? static_cast<int>(m_hitRects.size() - 1)
+                        : 0);
 }
 
 bool ScreenshotIntelligentSelectionModel::setIndex(int index) {
@@ -62,17 +61,11 @@ bool ScreenshotIntelligentSelectionModel::setIndex(int index) {
         return false;
     }
 
-    const int minimumIndex =
-        m_selectionTarget == ScreenshotIntelligentSelectionTarget::Window ? 0 : 1;
-    const int maximumIndex = m_selectionTarget == ScreenshotIntelligentSelectionTarget::Window
-                                 ? 0
-                                 : static_cast<int>(m_hitRects.size() - 1);
-    if (minimumIndex > maximumIndex) {
-        m_index = -1;
-        return false;
-    }
-
-    m_index = std::clamp(index, minimumIndex, maximumIndex);
+    // Selector hit paths run from the deepest element to the outermost window.
+    const int maximumIndex = static_cast<int>(m_hitRects.size() - 1);
+    m_index = m_selectionTarget == ScreenshotIntelligentSelectionTarget::Window
+                  ? maximumIndex
+                  : std::clamp(index, 0, maximumIndex);
     return true;
 }
 
@@ -80,8 +73,9 @@ void ScreenshotIntelligentSelectionModel::toggleSelectionTarget() {
     m_selectionTarget = m_selectionTarget == ScreenshotIntelligentSelectionTarget::Window
                             ? ScreenshotIntelligentSelectionTarget::WindowSubElement
                             : ScreenshotIntelligentSelectionTarget::Window;
-    static_cast<void>(
-        setIndex(m_selectionTarget == ScreenshotIntelligentSelectionTarget::Window ? 0 : 1));
+    static_cast<void>(setIndex(m_selectionTarget == ScreenshotIntelligentSelectionTarget::Window
+                                   ? static_cast<int>(m_hitRects.size() - 1)
+                                   : 0));
 }
 
 ScreenshotIntelligentSelectionTarget ScreenshotIntelligentSelectionModel::selectionTarget() const {

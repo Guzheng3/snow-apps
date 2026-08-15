@@ -69,7 +69,8 @@ fn main() -> Result<()> {
         height,
         capture_retry_count: 1,
         wgc_update_mode: 0,
-        reserved: [0; 31],
+        capture_backend: 0,
+        reserved: [0; 30],
     };
     let region = Region(unsafe { snow_capture_region_session_create(&config) });
     if region.0.is_null() || unsafe { snow_capture_region_session_prepare(region.0) } == 0 {

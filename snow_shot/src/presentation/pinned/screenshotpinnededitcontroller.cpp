@@ -47,6 +47,7 @@ ScreenshotToolPalette::Options pinnedEditToolbarOptions() {
     options.showTextTool = true;
     options.showSerialNumberTool = true;
     options.showOcrTool = true;
+    options.showTextTranslationTool = true;
     options.showTableTool = true;
     options.showQrTool = true;
     options.separatorAfterSelect = true;
@@ -143,6 +144,14 @@ ScreenshotPinnedEditController::ScreenshotPinnedEditController(ScreenshotPinnedW
                 [this]() { m_canvas.setCanvasTool(SnowCanvasTool::Text); });
         connect(toolbar, &ScreenshotToolPalette::serialNumberRequested, this,
                 [this]() { m_canvas.setCanvasTool(SnowCanvasTool::SerialNumber); });
+        connect(toolbar, &ScreenshotToolPalette::ocrRequested, this,
+                &ScreenshotPinnedEditController::textRecognitionRequested);
+        connect(toolbar, &ScreenshotToolPalette::tableRequested, this,
+                &ScreenshotPinnedEditController::tableRecognitionRequested);
+        connect(toolbar, &ScreenshotToolPalette::qrRequested, this,
+                &ScreenshotPinnedEditController::qrRecognitionRequested);
+        connect(toolbar, &ScreenshotToolPalette::textTranslationRequested, this,
+                &ScreenshotPinnedEditController::textTranslationRequested);
         connect(toolbar, &ScreenshotToolPalette::serialNumberDecrementRequested, this,
                 [this]() { m_canvas.adjustSelectedSerialNumbers(-1); });
         connect(toolbar, &ScreenshotToolPalette::serialNumberIncrementRequested, this,
@@ -199,15 +208,19 @@ ScreenshotPinnedEditController::ScreenshotPinnedEditController(ScreenshotPinnedW
 
     registerDrawingShortcuts();
     reloadDrawingShortcuts();
+    registerRecognitionShortcuts();
+    reloadRecognitionShortcuts();
     auto& storage = snow_shot::storage::ApplicationStorage::instance();
     if (storage.isInitialized()) {
         connect(&storage.configuration(),
                 &snow_shot::storage::ConfigurationStore::valueChanged, this,
                 [this](const QString& key, const QJsonValue&) {
-                    if (key.startsWith(QStringLiteral("drawing_shortcuts/"))) {
-                        reloadDrawingShortcuts();
-                    }
-                });
+                     if (key.startsWith(QStringLiteral("drawing_shortcuts/"))) {
+                         reloadDrawingShortcuts();
+                     } else if (key.startsWith(QStringLiteral("screenshot_shortcuts/"))) {
+                         reloadRecognitionShortcuts();
+                     }
+                 });
     }
 
     updatePlacement();
@@ -329,6 +342,53 @@ void ScreenshotPinnedEditController::reloadDrawingShortcuts() {
     const snow_shot::storage::DrawingShortcutSettings settings;
     for (auto binding = m_drawingShortcutBindings.cbegin();
          binding != m_drawingShortcutBindings.cend(); ++binding) {
+        static_cast<void>(m_shortcutManager.setKeyCombinations(
+            binding.value(),
+            snow_shot::presentation::WindowShortcutManager::keyCombinationsFromPortableText(
+                settings.shortcuts(binding.key()))));
+    }
+}
+
+void ScreenshotPinnedEditController::registerRecognitionShortcuts() {
+    const auto shortcuts = snow_shot::storage::ScreenshotShortcutSettings().allShortcuts();
+    for (const QString& actionId : {QStringLiteral("table_recognition"),
+                                    QStringLiteral("qr_code_recognition"),
+                                    QStringLiteral("text_recognition"),
+                                    QStringLiteral("text_translation")}) {
+        if (!shortcuts.contains(actionId)) {
+            continue;
+        }
+        snow_shot::presentation::WindowShortcutManager::Binding binding;
+        binding.id = QStringLiteral("pinned.screenshot.") + actionId;
+        binding.priority =
+            snow_shot::presentation::WindowShortcutManager::StandardPriority::ScreenshotShortcut;
+        binding.canActivate = [this](const auto&) {
+            return m_editMode && !m_canvas.hasActiveTextEditing() &&
+                   m_toolbarWindow != nullptr && m_toolbarWindow->palette() != nullptr;
+        };
+        binding.activate = [this, actionId](const auto&) {
+            if (actionId == QStringLiteral("table_recognition")) {
+                emit tableRecognitionRequested();
+            } else if (actionId == QStringLiteral("qr_code_recognition")) {
+                emit qrRecognitionRequested();
+            } else if (actionId == QStringLiteral("text_recognition")) {
+                emit textRecognitionRequested();
+            } else if (actionId == QStringLiteral("text_translation")) {
+                emit textTranslationRequested();
+            } else {
+                return false;
+            }
+            return true;
+        };
+        m_recognitionShortcutBindings.insert(
+            actionId, m_shortcutManager.addBinding(this, std::move(binding)));
+    }
+}
+
+void ScreenshotPinnedEditController::reloadRecognitionShortcuts() {
+    const snow_shot::storage::ScreenshotShortcutSettings settings;
+    for (auto binding = m_recognitionShortcutBindings.cbegin();
+         binding != m_recognitionShortcutBindings.cend(); ++binding) {
         static_cast<void>(m_shortcutManager.setKeyCombinations(
             binding.value(),
             snow_shot::presentation::WindowShortcutManager::keyCombinationsFromPortableText(

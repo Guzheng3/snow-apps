@@ -111,6 +111,12 @@ struct ScreenshotOverlayShortcutController::Impl {
                actions.localShortcutInputAllowed();
     }
 
+    [[nodiscard]] bool cursorMovementShortcutState() const {
+        return (interaction.selecting() || interaction.movingSelection() ||
+                interaction.editing()) &&
+               actions.localShortcutInputAllowed();
+    }
+
     bool navigateHistory(bool previous) {
         if (interaction.manualSelecting()) {
             if (interaction.dragging()) {
@@ -125,19 +131,6 @@ struct ScreenshotOverlayShortcutController::Impl {
     }
 
     void registerFixedBindings() {
-        static_cast<void>(shortcutManager.addBinding(
-            &q, fixedBinding(QStringLiteral("screenshot.cancel"),
-                             anyModifierCombinations(Qt::Key_Escape),
-                             ShortcutManager::StandardPriority::WindowCommand,
-                             [this]() {
-                                 return !recognitionTool(interaction.activeTool()) &&
-                                        actions.localShortcutInputAllowed();
-                             },
-                             [this]() {
-                                 actions.cancelCapture();
-                                 return true;
-                             })));
-
         QList<QKeyCombination> confirmationKeys = anyModifierCombinations(Qt::Key_Return);
         confirmationKeys.append(anyModifierCombinations(Qt::Key_Enter));
         static_cast<void>(shortcutManager.addBinding(
@@ -154,23 +147,6 @@ struct ScreenshotOverlayShortcutController::Impl {
                                  inputHandler.confirmSelection();
                                  return true;
                              })));
-
-        static_cast<void>(shortcutManager.addBinding(
-            &q, fixedBinding(
-                    QStringLiteral("screenshot.copy_selection"),
-                    {
-                        QKeyCombination(Qt::ControlModifier, Qt::Key_C),
-                        QKeyCombination(Qt::ControlModifier | Qt::ShiftModifier, Qt::Key_C),
-                    },
-                    ShortcutManager::StandardPriority::WindowCommand,
-                    [this]() {
-                        return !recognitionTool(interaction.activeTool()) &&
-                               actions.localShortcutInputAllowed();
-                    },
-                    [this]() {
-                        actions.copySelectionToClipboard();
-                        return true;
-                    })));
 
         static_cast<void>(shortcutManager.addBinding(
             &q, fixedBinding(QStringLiteral("screenshot.cycle_color_format"),
@@ -205,6 +181,11 @@ struct ScreenshotOverlayShortcutController::Impl {
             QStringLiteral("text_translation"),
             QStringLiteral("scrolling_screenshot"),
             QStringLiteral("save_as_file"),
+            QStringLiteral("pin_to_screen"),
+            QStringLiteral("cancel_screenshot"),
+            QStringLiteral("copy_to_clipboard"),
+            QStringLiteral("undo"),
+            QStringLiteral("redo"),
         };
         for (const QString& actionId : screenshotIds) {
             ShortcutManager::Binding binding;
@@ -212,13 +193,22 @@ struct ScreenshotOverlayShortcutController::Impl {
             binding.priority = ShortcutManager::StandardPriority::ScreenshotShortcut;
             binding.autoRepeat = actionId.startsWith(QStringLiteral("move_cursor_"));
             binding.canActivate = [this, actionId](const auto&) {
+                if (actionId == QStringLiteral("cancel_screenshot") ||
+                    actionId == QStringLiteral("copy_to_clipboard")) {
+                    return !recognitionTool(interaction.activeTool()) &&
+                           actions.localShortcutInputAllowed();
+                }
+                if (actionId == QStringLiteral("undo") || actionId == QStringLiteral("redo")) {
+                    return actions.mainToolbarVisible() && screenshotShortcutState();
+                }
                 if (actionId == QStringLiteral("table_recognition") ||
                     actionId == QStringLiteral("qr_code_recognition") ||
                     actionId == QStringLiteral("text_recognition") ||
                     actionId == QStringLiteral("text_translation") ||
                     actionId == QStringLiteral("video_recording") ||
                     actionId == QStringLiteral("scrolling_screenshot") ||
-                    actionId == QStringLiteral("save_as_file")) {
+                    actionId == QStringLiteral("save_as_file") ||
+                    actionId == QStringLiteral("pin_to_screen")) {
                     return toolbarToolShortcutState();
                 }
                 if (actionId == QStringLiteral("previous_screenshot_history") ||
@@ -256,10 +246,13 @@ struct ScreenshotOverlayShortcutController::Impl {
                 if (actionId == QStringLiteral("move_tool")) {
                     return actions.mainToolbarVisible() && screenshotShortcutState();
                 }
-                return screenshotShortcutState() &&
-                       (interaction.moveToolActive() ||
-                        (interaction.editing() &&
-                         drawingToolSupportsCursorMovement(interaction.activeTool())));
+                if (actionId.startsWith(QStringLiteral("move_cursor_"))) {
+                    return cursorMovementShortcutState() &&
+                           (interaction.moveToolActive() ||
+                            (interaction.editing() &&
+                             drawingToolSupportsCursorMovement(interaction.activeTool())));
+                }
+                return false;
             };
             binding.activate = [this, actionId](const auto& context) {
                 if (actionId == QStringLiteral("move_tool")) {
@@ -332,6 +325,23 @@ struct ScreenshotOverlayShortcutController::Impl {
                 }
                 if (actionId == QStringLiteral("save_as_file")) {
                     return actions.saveAsFile();
+                }
+                if (actionId == QStringLiteral("pin_to_screen")) {
+                    return actions.pinSelectionToScreen();
+                }
+                if (actionId == QStringLiteral("cancel_screenshot")) {
+                    actions.cancelCapture();
+                    return true;
+                }
+                if (actionId == QStringLiteral("copy_to_clipboard")) {
+                    actions.copySelectionToClipboard();
+                    return true;
+                }
+                if (actionId == QStringLiteral("undo")) {
+                    return actions.undo();
+                }
+                if (actionId == QStringLiteral("redo")) {
+                    return actions.redo();
                 }
                 return false;
             };

@@ -15,6 +15,7 @@ enum class GlobalShortcutAction {
     ScreenshotDelay,
     ScreenshotFixed,
     ScreenshotOcr,
+    ScreenshotTranslation,
     ScreenshotCopy,
     ScreenshotFullScreen,
     ScreenshotFocusedWindow,

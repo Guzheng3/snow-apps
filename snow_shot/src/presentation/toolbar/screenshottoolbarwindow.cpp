@@ -198,7 +198,7 @@ void ScreenshotToolbarWindow::connectToolCommands(ScreenshotToolPalette& toolPal
     });
     connect(&toolPalette, &ScreenshotToolPalette::textTranslationRequested, this, [this]() {
         m_commands.setTextTranslationTool();
-        setActiveToolAndReposition(ScreenshotToolPalette::Tool::Ocr);
+        setActiveToolAndReposition(ScreenshotToolPalette::Tool::TextTranslation);
     });
     connect(&toolPalette, &ScreenshotToolPalette::tableRequested, this, [this]() {
         m_commands.setTableTool();

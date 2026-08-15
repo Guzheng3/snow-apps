@@ -100,6 +100,9 @@ struct ScreenshotOverlayInputActions {
     std::function<bool()> startScrollingScreenshot = []() { return false; };
     std::function<bool()> saveAsFile = []() { return false; };
     std::function<bool()> activateTextTranslation = []() { return false; };
+    std::function<bool()> pinSelectionToScreen = []() { return false; };
+    std::function<bool()> undo = []() { return false; };
+    std::function<bool()> redo = []() { return false; };
 };
 
 struct ScreenshotOverlayInputHandlerContext {

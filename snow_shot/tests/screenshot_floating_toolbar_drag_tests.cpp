@@ -2,6 +2,7 @@
 #include "snow_shot/presentation/screenshottoolbarcommands.h"
 #include "snow_shot/presentation/screenshottoolbarwindow.h"
 #include "snow_shot/presentation/screenshottoolpalettehost.h"
+#include "widgets/button.h"
 #include "widgets/dpi_stable_window_controller.h"
 
 #include <QAbstractButton>
@@ -139,6 +140,9 @@ class NoOpToolbarCommands final : public ScreenshotToolbarCommandSink {
     void setTextTool() override {}
     void setSerialNumberTool() override {}
     void setOcrTool() override {}
+    void setTextTranslationTool() override {
+        ++textTranslationToolCount;
+    }
     void toggleTextTranslation() override {
         ++textTranslationToggleCount;
     }
@@ -160,6 +164,7 @@ class NoOpToolbarCommands final : public ScreenshotToolbarCommandSink {
     void hideColorPickersForScreenshotUi() override {}
 
     int repositionCount = 0;
+    int textTranslationToolCount = 0;
     int textTranslationToggleCount = 0;
 };
 
@@ -791,6 +796,32 @@ void translateButtonRoutesEveryClickThroughTheToggleCommand() {
     require(commands.textTranslationToggleCount == 2,
             "clicking active Translate should exit through the same toggle command");
 }
+
+void mainTextTranslationButtonUsesTranslationPresentation() {
+    NoOpToolbarCommands commands;
+    ScreenshotToolbarWindow window(commands);
+    auto* translation = window.findChild<adqt::widgets::AdButton*>(
+        QStringLiteral("screenshotTextTranslationButton"));
+    auto* recognition = window.findChild<adqt::widgets::AdButton*>(
+        QStringLiteral("screenshotTextRecognitionButton"));
+    require(translation != nullptr, "the main Text Translation control should be present");
+
+    translation->click();
+    require(commands.textTranslationToolCount == 1 &&
+                window.palette()->activeToolForTests() ==
+                    ScreenshotToolPalette::Tool::TextTranslation,
+            "the main Text Translation control should activate the translation presentation");
+    window.setOcrBusy(true);
+    require(translation->busy() && (recognition == nullptr || !recognition->busy()),
+            "recognition for Text Translation should load on the translation control");
+    window.setOcrBusy(false);
+    window.setTextTranslationState(true, true, true);
+    require(translation->busy(),
+            "streaming translation should load on the main translation control");
+    window.setTextTranslationState(true, true, false);
+    require(!translation->busy(),
+            "the main translation control should stop loading when streaming completes");
+}
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -798,6 +829,7 @@ int main(int argc, char* argv[]) {
     try {
         if (app.arguments().contains(QStringLiteral("--ocr-translation-toggle-only"))) {
             translateButtonRoutesEveryClickThroughTheToggleCommand();
+            mainTextTranslationButtonUsesTranslationPresentation();
             return 0;
         }
         if (app.arguments().contains(QStringLiteral("--toolbar-size-only"))) {
@@ -815,6 +847,7 @@ int main(int argc, char* argv[]) {
         unchangedShadowMarginsAreNoOps();
         screenshotToolbarSizeMultiplierSurvivesCaptureReset();
         translateButtonRoutesEveryClickThroughTheToggleCommand();
+        mainTextTranslationButtonUsesTranslationPresentation();
         return 0;
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

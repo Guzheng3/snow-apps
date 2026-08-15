@@ -1454,12 +1454,18 @@ if(SNOW_SHOT_BUILD_TESTS)
         COMMAND snow-shot-screenshot-history-tests --shortcut-input-only
     )
     add_test(
+        NAME snow-shot-intelligent-selection-cursor-shortcut-tests
+        COMMAND snow-shot-screenshot-history-tests
+                --intelligent-selection-cursor-shortcut-only
+    )
+    add_test(
         NAME snow-shot-canvas-color-sampling-tests
         COMMAND snow-shot-screenshot-history-tests --canvas-color-sampling-only
     )
     set_tests_properties(
         snow-shot-screenshot-history-tests
         snow-shot-screenshot-shortcut-priority-tests
+        snow-shot-intelligent-selection-cursor-shortcut-tests
         snow-shot-canvas-color-sampling-tests
         PROPERTIES
         ENVIRONMENT
@@ -1677,6 +1683,9 @@ if(SNOW_SHOT_BUILD_TESTS)
     target_include_directories(snow-shot-pinned-window-tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
     )
+    target_compile_definitions(snow-shot-pinned-window-tests PRIVATE
+        SNOW_SHOT_TEST_HOOKS=1
+    )
     target_link_libraries(snow-shot-pinned-window-tests PRIVATE
         adqt_icon_core
         ant_design_icons_qt
@@ -1707,6 +1716,12 @@ if(SNOW_SHOT_BUILD_TESTS)
         NAME snow-shot-pinned-toolbar-parity-tests
         COMMAND snow-shot-pinned-window-tests --toolbar-parity-only
     )
+    if(WIN32)
+        add_test(
+            NAME snow-shot-pinned-native-drag-shortcut-tests
+            COMMAND snow-shot-pinned-window-tests --native-drag-shortcut-only
+        )
+    endif()
 
     add_executable(snow-shot-screenshot-image-file-service-tests
         tests/screenshot_image_file_service_tests.cpp
@@ -1758,12 +1773,20 @@ if(SNOW_SHOT_BUILD_TESTS)
         NAME snow-shot-pinned-clipboard-content-tests
         COMMAND snow-shot-pinned-window-tests --clipboard-content-only
     )
-    set_tests_properties(
+    set(_snow_shot_pinned_window_test_names
         snow-shot-pinned-window-tests
         snow-shot-pinned-recognition-provider-loss-tests
         snow-shot-pinned-recognition-priority-tests
         snow-shot-pinned-clipboard-content-tests
         snow-shot-pinned-toolbar-parity-tests
+    )
+    if(WIN32)
+        list(APPEND _snow_shot_pinned_window_test_names
+            snow-shot-pinned-native-drag-shortcut-tests
+        )
+    endif()
+    set_tests_properties(
+        ${_snow_shot_pinned_window_test_names}
         PROPERTIES
         RUN_SERIAL TRUE
         TIMEOUT 90

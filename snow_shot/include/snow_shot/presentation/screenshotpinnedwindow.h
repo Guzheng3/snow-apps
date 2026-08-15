@@ -161,6 +161,7 @@ class ScreenshotPinnedWindow final : public QWidget {
     void activateRecognitionMode(int mode);
     void deactivateRecognition();
     void updateRecognitionToolbarState();
+    void activateTextTranslation();
     void handleTextEditingRequested();
     void handleTextTranslationRequested();
     void handleTextResetRequested();
@@ -205,7 +206,9 @@ class ScreenshotPinnedWindow final : public QWidget {
     void closeAllPinnedWindows();
     bool cursorMovementEnabled() const;
     bool moveCursorBy(const QPoint& delta);
-    bool startSystemWindowMove();
+    bool startWindowMove();
+    bool updateWindowMove(const QPoint& nativeCursorPosition);
+    void finishWindowMove();
     bool windowDragEnabled() const;
     void updateWindowDragCursor(const QPoint& position);
     void setWindowDragCursor(Qt::CursorShape shape);
@@ -282,6 +285,7 @@ class ScreenshotPinnedWindow final : public QWidget {
     bool m_ocrSupported = false;
     bool m_formattedTextAvailable = false;
     bool m_ocrMode = false;
+    bool m_translateAfterRecognition = false;
     bool m_automaticTextRecognition = true;
     bool m_editingEnabled = true;
     bool m_thumbnailMode = false;
@@ -296,6 +300,7 @@ class ScreenshotPinnedWindow final : public QWidget {
     bool m_pointerInside = false;
     bool m_passiveGeometryReconciliationActive = false;
     WId m_synchronizedResizeWindowId = 0;
+    WId m_windowMoveCaptureId = 0;
 };
 
 #endif // SNOW_SHOT_PRESENTATION_SCREENSHOTPINNEDWINDOW_H

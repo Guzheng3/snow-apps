@@ -285,6 +285,18 @@ void newSettingsSchemaDefaultsAndValidationAreComplete() {
         {QStringLiteral("next_screenshot_history"), QJsonArray{QStringLiteral(".")}},
         {QStringLiteral("select_previously_selected_area"), QJsonArray{QStringLiteral("R")}},
         {QStringLiteral("copy_color"), QJsonArray{QStringLiteral("C")}},
+        {QStringLiteral("table_recognition"), QJsonArray{QStringLiteral("Ctrl+X")}},
+        {QStringLiteral("qr_code_recognition"), QJsonArray{QStringLiteral("Ctrl+Q")}},
+        {QStringLiteral("video_recording"), QJsonArray{QStringLiteral("Ctrl+R")}},
+        {QStringLiteral("text_recognition"), QJsonArray{QStringLiteral("Ctrl+D")}},
+        {QStringLiteral("text_translation"), QJsonArray{QStringLiteral("Ctrl+T")}},
+        {QStringLiteral("scrolling_screenshot"), QJsonArray{QStringLiteral("L")}},
+        {QStringLiteral("save_as_file"), QJsonArray{QStringLiteral("Ctrl+S")}},
+        {QStringLiteral("pin_to_screen"), QJsonArray{QStringLiteral("Ctrl+F")}},
+        {QStringLiteral("cancel_screenshot"), QJsonArray{QStringLiteral("Esc")}},
+        {QStringLiteral("copy_to_clipboard"), QJsonArray{QStringLiteral("Ctrl+C")}},
+        {QStringLiteral("undo"), QJsonArray{QStringLiteral("Ctrl+Z")}},
+        {QStringLiteral("redo"), QJsonArray{QStringLiteral("Ctrl+Y")}},
     };
     for (auto it = screenshotShortcutDefaults.cbegin();
          it != screenshotShortcutDefaults.cend(); ++it) {
@@ -751,7 +763,7 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
     const storage::DrawingShortcutSettings drawingShortcuts;
     const storage::ScreenshotShortcutSettings screenshotShortcuts;
     const QMap<QString, QStringList> screenshotDefaults = screenshotShortcuts.allShortcuts();
-    require(screenshotDefaults.size() == 12 &&
+    require(screenshotDefaults.size() == 24 &&
                 screenshotShortcuts.moveTool() == QStringList{QStringLiteral("M")} &&
                 screenshotShortcuts.moveCursorUp() ==
                     QStringList{QStringLiteral("W"), QStringLiteral("Up")} &&
@@ -774,10 +786,27 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
                  screenshotShortcuts.selectPreviouslySelectedArea() ==
                      QStringList{QStringLiteral("R")} &&
                  screenshotShortcuts.copyColor() == QStringList{QStringLiteral("C")} &&
+                 screenshotDefaults.value(QStringLiteral("pin_to_screen")) ==
+                     QStringList{QStringLiteral("Ctrl+F")} &&
+                 screenshotDefaults.value(QStringLiteral("cancel_screenshot")) ==
+                     QStringList{QStringLiteral("Esc")} &&
+                 screenshotDefaults.value(QStringLiteral("copy_to_clipboard")) ==
+                     QStringList{QStringLiteral("Ctrl+C")} &&
+                 screenshotDefaults.value(QStringLiteral("undo")) ==
+                     QStringList{QStringLiteral("Ctrl+Z")} &&
+                 screenshotDefaults.value(QStringLiteral("redo")) ==
+                     QStringList{QStringLiteral("Ctrl+Y")} &&
                  screenshotShortcuts.shortcuts(QStringLiteral("unsupported")).isEmpty() &&
                 !screenshotShortcuts.setShortcuts(QStringLiteral("unsupported"),
                                                   {QStringLiteral("Q")}),
-            "screenshot shortcut adapter must expose twelve stable actions and defaults");
+            "screenshot shortcut adapter must expose all stable actions and defaults");
+    require(screenshotShortcuts.setShortcuts(QStringLiteral("cancel_screenshot"),
+                                             {QStringLiteral("Esc")}) &&
+                screenshotShortcuts.setShortcuts(QStringLiteral("copy_to_clipboard"),
+                                                 {QStringLiteral("Ctrl+C")}) &&
+                screenshotShortcuts.setShortcuts(QStringLiteral("undo"),
+                                                 {QStringLiteral("Ctrl+Z")}),
+            "reserved screenshot commands must accept their own configurable defaults");
     require(screenshotShortcuts.setMoveTool({QStringLiteral("Alt+M")}) &&
                 screenshotShortcuts.moveTool() == QStringList{QStringLiteral("Alt+M")} &&
                 screenshotShortcuts.setMoveCursorUp({QStringLiteral("Ctrl+Alt+Up")}) &&

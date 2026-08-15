@@ -7,9 +7,13 @@
 
 #include <QPoint>
 #include <QPointF>
+#include <QMap>
 #include <QSet>
 #include <QRect>
 #include <QRectF>
+#include <QStringList>
+
+#include <optional>
 
 struct ScreenshotCaptureState;
 struct ScreenshotColorPickerContext;
@@ -46,6 +50,7 @@ class ScreenshotPresentationServices final {
     void setSelectionToolbarHovered(bool hovered);
     void setUiPreferences(const ScreenshotUiPreferences& preferences);
     void setQuickSelectionDisabledTools(const QSet<SnowCanvasTool>& tools);
+    void reloadConfiguredShortcuts();
 
     void updateOverlayState();
     void updateOverlayCursors() const;
@@ -62,6 +67,7 @@ class ScreenshotPresentationServices final {
     ScreenshotPresentationServicesContext m_context;
     ScreenshotSmartSelectionTransition m_smartSelectionTransition;
     ScreenshotUiPreferences m_uiPreferences;
+    std::optional<QMap<QString, QStringList>> m_configuredShortcuts;
     bool m_selectionToolbarHovered = false;
 };
 

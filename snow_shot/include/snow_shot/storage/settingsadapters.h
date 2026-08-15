@@ -49,6 +49,8 @@ class ShortcutSettings final {
     bool setScreenshotFixed(const QStringList& shortcuts) const;
     [[nodiscard]] QStringList screenshotOcr() const;
     bool setScreenshotOcr(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList screenshotTranslation() const;
+    bool setScreenshotTranslation(const QStringList& shortcuts) const;
     [[nodiscard]] QStringList screenshotCopy() const;
     bool setScreenshotCopy(const QStringList& shortcuts) const;
     [[nodiscard]] QStringList screenshotFullScreen() const;
@@ -106,6 +108,8 @@ class DrawingSettings final {
 class ScreenshotShortcutSettings final {
   public:
     [[nodiscard]] static bool isReservedShortcut(const QString& shortcut);
+    [[nodiscard]] static bool isReservedShortcutAllowed(const QString& actionId,
+                                                         const QString& shortcut);
 
     [[nodiscard]] QStringList moveTool() const;
     bool setMoveTool(const QStringList& shortcuts) const;

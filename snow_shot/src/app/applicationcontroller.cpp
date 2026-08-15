@@ -178,6 +178,11 @@ class ApplicationController::Impl {
                 controller->captureAndRecognizeText();
             }
             break;
+        case presentation::GlobalShortcutAction::ScreenshotTranslation:
+            if (ScreenshotController* controller = ensureScreenshotController()) {
+                controller->captureAndTranslateText();
+            }
+            break;
         case presentation::GlobalShortcutAction::ScreenshotCopy:
             if (ScreenshotController* controller = ensureScreenshotController()) {
                 controller->captureAndCopySelection();

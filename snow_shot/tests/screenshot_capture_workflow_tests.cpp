@@ -385,6 +385,43 @@ void capturedImagePlacementFollowsNormalizedCanvasGeometry() {
                 ScreenshotGeometryMapper::displayCanvasRect(display),
             "captured image placement must follow normalized canvas geometry");
 }
+
+void intelligentSelectionTargetsPreserveElementPathBehavior() {
+    ScreenshotIntelligentSelectionModel selection;
+    const QRectF nestedElement(30, 30, 20, 10);
+    const QRectF childElement(20, 20, 60, 40);
+    const QRectF window(10, 10, 100, 80);
+    const QRectF bounds(0, 0, 200, 160);
+
+    require(selection.selectionTarget() == ScreenshotIntelligentSelectionTarget::Window &&
+                selection.applyCanvasHitPath({nestedElement, childElement, window}, bounds, 1.0) &&
+                selection.index() == 2 && selection.currentSelection() == window,
+            "window selection must use the outermost rectangle from an in-flight element path");
+    require(selection.setIndex(0) && selection.index() == 2 &&
+                selection.currentSelection() == window,
+            "window selection must remain locked to the window rectangle");
+
+    selection.toggleSelectionTarget();
+    require(selection.selectionTarget() == ScreenshotIntelligentSelectionTarget::WindowSubElement &&
+                selection.index() == 0 && selection.currentSelection() == nestedElement,
+            "element selection must start at the deepest hit just as it did before target modes");
+    require(selection.setIndex(1) && selection.currentSelection() == childElement &&
+                selection.applyCanvasHitPath({nestedElement, childElement, window}, bounds, 1.0) &&
+                selection.index() == 1,
+            "an unchanged element hit path must preserve its selected level");
+
+    const QRectF nextElement(130, 30, 20, 10);
+    const QRectF nextWindow(120, 10, 70, 80);
+    require(selection.applyCanvasHitPath({nextElement, nextWindow}, bounds, 1.0) &&
+                selection.index() == 0 && selection.currentSelection() == nextElement,
+            "a changed element hit path must restart at its deepest hit");
+    require(selection.setIndex(99) && selection.index() == 1 &&
+                selection.currentSelection() == nextWindow,
+            "element selection must retain the original full-path navigation");
+    require(selection.applyCanvasHitPath({nextWindow}, bounds, 1.0) && selection.index() == 0 &&
+                selection.currentSelection() == nextWindow,
+            "element selection must retain the original window fallback");
+}
 } // namespace
 
 int main() {
@@ -395,5 +432,6 @@ int main() {
     capturePresentedRunsAfterCapturedOverlayIsShown();
     silentCaptureNeverPreparesOrShowsOverlays();
     capturedImagePlacementFollowsNormalizedCanvasGeometry();
+    intelligentSelectionTargetsPreserveElementPathBehavior();
     return 0;
 }

@@ -63,6 +63,7 @@ class ScreenshotToolPalette final : public QWidget {
         Text,
         SerialNumber,
         Ocr,
+        TextTranslation,
         Table,
         Qr,
         ScrollingScreenshot,
@@ -328,6 +329,7 @@ class ScreenshotToolPalette final : public QWidget {
     bool setSecondaryToolbarVisibility(bool actionToolbarVisible, bool styleToolbarVisible);
     void updateSelectionActionAvailability(bool hasSelection);
     void updateHistoryActionAvailability();
+    void updateTextRecognitionBusy();
     void updateScrollingRecognitionButtons();
     void updateSelectionOpacityIcon();
     void refreshThemeDependentIcons();
@@ -531,6 +533,7 @@ class ScreenshotToolPalette final : public QWidget {
     bool m_recordingSystemAudioEnabled = true;
     bool m_recordingBusy = false;
     bool m_ocrEnabled = true;
+    bool m_ocrBusy = false;
     bool m_tableEnabled = true;
     bool m_qrEnabled = true;
     bool m_tableBusy = false;

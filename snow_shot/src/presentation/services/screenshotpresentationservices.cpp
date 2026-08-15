@@ -11,6 +11,8 @@
 #include "snow_shot/presentation/screenshotshortcuthints.h"
 #include "snow_shot/presentation/screenshottoolbarpresenter.h"
 #include "snow_shot/presentation/screenshottoolbarpresentationstatefactory.h"
+#include "snow_shot/storage/applicationstorage.h"
+#include "snow_shot/storage/settingsadapters.h"
 
 #include <QCursor>
 
@@ -18,7 +20,9 @@ ScreenshotPresentationServices::ScreenshotPresentationServices(
     ScreenshotPresentationServicesContext context)
     : m_context(context), m_smartSelectionTransition([this](const QRectF& selection) {
           presentSelectionFrame(selection);
-      }) {}
+      }) {
+    reloadConfiguredShortcuts();
+}
 
 void ScreenshotPresentationServices::hideToolbar() {
     m_context.toolbarPresenter.hideToolbar();
@@ -78,6 +82,14 @@ void ScreenshotPresentationServices::setQuickSelectionDisabledTools(
     updateOverlayState();
 }
 
+void ScreenshotPresentationServices::reloadConfiguredShortcuts() {
+    if (!snow_shot::storage::ApplicationStorage::instance().isInitialized()) {
+        m_configuredShortcuts.reset();
+        return;
+    }
+    m_configuredShortcuts = snow_shot::storage::ScreenshotShortcutSettings().allShortcuts();
+}
+
 void ScreenshotPresentationServices::updateOverlayState() {
     const bool smartFraming = m_context.interaction.intelligentSelecting();
     const ScreenshotToolbarPresentationState toolbarState = toolbarPresentationState();
@@ -116,9 +128,10 @@ void ScreenshotPresentationServices::presentOverlayState(const QRectF& selection
         m_context.displaySession, QCursor::pos(), m_context.interaction.selecting(),
         m_uiPreferences.cursorGuideLineColor, m_uiPreferences.monitorCenterGuideLineColor);
 
-    const ScreenshotShortcutHintContext hintContext{
+    ScreenshotShortcutHintContext hintContext{
         m_context.interaction.activeTool(), m_context.interaction.mode(),
         m_context.quickSelectionDisabledTools};
+    hintContext.configuredShortcuts = m_configuredShortcuts;
     const ScreenshotShortcutHintMode hintMode =
         screenshotShortcutHintModeForContext(hintContext);
     ScreenshotOverlayWindow* hintOwner = nullptr;

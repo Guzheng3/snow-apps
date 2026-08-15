@@ -1678,6 +1678,81 @@ void pinnedConfiguredShortcutUpdatesImmediately(SnowCanvasRuntime& sourceRuntime
             "shortcut test pin was not deleted");
 }
 
+#if defined(Q_OS_WIN) || defined(_WIN32)
+void pinnedNativeDragAcceptsCursorMovementShortcuts(SnowCanvasRuntime& sourceRuntime) {
+    QScreen* screen = QGuiApplication::primaryScreen();
+    require(screen != nullptr, "a primary screen is required");
+    const CursorPositionRestorer restoreCursor;
+
+    const snow_shot::storage::PinToScreenShortcutSettings shortcuts;
+    const QString actionId = QStringLiteral("move_cursor_up");
+    const QStringList previousShortcuts = shortcuts.shortcuts(actionId);
+    require(shortcuts.setShortcuts(actionId, {QStringLiteral("W")}),
+            "the native-drag cursor shortcut fixture could not be configured");
+
+    QImage background(240, 140, QImage::Format_ARGB32_Premultiplied);
+    background.fill(QColor(48, 96, 144));
+    auto* pinnedWindow = new ScreenshotPinnedWindow(sourceRuntime);
+    QPointer<ScreenshotPinnedWindow> guardedWindow(pinnedWindow);
+    ScreenshotPinnedWindow::Config config;
+    config.nativeGeometry = physicalPinGeometry(*screen, QPoint(120, 120), background.size());
+    config.canvasSourceRect = QRectF(QPointF(), QSizeF(background.size()));
+    config.backgroundImage = background;
+    config.screen = screen;
+    require(pinnedWindow->present(config), "native-drag shortcut pin presentation failed");
+    waitForUi(100);
+
+    const HWND hwnd = toNativeHwnd(pinnedWindow->winId());
+    require(hwnd != nullptr, "native-drag shortcut pin did not expose an HWND");
+
+    const QRect startingGeometry = pinnedWindow->currentNativeGeometry();
+    const QPoint startingCursor = startingGeometry.center();
+    setSystemCursorPosition(startingCursor);
+    waitForUi(50);
+
+    static_cast<void>(SendMessageW(
+        hwnd, WM_NCLBUTTONDOWN, HTCAPTION,
+        MAKELPARAM(static_cast<WORD>(startingCursor.x()), static_cast<WORD>(startingCursor.y()))));
+    const bool capturedForMove = GetCapture() == hwnd;
+    const QPoint cursorBeforeShortcut = systemCursorPosition();
+    const QPoint windowPositionBeforeShortcut =
+        pinnedWindow->currentNativeGeometry().topLeft();
+    sendShortcut(*pinnedWindow, Qt::Key_W);
+    const QPoint cursorAfterShortcuts = systemCursorPosition();
+    const QPoint windowPositionAfterShortcuts = pinnedWindow->currentNativeGeometry().topLeft();
+    const QPoint shortcutCursorDelta = cursorAfterShortcuts - cursorBeforeShortcut;
+    const QPoint shortcutWindowDelta =
+        windowPositionAfterShortcuts - windowPositionBeforeShortcut;
+    const bool cursorShortcutsMoved = shortcutCursorDelta == QPoint(0, -1);
+    const bool windowFollowedShortcuts =
+        shortcutWindowDelta == shortcutCursorDelta;
+
+    const QPoint pointerDelta(7, 3);
+    const QPoint cursorBeforePointerMove = systemCursorPosition();
+    setSystemCursorPosition(cursorAfterShortcuts + pointerDelta);
+    static_cast<void>(SendMessageW(hwnd, WM_MOUSEMOVE, MK_LBUTTON, 0));
+    const QPoint actualPointerDelta = systemCursorPosition() - cursorBeforePointerMove;
+    const bool windowFollowedPointer =
+        pinnedWindow->currentNativeGeometry().topLeft() - windowPositionAfterShortcuts ==
+        actualPointerDelta;
+    static_cast<void>(SendMessageW(hwnd, WM_LBUTTONUP, 0, 0));
+    waitForUi(50);
+
+    require(shortcuts.setShortcuts(actionId, previousShortcuts),
+            "the native-drag cursor shortcut fixture could not restore its configuration");
+    pinnedWindow->close();
+    require(processUntilDeleted(guardedWindow, 2000),
+            "native-drag shortcut pin was not deleted");
+    require(capturedForMove, "a native caption press must start pinned-window pointer capture");
+    require(cursorShortcutsMoved,
+            "configured cursor shortcuts must remain active throughout a pinned-window drag");
+    require(windowFollowedShortcuts,
+            "a pinned window must follow cursor shortcuts before its native drag is released");
+    require(windowFollowedPointer,
+            "application-managed pinned-window dragging must continue to follow pointer input");
+}
+#endif
+
 void pinnedThumbnailUsesOpaqueThemeBackground(SnowCanvasRuntime& sourceRuntime) {
     QScreen* screen = QGuiApplication::primaryScreen();
     require(screen != nullptr, "a primary screen is required");
@@ -2484,6 +2559,8 @@ void pinnedDrawingToolbarMatchesCaptureInteractions(SnowCanvasRuntime& sourceRun
     QScreen* screen = QGuiApplication::primaryScreen();
     require(screen != nullptr, "a primary screen is required");
 
+    FakeOcrRecognition recognition;
+    FakeQrRecognition qrRecognition;
     auto* pinnedWindow = new ScreenshotPinnedWindow(sourceRuntime);
     QPointer<ScreenshotPinnedWindow> guardedWindow(pinnedWindow);
     QImage background(320, 180, QImage::Format_ARGB32_Premultiplied);
@@ -2495,6 +2572,9 @@ void pinnedDrawingToolbarMatchesCaptureInteractions(SnowCanvasRuntime& sourceRun
     config.backgroundImage = background;
     config.screen = screen;
     config.enableEditing = true;
+    config.automaticTextRecognition = false;
+    config.recognition = &recognition;
+    config.qrRecognition = &qrRecognition;
     require(pinnedWindow->present(config), "pinned window presentation failed");
     QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
     QPushButton* editButton = buttonNamed(*pinnedWindow, QStringLiteral("Enable drawing mode"));
@@ -2517,6 +2597,58 @@ void pinnedDrawingToolbarMatchesCaptureInteractions(SnowCanvasRuntime& sourceRun
             ? controller->toolbarWindow()->palette()
             : nullptr;
     require(toolbar != nullptr, "pinned drawing toolbar was not found");
+
+    auto* translationButton = toolbar->findChild<adqt::widgets::AdButton*>(
+        QStringLiteral("screenshotTextTranslationButton"));
+    require(translationButton != nullptr &&
+                translationButton->toolTip().contains(QStringLiteral("Text Translation")) &&
+                translationButton->toolTip().contains(QStringLiteral("Ctrl+T")),
+            "pinned drawing toolbar should expose Text Translation with its configured shortcut");
+
+    const snow_shot::storage::ScreenshotShortcutSettings screenshotShortcuts;
+    const QStringList originalTextRecognitionShortcuts =
+        screenshotShortcuts.shortcuts(QStringLiteral("text_recognition"));
+    require(screenshotShortcuts.setShortcuts(QStringLiteral("text_recognition"),
+                                             {QStringLiteral("Alt+D")}),
+            "the Text Recognition shortcut fixture should accept a runtime mapping");
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+
+    sendShortcut(*canvas, Qt::Key_X, Qt::ControlModifier);
+    require(toolbar->activeToolForTests() == ScreenshotToolPalette::Tool::Table,
+            "the Table Recognition shortcut should activate from the pinned toolbar");
+    sendShortcut(*canvas, Qt::Key_Q, Qt::ControlModifier);
+    require(toolbar->activeToolForTests() == ScreenshotToolPalette::Tool::Qr,
+            "the QR Code Recognition shortcut should activate from the pinned toolbar");
+    sendShortcut(*canvas, Qt::Key_D, Qt::AltModifier);
+    require(toolbar->activeToolForTests() == ScreenshotToolPalette::Tool::Ocr &&
+                recognition.pending.token != 0,
+            "the configured Text Recognition shortcut should activate from the pinned toolbar");
+    require(screenshotShortcuts.setShortcuts(QStringLiteral("text_recognition"),
+                                             originalTextRecognitionShortcuts),
+            "the Text Recognition shortcut fixture should restore its original mapping");
+    sendShortcut(*canvas, Qt::Key_T, Qt::ControlModifier);
+    require(toolbar->activeToolForTests() == ScreenshotToolPalette::Tool::TextTranslation &&
+                translationButton->busy(),
+            "the Text Translation shortcut should activate its toolbar control while recognizing");
+
+    auto translatedPresentation = std::make_shared<ScreenshotOcrPresentation>();
+    translatedPresentation->selection = config.canvasSourceRect.toAlignedRect();
+    translatedPresentation->filledImage =
+        QImage(background.size(), QImage::Format_ARGB32_Premultiplied);
+    translatedPresentation->filledImage.fill(Qt::transparent);
+    ScreenshotOcrLine translatedLine;
+    translatedLine.text = QStringLiteral("Text to translate");
+    translatedLine.quad = QPolygonF(config.canvasSourceRect);
+    translatedPresentation->lines.push_back(std::move(translatedLine));
+    recognition.complete({std::move(translatedPresentation), {}});
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    require(toolbar->activeToolForTests() == ScreenshotToolPalette::Tool::TextTranslation &&
+                translationButton->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Solid &&
+                !translationButton->busy(),
+            "Text Translation should stay active and stop loading after recognition completes");
+    sendShortcut(*canvas, Qt::Key_1);
+    require(canvas->canvasContentVisible() && canvas->interactionEnabled(),
+            "a drawing shortcut should leave pinned text translation mode");
 
     const QPoint localPosition = canvas->rect().center();
     const auto sendWheel = [canvas, localPosition](int angleDelta) {
@@ -2801,6 +2933,12 @@ int main(int argc, char* argv[]) {
             pinnedConfiguredShortcutUpdatesImmediately(sourceRuntime);
             return 0;
         }
+#if defined(Q_OS_WIN) || defined(_WIN32)
+        if (app.arguments().contains(QStringLiteral("--native-drag-shortcut-only"))) {
+            pinnedNativeDragAcceptsCursorMovementShortcuts(sourceRuntime);
+            return 0;
+        }
+#endif
         if (app.arguments().contains(QStringLiteral("--toolbar-parity-only"))) {
             pinnedDrawingToolbarMatchesCaptureInteractions(sourceRuntime);
             return 0;

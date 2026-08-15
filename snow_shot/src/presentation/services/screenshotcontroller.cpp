@@ -197,6 +197,7 @@ struct ScreenshotController::Impl final : public ScreenshotToolbarCommandSink,
         None,
         Pin,
         RecognizeText,
+        RecognizeTextTranslation,
         Copy,
         StartVideo,
     };
@@ -426,6 +427,12 @@ ScreenshotController::Impl::Impl(ScreenshotController& controller)
                     reloadUiPreferences();
                 } else if (key == QStringLiteral("drawing/quick_selection_disabled_tools")) {
                     reloadDrawingPreferences();
+                } else if (key.startsWith(QStringLiteral("screenshot_shortcuts/")) &&
+                           m_presentationServices != nullptr) {
+                    m_presentationServices->reloadConfiguredShortcuts();
+                    if (!m_interaction.inactive()) {
+                        m_presentationServices->updateOverlayState();
+                    }
                 }
             });
     }
@@ -1120,6 +1127,18 @@ void ScreenshotController::Impl::createOverlayInputPipeline() {
             setTextTranslationTool();
             return true;
         },
+        [this]() {
+            pinSelectionToScreen();
+            return true;
+        },
+        [this]() {
+            undoCanvasEdit();
+            return true;
+        },
+        [this]() {
+            redoCanvasEdit();
+            return true;
+        },
     };
     m_overlayInputHandler =
         std::make_unique<ScreenshotOverlayInputHandler>(ScreenshotOverlayInputHandlerContext{
@@ -1387,6 +1406,11 @@ void ScreenshotController::Impl::setTextTranslationTool() {
     m_ocrController->activate();
     m_presentationServices->updateOverlayState();
     restoreToolUiAfterScrollingCapture(scrollingCaptureStopped);
+    if (m_overlayCoordinator != nullptr) {
+        if (ScreenshotToolbarWindow* toolbar = m_overlayCoordinator->toolbar()) {
+            toolbar->setActiveTool(ScreenshotToolPalette::Tool::TextTranslation);
+        }
+    }
 }
 
 void ScreenshotController::Impl::mergeTableSelection() {
@@ -3101,6 +3125,10 @@ void ScreenshotController::Impl::handleSelectionConfirmed() {
             setOcrTool();
             m_activatingQuickOcr = false;
             break;
+        case PendingSelectionAction::RecognizeTextTranslation:
+            m_pendingOcrFromQuickFunction = false;
+            setTextTranslationTool();
+            break;
         case PendingSelectionAction::Copy:
             copySelectionToClipboardWithSource(source);
             break;
@@ -3296,6 +3324,11 @@ void ScreenshotController::captureAndPinSelection() {
 
 void ScreenshotController::captureAndRecognizeText() {
     static_cast<void>(m_impl->beginCapture(Impl::PendingSelectionAction::RecognizeText));
+}
+
+void ScreenshotController::captureAndTranslateText() {
+    static_cast<void>(
+        m_impl->beginCapture(Impl::PendingSelectionAction::RecognizeTextTranslation));
 }
 
 void ScreenshotController::captureAndCopySelection() {

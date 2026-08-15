@@ -25,13 +25,14 @@ namespace {
 constexpr int MAX_SHORTCUTS_PER_ACTION = 2;
 constexpr int FIRST_REGISTRATION_ID = 0x2200;
 constexpr int LAST_REGISTRATION_ID = 0xBFFF;
-constexpr std::size_t ACTION_COUNT = 12;
+constexpr std::size_t ACTION_COUNT = 13;
 
 constexpr std::array<GlobalShortcutAction, ACTION_COUNT> ALL_ACTIONS = {
     GlobalShortcutAction::Screenshot,
     GlobalShortcutAction::ScreenshotDelay,
     GlobalShortcutAction::ScreenshotFixed,
     GlobalShortcutAction::ScreenshotOcr,
+    GlobalShortcutAction::ScreenshotTranslation,
     GlobalShortcutAction::ScreenshotCopy,
     GlobalShortcutAction::ScreenshotFullScreen,
     GlobalShortcutAction::ScreenshotFocusedWindow,
@@ -52,22 +53,24 @@ int actionIndex(GlobalShortcutAction action) {
         return 2;
     case GlobalShortcutAction::ScreenshotOcr:
         return 3;
-    case GlobalShortcutAction::ScreenshotCopy:
+    case GlobalShortcutAction::ScreenshotTranslation:
         return 4;
-    case GlobalShortcutAction::ScreenshotFullScreen:
+    case GlobalShortcutAction::ScreenshotCopy:
         return 5;
-    case GlobalShortcutAction::ScreenshotFocusedWindow:
+    case GlobalShortcutAction::ScreenshotFullScreen:
         return 6;
-    case GlobalShortcutAction::ScreenRecord:
+    case GlobalShortcutAction::ScreenshotFocusedWindow:
         return 7;
-    case GlobalShortcutAction::ScreenRecordCopy:
+    case GlobalShortcutAction::ScreenRecord:
         return 8;
-    case GlobalShortcutAction::OpenCaptureHistory:
+    case GlobalShortcutAction::ScreenRecordCopy:
         return 9;
-    case GlobalShortcutAction::OpenSettings:
+    case GlobalShortcutAction::OpenCaptureHistory:
         return 10;
-    case GlobalShortcutAction::PinClipboardContent:
+    case GlobalShortcutAction::OpenSettings:
         return 11;
+    case GlobalShortcutAction::PinClipboardContent:
+        return 12;
     }
     return 0;
 }
@@ -541,6 +544,8 @@ QStringList persistedShortcuts(const snow_shot::storage::ShortcutSettings& setti
         return settings.screenshotFixed();
     case GlobalShortcutAction::ScreenshotOcr:
         return settings.screenshotOcr();
+    case GlobalShortcutAction::ScreenshotTranslation:
+        return settings.screenshotTranslation();
     case GlobalShortcutAction::ScreenshotCopy:
         return settings.screenshotCopy();
     case GlobalShortcutAction::ScreenshotFullScreen:
@@ -572,6 +577,8 @@ bool persistShortcuts(const snow_shot::storage::ShortcutSettings& settings,
         return settings.setScreenshotFixed(shortcuts);
     case GlobalShortcutAction::ScreenshotOcr:
         return settings.setScreenshotOcr(shortcuts);
+    case GlobalShortcutAction::ScreenshotTranslation:
+        return settings.setScreenshotTranslation(shortcuts);
     case GlobalShortcutAction::ScreenshotCopy:
         return settings.setScreenshotCopy(shortcuts);
     case GlobalShortcutAction::ScreenshotFullScreen:

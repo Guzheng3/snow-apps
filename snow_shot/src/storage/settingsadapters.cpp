@@ -78,6 +78,11 @@ const QStringList& screenshotShortcutActionIds() {
         QStringLiteral("text_translation"),
         QStringLiteral("scrolling_screenshot"),
         QStringLiteral("save_as_file"),
+        QStringLiteral("pin_to_screen"),
+        QStringLiteral("cancel_screenshot"),
+        QStringLiteral("copy_to_clipboard"),
+        QStringLiteral("undo"),
+        QStringLiteral("redo"),
     };
     return ids;
 }
@@ -256,6 +261,14 @@ QStringList ShortcutSettings::screenshotOcr() const {
 
 bool ShortcutSettings::setScreenshotOcr(const QStringList& shortcuts) const {
     return setShortcutValue(QStringLiteral("global_shortcuts/screenshot_ocr"), shortcuts);
+}
+
+QStringList ShortcutSettings::screenshotTranslation() const {
+    return shortcutValue(QStringLiteral("global_shortcuts/screenshot_translation"));
+}
+
+bool ShortcutSettings::setScreenshotTranslation(const QStringList& shortcuts) const {
+    return setShortcutValue(QStringLiteral("global_shortcuts/screenshot_translation"), shortcuts);
 }
 
 QStringList ShortcutSettings::screenshotCopy() const {
@@ -530,6 +543,36 @@ bool ScreenshotShortcutSettings::isReservedShortcut(const QString& shortcut) {
     return isReservedLocalShortcut(shortcut);
 }
 
+bool ScreenshotShortcutSettings::isReservedShortcutAllowed(const QString& actionId,
+                                                            const QString& shortcut) {
+    if (screenshotHistoryShortcutAllowed(actionId, shortcut)) {
+        return true;
+    }
+
+    QKeySequence sequence = QKeySequence::fromString(shortcut, QKeySequence::PortableText);
+    if (sequence.isEmpty()) {
+        sequence = QKeySequence::fromString(shortcut, QKeySequence::NativeText);
+    }
+    if (sequence.count() != 1) {
+        return false;
+    }
+
+    const QKeyCombination combination = sequence[0];
+    const Qt::Key key = combination.key();
+    const Qt::KeyboardModifiers modifiers = combination.keyboardModifiers();
+    if (actionId == QStringLiteral("cancel_screenshot")) {
+        return key == Qt::Key_Escape;
+    }
+    if (actionId == QStringLiteral("copy_to_clipboard")) {
+        return key == Qt::Key_C && modifiers.testFlag(Qt::ControlModifier) &&
+               !modifiers.testFlag(Qt::AltModifier) && !modifiers.testFlag(Qt::MetaModifier);
+    }
+    if (actionId == QStringLiteral("undo")) {
+        return key == Qt::Key_Z && modifiers.testFlag(Qt::ControlModifier);
+    }
+    return false;
+}
+
 QStringList ScreenshotShortcutSettings::shortcuts(const QString& actionId) const {
     const QString key = screenshotShortcutKey(actionId);
     return key.isEmpty() ? QStringList{} : shortcutValue(key);
@@ -573,8 +616,8 @@ bool ScreenshotShortcutSettings::setAllShortcutsAtomic(
         for (const QJsonValue& item : normalized.value.toArray()) {
             const QString shortcut = item.toString();
             const QString binding = shortcut.toCaseFolded();
-            if ((!screenshotHistoryShortcutAllowed(actionId, shortcut) &&
-                 isReservedShortcut(shortcut)) ||
+            if ((isReservedShortcut(shortcut) &&
+                 !isReservedShortcutAllowed(actionId, shortcut)) ||
                 seen.contains(binding)) {
                 return false;
             }

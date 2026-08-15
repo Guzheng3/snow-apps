@@ -343,7 +343,8 @@ struct ScreenRecordingController::Impl {
                 static_cast<uint32_t>(validRecordingFrameRate(settings.frameRate())),
                 static_cast<uint8_t>(microphoneEnabled),
                 static_cast<uint8_t>(systemAudioEnabled),
-                {0, 0},
+                static_cast<uint8_t>(SNOW_CAPTURE_BACKEND_WGC),
+                0,
                 workingDirectoryUtf8.constData(),
                 {},
             };

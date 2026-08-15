@@ -373,19 +373,26 @@ QString ScreenshotClipboardCommitResult::errorString() const {
     case ScreenshotClipboardCommitFailure::None:
         return {};
     case ScreenshotClipboardCommitFailure::Cancelled:
-        return QStringLiteral("The clipboard operation was cancelled");
+        return QCoreApplication::translate("ScreenshotClipboardService",
+                                           "The clipboard operation was cancelled");
     case ScreenshotClipboardCommitFailure::InvalidPayload:
-        return QStringLiteral("The prepared clipboard image is invalid");
+        return QCoreApplication::translate("ScreenshotClipboardService",
+                                           "The prepared clipboard image is invalid");
     case ScreenshotClipboardCommitFailure::ClipboardUnavailable:
-        return QStringLiteral("The clipboard is unavailable");
+        return QCoreApplication::translate("ScreenshotClipboardService",
+                                           "The clipboard is unavailable");
     case ScreenshotClipboardCommitFailure::Busy:
-        return QStringLiteral("The clipboard is busy");
+        return QCoreApplication::translate("ScreenshotClipboardService",
+                                           "The clipboard is busy");
     case ScreenshotClipboardCommitFailure::ClearFailed:
-        return QStringLiteral("The clipboard could not be cleared");
+        return QCoreApplication::translate("ScreenshotClipboardService",
+                                           "The clipboard could not be cleared");
     case ScreenshotClipboardCommitFailure::PublishFailed:
-        return QStringLiteral("The clipboard did not accept the image");
+        return QCoreApplication::translate("ScreenshotClipboardService",
+                                           "The clipboard did not accept the image");
     }
-    return QStringLiteral("The clipboard operation failed");
+    return QCoreApplication::translate("ScreenshotClipboardService",
+                                       "The clipboard operation failed");
 }
 
 ScreenshotClipboardCommitHandle::ScreenshotClipboardCommitHandle(

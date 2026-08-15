@@ -48,11 +48,17 @@ class ScreenshotPinnedEditController final : public QObject {
 
   signals:
     void editModeChanged(bool enabled);
+    void textRecognitionRequested();
+    void tableRecognitionRequested();
+    void qrRecognitionRequested();
+    void textTranslationRequested();
 
   private:
     bool eventFilter(QObject* watched, QEvent* event) override;
     void registerDrawingShortcuts();
     void reloadDrawingShortcuts();
+    void registerRecognitionShortcuts();
+    void reloadRecognitionShortcuts();
     QScreen* placementScreen() const;
     QRect placementLogicalBounds() const;
     QRect placementPhysicalBounds() const;
@@ -74,6 +80,7 @@ class ScreenshotPinnedEditController final : public QObject {
     SnowCanvasWidget& m_canvas;
     snow_shot::presentation::WindowShortcutManager& m_shortcutManager;
     QMap<QString, quint64> m_drawingShortcutBindings;
+    QMap<QString, quint64> m_recognitionShortcutBindings;
     ScreenshotFloatingToolPaletteWindow* m_toolbarWindow = nullptr;
     std::unique_ptr<ScreenshotCanvasColorSamplerWindow> m_canvasColorSamplerWindow;
     QPointer<adqt::widgets::AdColorPicker> m_canvasColorSamplingTarget;

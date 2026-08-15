@@ -627,14 +627,10 @@ GlobalShortcutValidationResult BuiltInSettingsRuntimeBindings::validateLocalShor
         return {shortcut, false, GlobalShortcutFailureReason::InvalidShortcut};
     }
     const QString canonical = normalized.value.toArray().first().toString();
-    const bool isScreenshotHistoryShortcut =
-        scope == SettingsLocalShortcutScope::Screenshot &&
-        (shortcutId == QStringLiteral("previous_screenshot_history") ||
-         shortcutId == QStringLiteral("next_screenshot_history")) &&
-        (canonical == QStringLiteral(",") || canonical == QStringLiteral("."));
     if (scope != SettingsLocalShortcutScope::PinToScreen &&
         storage::ScreenshotShortcutSettings::isReservedShortcut(canonical) &&
-        !isScreenshotHistoryShortcut) {
+        (scope != SettingsLocalShortcutScope::Screenshot ||
+         !storage::ScreenshotShortcutSettings::isReservedShortcutAllowed(shortcutId, canonical))) {
         return {canonical, false, GlobalShortcutFailureReason::InvalidShortcut};
     }
     const auto all = scope == SettingsLocalShortcutScope::Screenshot
@@ -715,6 +711,8 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
                       QStringLiteral("global_shortcuts/screenshot_fixed"));
         resetShortcut(GlobalShortcutAction::ScreenshotOcr,
                       QStringLiteral("global_shortcuts/screenshot_ocr"));
+        resetShortcut(GlobalShortcutAction::ScreenshotTranslation,
+                      QStringLiteral("global_shortcuts/screenshot_translation"));
         resetShortcut(GlobalShortcutAction::ScreenshotCopy,
                       QStringLiteral("global_shortcuts/screenshot_copy"));
         resetShortcut(GlobalShortcutAction::ScreenshotFullScreen,
@@ -844,22 +842,31 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
                                         QStringLiteral("previous_screenshot_history"),
                                         QStringLiteral("next_screenshot_history"),
                                         QStringLiteral("select_previously_selected_area"),
-                                        QStringLiteral("copy_color")}) {
+                                        QStringLiteral("copy_color"),
+                                        QStringLiteral("pin_to_screen"),
+                                        QStringLiteral("video_recording"),
+                                        QStringLiteral("scrolling_screenshot"),
+                                        QStringLiteral("save_as_file"),
+                                        QStringLiteral("cancel_screenshot"),
+                                        QStringLiteral("copy_to_clipboard")}) {
             defaults.insert(
                 actionId,
                 stringListDefault(QStringLiteral("screenshot_shortcuts/") + actionId));
         }
-        return storage::ScreenshotShortcutSettings().setAllShortcutsAtomic(defaults);
+        QMap<QString, QStringList> all = storage::ScreenshotShortcutSettings().allShortcuts();
+        for (auto it = defaults.cbegin(); it != defaults.cend(); ++it) {
+            all.insert(it.key(), it.value());
+        }
+        return storage::ScreenshotShortcutSettings().setAllShortcutsAtomic(all);
     }
     case SettingsSectionReset::ScreenshotOtherShortcuts: {
         QMap<QString, QStringList> defaults;
         for (const QString& actionId : {QStringLiteral("table_recognition"),
                                         QStringLiteral("qr_code_recognition"),
-                                        QStringLiteral("video_recording"),
                                         QStringLiteral("text_recognition"),
                                         QStringLiteral("text_translation"),
-                                        QStringLiteral("scrolling_screenshot"),
-                                        QStringLiteral("save_as_file")}) {
+                                        QStringLiteral("undo"),
+                                        QStringLiteral("redo")}) {
             defaults.insert(
                 actionId,
                 stringListDefault(QStringLiteral("screenshot_shortcuts/") + actionId));

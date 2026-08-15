@@ -24,6 +24,7 @@ class ScreenshotController : public QObject {
     void startDelayedCapture(int delaySeconds);
     void captureAndPinSelection();
     void captureAndRecognizeText();
+    void captureAndTranslateText();
     void captureAndCopySelection();
     void captureCurrentMonitor();
     void captureFocusedWindow();

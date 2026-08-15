@@ -105,6 +105,18 @@ SettingsItemDefinition screenshotOcrItem() {
         []() { return custom_outlined_icons::ToolRecognizeText(); });
 }
 
+SettingsItemDefinition screenshotTranslationItem() {
+    return quickActionItem(
+        QStringLiteral("quick.screenshot-translation"),
+        QT_TRANSLATE_NOOP("SettingsCatalog", "Text Translation"),
+        QT_TRANSLATE_NOOP("SettingsCatalog",
+                          "Translate text in the confirmed screenshot selection"),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Translate text"))},
+        GlobalShortcutAction::ScreenshotTranslation,
+        QStringLiteral("global_shortcuts/screenshot_translation"),
+        []() { return custom_outlined_icons::OcrTranslate(); });
+}
+
 SettingsItemDefinition screenshotCopyItem() {
     return quickActionItem(
         QStringLiteral("quick.screenshot-copy"),
@@ -968,6 +980,30 @@ QVector<SettingsItemDefinition> screenshotShortcutItems() {
             SettingsLocalShortcutScope::Screenshot, QStringLiteral("copy_color"),
             QT_TRANSLATE_NOOP("SettingsCatalog", "Copy Color"),
             []() { return outlined_icons::Copy(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("pin_to_screen"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Pin to Screen"),
+            []() { return custom_outlined_icons::PinToScreen(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("video_recording"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Video Recording"),
+            []() { return custom_outlined_icons::RecordScreen(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("scrolling_screenshot"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Scrolling Screenshot"),
+            []() { return custom_outlined_icons::ScrollingScreenshot(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("save_as_file"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Save as File"),
+            []() { return custom_outlined_icons::Save(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("cancel_screenshot"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Cancel Screenshot"),
+            []() { return outlined_icons::Close(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("copy_to_clipboard"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Copy to Clipboard"),
+            []() { return outlined_icons::Copy(); }),
     };
 }
 
@@ -982,25 +1018,19 @@ QVector<SettingsItemDefinition> screenshotOtherShortcutItems() {
             QT_TRANSLATE_NOOP("SettingsCatalog", "QR Code Recognition"),
             []() { return custom_outlined_icons::ScanQrcode(); }),
         localShortcutItem(
-            SettingsLocalShortcutScope::Screenshot, QStringLiteral("video_recording"),
-            QT_TRANSLATE_NOOP("SettingsCatalog", "Video Recording"),
-            []() { return custom_outlined_icons::RecordScreen(); }),
-        localShortcutItem(
             SettingsLocalShortcutScope::Screenshot, QStringLiteral("text_recognition"),
             QT_TRANSLATE_NOOP("SettingsCatalog", "Text Recognition"),
             []() { return custom_outlined_icons::ToolRecognizeText(); }),
         localShortcutItem(
             SettingsLocalShortcutScope::Screenshot, QStringLiteral("text_translation"),
-            QT_TRANSLATE_NOOP("SettingsCatalog", "Translate"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Text Translation"),
             []() { return custom_outlined_icons::OcrTranslate(); }),
-        localShortcutItem(
-            SettingsLocalShortcutScope::Screenshot, QStringLiteral("scrolling_screenshot"),
-            QT_TRANSLATE_NOOP("SettingsCatalog", "Scrolling Screenshot"),
-            []() { return custom_outlined_icons::ScrollingScreenshot(); }),
-        localShortcutItem(
-            SettingsLocalShortcutScope::Screenshot, QStringLiteral("save_as_file"),
-            QT_TRANSLATE_NOOP("SettingsCatalog", "Save as File"),
-            []() { return custom_outlined_icons::Save(); }),
+        localShortcutItem(SettingsLocalShortcutScope::Screenshot, QStringLiteral("undo"),
+                          QT_TRANSLATE_NOOP("SettingsCatalog", "Undo"),
+                          []() { return outlined_icons::Undo(); }),
+        localShortcutItem(SettingsLocalShortcutScope::Screenshot, QStringLiteral("redo"),
+                          QT_TRANSLATE_NOOP("SettingsCatalog", "Redo"),
+                          []() { return outlined_icons::Redo(); }),
     };
 }
 
@@ -1175,6 +1205,7 @@ QVector<SettingsPageDefinition> builtInPages() {
                         screenshotDelayItem(),
                         screenshotFixedItem(),
                         screenshotOcrItem(),
+                        screenshotTranslationItem(),
                         screenshotCopyItem(),
                         screenshotFullScreenItem(),
                         screenshotFocusedWindowItem(),
@@ -1599,6 +1630,8 @@ QString shortcutConfigurationKey(GlobalShortcutAction action) {
         return QStringLiteral("global_shortcuts/screenshot_fixed");
     case GlobalShortcutAction::ScreenshotOcr:
         return QStringLiteral("global_shortcuts/screenshot_ocr");
+    case GlobalShortcutAction::ScreenshotTranslation:
+        return QStringLiteral("global_shortcuts/screenshot_translation");
     case GlobalShortcutAction::ScreenshotCopy:
         return QStringLiteral("global_shortcuts/screenshot_copy");
     case GlobalShortcutAction::ScreenshotFullScreen:

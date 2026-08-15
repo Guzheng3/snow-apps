@@ -115,12 +115,16 @@ const QColor kDefaultPinnedBorderColor(219, 219, 219, 255);
 constexpr auto kTranslationSourceProperty = "screenshotPinnedTranslationSource";
 constexpr auto kShortcutDisplayProperty = "screenshotPinnedShortcutDisplay";
 constexpr auto kOcrTooLargeDescription =
-    "IImage size is too large.";
+    "Image size is too large.";
 [[maybe_unused]] constexpr const char* kPinnedTranslations[] = {
     QT_TRANSLATE_NOOP("ScreenshotPinnedWindow", "Enable drawing mode"),
     QT_TRANSLATE_NOOP("ScreenshotPinnedWindow", "Close"),
+    QT_TRANSLATE_NOOP("ScreenshotPinnedWindow", "Image size is too large."),
+    QT_TRANSLATE_NOOP("ScreenshotPinnedWindow", "The pinned image could not be prepared"),
     QT_TRANSLATE_NOOP("ScreenshotPinnedWindow",
-                     "IImage size is too large."),
+                      "The pinned image copy could not be started"),
+    QT_TRANSLATE_NOOP("ScreenshotPinnedWindow",
+                      "The pinned image save could not be started"),
 };
 
 QString translatePinnedText(const char* source) {
@@ -714,7 +718,7 @@ ScreenshotPinnedWindow::~ScreenshotPinnedWindow() {
         native::removeSynchronizedResize(m_synchronizedResizeWindowId);
         m_synchronizedResizeWindowId = 0;
     }
-    m_windowDragActive = false;
+    finishWindowMove();
     clearWindowDragCursor();
     livePinnedWindows().removeAll(QPointer<ScreenshotPinnedWindow>(this));
     stopRecognition();
@@ -763,6 +767,7 @@ bool ScreenshotPinnedWindow::event(QEvent* event) {
 #if defined(Q_OS_WIN) || defined(_WIN32)
         if (m_nativeGeometryController != nullptr &&
             m_nativeGeometryController->hasInteractiveTransaction() &&
+            !m_windowDragActive &&
             (GetAsyncKeyState(VK_LBUTTON) & 0x8000) == 0) {
             static_cast<void>(finishNativeGeometryInteraction());
         }
@@ -784,10 +789,10 @@ bool ScreenshotPinnedWindow::nativeEvent(const QByteArray& eventType, void* mess
             return QWidget::nativeEvent(eventType, message, result);
         }
 
-        // The pinned image surface is exposed as HTCAPTION so Windows can
-        // provide native dragging. That changes the normal client hover
-        // path into non-client mouse messages, which means Qt may not send
-        // the top-level Enter event that drives the control visibility state.
+        // The pinned image surface is exposed as HTCAPTION so a press can
+        // start physical window capture. That changes the normal client hover
+        // path into non-client mouse messages, which means Qt may not send the
+        // top-level Enter event that drives the control visibility state.
         // Track both paths here and keep the state based on the actual HWND
         // bounds so moving between the image and its client-side controls
         // does not briefly hide the panel.
@@ -833,6 +838,27 @@ bool ScreenshotPinnedWindow::nativeEvent(const QByteArray& eventType, void* mess
             }
         };
         updateNativePointerPresence(nativeMessage->message);
+
+        if (m_windowDragActive &&
+            (nativeMessage->message == WM_MOUSEMOVE ||
+             nativeMessage->message == WM_NCMOUSEMOVE)) {
+            POINT cursor{};
+            if (GetCursorPos(&cursor) != FALSE) {
+                static_cast<void>(updateWindowMove(QPoint(cursor.x, cursor.y)));
+            }
+            if (result != nullptr) {
+                *result = 0;
+            }
+            return true;
+        }
+
+        if (m_windowDragActive &&
+            (nativeMessage->message == WM_CANCELMODE ||
+             (nativeMessage->message == WM_CAPTURECHANGED &&
+              reinterpret_cast<HWND>(nativeMessage->lParam) != pinnedHwnd))) {
+            static_cast<void>(finishNativeGeometryInteraction());
+            finishWindowMove();
+        }
 
         if (nativeMessage->message == WM_WINDOWPOSCHANGING &&
             m_nativeGeometryController != nullptr) {
@@ -1035,8 +1061,7 @@ bool ScreenshotPinnedWindow::nativeEvent(const QByteArray& eventType, void* mess
         if (nativeMessage->message == WM_NCLBUTTONUP || nativeMessage->message == WM_LBUTTONUP) {
             static_cast<void>(finishNativeGeometryInteraction());
             if (nativeMessage->wParam == HTCAPTION || m_windowDragActive) {
-                m_windowDragActive = false;
-                updateWindowDragCursor(mapFromGlobal(QCursor::pos()));
+                finishWindowMove();
             }
         }
 
@@ -1057,7 +1082,7 @@ bool ScreenshotPinnedWindow::nativeEvent(const QByteArray& eventType, void* mess
                        !m_geometryAnimating &&
                        (m_editController == nullptr || !m_editController->editMode()) &&
                        !m_ocrMode) {
-                started = startSystemWindowMove();
+                started = startWindowMove();
             }
             if (!started) {
                 if (m_nativeGeometryController != nullptr) {
@@ -1127,8 +1152,7 @@ bool ScreenshotPinnedWindow::nativeEvent(const QByteArray& eventType, void* mess
             static_cast<void>(finishNativeGeometryInteraction());
             m_systemSizingActive = false;
             if (m_windowDragActive) {
-                m_windowDragActive = false;
-                updateWindowDragCursor(mapFromGlobal(QCursor::pos()));
+                finishWindowMove();
             }
         }
 
@@ -1496,7 +1520,10 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
                 if (ScreenshotPinnedEditController* controller = m_editController) {
                     if (ScreenshotToolPaletteHost* host = controller->toolbarHost()) {
                         if (mode == static_cast<int>(ScreenshotRecognitionSessionController::Mode::Text)) {
-                            host->setActiveTool(ScreenshotToolPalette::Tool::Ocr);
+                            host->setActiveTool(
+                                m_translateAfterRecognition
+                                    ? ScreenshotToolPalette::Tool::TextTranslation
+                                    : ScreenshotToolPalette::Tool::Ocr);
                         } else if (mode == static_cast<int>(ScreenshotRecognitionSessionController::Mode::Table)) {
                             host->setActiveTool(ScreenshotToolPalette::Tool::Table);
                         } else if (mode == static_cast<int>(ScreenshotRecognitionSessionController::Mode::Qr)) {
@@ -1576,6 +1603,13 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
                         toolbar->setOcrEnabled(m_formattedTextAvailable ||
                                                (m_ocrSupported && m_recognition != nullptr));
                     }
+                }
+                if (available && m_translateAfterRecognition &&
+                    m_recognitionSession != nullptr && m_recognitionSession->active() &&
+                    m_recognitionSession->mode() ==
+                        ScreenshotRecognitionSessionController::Mode::Text) {
+                    m_translateAfterRecognition = false;
+                    m_recognitionSession->beginTextTranslation();
                 }
             });
     if (!m_originalImage.isNull()) {
@@ -1705,16 +1739,15 @@ bool ScreenshotPinnedWindow::eventFilter(QObject* watched, QEvent* event) {
             }
         } else if (event->type() == QEvent::MouseButtonPress) {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
-            if (mouseEvent->button() == Qt::LeftButton && startSystemWindowMove()) {
+            if (mouseEvent->button() == Qt::LeftButton && startWindowMove()) {
                 mouseEvent->accept();
                 return true;
             }
         } else if (event->type() == QEvent::MouseButtonRelease) {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
             if (mouseEvent->button() == Qt::LeftButton && m_windowDragActive) {
-                m_windowDragActive = false;
-                updateWindowDragCursor(
-                    windowPositionForEvent(watched, mouseEvent->position()).toPoint());
+                static_cast<void>(finishNativeGeometryInteraction());
+                finishWindowMove();
                 mouseEvent->accept();
                 return true;
             }
@@ -1778,7 +1811,7 @@ void ScreenshotPinnedWindow::closeEvent(QCloseEvent* event) {
         native::removeSynchronizedResize(m_synchronizedResizeWindowId);
         m_synchronizedResizeWindowId = 0;
     }
-    m_windowDragActive = false;
+    finishWindowMove();
     clearWindowDragCursor();
     m_systemSizingActive = false;
     stopRecognition();
@@ -1870,7 +1903,7 @@ void ScreenshotPinnedWindow::mousePressEvent(QMouseEvent* event) {
 
     const bool editMode = m_editController != nullptr && m_editController->editMode();
     if (event != nullptr && event->button() == Qt::LeftButton && !editMode && !m_ocrMode &&
-        !isControlsPanelPosition(event->position().toPoint()) && startSystemWindowMove()) {
+        !isControlsPanelPosition(event->position().toPoint()) && startWindowMove()) {
         event->accept();
         return;
     }
@@ -1882,8 +1915,7 @@ void ScreenshotPinnedWindow::mouseReleaseEvent(QMouseEvent* event) {
         static_cast<void>(finishNativeGeometryInteraction());
     }
     if (event != nullptr && event->button() == Qt::LeftButton && m_windowDragActive) {
-        m_windowDragActive = false;
-        updateWindowDragCursor(event->position().toPoint());
+        finishWindowMove();
         event->accept();
         return;
     }
@@ -2487,19 +2519,27 @@ void ScreenshotPinnedWindow::ensureEditController() {
             });
 
     if (m_recognitionSession != nullptr && m_editController->toolbarWindow() != nullptr) {
+        connect(m_editController, &ScreenshotPinnedEditController::textRecognitionRequested, this,
+                [this]() {
+                    m_translateAfterRecognition = false;
+                    activateRecognitionMode(
+                        static_cast<int>(ScreenshotRecognitionSessionController::Mode::Text));
+                });
+        connect(m_editController, &ScreenshotPinnedEditController::tableRecognitionRequested, this,
+                [this]() {
+                    m_translateAfterRecognition = false;
+                    activateRecognitionMode(
+                        static_cast<int>(ScreenshotRecognitionSessionController::Mode::Table));
+                });
+        connect(m_editController, &ScreenshotPinnedEditController::qrRecognitionRequested, this,
+                [this]() {
+                    m_translateAfterRecognition = false;
+                    activateRecognitionMode(
+                        static_cast<int>(ScreenshotRecognitionSessionController::Mode::Qr));
+                });
+        connect(m_editController, &ScreenshotPinnedEditController::textTranslationRequested, this,
+                &ScreenshotPinnedWindow::activateTextTranslation);
         if (ScreenshotToolPalette* toolbar = m_editController->toolbarWindow()->palette()) {
-            connect(toolbar, &ScreenshotToolPalette::ocrRequested, this, [this]() {
-                activateRecognitionMode(
-                    static_cast<int>(ScreenshotRecognitionSessionController::Mode::Text));
-            });
-            connect(toolbar, &ScreenshotToolPalette::tableRequested, this, [this]() {
-                activateRecognitionMode(
-                    static_cast<int>(ScreenshotRecognitionSessionController::Mode::Table));
-            });
-            connect(toolbar, &ScreenshotToolPalette::qrRequested, this, [this]() {
-                activateRecognitionMode(
-                    static_cast<int>(ScreenshotRecognitionSessionController::Mode::Qr));
-            });
             connect(toolbar, &ScreenshotToolPalette::textEditRequested, this,
                     &ScreenshotPinnedWindow::handleTextEditingRequested);
             connect(toolbar, &ScreenshotToolPalette::textTranslateRequested, this,
@@ -2558,7 +2598,8 @@ void ScreenshotPinnedWindow::setEditMode(bool enabled) {
         return;
     }
     if (enabled) {
-        m_windowDragActive = false;
+        static_cast<void>(finishNativeGeometryInteraction());
+        finishWindowMove();
         clearWindowDragCursor();
     }
     if (enabled && m_thumbnailMode) {
@@ -2646,6 +2687,7 @@ void ScreenshotPinnedWindow::activateRecognitionMode(int mode) {
 }
 
 void ScreenshotPinnedWindow::deactivateRecognition() {
+    m_translateAfterRecognition = false;
     if (m_recognitionSession != nullptr) {
         m_recognitionSession->deactivate();
     }
@@ -2894,6 +2936,27 @@ void ScreenshotPinnedWindow::copyCurrentViewport() {
             })) {
         showPinnedRecognitionMessage(
             this, translatePinnedText("The pinned image copy could not be started"), true);
+    }
+}
+
+void ScreenshotPinnedWindow::activateTextTranslation() {
+    if (m_closing || m_recognitionSession == nullptr ||
+        (!m_ocrSupported && !m_formattedTextAvailable)) {
+        m_translateAfterRecognition = false;
+        return;
+    }
+    m_translateAfterRecognition = true;
+    activateRecognitionMode(
+        static_cast<int>(ScreenshotRecognitionSessionController::Mode::Text));
+    if (m_editController != nullptr && m_editController->toolbarHost() != nullptr) {
+        m_editController->toolbarHost()->setActiveTool(
+            ScreenshotToolPalette::Tool::TextTranslation);
+    }
+    if (m_translateAfterRecognition && m_recognitionSession->active() &&
+        m_recognitionSession->mode() == ScreenshotRecognitionSessionController::Mode::Text &&
+        m_recognitionSession->hasTextResult()) {
+        m_translateAfterRecognition = false;
+        m_recognitionSession->beginTextTranslation();
     }
 }
 
@@ -3442,7 +3505,8 @@ void ScreenshotPinnedWindow::setThumbnailMode(bool enabled, bool animate) {
         return;
     }
     invalidatePendingCopy();
-    m_windowDragActive = false;
+    static_cast<void>(finishNativeGeometryInteraction());
+    finishWindowMove();
     clearWindowDragCursor();
     if (enabled) {
         setEditMode(false);
@@ -3732,22 +3796,41 @@ bool ScreenshotPinnedWindow::moveCursorBy(const QPoint& delta) {
     }
 #if defined(Q_OS_WIN) || defined(_WIN32)
     POINT cursor{};
-    return GetCursorPos(&cursor) != FALSE &&
-           SetCursorPos(cursor.x + delta.x(), cursor.y + delta.y()) != FALSE;
+    if (GetCursorPos(&cursor) == FALSE) {
+        return false;
+    }
+    const QPoint target(cursor.x + delta.x(), cursor.y + delta.y());
+    if (SetCursorPos(target.x(), target.y()) == FALSE) {
+        return false;
+    }
+    POINT movedCursor{};
+    if (GetCursorPos(&movedCursor) == FALSE) {
+        return false;
+    }
+    return !m_windowDragActive ||
+           updateWindowMove(QPoint(movedCursor.x, movedCursor.y));
 #else
     QCursor::setPos(QCursor::pos() + delta);
     return true;
 #endif
 }
 
-bool ScreenshotPinnedWindow::startSystemWindowMove() {
+bool ScreenshotPinnedWindow::startWindowMove() {
     if (!windowDragEnabled() || m_nativeGeometryController == nullptr) {
         return false;
     }
 #if defined(Q_OS_WIN) || defined(_WIN32)
+    const WId nativeWindowId = winId();
+    m_windowDragActive = true;
+    if (!native::beginWindowMoveCapture(nativeWindowId)) {
+        m_windowDragActive = false;
+        return false;
+    }
+    m_windowMoveCaptureId = nativeWindowId;
     POINT cursor{};
     if (GetCursorPos(&cursor) == FALSE ||
         !m_nativeGeometryController->beginMove(QPoint(cursor.x, cursor.y))) {
+        finishWindowMove();
         return false;
     }
 #else
@@ -3755,16 +3838,56 @@ bool ScreenshotPinnedWindow::startSystemWindowMove() {
     if (!m_nativeGeometryController->beginMove(globalCursor)) {
         return false;
     }
-#endif
     m_windowDragActive = true;
+#endif
     setWindowDragCursor(Qt::ClosedHandCursor);
+#if defined(Q_OS_WIN) || defined(_WIN32)
+    return true;
+#else
     if (windowHandle()->startSystemMove()) {
         return true;
     }
-    m_windowDragActive = false;
-    updateWindowDragCursor(mapFromGlobal(QCursor::pos()));
+    finishWindowMove();
     m_nativeGeometryController->cancelPendingInteraction();
     return false;
+#endif
+}
+
+bool ScreenshotPinnedWindow::updateWindowMove(const QPoint& nativeCursorPosition) {
+    if (!m_windowDragActive || m_nativeGeometryController == nullptr) {
+        return false;
+    }
+    const QRect target = m_nativeGeometryController->updateMove({}, nativeCursorPosition);
+    if (!target.isValid() || target.isEmpty()) {
+        return false;
+    }
+
+#if defined(Q_OS_WIN) || defined(_WIN32)
+    if (native::currentClientGeometry(winId()) == target) {
+        return true;
+    }
+    if (native::applyClientGeometry(winId(), target)) {
+        return true;
+    }
+    static_cast<void>(restoreCommittedNativeGeometry());
+    finishWindowMove();
+    return false;
+#else
+    Q_UNUSED(nativeCursorPosition);
+    return true;
+#endif
+}
+
+void ScreenshotPinnedWindow::finishWindowMove() {
+    const bool wasActive = m_windowDragActive;
+    m_windowDragActive = false;
+    if (m_windowMoveCaptureId != 0) {
+        native::endWindowMoveCapture(m_windowMoveCaptureId);
+        m_windowMoveCaptureId = 0;
+    }
+    if (wasActive) {
+        updateWindowDragCursor(mapFromGlobal(QCursor::pos()));
+    }
 }
 
 bool ScreenshotPinnedWindow::windowDragEnabled() const {
