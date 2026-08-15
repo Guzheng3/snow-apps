@@ -238,6 +238,11 @@ class ColorSwatchButton final : public adqt::widgets::AdButton {
     bool m_swatchBorderVisible = true;
 };
 
+class ColorPickerSamplerButton final : public adqt::widgets::AdButton {
+  public:
+    explicit ColorPickerSamplerButton(QWidget* parent = nullptr);
+};
+
 class IconValuePreviewTrigger final : public StylePreviewButton {
   public:
     explicit IconValuePreviewTrigger(QWidget* parent = nullptr);
@@ -416,6 +421,8 @@ ColorSwatchButton*
 createScreenshotToolPaletteColorButton(QWidget* parent, const char* tooltip, const QColor& color,
                                        bool summary, bool swatchBorderVisible,
                                        const ScreenshotToolPaletteButtonMetrics& metrics);
+
+ColorPickerSamplerButton* createScreenshotToolPaletteColorPickerSamplerButton(QWidget* parent);
 
 adqt::widgets::AdButton*
 createScreenshotToolPaletteStyleActionButton(QWidget* parent, const char* tooltip,

@@ -1,6 +1,8 @@
 #ifndef SNOW_SHOT_PRESENTATION_SCREENSHOTRECOGNITIONWINDOW_H
 #define SNOW_SHOT_PRESENTATION_SCREENSHOTRECOGNITIONWINDOW_H
 
+#include "snow_shot/presentation/screenshotselectiongeometry.h"
+
 #include <QPointF>
 #include <QRect>
 #include <QRectF>
@@ -13,6 +15,7 @@
 
 class QKeyEvent;
 class QFocusEvent;
+class QEvent;
 class QMouseEvent;
 class QPaintEvent;
 class QResizeEvent;
@@ -31,6 +34,9 @@ struct ScreenshotTableCommandState;
 namespace adqt::widgets {
 class AdSpin;
 }
+namespace snow_shot::presentation {
+class WindowShortcutManager;
+}
 
 struct ScreenshotRecognitionWindowActions {
     std::function<void()> handleCancel = []() {};
@@ -40,6 +46,14 @@ struct ScreenshotRecognitionWindowActions {
     std::function<void(const QUrl&)> handleLinkActivated = [](const QUrl&) {};
     std::function<void()> handleUndoTextEdit = []() {};
     std::function<void()> handleRedoTextEdit = []() {};
+    std::function<ScreenshotSelectionDragMode(const QPointF&)> selectionResizeDragMode =
+        [](const QPointF&) { return ScreenshotSelectionDragMode::None; };
+    std::function<bool(const QPointF&)> beginSelectionResize = [](const QPointF&) {
+        return false;
+    };
+    std::function<void(const QPointF&)> updateSelectionResize = [](const QPointF&) {};
+    std::function<void(const QPointF&)> finishSelectionResize = [](const QPointF&) {};
+    std::function<void()> selectionResizeFinished = []() {};
 };
 
 class ScreenshotRecognitionWindow final : public QWidget {
@@ -63,10 +77,13 @@ class ScreenshotRecognitionWindow final : public QWidget {
     explicit ScreenshotRecognitionWindow(
         ScreenshotRecognitionWindowActions actions,
         QWidget* parent = nullptr,
-        PresentationMode presentationMode = PresentationMode::TopLevelWindow);
+        PresentationMode presentationMode = PresentationMode::TopLevelWindow,
+        snow_shot::presentation::WindowShortcutManager* shortcutManager = nullptr);
     ~ScreenshotRecognitionWindow() override;
 
     [[nodiscard]] bool present(const Config& config);
+    [[nodiscard]] bool updateSelectionGeometry(const QRect& geometry,
+                                               const QRectF& canvasSelection);
     [[nodiscard]] PresentationMode presentationMode() const;
 
     void setOcrPresentation(std::shared_ptr<ScreenshotOcrPresentation> presentation);
@@ -94,7 +111,6 @@ class ScreenshotRecognitionWindow final : public QWidget {
 
   protected:
     void focusOutEvent(QFocusEvent* event) override;
-    void keyPressEvent(QKeyEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
@@ -105,11 +121,20 @@ class ScreenshotRecognitionWindow final : public QWidget {
   private:
     [[nodiscard]] QPointF canvasPositionForLocalPoint(const QPointF& localPosition) const;
     [[nodiscard]] QTransform canvasToLocalTransform() const;
-    bool handleRecognitionKeyPress(QKeyEvent* event);
+    void registerWindowShortcuts();
     void synchronizeTextLayer();
     void updateTextEditorSpinGeometry();
+    void installSelectionResizeEventFilters(QWidget* widget);
+    [[nodiscard]] ScreenshotSelectionDragMode selectionResizeDragModeAtLocalPoint(
+        const QPointF& localPosition) const;
+    [[nodiscard]] bool handleSelectionResizeEvent(QObject* watched, QEvent* event);
+    void updateSelectionResizeCursor(const QPointF& localPosition);
+    [[nodiscard]] static Qt::CursorShape cursorForSelectionResize(
+        ScreenshotSelectionDragMode dragMode);
 
     ScreenshotRecognitionWindowActions m_actions;
+    std::unique_ptr<snow_shot::presentation::WindowShortcutManager> m_ownedShortcutManager;
+    snow_shot::presentation::WindowShortcutManager* m_shortcutManager = nullptr;
     std::shared_ptr<ScreenshotOcrPresentation> m_ocrPresentation;
     QStackedLayout* m_stack = nullptr;
     ScreenshotOcrTextLayer* m_textLayer = nullptr;
@@ -122,6 +147,7 @@ class ScreenshotRecognitionWindow final : public QWidget {
     QRectF m_canvasSelection;
     qreal m_formattedTextDevicePixelRatio = 1.0;
     PresentationMode m_presentationMode = PresentationMode::TopLevelWindow;
+    bool m_selectionResizeActive = false;
 };
 
 #endif // SNOW_SHOT_PRESENTATION_SCREENSHOTRECOGNITIONWINDOW_H

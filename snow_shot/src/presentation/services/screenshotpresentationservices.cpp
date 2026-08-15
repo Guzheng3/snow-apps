@@ -69,6 +69,15 @@ void ScreenshotPresentationServices::setUiPreferences(
     updateOverlayState();
 }
 
+void ScreenshotPresentationServices::setQuickSelectionDisabledTools(
+    const QSet<SnowCanvasTool>& tools) {
+    if (m_context.quickSelectionDisabledTools == tools) {
+        return;
+    }
+    m_context.quickSelectionDisabledTools = tools;
+    updateOverlayState();
+}
+
 void ScreenshotPresentationServices::updateOverlayState() {
     const bool smartFraming = m_context.interaction.intelligentSelecting();
     const ScreenshotToolbarPresentationState toolbarState = toolbarPresentationState();
@@ -98,21 +107,37 @@ void ScreenshotPresentationServices::presentOverlayState(const QRectF& selection
         m_context.displaySession, selection, m_context.selection.cornerRadius(),
         m_context.selection.shadowWidth(), m_context.selection.shadowColor(),
         m_selectionToolbarHovered, m_context.interaction.intelligentSelecting(),
-        m_context.interaction.manualSelecting(), m_context.interaction.dragging());
+        m_context.interaction.marqueeSelecting(), m_context.interaction.dragging());
 
     m_context.overlayCoordinator.updateGuideLinesAtGlobalPosition(
         m_context.displaySession, QCursor::pos(), m_context.interaction.selecting(),
         m_uiPreferences.cursorGuideLineColor, m_uiPreferences.monitorCenterGuideLineColor);
 
-    const ScreenshotShortcutHintMode hintMode = screenshotShortcutHintModeForState(
-        m_context.interaction.intelligentSelecting(), m_context.interaction.manualSelecting(),
-        m_context.interaction.movingSelection(), m_context.interaction.moveToolActive());
+    const ScreenshotShortcutHintContext hintContext{
+        m_context.interaction.activeTool(), m_context.interaction.mode(),
+        m_context.quickSelectionDisabledTools};
+    const ScreenshotShortcutHintMode hintMode =
+        screenshotShortcutHintModeForContext(hintContext);
     ScreenshotOverlayWindow* hintOwner = nullptr;
+    QRectF selectionGlobal;
     if (hintMode != ScreenshotShortcutHintMode::Hidden) {
         if (selection.isValid() && !selection.isEmpty()) {
             const CapturedDisplayModel* display =
                 m_context.geometry.displayForCanvasRect(m_context.displaySession, selection);
             hintOwner = m_context.displaySession.overlayForDisplay(display);
+            if (hintOwner != nullptr && display != nullptr) {
+                const QRectF displayCanvasRect =
+                    ScreenshotGeometryMapper::displayCanvasRect(*display);
+                const QRectF selectionOnDisplay = selection.intersected(displayCanvasRect);
+                if (selectionOnDisplay.isValid() && !selectionOnDisplay.isEmpty()) {
+                    selectionGlobal = QRectF(
+                        m_context.geometry.logicalPositionForCanvasPoint(
+                            *display, selectionOnDisplay.topLeft()),
+                        m_context.geometry.logicalPositionForCanvasPoint(
+                            *display, selectionOnDisplay.bottomRight()))
+                                          .normalized();
+                }
+            }
         }
         if (hintOwner == nullptr) {
             const QPoint cursorPosition = QCursor::pos();
@@ -126,13 +151,14 @@ void ScreenshotPresentationServices::presentOverlayState(const QRectF& selection
                 });
         }
     }
-    m_context.overlayCoordinator.updateShortcutHints(hintOwner, hintMode,
-                                                     m_uiPreferences.shortcutHintOpacity);
+    m_context.overlayCoordinator.updateShortcutHints(hintOwner, hintContext,
+                                                     m_uiPreferences.shortcutHintOpacity,
+                                                     selectionGlobal);
 }
 
 void ScreenshotPresentationServices::updateOverlayCursors() const {
     const bool selecting =
-        m_context.interaction.intelligentSelecting() || m_context.interaction.manualSelecting();
+        m_context.interaction.intelligentSelecting() || m_context.interaction.marqueeSelecting();
     m_context.overlayCoordinator.updateOverlayCursors(m_context.displaySession, selecting,
                                                       m_context.interaction.dragging());
 }

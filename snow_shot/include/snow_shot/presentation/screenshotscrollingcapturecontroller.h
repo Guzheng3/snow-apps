@@ -2,6 +2,7 @@
 #define SNOW_SHOT_PRESENTATION_SCREENSHOTSCROLLINGCAPTURECONTROLLER_H
 
 #include "snow_shot/presentation/screenshotscrollingtypes.h"
+#include "snow_shot/presentation/screenshotscrollingsnapshot.h"
 #include "snow_shot/presentation/screenshotclipboardservice.h"
 
 #include <QImage>
@@ -26,6 +27,7 @@ class ScreenshotScrollingCaptureController final : public QObject {
   public:
     using ImageResultCallback = std::function<void(QImage)>;
     using ClipboardResultCallback = std::function<void(ScreenshotClipboardPayload)>;
+    using SnapshotResultCallback = std::function<void(ScreenshotScrollingSnapshot)>;
 
     explicit ScreenshotScrollingCaptureController(
         ScreenshotScrollingCaptureControllerContext context, QObject* parent = nullptr);
@@ -42,6 +44,7 @@ class ScreenshotScrollingCaptureController final : public QObject {
     [[nodiscard]] QSize trimmedSize() const;
     [[nodiscard]] bool requestTrimmedImage(ImageResultCallback callback);
     [[nodiscard]] bool requestTrimmedClipboardPayload(ClipboardResultCallback callback);
+    [[nodiscard]] bool requestTrimmedSnapshot(SnapshotResultCallback callback);
     [[nodiscard]] QRect canvasSelection() const;
 
   private:

@@ -119,6 +119,7 @@ enum class SettingsIntegerBinding {
 
 enum class SettingsMultiSelectBinding {
     DrawingQuickSelectionDisabledTools,
+    TrayMenuOptions,
 };
 
 struct SettingsMultiSelectDefinition {
@@ -252,10 +253,31 @@ struct SettingsActionDefinition {
 enum class SettingsCustomRenderer {
     StorageStatus,
     DrawingToolbarEditor,
+    TrayMenuOptions,
 };
 
 struct SettingsCustomDefinition {
     SettingsCustomRenderer renderer = SettingsCustomRenderer::StorageStatus;
+};
+
+enum class SettingsTrayMenuOptionKind {
+    QuickAction,
+    DisableShortcutFunctions,
+    ShowMainWindow,
+    Exit,
+};
+
+struct SettingsTrayMenuOptionDefinition {
+    QString id;
+    TranslatableText label;
+    SettingsTrayMenuOptionKind kind = SettingsTrayMenuOptionKind::QuickAction;
+    GlobalShortcutAction shortcutAction = GlobalShortcutAction::Screenshot;
+    std::function<adqt::icons::IconRef()> iconFactory;
+};
+
+struct SettingsTrayMenuGroupDefinition {
+    QString id;
+    QVector<SettingsTrayMenuOptionDefinition> options;
 };
 
 using SettingsItemPayload =
@@ -358,8 +380,13 @@ class SettingsCatalog final {
     [[nodiscard]] const SettingsSectionDefinition* section(const QString& pageId,
                                                            const QString& sectionId) const;
     [[nodiscard]] const SettingsItemDefinition* item(const SettingsLocation& location) const;
+    [[nodiscard]] const SettingsItemDefinition*
+    itemForShortcut(GlobalShortcutAction action) const;
+    [[nodiscard]] QString shortcutActionTitle(GlobalShortcutAction action,
+                                               int screenshotDelaySeconds = 3) const;
     [[nodiscard]] std::optional<SettingsCommand>
     commandForShortcut(GlobalShortcutAction action) const;
+    [[nodiscard]] QVector<SettingsTrayMenuGroupDefinition> trayMenuGroups() const;
     [[nodiscard]] SettingsLocation resolveLocation(const SettingsLocation& requested) const;
     [[nodiscard]] QVector<SettingsSectionSummary> sectionSummaries(const QString& pageId) const;
     [[nodiscard]] QStringList validationErrors() const;

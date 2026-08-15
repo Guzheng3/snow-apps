@@ -2,10 +2,12 @@
 #define SNOW_SHOT_PRESENTATION_SCREENSHOTPRESENTATIONSERVICES_H
 
 #include "snow_shot/presentation/screenshotsmartselectiontransition.h"
+#include "snow_draw_engine_qt/snow_canvas_types.h"
 #include "snow_shot/presentation/screenshotuipreferences.h"
 
 #include <QPoint>
 #include <QPointF>
+#include <QSet>
 #include <QRect>
 #include <QRectF>
 
@@ -27,6 +29,7 @@ struct ScreenshotPresentationServicesContext {
     ScreenshotDisplaySession& displaySession;
     ScreenshotInteractionState& interaction;
     ScreenshotSelectionModel& selection;
+    QSet<SnowCanvasTool> quickSelectionDisabledTools;
 };
 
 class ScreenshotPresentationServices final {
@@ -42,6 +45,7 @@ class ScreenshotPresentationServices final {
     void raiseToolbarForCanvasInteraction();
     void setSelectionToolbarHovered(bool hovered);
     void setUiPreferences(const ScreenshotUiPreferences& preferences);
+    void setQuickSelectionDisabledTools(const QSet<SnowCanvasTool>& tools);
 
     void updateOverlayState();
     void updateOverlayCursors() const;

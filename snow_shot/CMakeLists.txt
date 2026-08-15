@@ -232,6 +232,7 @@ set(SNOW_SHOT_IMAGE_CODEC_SOURCES
 add_library(snow_shot_image_codec STATIC ${SNOW_SHOT_IMAGE_CODEC_SOURCES})
 snow_enable_unity_build(snow_shot_image_codec)
 target_include_directories(snow_shot_image_codec PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/image"
     "${SNOW_SHOT_SNOW_IMAGE_DIR}/include"
 )
@@ -419,6 +420,15 @@ target_link_libraries(snow_shot_storage PUBLIC
     Qt6::Gui
 )
 
+add_library(snow_shot_window_shortcuts STATIC
+    include/snow_shot/presentation/windowshortcutmanager.h
+    src/presentation/services/windowshortcutmanager.cpp
+)
+target_include_directories(snow_shot_window_shortcuts PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+target_link_libraries(snow_shot_window_shortcuts PUBLIC Qt6::Widgets)
+
 set(QT_I18N_SOURCE_LANGUAGE en_US)
 file(GLOB TS_FILES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/i18n/snow_shot_*.ts"
@@ -575,7 +585,9 @@ set(PROJECT_HEADERS
     include/snow_shot/presentation/screenshotdisplayconfigurationobserver.h
     include/snow_shot/presentation/screenshotdisplaysession.h
     include/snow_shot/presentation/screenshotexportservice.h
+    include/snow_shot/presentation/screenshotexportcoordinator.h
     include/snow_shot/presentation/screenshotimagefileservice.h
+    include/snow_shot/presentation/screenshotimagerowsource.h
     include/snow_shot/presentation/screenshotfloatingtoolpalettewindow.h
     include/snow_shot/presentation/screenshotgeometry.h
     include/snow_shot/presentation/screenshotguidelinerendering.h
@@ -613,6 +625,7 @@ set(PROJECT_HEADERS
     include/snow_shot/presentation/screenshotsourceimagecomposer.h
     include/snow_shot/presentation/screenshotselectiontoolbarwindow.h
     include/snow_shot/presentation/screenshotscrollingcapturecontroller.h
+    include/snow_shot/presentation/screenshotscrollingsnapshot.h
     include/snow_shot/presentation/screenshotscrollingtypes.h
     include/snow_shot/presentation/screenshotscrollingthumbnailwidget.h
     include/snow_shot/presentation/screenshotoverlaycanvaspresenter.h
@@ -620,6 +633,7 @@ set(PROJECT_HEADERS
     include/snow_shot/presentation/screenshotoverlayeventsink.h
     include/snow_shot/presentation/screenshotoverlayinteractionadapter.h
     include/snow_shot/presentation/screenshotoverlayinputhandler.h
+    include/snow_shot/presentation/screenshotoverlayshortcutcontroller.h
     include/snow_shot/presentation/screenshotoverlaypool.h
     include/snow_shot/presentation/screenshotoverlayuihost.h
     include/snow_shot/presentation/screenshotoverlaywindow.h
@@ -675,6 +689,7 @@ set(PROJECT_CXX_SOURCES
     src/network/snowshotapiclient.cpp
     src/presentation/services/screenshotcolorpickerwidget.cpp
     src/presentation/services/screenshotcontroller.cpp
+    src/presentation/services/screenshotexportcoordinator.cpp
     src/presentation/services/screenshotmessageservice.cpp
     src/presentation/services/screenshothistoryservice.cpp
     src/presentation/services/screenshotdisplayconfigurationobserver.cpp
@@ -724,6 +739,7 @@ set(PROJECT_CXX_SOURCES
     src/presentation/overlay/screenshotoverlaycoordinator.cpp
     src/presentation/overlay/screenshotoverlayinteractionadapter.cpp
     src/presentation/overlay/screenshotoverlayinputhandler.cpp
+    src/presentation/overlay/screenshotoverlayshortcutcontroller.cpp
     src/presentation/overlay/screenshotoverlaypool.cpp
     src/presentation/overlay/screenshotoverlayuihost.cpp
     src/presentation/overlay/screenshotoverlaywindow.cpp
@@ -970,6 +986,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         src/presentation/components/contentcardwidget.cpp
         src/presentation/components/maincontentheaderwidget.cpp
         src/presentation/components/sidebarwidget.cpp
+        src/presentation/services/screenshotclipboardservice.cpp
     )
     target_include_directories(snow-shot-settings-page-tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -978,6 +995,9 @@ if(SNOW_SHOT_BUILD_TESTS)
         snow_shot_settings
         Qt6::Widgets
     )
+    if(WIN32)
+        target_link_libraries(snow-shot-settings-page-tests PRIVATE user32)
+    endif()
     add_test(NAME snow-shot-settings-page-tests
              COMMAND snow-shot-settings-page-tests)
     set_tests_properties(snow-shot-settings-page-tests PROPERTIES
@@ -1017,6 +1037,7 @@ if(SNOW_SHOT_BUILD_TESTS)
     )
     target_link_libraries(snow-shot-system-tray-controller-tests PRIVATE
         ant_design_qt
+        snow_shot_settings_catalog
         Qt6::Widgets
     )
     qt_add_resources(snow-shot-system-tray-controller-tests "snow_shot_tray_test_assets"
@@ -1099,6 +1120,24 @@ if(SNOW_SHOT_BUILD_TESTS)
         COMMAND snow-shot-global-shortcut-manager-tests
     )
 
+    add_executable(snow-shot-window-shortcut-manager-tests
+        tests/window_shortcut_manager_tests.cpp
+    )
+    target_link_libraries(snow-shot-window-shortcut-manager-tests PRIVATE
+        snow_shot_window_shortcuts
+        Qt6::Widgets
+    )
+    add_test(
+        NAME snow-shot-window-shortcut-manager-tests
+        COMMAND snow-shot-window-shortcut-manager-tests
+    )
+    set_tests_properties(snow-shot-window-shortcut-manager-tests PROPERTIES
+        ENVIRONMENT
+            "QT_QPA_PLATFORM=$<IF:$<BOOL:${WIN32}>,windows,offscreen>"
+        ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
     add_executable(snow-shot-shortcut-key-row-tests
         tests/shortcut_key_row_tests.cpp
         include/snow_shot/presentation/components/infotooltipicon.h
@@ -1131,6 +1170,28 @@ if(SNOW_SHOT_BUILD_TESTS)
     set_tests_properties(snow-shot-shortcut-key-row-tests PROPERTIES
         ENVIRONMENT
             "QT_QPA_PLATFORM=offscreen;QT_QPA_PLATFORM_PLUGIN_PATH=$<TARGET_FILE_DIR:Qt6::QOffscreenIntegrationPlugin>"
+        ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(snow-shot-screenshot-shortcut-hints-tests
+        tests/screenshot_shortcut_hints_tests.cpp
+        include/snow_shot/presentation/screenshotshortcuthints.h
+    )
+    target_include_directories(snow-shot-screenshot-shortcut-hints-tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    )
+    target_link_libraries(snow-shot-screenshot-shortcut-hints-tests PRIVATE
+        snow_draw_engine_qt_canvas
+        Qt6::Core
+    )
+    add_test(
+        NAME snow-shot-screenshot-shortcut-hints-tests
+        COMMAND snow-shot-screenshot-shortcut-hints-tests
+    )
+    set_tests_properties(snow-shot-screenshot-shortcut-hints-tests PROPERTIES
+        ENVIRONMENT
+            "QT_QPA_PLATFORM=$<IF:$<BOOL:${WIN32}>,windows,offscreen>"
         ENVIRONMENT_MODIFICATION
             "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
@@ -1334,6 +1395,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         include/snow_shot/presentation/screenshotintelligentselectionmodel.h
         include/snow_shot/presentation/screenshotinteractionstate.h
         include/snow_shot/presentation/screenshotoverlayinputhandler.h
+        include/snow_shot/presentation/screenshotoverlayshortcutcontroller.h
         include/snow_shot/presentation/screenshotselectiongeometry.h
         include/snow_shot/presentation/screenshotselectionmodel.h
         include/snow_shot/presentation/screenshotselectionparams.h
@@ -1342,6 +1404,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         src/presentation/core/screenshotintelligentselectionmodel.cpp
         src/presentation/core/screenshotinteractionstate.cpp
         src/presentation/overlay/screenshotoverlayinputhandler.cpp
+        src/presentation/overlay/screenshotoverlayshortcutcontroller.cpp
         src/presentation/selection/screenshotselectiongeometry.cpp
         src/presentation/selection/screenshotselectionmodel.cpp
         src/presentation/selection/screenshotselectionparams.cpp
@@ -1351,13 +1414,23 @@ if(SNOW_SHOT_BUILD_TESTS)
     )
     target_link_libraries(snow-shot-screenshot-history-tests PRIVATE
         snow_draw_engine_qt_canvas
+        snow_shot_window_shortcuts
         Qt6::Widgets
     )
     add_test(
         NAME snow-shot-screenshot-history-tests
         COMMAND snow-shot-screenshot-history-tests
     )
-    set_tests_properties(snow-shot-screenshot-history-tests PROPERTIES
+    add_test(
+        NAME snow-shot-screenshot-shortcut-priority-tests
+        COMMAND snow-shot-screenshot-history-tests --shortcut-input-only
+    )
+    set_tests_properties(
+        snow-shot-screenshot-history-tests
+        snow-shot-screenshot-shortcut-priority-tests
+        PROPERTIES
+        ENVIRONMENT
+            "QT_QPA_PLATFORM=$<IF:$<BOOL:${WIN32}>,windows,offscreen>"
         ENVIRONMENT_MODIFICATION
             "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
@@ -1546,6 +1619,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         src/network/snowshotapiclient.cpp
         src/presentation/pinned/screenshotpinnededitcontroller.cpp
         src/presentation/pinned/screenshotpinnedcopyservice.cpp
+        src/presentation/services/screenshotexportcoordinator.cpp
         src/presentation/pinned/screenshotpinnednativegeometrycontroller.cpp
         src/presentation/pinned/screenshotpinnedresizegeometry.cpp
         src/presentation/pinned/screenshotpinnedwindow.cpp
@@ -1574,6 +1648,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         Qt6::Network
         Qt6::Widgets
         snow_draw_engine_qt_canvas
+        snow_shot_window_shortcuts
     )
     if(WIN32)
         target_link_libraries(snow-shot-pinned-window-tests PRIVATE
@@ -1662,6 +1737,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         src/presentation/overlay/screenshotselectionshadowrenderer.cpp
         src/presentation/services/screenshotclipboardservice.cpp
         src/presentation/pinned/screenshotpinnedcopyservice.cpp
+        src/presentation/services/screenshotexportcoordinator.cpp
     )
     target_include_directories(snow-shot-pinned-copyservice-tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -1676,6 +1752,27 @@ if(SNOW_SHOT_BUILD_TESTS)
     add_test(NAME snow-shot-pinned-copyservice-tests
              COMMAND snow-shot-pinned-copyservice-tests)
     set_tests_properties(snow-shot-pinned-copyservice-tests PROPERTIES
+        ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(snow-shot-export-coordinator-tests
+        tests/screenshot_export_coordinator_tests.cpp
+        include/snow_shot/presentation/screenshotclipboardservice.h
+        include/snow_shot/presentation/screenshotexportcoordinator.h
+        src/presentation/services/screenshotclipboardservice.cpp
+        src/presentation/services/screenshotexportcoordinator.cpp
+    )
+    target_include_directories(snow-shot-export-coordinator-tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    )
+    target_link_libraries(snow-shot-export-coordinator-tests PRIVATE Qt6::Widgets)
+    if(WIN32)
+        target_link_libraries(snow-shot-export-coordinator-tests PRIVATE user32)
+    endif()
+    add_test(NAME snow-shot-export-coordinator-tests
+             COMMAND snow-shot-export-coordinator-tests)
+    set_tests_properties(snow-shot-export-coordinator-tests PROPERTIES
         ENVIRONMENT_MODIFICATION
             "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
@@ -1698,6 +1795,7 @@ if(SNOW_SHOT_BUILD_TESTS)
             src/presentation/services/screenshotclipboardservice.cpp
             src/presentation/pinned/screenshotpinnededitcontroller.cpp
             src/presentation/pinned/screenshotpinnedcopyservice.cpp
+            src/presentation/services/screenshotexportcoordinator.cpp
             src/presentation/pinned/screenshotpinnednativegeometrycontroller.cpp
             src/presentation/pinned/screenshotpinnedresizegeometry.cpp
             src/presentation/pinned/screenshotpinnedwindow.cpp
@@ -1725,6 +1823,7 @@ if(SNOW_SHOT_BUILD_TESTS)
             Qt6::GuiPrivate
             Qt6::Widgets
             snow_draw_engine_qt_canvas
+            snow_shot_window_shortcuts
             comctl32
             dwmapi
             user32
@@ -2208,6 +2307,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         ant_design_qt
         Qt6::Widgets
         snow_draw_engine_qt_canvas
+        snow_shot_window_shortcuts
     )
     if(WIN32)
         target_link_libraries(snow-shot-recognition-window-tests PRIVATE
@@ -2503,6 +2603,7 @@ target_link_libraries(
         ant_design_qt
         snow_shot_settings
         snow_shot_storage
+        snow_shot_window_shortcuts
         snow_draw_engine_qt_canvas
         snow_capture_c
         snow_ui_selector_c

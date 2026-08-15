@@ -10,6 +10,7 @@
 #include "snow_shot/presentation/screenshottoolbarwindow.h"
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 
 #include <QCoreApplication>
@@ -18,9 +19,11 @@
 #include <QFontMetrics>
 #include <QGraphicsOpacityEffect>
 #include <QGuiApplication>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QPaintEvent>
 #include <QPen>
+#include <QRegularExpression>
 #include <QVector>
 #include <QWidget>
 
@@ -75,11 +78,29 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
         m_opacityEffect = new QGraphicsOpacityEffect(this);
         m_opacityEffect->setOpacity(1.0);
         setGraphicsEffect(m_opacityEffect);
+        // The hint is click-through, so observe application mouse moves to hide it on hover.
+        if (QCoreApplication::instance() != nullptr) {
+            QCoreApplication::instance()->installEventFilter(this);
+        }
         hide();
     }
 
     void setPresentation(ScreenshotShortcutHintMode mode, qreal opacity) {
         m_mode = mode;
+        m_context.reset();
+        m_opacity = std::clamp<qreal>(opacity, 0.0, 1.0);
+        updateTranslatedLines();
+        if (m_opacityEffect != nullptr) {
+            m_opacityEffect->setOpacity(m_opacity);
+        }
+        if (!hasVisiblePresentation()) {
+            hide();
+        }
+    }
+
+    void setPresentation(const ScreenshotShortcutHintContext& context, qreal opacity) {
+        m_context = context;
+        m_mode = screenshotShortcutHintModeForContext(context);
         m_opacity = std::clamp<qreal>(opacity, 0.0, 1.0);
         updateTranslatedLines();
         if (m_opacityEffect != nullptr) {
@@ -94,7 +115,31 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
         return !m_lines.isEmpty() && m_opacity > 0.0;
     }
 
+    void setObscuringSelection(const QRectF& selectionGlobal) {
+        m_selectionGlobal = selectionGlobal;
+    }
+
+    void refreshVisibility(const QPointF& cursorGlobal) {
+        m_cursorGlobal = cursorGlobal;
+        const QRectF hintAreaGlobal(mapToGlobal(QPoint(0, 0)), size());
+        const bool visible = parentWidget() != nullptr && hasVisiblePresentation() &&
+                             !screenshotShortcutHintAreaIsObscured(
+                                 hintAreaGlobal, m_selectionGlobal, m_cursorGlobal);
+        setVisible(visible);
+        if (visible) {
+            raise();
+        }
+    }
+
   protected:
+    bool eventFilter(QObject* watched, QEvent* event) override {
+        if (event != nullptr && event->type() == QEvent::MouseMove) {
+            const auto* mouseEvent = static_cast<QMouseEvent*>(event);
+            refreshVisibility(mouseEvent->globalPosition());
+        }
+        return QWidget::eventFilter(watched, event);
+    }
+
     void changeEvent(QEvent* event) override {
         QWidget::changeEvent(event);
         if (event != nullptr && event->type() == QEvent::LanguageChange) {
@@ -199,12 +244,29 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
             ShortcutHintRow row;
             row.label = separator >= 0 ? line.left(separator) : line;
             row.hasSeparator = separator >= 0;
-            row.icon = m_mode == ScreenshotShortcutHintMode::SmartSelection && index == 0
+            row.icon = (m_mode == ScreenshotShortcutHintMode::SmartSelection && index == 0) ||
+                               m_mode == ScreenshotShortcutHintMode::Scrolling
                            ? ShortcutHintIcon::Mouse
                            : ShortcutHintIcon::Keyboard;
-            const bool historyRow = index == m_lines.size() - 1;
+            const bool historyRow =
+                row.label == QCoreApplication::translate("ScreenshotShortcutHintsWidget",
+                                                          "Switch Screenshot History");
             if (historyRow) {
-                row.shortcuts = {QStringLiteral(","), QStringLiteral(".")};
+                // History has two independent actions. Keep their chips on one row while
+                // deriving the labels from the translated source line rather than hard-coding
+                // the default keys in the painter.
+                static const QRegularExpression historyShortcutPattern(
+                    QStringLiteral(R"(\[\s*([^\]]+?)\s*\])"));
+                auto match = historyShortcutPattern.globalMatch(line);
+                while (match.hasNext()) {
+                    const QString shortcut = match.next().captured(1).trimmed();
+                    if (!shortcut.isEmpty()) {
+                        row.shortcuts.push_back(shortcut);
+                    }
+                }
+                if (row.shortcuts.isEmpty()) {
+                    row.shortcuts = {QStringLiteral(","), QStringLiteral(".")};
+                }
             } else if (separator >= 0) {
                 row.shortcuts = {line.mid(separator + 1).trimmed()};
             }
@@ -213,7 +275,9 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
     }
 
     void updateTranslatedLines() {
-        const QStringList nextLines = screenshotShortcutHintLines(m_mode);
+        const QStringList nextLines = m_context.has_value()
+                                          ? screenshotShortcutHintLines(*m_context)
+                                          : screenshotShortcutHintLines(m_mode);
         if (m_lines != nextLines) {
             m_lines = nextLines;
             rebuildRows();
@@ -256,9 +320,12 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
 
     QStringList m_lines;
     QVector<ShortcutHintRow> m_rows;
+    std::optional<ScreenshotShortcutHintContext> m_context;
     ScreenshotShortcutHintMode m_mode = ScreenshotShortcutHintMode::Hidden;
     qreal m_opacity = 0.0;
     QGraphicsOpacityEffect* m_opacityEffect = nullptr;
+    QRectF m_selectionGlobal;
+    QPointF m_cursorGlobal;
 };
 
 template <typename Widget> Widget* trackedWidget(QPointer<Widget>& pointer) {
@@ -535,8 +602,8 @@ bool ScreenshotOverlayUiHost::screenshotUiContainsGlobalCursor() const {
 }
 
 void ScreenshotOverlayUiHost::updateShortcutHints(ScreenshotOverlayWindow* overlay,
-                                                  ScreenshotShortcutHintMode mode,
-                                                  qreal opacity) {
+                                                  ScreenshotShortcutHintMode mode, qreal opacity,
+                                                  const QRectF& selectionGlobal) {
     if (overlay == nullptr || mode == ScreenshotShortcutHintMode::Hidden || opacity <= 0.0) {
         hideShortcutHints();
         return;
@@ -562,8 +629,41 @@ void ScreenshotOverlayUiHost::updateShortcutHints(ScreenshotOverlayWindow* overl
     const int y = std::max(kShortcutHintsMargin,
                            overlay->height() - hints->height() - kShortcutHintsMargin);
     hints->move(kShortcutHintsMargin, y);
-    hints->show();
-    hints->raise();
+    hints->setObscuringSelection(selectionGlobal);
+    hints->refreshVisibility(QCursor::pos());
+}
+
+void ScreenshotOverlayUiHost::updateShortcutHints(
+    ScreenshotOverlayWindow* overlay, const ScreenshotShortcutHintContext& context,
+    qreal opacity, const QRectF& selectionGlobal) {
+    const ScreenshotShortcutHintMode mode = screenshotShortcutHintModeForContext(context);
+    if (overlay == nullptr || mode == ScreenshotShortcutHintMode::Hidden || opacity <= 0.0) {
+        hideShortcutHints();
+        return;
+    }
+
+    auto* hints = static_cast<ScreenshotShortcutHintsWidget*>(m_shortcutHints.data());
+    if (hints == nullptr) {
+        hints = new ScreenshotShortcutHintsWidget();
+        m_ownedWidgets.add(hints);
+        m_shortcutHints = hints;
+    }
+    if (hints->parentWidget() != overlay) {
+        hints->hide();
+        hints->setParent(overlay);
+        hints->setWindowFlags(Qt::Widget);
+    }
+    hints->setPresentation(context, opacity);
+    if (!hints->hasVisiblePresentation()) {
+        hints->hide();
+        return;
+    }
+
+    const int y = std::max(kShortcutHintsMargin,
+                           overlay->height() - hints->height() - kShortcutHintsMargin);
+    hints->move(kShortcutHintsMargin, y);
+    hints->setObscuringSelection(selectionGlobal);
+    hints->refreshVisibility(QCursor::pos());
 }
 
 void ScreenshotOverlayUiHost::hideShortcutHints() {
@@ -704,7 +804,7 @@ void ScreenshotOverlayUiHost::detachOverlayTransientUi(ScreenshotOverlayWindow* 
         m_colorPicker->setParent(nullptr);
     }
     if (m_shortcutHints != nullptr && m_shortcutHints->parentWidget() == overlay) {
-        m_shortcutHints->hide();
+        hideShortcutHints();
         m_shortcutHints->setParent(nullptr);
     }
 }

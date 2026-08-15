@@ -11,6 +11,7 @@
 #include <QPointF>
 #include <QPointer>
 #include <QRect>
+#include <QRectF>
 
 class ScreenshotColorPickerWidget;
 class ScreenshotOverlayWindow;
@@ -49,7 +50,11 @@ class ScreenshotOverlayUiHost final {
     [[nodiscard]] bool colorPickerBelongsToOverlay(const ScreenshotOverlayWindow* overlay) const;
     [[nodiscard]] bool screenshotUiContainsGlobalCursor() const;
     void updateShortcutHints(ScreenshotOverlayWindow* overlay,
-                             ScreenshotShortcutHintMode mode, qreal opacity);
+                             ScreenshotShortcutHintMode mode, qreal opacity,
+                             const QRectF& selectionGlobal = {});
+    void updateShortcutHints(ScreenshotOverlayWindow* overlay,
+                             const ScreenshotShortcutHintContext& context, qreal opacity,
+                             const QRectF& selectionGlobal = {});
     void hideShortcutHints();
     [[nodiscard]] bool stepToolbarStrokeWidth(int direction);
     [[nodiscard]] bool stepToolbarSelectionOpacity(int direction);

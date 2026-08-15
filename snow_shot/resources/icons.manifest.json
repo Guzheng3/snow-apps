@@ -168,9 +168,25 @@
     },
     {
       "variant": "outlined",
+      "symbol": "ColorPicker",
+      "name": "color-picker",
+      "source": "../src/presentation/components/icons/resources/color-picker.svg",
+      "colorModel": "monochrome",
+      "fit": "contain"
+    },
+    {
+      "variant": "outlined",
       "symbol": "Duplicate",
       "name": "duplicate",
       "source": "../src/presentation/components/icons/resources/duplicate.svg",
+      "colorModel": "monochrome",
+      "fit": "contain"
+    },
+    {
+      "variant": "outlined",
+      "symbol": "Exit",
+      "name": "exit",
+      "source": "../src/presentation/components/icons/resources/exit.svg",
       "colorModel": "monochrome",
       "fit": "contain"
     },
@@ -571,6 +587,14 @@
       "symbol": "WheelMouse",
       "name": "wheel-mouse",
       "source": "../src/presentation/components/icons/resources/wheel-mouse.svg",
+      "colorModel": "monochrome",
+      "fit": "contain"
+    },
+    {
+      "variant": "outlined",
+      "symbol": "Window",
+      "name": "window",
+      "source": "../src/presentation/components/icons/resources/window.svg",
       "colorModel": "monochrome",
       "fit": "contain"
     },

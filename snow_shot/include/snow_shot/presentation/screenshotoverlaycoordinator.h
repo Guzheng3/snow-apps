@@ -27,11 +27,16 @@ class ScreenshotSelectionToolbarWindow;
 class ScreenshotToolbarCommandSink;
 class ScreenshotToolbarWindow;
 class SnowCanvasRuntime;
+namespace snow_shot::presentation {
+class WindowShortcutManager;
+}
 
 class ScreenshotOverlayCoordinator final : public ScreenshotOverlayExclusionPort {
   public:
     explicit ScreenshotOverlayCoordinator(ScreenshotOverlayEventSink& eventSink,
-                                          SnowCanvasRuntime& canvasRuntime);
+                                          SnowCanvasRuntime& canvasRuntime,
+                                          snow_shot::presentation::WindowShortcutManager&
+                                              shortcutManager);
     ~ScreenshotOverlayCoordinator();
 
     void setToolbarCommandSinks(ScreenshotToolbarCommandSink& toolbarCommands,
@@ -122,7 +127,11 @@ class ScreenshotOverlayCoordinator final : public ScreenshotOverlayExclusionPort
     void hideColorPicker();
     void setColorPickerCenterGuideLineColor(const QColor& color);
     void updateShortcutHints(ScreenshotOverlayWindow* overlay,
-                             ScreenshotShortcutHintMode mode, qreal opacity);
+                             ScreenshotShortcutHintMode mode, qreal opacity,
+                             const QRectF& selectionGlobal = {});
+    void updateShortcutHints(ScreenshotOverlayWindow* overlay,
+                             const ScreenshotShortcutHintContext& context, qreal opacity,
+                             const QRectF& selectionGlobal = {});
     void hideShortcutHints();
     [[nodiscard]] bool screenshotUiContainsGlobalCursor() const;
     [[nodiscard]] bool stepToolbarStrokeWidth(int direction);

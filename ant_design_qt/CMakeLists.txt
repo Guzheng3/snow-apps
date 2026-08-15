@@ -153,6 +153,12 @@ if(ADQT_BUILD_TESTS)
     add_test(NAME adqt-locale-manager-tests COMMAND adqt-locale-manager-tests)
     set_tests_properties(adqt-locale-manager-tests PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+    add_executable(adqt-divider-tests packages/ant_design_qt/tests/tst_divider.cpp)
+    set_target_properties(adqt-divider-tests PROPERTIES AUTOMOC ON)
+    target_link_libraries(adqt-divider-tests PRIVATE adqt::widgets Qt6::Test)
+    add_test(NAME adqt-divider-tests COMMAND adqt-divider-tests)
+    set_tests_properties(adqt-divider-tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()
 
 if(ADQT_BUILD_BENCHMARKS)

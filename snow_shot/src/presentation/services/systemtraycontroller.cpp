@@ -1,6 +1,7 @@
 #include "snow_shot/presentation/systemtraycontroller.h"
 
 #include "snow_shot/presentation/languagemanager.h"
+#include "snow_shot/presentation/settings/settingscatalog.h"
 
 #include "widgets/context_menu.h"
 
@@ -12,7 +13,10 @@
 #include <QIcon>
 #include <QImageReader>
 #include <QPixmap>
+#include <QSet>
 #include <QSystemTrayIcon>
+
+#include <algorithm>
 
 namespace snow_shot::presentation {
 namespace {
@@ -69,24 +73,20 @@ QIcon loadImageIcon(const QString& path) {
 
 class SystemTrayController::Impl {
   public:
-    explicit Impl(SystemTrayController& owner)
+    Impl(SystemTrayController& owner, const settings::SettingsCatalog& sourceCatalog)
         : q(owner), menu(std::make_unique<adqt::widgets::AdContextMenu>()),
-          trayIcon(new QSystemTrayIcon(&owner)) {
+          trayIcon(new QSystemTrayIcon(&owner)), catalog(sourceCatalog),
+          groups(catalog.trayMenuGroups()) {
         q.setObjectName(QStringLiteral("systemTrayController"));
         menu->setObjectName(QStringLiteral("systemTrayMenu"));
-        menu->setFixedWidth(300);
+        menu->setMinimumWidth(300);
         trayIcon->setObjectName(QStringLiteral("snowShotSystemTrayIcon"));
         trayIcon->setToolTip(QStringLiteral("SnowShot"));
         updateIcon();
 
-        screenshotAction = menu->addItem(QString());
-        screenshotAction->setObjectName(QStringLiteral("trayScreenshotAction"));
-        menu->addSeparator();
-        showMainWindowAction = menu->addItem(QString());
-        showMainWindowAction->setObjectName(QStringLiteral("trayShowMainWindowAction"));
-        exitAction = menu->addItem(QString());
-        exitAction->setObjectName(QStringLiteral("trayExitAction"));
+        buildMenu();
         retranslateUi();
+        setMenuOptions({});
 
         trayIcon->setContextMenu(menu.get());
         QObject::connect(trayIcon, &QSystemTrayIcon::activated, &q,
@@ -99,11 +99,6 @@ class SystemTrayController::Impl {
                                  }
                              }
                          });
-        QObject::connect(screenshotAction, &QAction::triggered, &q,
-                         &SystemTrayController::screenshotRequested);
-        QObject::connect(showMainWindowAction, &QAction::triggered, &q,
-                         &SystemTrayController::showMainWindowRequested);
-        QObject::connect(exitAction, &QAction::triggered, &q, &SystemTrayController::exitRequested);
         QObject::connect(&LanguageManager::instance(), &LanguageManager::languageChanged, &q,
                          [this](const QString&, const QLocale&) { retranslateUi(); });
     }
@@ -113,12 +108,101 @@ class SystemTrayController::Impl {
         trayIcon->setContextMenu(nullptr);
     }
 
+    void buildMenu() {
+        separatorsBeforeGroup.resize(groups.size());
+        for (int groupIndex = 0; groupIndex < groups.size(); ++groupIndex) {
+            const settings::SettingsTrayMenuGroupDefinition& group = groups.at(groupIndex);
+            if (groupIndex > 0) {
+                QAction* separator = menu->addSeparator();
+                separator->setObjectName(
+                    QStringLiteral("trayMenuSeparator-%1").arg(group.id));
+                separatorsBeforeGroup[groupIndex] = separator;
+            }
+            for (const settings::SettingsTrayMenuOptionDefinition& option : group.options) {
+                const adqt::icons::IconRef icon =
+                    option.iconFactory ? option.iconFactory() : adqt::icons::IconRef{};
+                QAction* action = menu->addItem(QString(), icon);
+                action->setObjectName(
+                    settings::generatedObjectName(QStringLiteral("tray-menu-action"), option.id));
+                action->setData(option.id);
+                actions.insert(option.id, action);
+                switch (option.kind) {
+                case settings::SettingsTrayMenuOptionKind::QuickAction:
+                    QObject::connect(action, &QAction::triggered, &q,
+                                     [this, shortcutAction = option.shortcutAction]() {
+                                         emit q.quickActionRequested(shortcutAction);
+                                     });
+                    break;
+                case settings::SettingsTrayMenuOptionKind::DisableShortcutFunctions:
+                    disableShortcutFunctionsAction = action;
+                    action->setCheckable(true);
+                    QObject::connect(action, &QAction::toggled, &q,
+                                     [this](bool checked) {
+                                         emit q.shortcutFunctionsDisabledChanged(checked);
+                                     });
+                    break;
+                case settings::SettingsTrayMenuOptionKind::ShowMainWindow:
+                    QObject::connect(action, &QAction::triggered, &q,
+                                     &SystemTrayController::showMainWindowRequested);
+                    break;
+                case settings::SettingsTrayMenuOptionKind::Exit:
+                    menu->setActionDanger(action);
+                    QObject::connect(action, &QAction::triggered, &q,
+                                     &SystemTrayController::exitRequested);
+                    break;
+                }
+            }
+        }
+    }
+
     void retranslateUi() {
-        screenshotAction->setText(
-            QCoreApplication::translate("SystemTrayController", "Screenshot"));
-        showMainWindowAction->setText(
-            QCoreApplication::translate("SystemTrayController", "Show Main Window"));
-        exitAction->setText(QCoreApplication::translate("SystemTrayController", "Exit"));
+        for (const settings::SettingsTrayMenuGroupDefinition& group : groups) {
+            for (const settings::SettingsTrayMenuOptionDefinition& option : group.options) {
+                if (QAction* action = actions.value(option.id)) {
+                    const QString label = option.kind == settings::SettingsTrayMenuOptionKind::QuickAction
+                                              ? catalog.shortcutActionTitle(option.shortcutAction,
+                                                                            screenshotDelaySeconds)
+                                              : option.label.translated();
+                    Q_ASSERT(!label.isEmpty());
+                    action->setText(label);
+                }
+            }
+        }
+    }
+
+    void setMenuOptions(const QStringList& options) {
+        const QSet<QString> requested(options.cbegin(), options.cend());
+        QStringList normalized;
+        QVector<bool> visibleGroups(groups.size(), false);
+        for (int groupIndex = 0; groupIndex < groups.size(); ++groupIndex) {
+            for (const settings::SettingsTrayMenuOptionDefinition& option :
+                 groups.at(groupIndex).options) {
+                QAction* action = actions.value(option.id);
+                const bool visible = action != nullptr && requested.contains(option.id);
+                if (action != nullptr) {
+                    action->setVisible(visible);
+                }
+                if (visible) {
+                    normalized.push_back(option.id);
+                    visibleGroups[groupIndex] = true;
+                }
+            }
+        }
+        menuOptions = normalized;
+
+        bool priorGroupVisible = visibleGroups.value(0, false);
+        for (int groupIndex = 1; groupIndex < groups.size(); ++groupIndex) {
+            if (QAction* separator = separatorsBeforeGroup.value(groupIndex)) {
+                separator->setVisible(priorGroupVisible && visibleGroups.at(groupIndex));
+            }
+            priorGroupVisible = priorGroupVisible || visibleGroups.at(groupIndex);
+        }
+
+        if (disableShortcutFunctionsAction != nullptr &&
+            !disableShortcutFunctionsAction->isVisible() &&
+            disableShortcutFunctionsAction->isChecked()) {
+            disableShortcutFunctionsAction->setChecked(false);
+        }
     }
 
     void updateIcon() {
@@ -143,17 +227,25 @@ class SystemTrayController::Impl {
     SystemTrayController& q;
     std::unique_ptr<adqt::widgets::AdContextMenu> menu;
     QSystemTrayIcon* trayIcon = nullptr;
-    QAction* screenshotAction = nullptr;
-    QAction* showMainWindowAction = nullptr;
-    QAction* exitAction = nullptr;
+    settings::SettingsCatalog catalog;
+    QVector<settings::SettingsTrayMenuGroupDefinition> groups;
+    QHash<QString, QAction*> actions;
+    QVector<QAction*> separatorsBeforeGroup;
+    QAction* disableShortcutFunctionsAction = nullptr;
+    QStringList menuOptions;
     QString iconSelection = QString::fromLatin1(DEFAULT_TRAY_ICON);
     QString customIconPath;
     QString leftClickAction = QString::fromLatin1(DEFAULT_LEFT_CLICK_ACTION);
+    int screenshotDelaySeconds = 3;
     bool enabled = true;
 };
 
 SystemTrayController::SystemTrayController(QObject* parent)
-    : QObject(parent), m_impl(std::make_unique<Impl>(*this)) {}
+    : SystemTrayController(settings::builtInSettingsCatalog(), parent) {}
+
+SystemTrayController::SystemTrayController(const settings::SettingsCatalog& catalog,
+                                           QObject* parent)
+    : QObject(parent), m_impl(std::make_unique<Impl>(*this, catalog)) {}
 
 SystemTrayController::~SystemTrayController() = default;
 
@@ -217,5 +309,31 @@ void SystemTrayController::setLeftClickAction(const QString& action) {
 
 QString SystemTrayController::leftClickAction() const {
     return m_impl->leftClickAction;
+}
+
+void SystemTrayController::setScreenshotDelaySeconds(int seconds) {
+    const int normalized = std::clamp(seconds, 1, 10);
+    if (m_impl->screenshotDelaySeconds == normalized) {
+        return;
+    }
+    m_impl->screenshotDelaySeconds = normalized;
+    m_impl->retranslateUi();
+}
+
+int SystemTrayController::screenshotDelaySeconds() const {
+    return m_impl->screenshotDelaySeconds;
+}
+
+void SystemTrayController::setMenuOptions(const QStringList& options) {
+    m_impl->setMenuOptions(options);
+}
+
+QStringList SystemTrayController::menuOptions() const {
+    return m_impl->menuOptions;
+}
+
+bool SystemTrayController::shortcutFunctionsDisabled() const {
+    return m_impl->disableShortcutFunctionsAction != nullptr &&
+           m_impl->disableShortcutFunctionsAction->isChecked();
 }
 } // namespace snow_shot::presentation

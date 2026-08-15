@@ -1,5 +1,7 @@
 #include "context_menu.h"
 
+#include "detail/button_rendering.h"
+
 #include <QActionEvent>
 #include <QApplication>
 #include <QContextMenuEvent>
@@ -359,12 +361,17 @@ class AdContextMenuStyle final : public QProxyStyle {
     }
 
     const ContextMenuVisualStyle visual = resolveVisualStyle(menu_);
+    const qreal devicePixelRatio =
+        painter->device() ? painter->device()->devicePixelRatioF() : menu_->devicePixelRatioF();
+    const qreal logicalBorderWidth =
+        detail::deviceAlignedPenWidth(visual.borderWidth, devicePixelRatio);
     QRectF panelRect = option->rect;
-    const qreal inset = visual.borderWidth / 2.0;
+    const qreal inset = logicalBorderWidth / 2.0;
     panelRect.adjust(inset, inset, -inset, -inset);
 
-    QPainterPath path;
-    path.addRoundedRect(panelRect, visual.borderRadius, visual.borderRadius);
+    const QPainterPath path =
+        detail::roundedButtonPath(panelRect, visual.borderRadius, visual.borderRadius,
+                                  visual.borderRadius, visual.borderRadius);
     painter->save();
     // A translucent popup can receive an uninitialized backing store on
     // Windows.  Clear the complete panel clip first so pixels outside the
@@ -373,7 +380,7 @@ class AdContextMenuStyle final : public QProxyStyle {
     painter->fillRect(option->rect, Qt::transparent);
     painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
     painter->setRenderHint(QPainter::Antialiasing, true);
-    painter->setPen(QPen(visual.border, visual.borderWidth));
+    painter->setPen(detail::makeButtonBorderPen(visual.border, logicalBorderWidth, Qt::SolidLine));
     painter->setBrush(visual.background);
     painter->drawPath(path);
     painter->restore();
@@ -395,12 +402,17 @@ class AdContextMenuStyle final : public QProxyStyle {
 
     const ContextMenuVisualStyle visual = resolveVisualStyle(menu_);
     if (menuOption->menuItemType == QStyleOptionMenuItem::Separator) {
-      const int y = menuOption->rect.center().y();
+      const qreal devicePixelRatio =
+          painter->device() ? painter->device()->devicePixelRatioF() : menu_->devicePixelRatioF();
+      const qreal logicalWidth =
+          detail::deviceAlignedPenWidth(std::max(1, visual.borderWidth), devicePixelRatio);
+      const qreal y = detail::deviceAlignedStrokeCenter(menuOption->rect.center().y(), logicalWidth,
+                                                        devicePixelRatio);
       const QRect lineRect =
           menuOption->rect.adjusted(visual.horizontalPadding, 0, -visual.horizontalPadding, 0);
       painter->save();
-      painter->setPen(QPen(visual.divider, std::max(1, visual.borderWidth)));
-      painter->drawLine(lineRect.left(), y, lineRect.right(), y);
+      painter->setPen(detail::makeButtonBorderPen(visual.divider, logicalWidth, Qt::SolidLine));
+      painter->drawLine(QPointF(lineRect.left(), y), QPointF(lineRect.right(), y));
       painter->restore();
       return;
     }

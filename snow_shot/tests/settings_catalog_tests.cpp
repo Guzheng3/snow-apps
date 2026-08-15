@@ -90,8 +90,8 @@ void builtInCatalogIsCompleteAndValid() {
             }
         }
     }
-    require(sectionCount == 24 && itemCount == 77,
-            "catalog must contain the expected twenty-four sections and seventy-seven items");
+    require(sectionCount == 24 && itemCount == 85,
+            "catalog must contain the expected twenty-four sections and eighty-five items");
     const auto* functionPage = catalog.page(QStringLiteral("function-settings"));
     const auto* smartSelection =
         catalog.item({QStringLiteral("function-settings"), QStringLiteral("screenshot-settings"),
@@ -150,7 +150,10 @@ void builtInCatalogIsCompleteAndValid() {
                     nullptr &&
                 catalog.item({QStringLiteral("function-settings"),
                               QStringLiteral("tray-settings"),
-                              QStringLiteral("tray.left-click-action")}) != nullptr,
+                              QStringLiteral("tray.left-click-action")}) != nullptr &&
+                catalog.item({QStringLiteral("function-settings"),
+                              QStringLiteral("tray-settings"),
+                              QStringLiteral("tray.menu-options")}) != nullptr,
             "Function Settings must own the moved Pin to Screen, Drawing, and Tray controls");
 
     const auto* storagePage = catalog.page(QStringLiteral("storage-and-privacy"));
@@ -196,12 +199,56 @@ void builtInCatalogIsCompleteAndValid() {
         catalog.section(QStringLiteral("hotkey-settings"), QStringLiteral("drawing-shortcuts"));
     const auto* screenshotShortcuts =
         catalog.section(QStringLiteral("hotkey-settings"), QStringLiteral("screenshot-shortcuts"));
+    struct ScreenshotShortcutContract {
+        int index;
+        const char* id;
+        const char* configurationKey;
+    };
+    const ScreenshotShortcutContract newScreenshotShortcutContracts[] = {
+        {5, "screenshot-shortcut.move_entire_selection",
+         "screenshot_shortcuts/move_entire_selection"},
+        {6, "screenshot-shortcut.keep_selection_width_and_height_consistent",
+         "screenshot_shortcuts/keep_selection_width_and_height_consistent"},
+        {7, "screenshot-shortcut.switch_selection_between_window_and_window_sub_element",
+         "screenshot_shortcuts/switch_selection_between_window_and_window_sub_element"},
+        {8, "screenshot-shortcut.previous_screenshot_history",
+         "screenshot_shortcuts/previous_screenshot_history"},
+        {9, "screenshot-shortcut.next_screenshot_history",
+         "screenshot_shortcuts/next_screenshot_history"},
+        {10, "screenshot-shortcut.select_previously_selected_area",
+         "screenshot_shortcuts/select_previously_selected_area"},
+        {11, "screenshot-shortcut.copy_color", "screenshot_shortcuts/copy_color"},
+    };
+    bool newScreenshotShortcutContractsMatch = screenshotShortcuts != nullptr;
+    for (const ScreenshotShortcutContract& contract : newScreenshotShortcutContracts) {
+        newScreenshotShortcutContractsMatch =
+            newScreenshotShortcutContractsMatch &&
+            screenshotShortcuts->items.size() > contract.index &&
+            screenshotShortcuts->items.at(contract.index).id == QString::fromLatin1(contract.id) &&
+            screenshotShortcuts->items.at(contract.index).configurationKey ==
+                QString::fromLatin1(contract.configurationKey);
+    }
     require(catalog.page(QStringLiteral("hotkey-settings"))->sections.size() == 2 &&
-                screenshotShortcuts != nullptr && screenshotShortcuts->items.size() == 5 &&
+                screenshotShortcuts != nullptr && screenshotShortcuts->items.size() == 12 &&
                 screenshotShortcuts->items.constFirst().id ==
                     QStringLiteral("screenshot-shortcut.move_tool") &&
                 screenshotShortcuts->items.at(1).configurationKey ==
                     QStringLiteral("screenshot_shortcuts/move_cursor_up") &&
+                screenshotShortcuts->items.at(5).title.translated() ==
+                    QStringLiteral("Move Entire Selection") &&
+                screenshotShortcuts->items.at(6).title.translated() ==
+                    QStringLiteral("Keep Selection Width and Height Consistent") &&
+                screenshotShortcuts->items.at(7).title.translated() ==
+                    QStringLiteral("Switch Selection Between Window and Window Sub-element") &&
+                screenshotShortcuts->items.at(8).title.translated() ==
+                    QStringLiteral("Previous Screenshot History") &&
+                screenshotShortcuts->items.at(9).title.translated() ==
+                    QStringLiteral("Next Screenshot History") &&
+                screenshotShortcuts->items.at(10).title.translated() ==
+                    QStringLiteral("Select Previously Selected Area") &&
+                screenshotShortcuts->items.at(11).title.translated() ==
+                    QStringLiteral("Copy Color") &&
+                newScreenshotShortcutContractsMatch &&
                 std::get<settings::SettingsLocalShortcutDefinition>(
                     screenshotShortcuts->items.constFirst().payload)
                         .scope == settings::SettingsLocalShortcutScope::Screenshot &&
@@ -306,9 +353,6 @@ void quickFunctionShortcutsHaveStableContracts() {
          "global_shortcuts/screen_record", settings::SettingsCommandKind::ExecuteQuickAction},
         {Action::ScreenRecordCopy, "screen-recording", "quick.screen-record-copy",
          "global_shortcuts/screen_record_copy", settings::SettingsCommandKind::ExecuteQuickAction},
-        {Action::ShowOrHideMainWindow, "other", "quick.show-or-hide-main-window",
-         "global_shortcuts/show_or_hide_main_window",
-         settings::SettingsCommandKind::ExecuteQuickAction},
         {Action::OpenCaptureHistory, "other", "quick.open-capture-history",
          "global_shortcuts/open_capture_history",
          settings::SettingsCommandKind::ExecuteQuickAction},
@@ -349,10 +393,46 @@ void quickFunctionShortcutsHaveStableContracts() {
         }
     }
 
-    require(actions.size() == expectations.size() && expectations.size() == 12,
-            "the quick-functions catalog must expose all twelve shortcut actions exactly once");
+    require(actions.size() == expectations.size() && expectations.size() == 11,
+            "the quick-functions catalog must expose all eleven shortcut actions exactly once");
     require(!catalog.commandForShortcut(Action::OpenSettings).has_value(),
             "Open Interface Settings must not appear in Quick Functions");
+
+    const auto trayGroups = catalog.trayMenuGroups();
+    QStringList trayOptionIds;
+    for (const auto& group : trayGroups) {
+        for (const auto& option : group.options) {
+            trayOptionIds.push_back(option.id);
+            if (option.kind == settings::SettingsTrayMenuOptionKind::QuickAction) {
+                const auto command = catalog.commandForShortcut(option.shortcutAction);
+                require(command.has_value(),
+                        "every tray quick action must resolve to a shortcut command");
+                const auto* quickItem = catalog.itemForShortcut(option.shortcutAction);
+                require(quickItem != nullptr && quickItem->title.source == option.label.source,
+                        "tray quick-action labels must share the shortcut title source");
+                const auto title = catalog.shortcutActionTitle(option.shortcutAction, 7);
+                require(!title.isEmpty() && !title.contains(QStringLiteral("%1")),
+                        "tray quick-action labels must come from resolved canonical titles");
+            }
+        }
+    }
+    const auto* trayMenuSchema =
+        storage::ConfigurationSchema::entry(QStringLiteral("tray/menu_options"));
+    require(trayGroups.size() == 4 &&
+                trayGroups.at(0).id == QStringLiteral("screenshot") &&
+                trayGroups.at(0).options.size() == 7 &&
+                trayGroups.at(1).id == QStringLiteral("screen-recording") &&
+                trayGroups.at(1).options.size() == 2 &&
+                trayGroups.at(2).id == QStringLiteral("other") &&
+                trayGroups.at(2).options.size() == 2 &&
+                trayGroups.at(3).id == QStringLiteral("system") &&
+                trayGroups.at(3).options.size() == 3 && trayOptionIds.size() == 14 &&
+                trayOptionIds.at(11) == QStringLiteral("tray.disable-shortcut-functions") &&
+                trayOptionIds.at(12) == QStringLiteral("tray.show-main-window") &&
+                trayOptionIds.at(13) == QStringLiteral("tray.exit") &&
+                trayMenuSchema != nullptr &&
+                trayMenuSchema->allowedStringValues == trayOptionIds,
+            "tray menu options must derive all quick-function groups and append system commands");
 
     const auto* delaySchema =
         storage::ConfigurationSchema::entry(QStringLiteral("screenshot/delay_seconds"));
@@ -388,15 +468,19 @@ void quickFunctionShortcutsHaveStableContracts() {
     const auto* screenRecordCopy =
         catalog.item({QStringLiteral("quick-functions"), QStringLiteral("screen-recording"),
                       QStringLiteral("quick.screen-record-copy")});
-    const auto* showOrHide =
-        catalog.item({QStringLiteral("quick-functions"), QStringLiteral("other"),
-                      QStringLiteral("quick.show-or-hide-main-window")});
     const auto* openHistory =
         catalog.item({QStringLiteral("quick-functions"), QStringLiteral("other"),
                       QStringLiteral("quick.open-capture-history")});
     const auto* pinClipboard =
         catalog.item({QStringLiteral("quick-functions"), QStringLiteral("other"),
                       QStringLiteral("quick.pin-clipboard-content")});
+    const auto* otherShortcuts =
+        catalog.section(QStringLiteral("quick-functions"), QStringLiteral("other"));
+    require(otherShortcuts != nullptr && otherShortcuts->items.size() == 2 &&
+                otherShortcuts->items.at(0).id == QStringLiteral("quick.open-capture-history") &&
+                otherShortcuts->items.at(1).id ==
+                    QStringLiteral("quick.pin-clipboard-content"),
+            "Other quick actions must only expose history and clipboard pinning");
     const auto shortcutPayload = [](const settings::SettingsItemDefinition* item) {
         return item != nullptr
                    ? std::get_if<settings::SettingsShortcutActionDefinition>(&item->payload)
@@ -404,7 +488,6 @@ void quickFunctionShortcutsHaveStableContracts() {
     };
     const auto* screenRecordShortcut = shortcutPayload(screenRecord);
     const auto* screenRecordCopyShortcut = shortcutPayload(screenRecordCopy);
-    const auto* showOrHideShortcut = shortcutPayload(showOrHide);
     const auto* openHistoryShortcut = shortcutPayload(openHistory);
     const auto* pinClipboardShortcut = shortcutPayload(pinClipboard);
     require(screenRecord != nullptr && screenRecord->title.source != nullptr &&
@@ -421,12 +504,6 @@ void quickFunctionShortcutsHaveStableContracts() {
                 screenRecordCopyShortcut->iconFactory() ==
                     snow_shot::presentation::icons::custom::outlined::ScreenshotCopy(),
             "recording toggle must use the exact screenshot-copy icon");
-    require(showOrHide != nullptr && showOrHide->title.source != nullptr &&
-                QString::fromLatin1(showOrHide->title.source) ==
-                    QStringLiteral("Show/Hide Main Window") &&
-                showOrHideShortcut != nullptr && showOrHideShortcut->iconFactory &&
-                showOrHideShortcut->iconFactory() == adqt::icons::antd::outlined::Appstore(),
-            "Show/Hide Main Window must use the Appstore outlined icon");
     require(openHistory != nullptr && openHistory->title.source != nullptr &&
                 QString::fromLatin1(openHistory->title.source) ==
                     QStringLiteral("Screenshot History") &&
@@ -514,8 +591,8 @@ void invalidCatalogReportsAllConformanceErrors() {
 
 void searchIndexIsGeneratedAndRanked() {
     settings::SettingsSearchIndex index(settings::builtInSettingsCatalog());
-    require(index.entries().size() == 108 && index.search(QString()).size() == 108,
-            "search must generate all one hundred eight catalog nodes in catalog order");
+    require(index.entries().size() == 116 && index.search(QString()).size() == 116,
+            "search must generate all one hundred sixteen catalog nodes in catalog order");
 
     int pages = 0;
     int sections = 0;
@@ -542,7 +619,7 @@ void searchIndexIsGeneratedAndRanked() {
             break;
         }
     }
-    require(pages == 7 && sections == 24 && items == 77,
+    require(pages == 7 && sections == 24 && items == 85,
             "search node counts must match catalog page, section, and item counts");
 
     const auto theme = index.search(QStringLiteral("theme"));
@@ -635,7 +712,7 @@ void addingCatalogNodesAutomaticallyExpandsSearch() {
     require(expanded.validationErrors().isEmpty(),
             "a normal additional catalog page must validate without consumer changes");
     settings::SettingsSearchIndex index(expanded);
-    require(index.entries().size() == 111 &&
+    require(index.entries().size() == 119 &&
                 index.search(QStringLiteral("extra item")).constFirst().location ==
                     settings::SettingsLocation{QStringLiteral("extra-page"),
                                                QStringLiteral("extra-section"),

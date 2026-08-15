@@ -898,6 +898,15 @@ void ColorSwatchButton::paintEvent(QPaintEvent* event) {
     }
 }
 
+ColorPickerSamplerButton::ColorPickerSamplerButton(QWidget* parent)
+    : adqt::widgets::AdButton(parent) {
+    setSizeClass(adqt::widgets::AdButton::SizeClass::Small);
+    setButtonStyle(adqt::widgets::AdButton::ButtonStyle::Text);
+    setAccentRole(adqt::widgets::AdButton::AccentRole::Neutral);
+    setIconSize(QSize(14, 14));
+    setCursor(Qt::PointingHandCursor);
+}
+
 StrokeStylePreviewTrigger::StrokeStylePreviewTrigger(QWidget* parent)
     : StylePreviewButton(parent) {}
 
@@ -1734,6 +1743,14 @@ createScreenshotToolPaletteColorButton(QWidget* parent, const char* tooltip, con
     button->setSwatchColor(color);
     button->setSwatchBorderVisible(swatchBorderVisible);
     button->setPhysicalScale(metrics.physicalScale);
+    return button;
+}
+
+ColorPickerSamplerButton* createScreenshotToolPaletteColorPickerSamplerButton(QWidget* parent) {
+    auto* button = new ColorPickerSamplerButton(parent);
+    new StyleButtonIconBinding(
+        button, snow_shot::presentation::icons::custom::outlined::ColorPicker());
+    button->setFocusPolicy(Qt::NoFocus);
     return button;
 }
 

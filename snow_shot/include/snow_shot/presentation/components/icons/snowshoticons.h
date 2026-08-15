@@ -37,7 +37,9 @@ namespace outlined {
 [[nodiscard]] adqt::icons::IconRef ArrowheadTriangle(const adqt::icons::IconColors& colors = {});
 [[nodiscard]] adqt::icons::IconRef ArrowheadTriangleOutline(const adqt::icons::IconColors& colors = {});
 [[nodiscard]] adqt::icons::IconRef Blur(const adqt::icons::IconColors& colors = {});
+[[nodiscard]] adqt::icons::IconRef ColorPicker(const adqt::icons::IconColors& colors = {});
 [[nodiscard]] adqt::icons::IconRef Duplicate(const adqt::icons::IconColors& colors = {});
+[[nodiscard]] adqt::icons::IconRef Exit(const adqt::icons::IconColors& colors = {});
 [[nodiscard]] adqt::icons::IconRef FillSolid(const adqt::icons::IconColors& colors = {});
 [[nodiscard]] adqt::icons::IconRef FlipVertical(const adqt::icons::IconColors& colors = {});
 [[nodiscard]] adqt::icons::IconRef FontSizeLarge(const adqt::icons::IconColors& colors = {});
@@ -88,6 +90,7 @@ namespace outlined {
 [[nodiscard]] adqt::icons::IconRef Trash(const adqt::icons::IconColors& colors = {});
 [[nodiscard]] adqt::icons::IconRef WatermarkGap(const adqt::icons::IconColors& colors = {});
 [[nodiscard]] adqt::icons::IconRef WheelMouse(const adqt::icons::IconColors& colors = {});
+[[nodiscard]] adqt::icons::IconRef Window(const adqt::icons::IconColors& colors = {});
 }  // namespace outlined
 
 namespace twotone {

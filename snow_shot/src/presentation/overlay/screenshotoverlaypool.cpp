@@ -5,14 +5,18 @@
 #include "snow_shot/presentation/screenshotdisplaysession.h"
 #include "snow_shot/presentation/screenshotoverlayeventsink.h"
 #include "snow_shot/presentation/screenshotoverlaywindow.h"
+#include "snow_shot/presentation/windowshortcutmanager.h"
 
 #include <algorithm>
 #include <utility>
 
 ScreenshotOverlayPool::ScreenshotOverlayPool(ScreenshotOverlayEventSink& eventSink,
                                              SnowCanvasRuntime& canvasRuntime,
+                                             snow_shot::presentation::WindowShortcutManager&
+                                                 shortcutManager,
                                              ScreenshotOverlayPoolCallbacks callbacks)
-    : m_eventSink(eventSink), m_canvasRuntime(canvasRuntime), m_callbacks(std::move(callbacks)) {}
+    : m_eventSink(eventSink), m_canvasRuntime(canvasRuntime),
+      m_shortcutManager(shortcutManager), m_callbacks(std::move(callbacks)) {}
 
 void ScreenshotOverlayPool::prewarmDisplayPool(ScreenshotDisplaySession& displaySession,
                                                int displayCount) {
@@ -72,6 +76,7 @@ ScreenshotOverlayPool::ensureOverlay(ScreenshotOverlayWindow* overlay) const {
     if (created) {
         auto* canvas = new SnowCanvasWidget(m_canvasRuntime);
         overlay = new ScreenshotOverlayWindow(m_eventSink, canvas);
+        m_shortcutManager.addScopeWindow(overlay);
         static_cast<void>(overlay->winId());
     }
 

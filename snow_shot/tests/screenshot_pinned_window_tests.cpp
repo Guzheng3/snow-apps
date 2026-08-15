@@ -965,6 +965,21 @@ void pinnedContextMenuAndModes(SnowCanvasRuntime& sourceRuntime) {
                 !actions.contains(menu->findChild<QAction*>(
                     QStringLiteral("screenshotPinnedShowMainInterfaceAction"))),
             "the show-main-interface fallback should be absent while the tray is enabled");
+    const QStringList defaultTrayMenuOptions = snow_shot::storage::TraySettings().menuOptions();
+    const QStringList trayMenuWithoutShowMainWindow = {
+        QStringLiteral("quick.screenshot"), QStringLiteral("tray.exit")};
+    require(snow_shot::storage::TraySettings().setMenuOptions(trayMenuWithoutShowMainWindow),
+            "the tray menu option fixture should be writable");
+    ScreenshotPinnedWindow::setRuntimeTrayEnabled(true);
+    const QList<QAction*> hiddenTrayOptionActions = menu->actions();
+    require(hiddenTrayOptionActions.size() == 14 &&
+                hiddenTrayOptionActions.at(hiddenTrayOptionActions.size() - 2) ==
+                    menu->findChild<QAction*>(
+                        QStringLiteral("screenshotPinnedShowMainInterfaceAction")),
+            "the pinned menu should retain Show Main Interface when the tray item is hidden");
+    require(snow_shot::storage::TraySettings().setMenuOptions(defaultTrayMenuOptions),
+            "the tray menu option fixture should be restored");
+    ScreenshotPinnedWindow::setRuntimeTrayEnabled(true);
     const QStringList expected{
         QStringLiteral("Copy to Clipboard"),
         QStringLiteral("Copy Original Content"),

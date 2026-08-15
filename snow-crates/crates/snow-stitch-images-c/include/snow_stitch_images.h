@@ -167,8 +167,12 @@ SnowStitchSnapshot* snow_stitch_session_snapshot_axis(const SnowStitchSession* s
 void snow_stitch_snapshot_destroy(SnowStitchSnapshot* snapshot);
 uint8_t snow_stitch_snapshot_info(const SnowStitchSnapshot* snapshot,
                                   SnowStitchImageInfo* out_info);
+/* Copies tightly packed RGBA rows into a caller-owned strided destination. */
+uint8_t snow_stitch_snapshot_copy_rows(const SnowStitchSnapshot* snapshot, uint32_t top,
+                                       uint32_t rows, size_t destination_stride,
+                                       uint8_t* destination, size_t destination_len);
 SnowStitchSnapshot* snow_stitch_snapshot_slice_rows(const SnowStitchSnapshot* snapshot,
-                                                    uint32_t top, uint32_t bottom);
+                                                     uint32_t top, uint32_t bottom);
 SnowStitchSnapshot* snow_stitch_snapshot_slice_axis(const SnowStitchSnapshot* snapshot,
                                                     uint32_t start, uint32_t end);
 SnowStitchOwnedImage* snow_stitch_snapshot_materialize(const SnowStitchSnapshot* snapshot);

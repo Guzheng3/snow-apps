@@ -59,8 +59,6 @@ class ShortcutSettings final {
     bool setScreenRecord(const QStringList& shortcuts) const;
     [[nodiscard]] QStringList screenRecordCopy() const;
     bool setScreenRecordCopy(const QStringList& shortcuts) const;
-    [[nodiscard]] QStringList showOrHideMainWindow() const;
-    bool setShowOrHideMainWindow(const QStringList& shortcuts) const;
     [[nodiscard]] QStringList openCaptureHistory() const;
     bool setOpenCaptureHistory(const QStringList& shortcuts) const;
     [[nodiscard]] QStringList openSettings() const;
@@ -119,6 +117,20 @@ class ScreenshotShortcutSettings final {
     bool setMoveCursorLeft(const QStringList& shortcuts) const;
     [[nodiscard]] QStringList moveCursorRight() const;
     bool setMoveCursorRight(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList moveEntireSelection() const;
+    bool setMoveEntireSelection(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList keepSelectionWidthAndHeightConsistent() const;
+    bool setKeepSelectionWidthAndHeightConsistent(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList switchSelectionBetweenWindowAndWindowSubElement() const;
+    bool setSwitchSelectionBetweenWindowAndWindowSubElement(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList previousScreenshotHistory() const;
+    bool setPreviousScreenshotHistory(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList nextScreenshotHistory() const;
+    bool setNextScreenshotHistory(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList selectPreviouslySelectedArea() const;
+    bool setSelectPreviouslySelectedArea(const QStringList& shortcuts) const;
+    [[nodiscard]] QStringList copyColor() const;
+    bool setCopyColor(const QStringList& shortcuts) const;
 
     [[nodiscard]] QStringList shortcuts(const QString& actionId) const;
     bool setShortcuts(const QString& actionId, const QStringList& shortcuts) const;
@@ -254,6 +266,8 @@ class TraySettings final {
     bool setCustomIcon(const QString& path) const;
     [[nodiscard]] QString leftClickAction() const;
     bool setLeftClickAction(const QString& action) const;
+    [[nodiscard]] QStringList menuOptions() const;
+    bool setMenuOptions(const QStringList& options) const;
 };
 
 class SystemSettings final {

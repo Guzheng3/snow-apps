@@ -612,6 +612,27 @@ bool ScreenshotOcrController::ensureRecognitionWindow() {
         [this](const QUrl& url) { handleQrLinkActivated(url); },
         [this]() { undoTextEdit(); },
         [this]() { redoTextEdit(); },
+        [this](const QPointF& canvasPosition) {
+            return m_context.selectionResizeDragMode(canvasPosition);
+        },
+        [this](const QPointF& canvasPosition) {
+            return m_context.beginSelectionResize(canvasPosition);
+        },
+        [this](const QPointF& canvasPosition) {
+            m_context.updateSelectionResize(canvasPosition);
+            updateRecognitionWindowGeometry();
+        },
+        [this](const QPointF& canvasPosition) {
+            m_context.finishSelectionResize(canvasPosition);
+            updateRecognitionWindowGeometry();
+        },
+        [this]() {
+            QTimer::singleShot(0, this, [this]() {
+                if (m_active) {
+                    activateMode(m_mode);
+                }
+            });
+        },
     });
     if (!window->present(config)) {
         delete window;
@@ -626,6 +647,23 @@ bool ScreenshotOcrController::ensureRecognitionWindow() {
         toolbar->raise();
     }
     return true;
+}
+
+void ScreenshotOcrController::updateRecognitionWindowGeometry() {
+    if (m_recognitionWindow == nullptr) {
+        return;
+    }
+    const QRectF selection = m_context.selection.normalizedSelection();
+    const CapturedDisplayModel* display =
+        m_context.geometry.displayForCanvasPoint(m_context.displaySession, selection.center());
+    if (display == nullptr) {
+        display = m_context.geometry.displayForCanvasRect(m_context.displaySession, selection);
+    }
+    if (display == nullptr) {
+        return;
+    }
+    static_cast<void>(m_recognitionWindow->updateSelectionGeometry(
+        recognitionGeometryForDisplay(m_context.geometry, *display, selection), selection));
 }
 
 void ScreenshotOcrController::destroyRecognitionWindow() {

@@ -18,9 +18,11 @@
 
 #include "antd_icons.h"
 #include "widgets/button.h"
+#include "widgets/checkbox.h"
 #include "widgets/carousel.h"
 #include "widgets/date_picker.h"
 #include "widgets/descriptions.h"
+#include "widgets/divider.h"
 #include "widgets/image.h"
 #include "widgets/input_line_edit.h"
 #include "widgets/input_number.h"
@@ -48,6 +50,7 @@
 #include <QImage>
 #include <QMimeData>
 #include <QScrollBar>
+#include <QRegularExpression>
 #include <QSizePolicy>
 #include <QStackedWidget>
 #include <QStandardItemModel>
@@ -75,6 +78,26 @@ void flushEvents() {
     QCoreApplication::sendPostedEvents(nullptr, QEvent::PolishRequest);
     QCoreApplication::sendPostedEvents(nullptr, QEvent::LayoutRequest);
     QCoreApplication::processEvents();
+}
+
+const QHash<QString, QStringList>& screenshotShortcutDefaults() {
+    static const QHash<QString, QStringList> defaults{
+        {QStringLiteral("move_tool"), {QStringLiteral("M")}},
+        {QStringLiteral("move_cursor_up"), {QStringLiteral("W"), QStringLiteral("Up")}},
+        {QStringLiteral("move_cursor_down"), {QStringLiteral("S"), QStringLiteral("Down")}},
+        {QStringLiteral("move_cursor_left"), {QStringLiteral("A"), QStringLiteral("Left")}},
+        {QStringLiteral("move_cursor_right"), {QStringLiteral("D"), QStringLiteral("Right")}},
+        {QStringLiteral("move_entire_selection"), {QStringLiteral("Space")}},
+        {QStringLiteral("keep_selection_width_and_height_consistent"),
+         {QStringLiteral("Shift")}},
+        {QStringLiteral("switch_selection_between_window_and_window_sub_element"),
+         {QStringLiteral("Tab")}},
+        {QStringLiteral("previous_screenshot_history"), {QStringLiteral(",")}},
+        {QStringLiteral("next_screenshot_history"), {QStringLiteral(".")}},
+        {QStringLiteral("select_previously_selected_area"), {QStringLiteral("R")}},
+        {QStringLiteral("copy_color"), {QStringLiteral("C")}},
+    };
+    return defaults;
 }
 
 class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
@@ -129,6 +152,18 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
         m_multiSelectValues.insert(
             settings::SettingsMultiSelectBinding::DrawingQuickSelectionDisabledTools,
             {QStringLiteral("free-draw"), QStringLiteral("pen-filter")});
+        m_multiSelectValues.insert(
+            settings::SettingsMultiSelectBinding::TrayMenuOptions,
+            {QStringLiteral("quick.screenshot"),
+             QStringLiteral("quick.screenshot-delay"),
+             QStringLiteral("quick.screenshot-fixed"),
+             QStringLiteral("quick.screenshot-ocr"),
+             QStringLiteral("quick.screenshot-copy"),
+             QStringLiteral("quick.screen-record"),
+             QStringLiteral("quick.pin-clipboard-content"),
+             QStringLiteral("tray.disable-shortcut-functions"),
+             QStringLiteral("tray.show-main-window"),
+             QStringLiteral("tray.exit")});
         m_directoryPaths = {
             {settings::SettingsDirectoryPathBinding::ScreenshotImageDirectory,
              QStringLiteral("C:/Pictures/SnowShot")},
@@ -144,21 +179,6 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
              QStringLiteral("SnowShot_Video_{YYYY-MM-DD_HH-mm-ss}")},
         };
         m_localShortcuts = {
-            {localShortcutKey(settings::SettingsLocalShortcutScope::Screenshot,
-                              QStringLiteral("move_tool")),
-             {QStringLiteral("M")}},
-            {localShortcutKey(settings::SettingsLocalShortcutScope::Screenshot,
-                              QStringLiteral("move_cursor_up")),
-             {QStringLiteral("W"), QStringLiteral("Up")}},
-            {localShortcutKey(settings::SettingsLocalShortcutScope::Screenshot,
-                              QStringLiteral("move_cursor_down")),
-             {QStringLiteral("S"), QStringLiteral("Down")}},
-            {localShortcutKey(settings::SettingsLocalShortcutScope::Screenshot,
-                              QStringLiteral("move_cursor_left")),
-             {QStringLiteral("A"), QStringLiteral("Left")}},
-            {localShortcutKey(settings::SettingsLocalShortcutScope::Screenshot,
-                              QStringLiteral("move_cursor_right")),
-             {QStringLiteral("D"), QStringLiteral("Right")}},
             {localShortcutKey(settings::SettingsLocalShortcutScope::Drawing,
                               QStringLiteral("select")),
              {QStringLiteral("V")}},
@@ -190,6 +210,12 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
                               QStringLiteral("watermark")),
              {QStringLiteral("9")}},
         };
+        for (auto it = screenshotShortcutDefaults().cbegin();
+             it != screenshotShortcutDefaults().cend(); ++it) {
+            m_localShortcuts.insert(
+                localShortcutKey(settings::SettingsLocalShortcutScope::Screenshot, it.key()),
+                it.value());
+        }
     }
 
     QVariant selectValue(settings::SettingsSelectBinding binding) const override {
@@ -497,6 +523,13 @@ class FakeRuntimeBindings final : public settings::SettingsRuntimeBindings {
             m_maxDiskMiB = 1024;
         } else if (reset == settings::SettingsSectionReset::ScreenshotSettings) {
             m_smartSelection = true;
+        } else if (reset == settings::SettingsSectionReset::ScreenshotEditorShortcuts) {
+            for (auto it = screenshotShortcutDefaults().cbegin();
+                 it != screenshotShortcutDefaults().cend(); ++it) {
+                m_localShortcuts.insert(
+                    localShortcutKey(settings::SettingsLocalShortcutScope::Screenshot, it.key()),
+                    it.value());
+            }
         } else if (reset == settings::SettingsSectionReset::ScreenshotOutput) {
             m_directoryPaths.insert(
                 settings::SettingsDirectoryPathBinding::ScreenshotImageDirectory,
@@ -1195,6 +1228,8 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
         QStringLiteral("settings-control-pin-to-screen-auto-resize-window"));
     auto* trayLeftClick = functionPage.findChild<adqt::widgets::AdSelect*>(
         QStringLiteral("settings-control-tray-left-click-action"));
+    auto* trayMenuOptions = functionPage.findChild<QWidget*>(
+        QStringLiteral("settings-item-tray-menu-options"));
     require(ocrAction != nullptr && ocrAction->options().size() == 6 &&
                 doubleClickAction != nullptr && doubleClickAction->options().size() == 4 &&
                 middleClickAction != nullptr && middleClickAction->options().size() == 4 &&
@@ -1204,8 +1239,28 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                 drawingExclusions != nullptr && drawingExclusions->options().size() == 13 &&
                 pinZoomMode != nullptr && pinZoomMode->options().size() == 6 &&
                 pinAutomaticOcr != nullptr && pinAutoResize != nullptr &&
-                trayLeftClick != nullptr && trayLeftClick->options().size() == 2,
+                trayLeftClick != nullptr && trayLeftClick->options().size() == 2 &&
+                trayMenuOptions != nullptr,
             "new select and multi-select controls must render every advertised option");
+    const auto trayMenuCheckboxes =
+        trayMenuOptions != nullptr
+            ? trayMenuOptions->findChildren<adqt::widgets::AdCheckbox*>()
+            : QList<adqt::widgets::AdCheckbox*>{};
+    const auto trayMenuSeparators =
+        trayMenuOptions != nullptr
+            ? trayMenuOptions->findChildren<adqt::widgets::AdDivider*>(
+                  QRegularExpression(QStringLiteral("^settings-tray-menu-options-separator-")))
+            : QList<adqt::widgets::AdDivider*>{};
+    auto* trayMenuGrid = trayMenuOptions != nullptr
+                             ? trayMenuOptions->findChild<QWidget*>(
+                                   QStringLiteral("settings-tray-menu-options-grid"))
+                             : nullptr;
+    require(trayMenuCheckboxes.size() == 14 && trayMenuSeparators.size() == 3 &&
+                trayMenuGrid != nullptr && trayMenuGrid->layout() != nullptr &&
+                qobject_cast<QGridLayout*>(trayMenuGrid->layout())->columnCount() == 2 &&
+                std::all_of(trayMenuCheckboxes.cbegin(), trayMenuCheckboxes.cend(),
+                            [](const auto* checkbox) { return checkbox != nullptr; }),
+            "tray Menu Options must render fourteen generated checkboxes in four groups");
     require(interfacePage.findChild<adqt::widgets::AdMultiSelect*>(
                  QStringLiteral("settings-control-drawing-quick-selection-disabled-tools")) ==
                 nullptr &&
@@ -1222,6 +1277,11 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
     pinAutomaticOcr->setChecked(false);
     pinAutoResize->setChecked(false);
     trayLeftClick->setCurrentValue(QStringLiteral("show_main_window"));
+    auto* hiddenMenuOption = functionPage.findChild<adqt::widgets::AdCheckbox*>(
+        QStringLiteral("settings-tray-menu-option-quick.screenshot-full-screen"));
+    require(hiddenMenuOption != nullptr && !hiddenMenuOption->isChecked(),
+            "unchecked tray menu options must start hidden");
+    hiddenMenuOption->click();
     drawingExclusions->setSelectedValues(
         {QStringLiteral("free-draw"), QStringLiteral("pen-filter")});
     require(bindings.selectValue(settings::SettingsSelectBinding::ScreenshotOcrAction) ==
@@ -1236,7 +1296,9 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                     QStringLiteral("show_main_window") &&
                 bindings.multiSelectValue(
                     settings::SettingsMultiSelectBinding::DrawingQuickSelectionDisabledTools) ==
-                    QVariantList{QStringLiteral("free-draw"), QStringLiteral("pen-filter")},
+                    QVariantList{QStringLiteral("free-draw"), QStringLiteral("pen-filter")} &&
+                bindings.multiSelectValue(settings::SettingsMultiSelectBinding::TrayMenuOptions)
+                        .contains(QStringLiteral("quick.screenshot-full-screen")),
             "new select and multi-select values must flow through runtime bindings");
 
     auto* screenshotShortcutList = hotkeyPage.findChild<QWidget*>(
@@ -1251,8 +1313,8 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
         drawingShortcutList != nullptr ? drawingShortcutList->findChildren<ShortcutKeyRow*>()
                                        : QList<ShortcutKeyRow*>{};
     const auto localShortcutRows = hotkeyPage.findChildren<ShortcutKeyRow*>();
-    require(screenshotShortcutRows.size() == 5 && drawingShortcutRows.size() == 10 &&
-                localShortcutRows.size() == 15 &&
+    require(screenshotShortcutRows.size() == 12 && drawingShortcutRows.size() == 10 &&
+                localShortcutRows.size() == 22 &&
                 std::all_of(localShortcutRows.cbegin(), localShortcutRows.cend(),
                             [](const ShortcutKeyRow* row) {
                                 const auto* status =
@@ -1262,7 +1324,7 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                                         : nullptr;
                                 return status != nullptr && status->isHidden();
                             }),
-            "Hotkey Settings must render five screenshot and ten drawing shortcut rows without "
+            "Hotkey Settings must render twelve screenshot and ten drawing shortcut rows without "
             "global status");
     const auto settingMetrics =
         snow_shot::presentation::styles::ThemeManager::instance().themeColorScheme().metricAlias;
@@ -1293,9 +1355,9 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                 drawingShortcutList->layout()->count() == 1
             ? qobject_cast<QGridLayout*>(drawingShortcutList->layout()->itemAt(0)->layout())
             : nullptr;
-    require(screenshotShortcutGrid != nullptr && screenshotShortcutGrid->count() == 5 &&
+    require(screenshotShortcutGrid != nullptr && screenshotShortcutGrid->count() == 12 &&
                 screenshotShortcutGrid->columnCount() == 2 &&
-                screenshotShortcutGrid->rowCount() == 3 && drawingShortcutGrid != nullptr &&
+                screenshotShortcutGrid->rowCount() == 6 && drawingShortcutGrid != nullptr &&
                 drawingShortcutGrid->count() == 10 &&
                 drawingShortcutGrid->columnCount() == 2 && drawingShortcutGrid->rowCount() == 5 &&
                 drawingShortcutGrid->horizontalSpacing() == settingMetrics.marginLG &&
@@ -1543,6 +1605,36 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
                 smartSelection->isChecked(),
             "Screenshot settings reset must restore Smart Selection to enabled");
 
+    auto* screenshotShortcutHeader = hotkeyPage.findChild<SectionHeaderWidget*>(
+        QStringLiteral("settings-section-hotkey-settings-screenshot-shortcuts"));
+    bool screenshotShortcutDefaultsMutated = true;
+    for (auto it = screenshotShortcutDefaults().cbegin();
+         it != screenshotShortcutDefaults().cend(); ++it) {
+        screenshotShortcutDefaultsMutated =
+            screenshotShortcutDefaultsMutated &&
+            bindings.applyLocalShortcuts(settings::SettingsLocalShortcutScope::Screenshot,
+                                         it.key(), {QStringLiteral("Alt+Q")}) &&
+            bindings.localShortcuts(settings::SettingsLocalShortcutScope::Screenshot, it.key()) ==
+                QStringList{QStringLiteral("Alt+Q")};
+    }
+    const auto screenshotShortcutDefaultsAreRestored = [&bindings]() {
+        for (auto it = screenshotShortcutDefaults().cbegin();
+             it != screenshotShortcutDefaults().cend(); ++it) {
+            if (bindings.localShortcuts(settings::SettingsLocalShortcutScope::Screenshot,
+                                        it.key()) != it.value()) {
+                return false;
+            }
+        }
+        return true;
+    };
+    require(screenshotShortcutHeader != nullptr && screenshotShortcutDefaultsMutated &&
+                QMetaObject::invokeMethod(screenshotShortcutHeader, "resetRequested",
+                                          Qt::DirectConnection) &&
+                bindings.resetRequested ==
+                    settings::SettingsSectionReset::ScreenshotEditorShortcuts &&
+                screenshotShortcutDefaultsAreRestored(),
+            "Screenshot shortcut reset must restore every Screenshot shortcut default");
+
     bindings.setStorageState(false, true);
     flushEvents();
     auto* historyReset =
@@ -1604,6 +1696,10 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
         quick.findChild<ShortcutKeyRow*>(QStringLiteral("settings-item-quick-screenshot"));
     auto* screenshotDelay =
         quick.findChild<ShortcutKeyRow*>(QStringLiteral("settings-item-quick-screenshot-delay"));
+    auto* trayScreenshotDelay = functionPage.findChild<adqt::widgets::AdCheckbox*>(
+        QStringLiteral("settings-tray-menu-option-quick.screenshot-delay"));
+    auto* trayRecordingToggle = functionPage.findChild<adqt::widgets::AdCheckbox*>(
+        QStringLiteral("settings-tray-menu-option-quick.screen-record-copy"));
     bool delayTitleIsRendered = false;
     if (screenshotDelay != nullptr) {
         for (const QLabel* label : screenshotDelay->findChildren<QLabel*>()) {
@@ -1615,8 +1711,13 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
     }
     require(screenshot != nullptr && screenshotDelay != nullptr &&
                 screenshotDelay->delaySeconds() == 3 && delayTitleIsRendered &&
-                screenshotDelay->cursor().shape() == Qt::SplitVCursor,
-            "shortcut/action items and the adjustable 3-second delay must render from the catalog");
+                screenshotDelay->cursor().shape() == Qt::SplitVCursor &&
+                trayScreenshotDelay != nullptr &&
+                trayScreenshotDelay->text() == QStringLiteral("Delay 3s to Execute") &&
+                trayRecordingToggle != nullptr &&
+                trayRecordingToggle->text() ==
+                    QStringLiteral("Start Screen Recording / Stop and Copy Video"),
+            "shortcut and tray surfaces must render the same canonical action titles");
 
     QWheelEvent increaseDelay(
         QPointF(screenshotDelay->rect().center()),
@@ -1625,8 +1726,9 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
     QCoreApplication::sendEvent(screenshotDelay, &increaseDelay);
     require(screenshotDelay->delaySeconds() == 4 &&
                 bindings.integerValue(settings::SettingsIntegerBinding::ScreenshotDelaySeconds) ==
-                    4,
-            "delay-row wheel adjustments must persist through runtime bindings");
+                    4 &&
+                trayScreenshotDelay->text() == QStringLiteral("Delay 4s to Execute"),
+            "delay changes must update both shortcut and tray-option titles");
     settings::SettingsCommand command;
     bool commandEmitted = false;
     QObject::connect(&quick, &SettingsPageWidget::commandRequested, &quick,
@@ -1682,7 +1784,6 @@ void quickActionCommandsDispatchThroughContentCard() {
         {QStringLiteral("quick-screenshot-focused-window"), Action::ScreenshotFocusedWindow},
         {QStringLiteral("quick-screen-record"), Action::ScreenRecord},
         {QStringLiteral("quick-screen-record-copy"), Action::ScreenRecordCopy},
-        {QStringLiteral("quick-show-or-hide-main-window"), Action::ShowOrHideMainWindow},
         {QStringLiteral("quick-open-capture-history"), Action::OpenCaptureHistory},
         {QStringLiteral("quick-pin-clipboard-content"), Action::PinClipboardContent},
     };
@@ -2061,7 +2162,7 @@ int main(int argc, char** argv) {
 #if defined(Q_OS_WIN)
     if (drawingToolbarEditorOnly || settingsLayoutOnly) {
         qunsetenv("QT_QPA_PLATFORM");
-    } else {
+    } else if (!qEnvironmentVariableIsSet("QT_QPA_PLATFORM")) {
         qputenv("QT_QPA_PLATFORM", "offscreen");
     }
 #else
@@ -2094,7 +2195,6 @@ int main(int argc, char** argv) {
         snow_shot::storage::ApplicationStorage::instance().shutdown();
         return 0;
     }
-
     generatedPagesRenderEveryItemTypeAndResynchronize();
     quickActionCommandsDispatchThroughContentCard();
     actionsMayExecuteWithoutConfirmation();

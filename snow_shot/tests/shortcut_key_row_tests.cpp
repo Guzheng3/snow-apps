@@ -245,6 +245,13 @@ void recorderAcceptsOnlyBackendSupportedShortcuts() {
     };
 
     ShortcutKeyRow row(config, scheme.metricAlias, mainWindowMetric);
+    QObject::connect(&row, &ShortcutKeyRow::shortcutsChanged, &row,
+                     [&row](const QStringList& selectedShortcuts) {
+                         shortcuts::GlobalShortcutRegistrationState state;
+                         state.action = shortcuts::GlobalShortcutAction::Screenshot;
+                         state.shortcuts = selectedShortcuts;
+                         row.setRegistrationState(state);
+                     });
     row.resize(720, row.height());
     row.show();
     QApplication::processEvents();
@@ -339,6 +346,33 @@ void recorderAcceptsOnlyBackendSupportedShortcuts() {
     require(keyButton->text().contains(QStringLiteral("Num Plus")) &&
                 !keyButton->text().contains(QStringLiteral("Num++")),
             "a keypad plus should not be displayed as two shortcut separators");
+
+    QKeyEvent shiftEvent(QEvent::KeyPress, Qt::Key_Shift, Qt::ShiftModifier);
+    QCoreApplication::sendEvent(configContent, &shiftEvent);
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    QApplication::processEvents();
+
+    keyButton = row.findChild<adqt::widgets::AdButton*>(QStringLiteral("shortcutConfigKeyButton"));
+    actionButton =
+        row.findChild<adqt::widgets::AdButton*>(QStringLiteral("shortcutConfigActionButton"));
+    require(keyButton != nullptr && actionButton != nullptr &&
+                lastValidatedShortcut == QStringLiteral("Shift") &&
+                keyButton->text() == QStringLiteral("Shift") && actionButton->isEnabled() &&
+                modal->acceptButton()->isEnabled(),
+            "a bare Shift key must validate and display as Shift without a duplicated modifier");
+
+    actionButton->click();
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    QApplication::processEvents();
+    keyButton = row.findChild<adqt::widgets::AdButton*>(QStringLiteral("shortcutConfigKeyButton"));
+    require(keyButton != nullptr && keyButton->text() == QStringLiteral("Shift"),
+            "a committed bare Shift key must retain its normalized display");
+
+    modal->acceptButton()->click();
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    QApplication::processEvents();
+    require(shortcutButton->text() == QStringLiteral("Shift"),
+            "the outer shortcut control must display a committed bare Shift key without duplication");
 }
 
 void drawingRecorderUsesLocalValidationLanguage() {
@@ -477,6 +511,7 @@ void adjustableDelayUsesWheelAndClampsRange() {
         row.findChild<adqt::widgets::AdButton*>(QStringLiteral("shortcutKeyButton"));
     auto* delayTitleLabel = row.findChild<QLabel*>(QStringLiteral("delayTitleLabel"));
     auto* delayUnderline = row.findChild<QWidget*>(QStringLiteral("delaySecondsHoverUnderline"));
+    auto* delayTitleWrap = delayTitleLabel != nullptr ? delayTitleLabel->parentWidget() : nullptr;
     bool titleShowsDefaultDelay = false;
     for (const QLabel* label : row.findChildren<QLabel*>()) {
         if (label->text() == QStringLiteral("Delay 3s to Execute")) {
@@ -484,7 +519,8 @@ void adjustableDelayUsesWheelAndClampsRange() {
             break;
         }
     }
-    require(shortcutButton != nullptr && delayTitleLabel != nullptr && delayUnderline != nullptr &&
+    require(shortcutButton != nullptr && delayTitleLabel != nullptr && delayTitleWrap != nullptr &&
+                delayUnderline != nullptr &&
                 row.delaySeconds() == 3 && titleShowsDefaultDelay &&
                 row.toolTip() == QStringLiteral("Delay: 3 seconds") &&
                 row.cursor().shape() == Qt::PointingHandCursor &&
@@ -506,6 +542,11 @@ void adjustableDelayUsesWheelAndClampsRange() {
     require(row.delaySeconds() == 3 && persistedDelay == 3 && setterCalls == 0 &&
                 changeSignals == 0,
             "scrolling outside the delay title must not change the configured delay");
+
+    sendWheel(delayTitleWrap, 120);
+    require(row.delaySeconds() == 3 && persistedDelay == 3 && setterCalls == 0 &&
+                changeSignals == 0,
+            "scrolling over the title container outside its text must not change the configured delay");
 
     sendWheel(shortcutButton, 120);
     require(row.delaySeconds() == 3 && persistedDelay == 3 && setterCalls == 0 &&

@@ -652,7 +652,8 @@ class SettingsPageWidget::Impl {
                 } else if constexpr (std::is_same_v<Payload,
                                                     settings::SettingsCustomDefinition>) {
                     auto* control =
-                        createSettingsCustomWidget(payload.renderer, runtimeBindings, list);
+                        createSettingsCustomWidget(payload.renderer, catalog, definition,
+                                                   runtimeBindings, list);
                     Q_ASSERT(control != nullptr);
                     if (control == nullptr) {
                         return;

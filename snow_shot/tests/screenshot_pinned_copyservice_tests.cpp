@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <utility>
 
@@ -35,8 +36,8 @@ void originalCopyCoalescesDuplicates() {
     int callbackCount = 0;
     bool callbackPayloadValid = false;
     require(service.requestOriginalImage(
-                source, &receiver, [&callbackCount, &callbackPayloadValid](
-                              ScreenshotClipboardPayload payload) {
+                source, &receiver,
+                [&callbackCount, &callbackPayloadValid](ScreenshotClipboardPayload payload) {
                     ++callbackCount;
                     callbackPayloadValid = payload.isValid();
                 }),
@@ -58,11 +59,7 @@ void invalidatedViewportCopyIsSuppressed() {
     QImage background(QSize(64, 48), QImage::Format_ARGB32_Premultiplied);
     background.fill(QColor(12, 24, 36, 255));
     ScreenshotPinnedViewportCopyRequest request{
-        session,
-        std::move(background),
-        QRectF(0.0, 0.0, 64.0, 48.0),
-        QSize(64, 48),
-        {},
+        session, std::move(background), QRectF(0.0, 0.0, 64.0, 48.0), QSize(64, 48), {},
     };
     require(service.requestCurrentViewport(
                 std::move(request), &receiver,
@@ -72,6 +69,21 @@ void invalidatedViewportCopyIsSuppressed() {
     processUntil(*QCoreApplication::instance(), [&callbackCount]() { return callbackCount != 0; });
     require(callbackCount == 0, "invalidated pinned copy reached its callback");
 }
+
+void destructionSuppressesQueuedCompletion() {
+    QObject receiver;
+    int callbackCount = 0;
+    QImage source(QSize(512, 512), QImage::Format_ARGB32_Premultiplied);
+    source.fill(QColor(25, 50, 75, 255));
+    auto service = std::make_unique<ScreenshotPinnedCopyService>();
+    require(
+        service->requestOriginalImage(
+            source, &receiver, [&callbackCount](ScreenshotClipboardPayload) { ++callbackCount; }),
+        "destruction-lifetime pinned copy was not scheduled");
+    service.reset();
+    processUntil(*QCoreApplication::instance(), [&callbackCount]() { return callbackCount != 0; });
+    require(callbackCount == 0, "destroyed pinned copy service received a queued completion");
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -79,6 +91,7 @@ int main(int argc, char** argv) {
     try {
         originalCopyCoalescesDuplicates();
         invalidatedViewportCopyIsSuppressed();
+        destructionSuppressesQueuedCompletion();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return EXIT_FAILURE;

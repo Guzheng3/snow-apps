@@ -25,7 +25,7 @@ namespace {
 constexpr int MAX_SHORTCUTS_PER_ACTION = 2;
 constexpr int FIRST_REGISTRATION_ID = 0x2200;
 constexpr int LAST_REGISTRATION_ID = 0xBFFF;
-constexpr std::size_t ACTION_COUNT = 13;
+constexpr std::size_t ACTION_COUNT = 12;
 
 constexpr std::array<GlobalShortcutAction, ACTION_COUNT> ALL_ACTIONS = {
     GlobalShortcutAction::Screenshot,
@@ -37,7 +37,6 @@ constexpr std::array<GlobalShortcutAction, ACTION_COUNT> ALL_ACTIONS = {
     GlobalShortcutAction::ScreenshotFocusedWindow,
     GlobalShortcutAction::ScreenRecord,
     GlobalShortcutAction::ScreenRecordCopy,
-    GlobalShortcutAction::ShowOrHideMainWindow,
     GlobalShortcutAction::OpenCaptureHistory,
     GlobalShortcutAction::OpenSettings,
     GlobalShortcutAction::PinClipboardContent,
@@ -63,14 +62,12 @@ int actionIndex(GlobalShortcutAction action) {
         return 7;
     case GlobalShortcutAction::ScreenRecordCopy:
         return 8;
-    case GlobalShortcutAction::ShowOrHideMainWindow:
-        return 9;
     case GlobalShortcutAction::OpenCaptureHistory:
-        return 10;
+        return 9;
     case GlobalShortcutAction::OpenSettings:
-        return 11;
+        return 10;
     case GlobalShortcutAction::PinClipboardContent:
-        return 12;
+        return 11;
     }
     return 0;
 }
@@ -554,8 +551,6 @@ QStringList persistedShortcuts(const snow_shot::storage::ShortcutSettings& setti
         return settings.screenRecord();
     case GlobalShortcutAction::ScreenRecordCopy:
         return settings.screenRecordCopy();
-    case GlobalShortcutAction::ShowOrHideMainWindow:
-        return settings.showOrHideMainWindow();
     case GlobalShortcutAction::OpenCaptureHistory:
         return settings.openCaptureHistory();
     case GlobalShortcutAction::OpenSettings:
@@ -587,8 +582,6 @@ bool persistShortcuts(const snow_shot::storage::ShortcutSettings& settings,
         return settings.setScreenRecord(shortcuts);
     case GlobalShortcutAction::ScreenRecordCopy:
         return settings.setScreenRecordCopy(shortcuts);
-    case GlobalShortcutAction::ShowOrHideMainWindow:
-        return settings.setShowOrHideMainWindow(shortcuts);
     case GlobalShortcutAction::OpenCaptureHistory:
         return settings.setOpenCaptureHistory(shortcuts);
     case GlobalShortcutAction::OpenSettings:
@@ -626,6 +619,9 @@ class GlobalShortcutManager::Impl {
             const QString activeKey = m_registrationKeysById.value(registrationId);
             const auto active = m_activeRegistrations.constFind(activeKey);
             if (active != m_activeRegistrations.cend()) {
+                if (!m_shortcutFunctionsEnabled) {
+                    return;
+                }
                 const bool suppressionEnabled =
                     snow_shot::storage::GlobalShortcutSettings()
                         .disableOnFocusedFullscreenWindow();
@@ -789,6 +785,7 @@ class GlobalShortcutManager::Impl {
     QHash<int, QString> m_registrationKeysById;
     int m_nextRegistrationId = FIRST_REGISTRATION_ID;
     bool m_initialized = false;
+    bool m_shortcutFunctionsEnabled = true;
 };
 
 GlobalShortcutManager::GlobalShortcutManager(QObject* parent)
@@ -822,8 +819,16 @@ GlobalShortcutManager::validateShortcut(const QString& shortcut) const {
 }
 
 void GlobalShortcutManager::setShortcuts(GlobalShortcutAction action,
-                                         const QStringList& shortcuts) {
+                                          const QStringList& shortcuts) {
     m_impl->setShortcuts(action, shortcuts);
+}
+
+void GlobalShortcutManager::setShortcutFunctionsEnabled(bool enabled) {
+    m_impl->m_shortcutFunctionsEnabled = enabled;
+}
+
+bool GlobalShortcutManager::shortcutFunctionsEnabled() const {
+    return m_impl->m_shortcutFunctionsEnabled;
 }
 
 void GlobalShortcutManager::retryRegistrations() {

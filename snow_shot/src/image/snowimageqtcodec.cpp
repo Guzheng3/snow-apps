@@ -8,7 +8,9 @@
 #include <limits>
 
 #include <QFile>
-#include <QPainter>
+#include <QFileDevice>
+#include <QBuffer>
+#include <QIODevice>
 
 namespace snow_shot::image_codec {
 namespace {
@@ -27,6 +29,120 @@ class BackendBuffer final {
 
     SnowShotImageCodecBuffer value{};
 };
+
+struct StreamingBridgeContext final {
+    const ScreenshotImageRowSource* source = nullptr;
+    QIODevice* device = nullptr;
+    QString ioError;
+    bool flattenForJpeg = false;
+};
+
+int32_t SNOW_SHOT_IMAGE_CODEC_CALL readRowsCallback(void* rawContext, uint32_t firstRow,
+                                                    uint32_t rowCount, uint64_t destinationStride,
+                                                    uint8_t* destination,
+                                                    uint64_t destinationSize) {
+    auto* context = static_cast<StreamingBridgeContext*>(rawContext);
+    if (context == nullptr || context->source == nullptr || destination == nullptr ||
+        firstRow > static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
+        rowCount > static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
+        destinationStride > static_cast<uint64_t>(std::numeric_limits<qsizetype>::max()) ||
+        destinationSize > static_cast<uint64_t>(std::numeric_limits<qsizetype>::max()) ||
+        !context->source->readRows(static_cast<int>(firstRow), static_cast<int>(rowCount),
+                                   static_cast<qsizetype>(destinationStride), destination,
+                                   static_cast<qsizetype>(destinationSize))) {
+        return 0;
+    }
+    if (context->flattenForJpeg) {
+        const int width = context->source->size.width();
+        for (uint32_t row = 0; row < rowCount; ++row) {
+            auto* pixels = destination + static_cast<uint64_t>(row) * destinationStride;
+            for (int column = 0; column < width; ++column) {
+                auto* pixel = pixels + static_cast<std::size_t>(column) * 4U;
+                const unsigned alpha = pixel[3];
+                for (int channel = 0; channel < 3; ++channel) {
+                    pixel[channel] =
+                        static_cast<uint8_t>((static_cast<unsigned>(pixel[channel]) * alpha +
+                                              255U * (255U - alpha) + 127U) /
+                                             255U);
+                }
+                pixel[3] = 255;
+            }
+        }
+    }
+    return 1;
+}
+
+int32_t SNOW_SHOT_IMAGE_CODEC_CALL writeCallback(void* rawContext, const uint8_t* source,
+                                                 uint64_t sourceSize) {
+    auto* context = static_cast<StreamingBridgeContext*>(rawContext);
+    if (context == nullptr || context->device == nullptr ||
+        (source == nullptr && sourceSize != 0)) {
+        return 0;
+    }
+    uint64_t written = 0;
+    while (written < sourceSize) {
+        const uint64_t remaining = sourceSize - written;
+        const qsizetype chunk = static_cast<qsizetype>(std::min<uint64_t>(
+            remaining, static_cast<uint64_t>(std::numeric_limits<qsizetype>::max())));
+        const qint64 result =
+            context->device->write(reinterpret_cast<const char*>(source + written), chunk);
+        if (result <= 0) {
+            context->ioError = context->device->errorString();
+            return 0;
+        }
+        written += static_cast<uint64_t>(result);
+    }
+    return 1;
+}
+
+int32_t SNOW_SHOT_IMAGE_CODEC_CALL positionCallback(void* rawContext, uint64_t* position) {
+    auto* context = static_cast<StreamingBridgeContext*>(rawContext);
+    if (context == nullptr || context->device == nullptr || position == nullptr) {
+        return 0;
+    }
+    const qint64 value = context->device->pos();
+    if (value < 0) {
+        context->ioError = context->device->errorString();
+        return 0;
+    }
+    *position = static_cast<uint64_t>(value);
+    return 1;
+}
+
+int32_t SNOW_SHOT_IMAGE_CODEC_CALL seekCallback(void* rawContext, uint64_t position) {
+    auto* context = static_cast<StreamingBridgeContext*>(rawContext);
+    if (context == nullptr || context->device == nullptr ||
+        position > static_cast<uint64_t>(std::numeric_limits<qint64>::max()) ||
+        !context->device->seek(static_cast<qint64>(position))) {
+        if (context != nullptr && context->device != nullptr) {
+            context->ioError = context->device->errorString();
+        }
+        return 0;
+    }
+    return 1;
+}
+
+int32_t SNOW_SHOT_IMAGE_CODEC_CALL flushCallback(void* rawContext) {
+    auto* context = static_cast<StreamingBridgeContext*>(rawContext);
+    if (context == nullptr || context->device == nullptr) {
+        return 0;
+    }
+    if (auto* file = dynamic_cast<QFileDevice*>(context->device);
+        file != nullptr && !file->flush()) {
+        context->ioError = file->errorString();
+        return 0;
+    }
+    return 1;
+}
+
+int32_t SNOW_SHOT_IMAGE_CODEC_CALL cancelledCallback(void* rawContext) {
+    const auto* context = static_cast<const StreamingBridgeContext*>(rawContext);
+    return context != nullptr && context->source != nullptr &&
+                   context->source->cancellationRequested &&
+                   context->source->cancellationRequested()
+               ? 1
+               : 0;
+}
 
 bool backendAbiIsCompatible() noexcept {
     return snow_shot_image_codec_abi_version() == SNOW_SHOT_IMAGE_CODEC_ABI_VERSION;
@@ -139,57 +255,15 @@ void setError(QString* output, const char* backendError, const char* fallback) {
                                                                  : QString::fromLatin1(fallback);
 }
 
-QImage prepareForEncoding(const QImage& source, snow::image::Format format) {
-    if (format != snow::image::Format::jpeg || !source.hasAlphaChannel()) {
-        return source;
-    }
-    QImage flattened(source.size(), QImage::Format_RGBX8888);
-    flattened.fill(Qt::white);
-    QPainter painter(&flattened);
-    painter.drawImage(QPoint(), source);
-    return flattened;
-}
-
 QByteArray encodeImage(const QImage& image, snow::image::Format format,
                        const snow::image::EncodeOptions& options, QString* error) {
-    if (error != nullptr) {
-        error->clear();
-    }
-    const uint32_t encodedFormat = bridgeFormat(format);
-    if (!backendAbiIsCompatible()) {
-        setError(error, nullptr, "The image codec backend is incompatible.");
+    QByteArray encoded;
+    QBuffer buffer(&encoded);
+    if (!buffer.open(QIODevice::WriteOnly) ||
+        !encodeToDevice(image, &buffer, format, options, error)) {
         return {};
     }
-    if (image.isNull() || encodedFormat == SNOW_SHOT_IMAGE_CODEC_FORMAT_UNKNOWN) {
-        setError(error, nullptr, "Cannot encode an empty image or unknown image format.");
-        return {};
-    }
-
-    const QImage rgba = prepareForEncoding(image, format).convertToFormat(QImage::Format_RGBA8888);
-    if (rgba.isNull() || rgba.width() <= 0 || rgba.height() <= 0 || rgba.bytesPerLine() <= 0 ||
-        rgba.sizeInBytes() <= 0) {
-        setError(error, nullptr, "The image could not be converted to RGBA pixels.");
-        return {};
-    }
-
-    const SnowShotImageCodecEncodeOptions encodedOptions = bridgeOptions(format, options);
-    BackendBuffer output;
-    std::array<char, kBackendErrorCapacity> backendError{};
-    const int32_t succeeded = snow_shot_image_codec_encode_rgba8(
-        rgba.constBits(), static_cast<uint64_t>(rgba.sizeInBytes()),
-        static_cast<uint32_t>(rgba.width()), static_cast<uint32_t>(rgba.height()),
-        static_cast<uint64_t>(rgba.bytesPerLine()), &encodedOptions, &output.value,
-        backendError.data(), static_cast<uint64_t>(backendError.size()));
-    if (succeeded == 0 || output.value.data == nullptr || output.value.size == 0) {
-        setError(error, backendError.data(), "Image encoding failed.");
-        return {};
-    }
-    if (output.value.size > static_cast<uint64_t>(std::numeric_limits<qsizetype>::max())) {
-        setError(error, nullptr, "The encoded image is too large for Qt.");
-        return {};
-    }
-    return QByteArray(reinterpret_cast<const char*>(output.value.data),
-                      static_cast<qsizetype>(output.value.size));
+    return encoded;
 }
 
 QImage decodeBytes(const QByteArray& encoded, snow::image::Format expectedFormat) {
@@ -260,6 +334,93 @@ QByteArray readFile(const QString& path) {
 }
 
 } // namespace
+
+bool encodeToDevice(const ScreenshotImageRowSource& source, QIODevice* device,
+                    snow::image::Format format, const snow::image::EncodeOptions& options,
+                    QString* error, quint64* bytesWritten) {
+    if (error != nullptr) {
+        error->clear();
+    }
+    if (bytesWritten != nullptr) {
+        *bytesWritten = 0;
+    }
+    if (!backendAbiIsCompatible()) {
+        setError(error, nullptr, "The image codec backend is incompatible.");
+        return false;
+    }
+    if (!source.isValid() || device == nullptr || !device->isOpen() || !device->isWritable() ||
+        bridgeFormat(format) == SNOW_SHOT_IMAGE_CODEC_FORMAT_UNKNOWN) {
+        setError(error, nullptr, "The image source, format, or output device is invalid.");
+        return false;
+    }
+
+    StreamingBridgeContext context{&source, device, {}, format == snow::image::Format::jpeg};
+    SnowShotImageCodecRgba8Source bridgeSource{};
+    bridgeSource.struct_size = sizeof(bridgeSource);
+    bridgeSource.abi_version = SNOW_SHOT_IMAGE_CODEC_ABI_VERSION;
+    bridgeSource.context = &context;
+    bridgeSource.width = static_cast<uint32_t>(source.size.width());
+    bridgeSource.height = static_cast<uint32_t>(source.size.height());
+    bridgeSource.read_rows = &readRowsCallback;
+    bridgeSource.is_cancelled = &cancelledCallback;
+
+    SnowShotImageCodecByteSink bridgeSink{};
+    bridgeSink.struct_size = sizeof(bridgeSink);
+    bridgeSink.abi_version = SNOW_SHOT_IMAGE_CODEC_ABI_VERSION;
+    bridgeSink.context = &context;
+    bridgeSink.write = &writeCallback;
+    bridgeSink.position = &positionCallback;
+    bridgeSink.seek = &seekCallback;
+    bridgeSink.flush = &flushCallback;
+    bridgeSink.is_cancelled = &cancelledCallback;
+    bridgeSink.seekable = device->isSequential() ? 0 : 1;
+
+    const SnowShotImageCodecEncodeOptions encodedOptions = bridgeOptions(format, options);
+    std::array<char, kBackendErrorCapacity> backendError{};
+    uint64_t written = 0;
+    const int32_t succeeded = snow_shot_image_codec_encode_rgba8_stream(
+        &bridgeSource, &bridgeSink, &encodedOptions, &written, backendError.data(),
+        static_cast<uint64_t>(backendError.size()));
+    if (succeeded == 0 || written == 0) {
+        if (!context.ioError.isEmpty() && error != nullptr) {
+            *error = context.ioError;
+        } else {
+            setError(error, backendError.data(), "Image encoding failed.");
+        }
+        return false;
+    }
+    if (bytesWritten != nullptr) {
+        *bytesWritten = written;
+    }
+    return true;
+}
+
+bool encodeToDevice(const QImage& image, QIODevice* device, snow::image::Format format,
+                    const snow::image::EncodeOptions& options, QString* error,
+                    quint64* bytesWritten) {
+    const QImage rgba = image.convertToFormat(QImage::Format_RGBA8888);
+    if (rgba.isNull() || rgba.width() <= 0 || rgba.height() <= 0 || rgba.bytesPerLine() <= 0) {
+        setError(error, nullptr, "The image could not be converted to RGBA pixels.");
+        return false;
+    }
+    const qsizetype rowBytes = static_cast<qsizetype>(rgba.width()) * 4;
+    ScreenshotImageRowSource source;
+    source.size = rgba.size();
+    source.readRows = [&rgba, rowBytes](int firstRow, int rowCount, qsizetype destinationStride,
+                                        uchar* destination, qsizetype destinationSize) {
+        if (firstRow < 0 || rowCount <= 0 || firstRow > rgba.height() ||
+            rowCount > rgba.height() - firstRow || destinationStride < rowBytes ||
+            destinationSize < destinationStride * (rowCount - 1) + rowBytes) {
+            return false;
+        }
+        for (int row = 0; row < rowCount; ++row) {
+            std::memcpy(destination + static_cast<qsizetype>(row) * destinationStride,
+                        rgba.constScanLine(firstRow + row), static_cast<std::size_t>(rowBytes));
+        }
+        return true;
+    };
+    return encodeToDevice(source, device, format, options, error, bytesWritten);
+}
 
 QByteArray encode(const QImage& image, snow::image::Format format,
                   const snow::image::EncodeOptions& options, QString* error) {

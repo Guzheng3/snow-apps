@@ -24,8 +24,8 @@ void applyPinRuntimeSettings(ScreenshotPinnedWindow::Config* config) {
     }
     const snow_shot::storage::PinToScreenSettings settings;
     config->mouseWheelZoomMode = settings.mouseWheelZoomMode();
-    config->automaticTextRecognition = config->formattedTextDocument == nullptr &&
-                                       settings.automaticTextRecognition();
+    config->automaticTextRecognition =
+        config->formattedTextDocument == nullptr && settings.automaticTextRecognition();
 }
 } // namespace
 
@@ -93,7 +93,8 @@ class ScreenshotPinnedWindowPool final : public QObject {
             if (m_spare != nullptr) {
                 return;
             }
-            auto* spare = new ScreenshotPinnedWindow(ScreenshotPinnedWindow::RuntimeMode::NoDocument);
+            auto* spare =
+                new ScreenshotPinnedWindow(ScreenshotPinnedWindow::RuntimeMode::NoDocument);
             if (!spare->prewarm(QGuiApplication::primaryScreen())) {
                 spare->deleteLater();
                 return;
@@ -113,8 +114,7 @@ bool presentPinnedWindowAndSynchronize(ScreenshotPinnedWindow* window,
     if (window == nullptr) {
         return false;
     }
-    QObject::disconnect(window, &ScreenshotPinnedWindow::showMainWindowRequested, window,
-                        nullptr);
+    QObject::disconnect(window, &ScreenshotPinnedWindow::showMainWindowRequested, window, nullptr);
     if (showMainWindowRequested) {
         QObject::connect(window, &ScreenshotPinnedWindow::showMainWindowRequested, window,
                          showMainWindowRequested);
@@ -140,21 +140,48 @@ ScreenshotSelectionExportUiServices::ScreenshotSelectionExportUiServices(
     SnowCanvasRuntime& runtime, ScreenshotOcrRecognitionPort* recognition,
     ScreenshotQrRecognitionPort* qrRecognition, SnowShotApiClient* tableRecognition,
     std::function<void()> showMainWindowRequested)
-    : m_runtime(runtime),
-      m_recognition(recognition),
-      m_qrRecognition(qrRecognition),
+    : m_runtime(runtime), m_recognition(recognition), m_qrRecognition(qrRecognition),
       m_tableRecognition(tableRecognition),
       m_showMainWindowRequested(std::move(showMainWindowRequested)),
       m_windowPool(std::make_unique<ScreenshotPinnedWindowPool>()) {}
 
-ScreenshotSelectionExportUiServices::~ScreenshotSelectionExportUiServices() = default;
+ScreenshotSelectionExportUiServices::~ScreenshotSelectionExportUiServices() {
+    cancelClipboardPublication();
+}
 
-bool ScreenshotSelectionExportUiServices::publishClipboard(ScreenshotClipboardPayload payload) {
-    return ScreenshotClipboardService::publish(QApplication::clipboard(), std::move(payload));
+bool ScreenshotSelectionExportUiServices::publishClipboard(QObject* receiver,
+                                                           ScreenshotClipboardPayload payload,
+                                                           ClipboardCompletion completion) {
+    cancelClipboardPublication();
+    auto completionEnabled = std::make_shared<std::atomic_bool>(true);
+    m_clipboardCompletionEnabled = completionEnabled;
+    m_clipboardCommit = ScreenshotClipboardService::commit(
+        QApplication::clipboard(), receiver, std::move(payload),
+        [completionEnabled,
+         completion = std::move(completion)](ScreenshotClipboardCommitResult result) mutable {
+            if (completionEnabled->exchange(false, std::memory_order_acq_rel)) {
+                completion(result.succeeded());
+            }
+        });
+    return m_clipboardCommit.isValid();
+}
+
+void ScreenshotSelectionExportUiServices::cancelClipboardPublication() {
+    if (m_clipboardCompletionEnabled != nullptr) {
+        m_clipboardCompletionEnabled->store(false, std::memory_order_release);
+        m_clipboardCompletionEnabled.reset();
+    }
+    m_clipboardCommit.cancel();
+    m_clipboardCommit = {};
 }
 
 void ScreenshotSelectionExportUiServices::setClipboardImage(const QImage& image) {
-    static_cast<void>(ScreenshotClipboardService::publishImage(QApplication::clipboard(), image));
+    if (m_windowPool == nullptr) {
+        return;
+    }
+    static_cast<void>(ScreenshotClipboardService::commit(
+        QApplication::clipboard(), m_windowPool.get(),
+        ScreenshotClipboardService::prepareImage(image), [](ScreenshotClipboardCommitResult) {}));
 }
 
 bool ScreenshotSelectionExportUiServices::presentPinnedSelection(
@@ -164,10 +191,10 @@ bool ScreenshotSelectionExportUiServices::presentPinnedSelection(
         return false;
     }
 
-    auto* pinnedWindow = m_windowPool != nullptr
-                             ? m_windowPool->acquire(ScreenshotPinnedWindow::RuntimeMode::CloneDocument,
-                                                     &m_runtime)
-                             : nullptr;
+    auto* pinnedWindow =
+        m_windowPool != nullptr
+            ? m_windowPool->acquire(ScreenshotPinnedWindow::RuntimeMode::CloneDocument, &m_runtime)
+            : nullptr;
     if (pinnedWindow == nullptr) {
         pinnedWindow = new ScreenshotPinnedWindow(m_runtime);
     }
@@ -189,13 +216,10 @@ bool ScreenshotSelectionExportUiServices::presentPinnedSelection(
     return presentPinnedWindowAndSynchronize(pinnedWindow, config, m_showMainWindowRequested);
 }
 
-bool ScreenshotSelectionExportUiServices::presentPinnedImage(const QImage& image, QScreen* screen,
-                                                             const QRect& nativeGeometry,
-                                                             const QSize& fullResolutionScaleBasis,
-                                                             std::shared_ptr<QTextDocument>
-                                                                 formattedTextDocument,
-                                                             const QString& formattedPlainText,
-                                                             qreal formattedTextDevicePixelRatio) {
+bool ScreenshotSelectionExportUiServices::presentPinnedImage(
+    const QImage& image, QScreen* screen, const QRect& nativeGeometry,
+    const QSize& fullResolutionScaleBasis, std::shared_ptr<QTextDocument> formattedTextDocument,
+    const QString& formattedPlainText, qreal formattedTextDevicePixelRatio) {
     SNOW_SHOT_PIN_PERF_SCOPE("ui.present_pinned_image");
     if (image.isNull() || screen == nullptr || nativeGeometry.isEmpty()) {
         return false;
@@ -204,13 +228,12 @@ bool ScreenshotSelectionExportUiServices::presentPinnedImage(const QImage& image
     SNOW_SHOT_PIN_PERF_COUNTER("source.mode.materialized", 1);
     SNOW_SHOT_PIN_PERF_COUNTER("source.retained_bytes", image.sizeInBytes());
 
-    auto* pinnedWindow = m_windowPool != nullptr
-                             ? m_windowPool->acquire(ScreenshotPinnedWindow::RuntimeMode::NoDocument,
-                                                     nullptr)
-                             : nullptr;
+    auto* pinnedWindow =
+        m_windowPool != nullptr
+            ? m_windowPool->acquire(ScreenshotPinnedWindow::RuntimeMode::NoDocument, nullptr)
+            : nullptr;
     if (pinnedWindow == nullptr) {
-        pinnedWindow =
-            new ScreenshotPinnedWindow(ScreenshotPinnedWindow::RuntimeMode::NoDocument);
+        pinnedWindow = new ScreenshotPinnedWindow(ScreenshotPinnedWindow::RuntimeMode::NoDocument);
     }
     ScreenshotPinnedWindow::Config config;
     config.nativeGeometry = nativeGeometry;
@@ -218,11 +241,10 @@ bool ScreenshotSelectionExportUiServices::presentPinnedImage(const QImage& image
     config.imageSource = ScreenshotImageSource::fromImage(image, config.canvasSourceRect);
     config.contentCanvasRect = config.canvasSourceRect;
     config.surfaceCanvasRect = config.canvasSourceRect;
-    config.fullResolutionScaleBasis = fullResolutionScaleBasis.isEmpty()
-                                          ? image.size()
-                                          : fullResolutionScaleBasis;
-    config.initialScalePercent = 100.0 * nativeGeometry.width() /
-                                 (std::max)(1, config.fullResolutionScaleBasis.width());
+    config.fullResolutionScaleBasis =
+        fullResolutionScaleBasis.isEmpty() ? image.size() : fullResolutionScaleBasis;
+    config.initialScalePercent =
+        100.0 * nativeGeometry.width() / (std::max)(1, config.fullResolutionScaleBasis.width());
     config.screen = screen;
     config.enableEditing = true;
     config.formattedTextDocument = std::move(formattedTextDocument);

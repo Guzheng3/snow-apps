@@ -684,6 +684,32 @@ class ScreenshotScrollingCaptureWorker final : public QObject {
         return output;
     }
 
+    ScreenshotScrollingSnapshot trimmedSnapshot(int trimTop, int trimBottom) const {
+        if (m_stitchSession == nullptr || m_lastOutputSize.isEmpty()) {
+            return {};
+        }
+        const int sourceExtent = m_mode == ScreenshotScrollingRecognitionMode::Horizontal
+                                     ? m_lastOutputSize.width()
+                                     : m_lastOutputSize.height();
+        const int top = std::clamp(trimTop, 0, sourceExtent - 1);
+        const int bottom = std::clamp(trimBottom, top + 1, sourceExtent);
+        SnowStitchSnapshot* snapshot = snow_stitch_session_snapshot_axis(
+            m_stitchSession, static_cast<std::uint32_t>(top), static_cast<std::uint32_t>(bottom));
+        if (snapshot == nullptr) {
+            return {};
+        }
+        SnowStitchImageInfo info{};
+        if (snow_stitch_snapshot_info(snapshot, &info) == 0 || info.width == 0 ||
+            info.height == 0 ||
+            info.width > static_cast<std::uint32_t>(std::numeric_limits<int>::max()) ||
+            info.height > static_cast<std::uint32_t>(std::numeric_limits<int>::max())) {
+            snow_stitch_snapshot_destroy(snapshot);
+            return {};
+        }
+        return ScreenshotScrollingSnapshot::adoptNative(
+            snapshot, QSize(static_cast<int>(info.width), static_cast<int>(info.height)));
+    }
+
   private:
     void resetPreview() {
         m_emittedPreviewHeight = 0;
@@ -806,6 +832,76 @@ QRect logicalSelectionRect(const ScreenshotGeometryMapper& geometry,
 }
 } // namespace
 
+ScreenshotScrollingSnapshot ScreenshotScrollingSnapshot::adoptNative(void* snapshot, QSize size) {
+    ScreenshotScrollingSnapshot result;
+    if (snapshot == nullptr || !size.isValid() || size.isEmpty()) {
+        return result;
+    }
+    result.m_snapshot = std::shared_ptr<void>(snapshot, [](void* value) {
+        snow_stitch_snapshot_destroy(static_cast<SnowStitchSnapshot*>(value));
+    });
+    result.m_size = size;
+    return result;
+}
+
+bool ScreenshotScrollingSnapshot::isValid() const {
+    return m_snapshot != nullptr && m_size.isValid() && !m_size.isEmpty();
+}
+
+QSize ScreenshotScrollingSnapshot::size() const {
+    return isValid() ? m_size : QSize{};
+}
+
+ScreenshotImageRowSource
+ScreenshotScrollingSnapshot::rowSource(std::function<bool()> cancellationRequested) const {
+    ScreenshotImageRowSource source;
+    if (!isValid()) {
+        return source;
+    }
+    source.size = m_size;
+    source.cancellationRequested = std::move(cancellationRequested);
+    const std::shared_ptr<void> snapshot = m_snapshot;
+    source.readRows = [snapshot](int firstRow, int rowCount, qsizetype destinationStride,
+                                 uchar* destination, qsizetype destinationSize) {
+        if (firstRow < 0 || rowCount <= 0 || destinationStride <= 0 || destination == nullptr ||
+            destinationSize <= 0) {
+            return false;
+        }
+        return snow_stitch_snapshot_copy_rows(
+                   static_cast<const SnowStitchSnapshot*>(snapshot.get()),
+                   static_cast<std::uint32_t>(firstRow), static_cast<std::uint32_t>(rowCount),
+                   static_cast<std::size_t>(destinationStride), destination,
+                   static_cast<std::size_t>(destinationSize)) != 0;
+    };
+    return source;
+}
+
+QImage ScreenshotScrollingSnapshot::materialize() const {
+    if (!isValid()) {
+        return {};
+    }
+    SnowStitchOwnedImage* image =
+        snow_stitch_snapshot_materialize(static_cast<const SnowStitchSnapshot*>(m_snapshot.get()));
+    if (image == nullptr) {
+        return {};
+    }
+    SnowStitchImageInfo info{};
+    if (snow_stitch_owned_image_info(image, &info) == 0 || info.rgba_bytes == nullptr ||
+        info.width != static_cast<std::uint32_t>(m_size.width()) ||
+        info.height != static_cast<std::uint32_t>(m_size.height()) ||
+        info.stride_bytes != info.width * 4) {
+        snow_stitch_owned_image_destroy(image);
+        return {};
+    }
+    QImage result(info.rgba_bytes, m_size.width(), m_size.height(),
+                  static_cast<int>(info.stride_bytes), QImage::Format_RGBA8888,
+                  &releaseStitchOwnedImage, image);
+    if (result.isNull()) {
+        snow_stitch_owned_image_destroy(image);
+    }
+    return result;
+}
+
 struct ScreenshotScrollingCaptureController::Impl {
     Impl(ScreenshotScrollingCaptureController& ownerValue,
          ScreenshotScrollingCaptureControllerContext contextValue)
@@ -903,7 +999,7 @@ struct ScreenshotScrollingCaptureController::Impl {
             context.displaySession, ScreenshotHalfOpenRect::fromRect(canvasSelection).center());
         if (anchorDisplay == nullptr) {
             anchorDisplay = context.geometry.displayForCanvasRect(context.displaySession,
-                                                                   QRectF(canvasSelection));
+                                                                  QRectF(canvasSelection));
         }
         if (anchorDisplay == nullptr) {
             return false;
@@ -930,8 +1026,8 @@ struct ScreenshotScrollingCaptureController::Impl {
             logicalSelection.translated(-thumbnailHost->geometry().topLeft()), mode);
 
         postCaptureTask([requestGeneration, requestSelection, requestPhysicalSelection,
-                         requestLayouts = std::move(requestLayouts), requestCadenceConfig](
-                            ScreenshotScrollingCaptureProducer& target) mutable {
+                         requestLayouts = std::move(requestLayouts),
+                         requestCadenceConfig](ScreenshotScrollingCaptureProducer& target) mutable {
             target.begin(requestGeneration, requestSelection, requestPhysicalSelection,
                          std::move(requestLayouts), requestCadenceConfig);
         });
@@ -1324,6 +1420,56 @@ struct ScreenshotScrollingCaptureController::Impl {
         return invoked;
     }
 
+    bool
+    requestTrimmedSnapshot(ScreenshotScrollingCaptureController::SnapshotResultCallback callback) {
+        if (!active || worker == nullptr || thumbnailHost == nullptr ||
+            latestOutputSize.isEmpty() || !callback || pendingResultRequestId.has_value()) {
+            return false;
+        }
+        const ScreenshotScrollingTrimRange trim = thumbnailHost->scrollingThumbnailTrim();
+        if (!trim.isValid()) {
+            return false;
+        }
+        const quint64 requestGeneration = generation;
+        const quint64 requestId = ++nextResultRequestId;
+        pendingResultRequestId = requestId;
+        const QPointer<ScreenshotScrollingCaptureWorker> target(worker);
+        const QPointer<ScreenshotScrollingCaptureController> receiver(&owner);
+        const bool invoked = QMetaObject::invokeMethod(
+            worker,
+            [target, receiver, requestId, requestGeneration, trim,
+             callback = std::move(callback)]() mutable {
+                ScreenshotScrollingSnapshot result;
+                if (!target.isNull()) {
+                    result = target->trimmedSnapshot(trim.top, trim.bottom);
+                }
+                if (receiver.isNull()) {
+                    return;
+                }
+                static_cast<void>(QMetaObject::invokeMethod(
+                    receiver,
+                    [receiver, requestId, requestGeneration, result = std::move(result),
+                     callback = std::move(callback)]() mutable {
+                        if (receiver.isNull() || receiver->m_impl == nullptr ||
+                            receiver->m_impl->pendingResultRequestId != requestId) {
+                            return;
+                        }
+                        receiver->m_impl->pendingResultRequestId.reset();
+                        if (!receiver->m_impl->active ||
+                            receiver->m_impl->generation != requestGeneration) {
+                            return;
+                        }
+                        callback(std::move(result));
+                    },
+                    Qt::QueuedConnection));
+            },
+            Qt::QueuedConnection);
+        if (!invoked && pendingResultRequestId == requestId) {
+            pendingResultRequestId.reset();
+        }
+        return invoked;
+    }
+
     ScreenshotScrollingCaptureController& owner;
     ScreenshotScrollingCaptureControllerContext context;
     AdaptiveScrollCadence::Config cadenceConfig;
@@ -1396,6 +1542,10 @@ bool ScreenshotScrollingCaptureController::requestTrimmedImage(ImageResultCallba
 bool ScreenshotScrollingCaptureController::requestTrimmedClipboardPayload(
     ClipboardResultCallback callback) {
     return m_impl->requestTrimmedClipboardPayload(std::move(callback));
+}
+
+bool ScreenshotScrollingCaptureController::requestTrimmedSnapshot(SnapshotResultCallback callback) {
+    return m_impl->requestTrimmedSnapshot(std::move(callback));
 }
 
 QRect ScreenshotScrollingCaptureController::canvasSelection() const {

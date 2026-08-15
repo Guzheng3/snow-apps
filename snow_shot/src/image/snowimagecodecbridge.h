@@ -17,7 +17,7 @@
 #define SNOW_SHOT_IMAGE_CODEC_CALL
 #endif
 
-#define SNOW_SHOT_IMAGE_CODEC_ABI_VERSION 1U
+#define SNOW_SHOT_IMAGE_CODEC_ABI_VERSION 2U
 
 #ifdef __cplusplus
 extern "C" {
@@ -91,6 +91,42 @@ typedef struct SnowShotImageCodecImageInfo {
     uint32_t height;
 } SnowShotImageCodecImageInfo;
 
+typedef int32_t(SNOW_SHOT_IMAGE_CODEC_CALL* SnowShotImageCodecReadRowsCallback)(
+    void* context, uint32_t first_row, uint32_t row_count, uint64_t destination_stride,
+    uint8_t* destination, uint64_t destination_size);
+typedef int32_t(SNOW_SHOT_IMAGE_CODEC_CALL* SnowShotImageCodecWriteCallback)(void* context,
+                                                                             const uint8_t* source,
+                                                                             uint64_t source_size);
+typedef int32_t(SNOW_SHOT_IMAGE_CODEC_CALL* SnowShotImageCodecPositionCallback)(void* context,
+                                                                                uint64_t* position);
+typedef int32_t(SNOW_SHOT_IMAGE_CODEC_CALL* SnowShotImageCodecSeekCallback)(void* context,
+                                                                            uint64_t position);
+typedef int32_t(SNOW_SHOT_IMAGE_CODEC_CALL* SnowShotImageCodecFlushCallback)(void* context);
+typedef int32_t(SNOW_SHOT_IMAGE_CODEC_CALL* SnowShotImageCodecCancelCallback)(void* context);
+
+typedef struct SnowShotImageCodecRgba8Source {
+    uint32_t struct_size;
+    uint32_t abi_version;
+    void* context;
+    uint32_t width;
+    uint32_t height;
+    SnowShotImageCodecReadRowsCallback read_rows;
+    SnowShotImageCodecCancelCallback is_cancelled;
+} SnowShotImageCodecRgba8Source;
+
+typedef struct SnowShotImageCodecByteSink {
+    uint32_t struct_size;
+    uint32_t abi_version;
+    void* context;
+    SnowShotImageCodecWriteCallback write;
+    SnowShotImageCodecPositionCallback position;
+    SnowShotImageCodecSeekCallback seek;
+    SnowShotImageCodecFlushCallback flush;
+    SnowShotImageCodecCancelCallback is_cancelled;
+    uint8_t seekable;
+    uint8_t reserved[7];
+} SnowShotImageCodecByteSink;
+
 SNOW_SHOT_IMAGE_CODEC_API uint32_t SNOW_SHOT_IMAGE_CODEC_CALL
 snow_shot_image_codec_abi_version(void);
 
@@ -99,6 +135,13 @@ SNOW_SHOT_IMAGE_CODEC_API int32_t SNOW_SHOT_IMAGE_CODEC_CALL snow_shot_image_cod
     const uint8_t* pixels, uint64_t pixels_size, uint32_t width, uint32_t height,
     uint64_t row_stride, const SnowShotImageCodecEncodeOptions* options,
     SnowShotImageCodecBuffer* output, char* error, uint64_t error_capacity);
+
+SNOW_SHOT_IMAGE_CODEC_API int32_t SNOW_SHOT_IMAGE_CODEC_CALL
+snow_shot_image_codec_encode_rgba8_stream(const SnowShotImageCodecRgba8Source* source,
+                                          const SnowShotImageCodecByteSink* sink,
+                                          const SnowShotImageCodecEncodeOptions* options,
+                                          uint64_t* bytes_written, char* error,
+                                          uint64_t error_capacity);
 
 SNOW_SHOT_IMAGE_CODEC_API int32_t SNOW_SHOT_IMAGE_CODEC_CALL snow_shot_image_codec_decode_rgba8(
     const uint8_t* encoded, uint64_t encoded_size, uint32_t expected_format,

@@ -12,6 +12,7 @@
 #include "theme/theme.h"
 #include "widgets/button.h"
 #include "widgets/button_style.h"
+#include "widgets/detail/button_rendering.h"
 #include "widgets/input_line_edit.h"
 #include "widgets/modal.h"
 
@@ -161,7 +162,7 @@ constexpr int SHORTCUT_KEY_TEXT_MAX_WIDTH = 200;
 constexpr int COMPACT_SHORTCUT_KEY_TEXT_MAX_WIDTH = 100;
 
 bool isModifierOnlyKey(int key) {
-    return key == Qt::Key_Control || key == Qt::Key_Shift || key == Qt::Key_Alt ||
+    return key == Qt::Key_Control || key == Qt::Key_Alt ||
            key == Qt::Key_Meta || key == Qt::Key_AltGr || key == Qt::Key_Super_L ||
            key == Qt::Key_Super_R;
 }
@@ -183,6 +184,10 @@ QString formatShortcutDisplayText(const QString& shortcut) {
     QString displayText = compactShortcutText(shortcut);
     if (displayText.isEmpty()) {
         return displayText;
+    }
+
+    if (displayText.compare(QStringLiteral("Shift+Shift"), Qt::CaseInsensitive) == 0) {
+        return QStringLiteral("Shift");
     }
 
     const bool hasPlusKey =
@@ -224,6 +229,9 @@ QString formatShortcutListDisplayText(const QStringList& shortcuts) {
 
 QString shortcutTextForKey(const QKeyEvent& event) {
     const auto key = static_cast<Qt::Key>(event.key());
+    if (key == Qt::Key_Shift) {
+        return QStringLiteral("Shift");
+    }
     if (key == Qt::Key_unknown || isModifierOnlyKey(key)) {
         return {};
     }
@@ -545,10 +553,17 @@ class ShortcutConfigValidationButton final : public adqt::widgets::AdButton {
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing, true);
 
-        const QRectF buttonRect = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
-        const qreal radius = static_cast<qreal>(metrics.borderRadius);
-        QPainterPath buttonPath;
-        buttonPath.addRoundedRect(buttonRect, radius, radius);
+        const bool joinedLeft = false;
+        const bool joinedRight = false;
+        const QRectF rawBorderRect = adqt::widgets::detail::joinedButtonBorderRect(
+            rect(), metrics.borderWidth, joinedLeft, joinedRight);
+        const QRectF shapeRect =
+            adqt::widgets::detail::resolveButtonShapeRect(rawBorderRect, shape());
+        const adqt::widgets::detail::ButtonCornerRadii corners =
+            adqt::widgets::detail::resolveButtonCorners(shape(), shapeRect, metrics.borderRadius,
+                                                        joinedLeft, joinedRight);
+        const QPainterPath buttonPath = adqt::widgets::detail::roundedButtonPath(
+            shapeRect, corners.topLeft, corners.topRight, corners.bottomRight, corners.bottomLeft);
         painter.fillPath(buttonPath, state.background);
 
         if (metrics.borderWidth > 0 && state.border.alpha() > 0) {
@@ -1139,24 +1154,25 @@ class ShortcutKeyButton final : public adqt::widgets::AdButton {
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing, true);
 
-        const QRectF buttonRect = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
-        const qreal radius = static_cast<qreal>(metrics.borderRadius);
-        QPainterPath buttonPath;
-        buttonPath.addRoundedRect(buttonRect, radius, radius);
+        const bool joinedLeft = false;
+        const bool joinedRight = false;
+        const QRectF rawBorderRect = adqt::widgets::detail::joinedButtonBorderRect(
+            rect(), metrics.borderWidth, joinedLeft, joinedRight);
+        const QRectF shapeRect =
+            adqt::widgets::detail::resolveButtonShapeRect(rawBorderRect, shape());
+        const adqt::widgets::detail::ButtonCornerRadii corners =
+            adqt::widgets::detail::resolveButtonCorners(shape(), shapeRect, metrics.borderRadius,
+                                                        joinedLeft, joinedRight);
+        const QPainterPath buttonPath = adqt::widgets::detail::roundedButtonPath(
+            shapeRect, corners.topLeft, corners.topRight, corners.bottomRight, corners.bottomLeft);
         painter.fillPath(buttonPath, state.background);
 
         if (metrics.borderWidth > 0 && state.border.alpha() > 0) {
             const bool dashed = buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Dashed ||
-                                buttonStyle() ==
-                                    adqt::widgets::AdButton::ButtonStyle::GhostDashed;
-            QPen borderPen(state.border, metrics.borderWidth,
-                           dashed ? Qt::CustomDashLine : state.borderStyle);
-            if (dashed) {
-                const qreal penWidth = std::max<qreal>(1.0, borderPen.widthF());
-                borderPen.setDashPattern({3.0 / penWidth, 2.0 / penWidth});
-                borderPen.setCapStyle(Qt::FlatCap);
-                borderPen.setJoinStyle(Qt::RoundJoin);
-            }
+                                buttonStyle() == adqt::widgets::AdButton::ButtonStyle::GhostDashed;
+            const Qt::PenStyle borderStyle = dashed ? Qt::DashLine : state.borderStyle;
+            QPen borderPen = adqt::widgets::detail::makeButtonBorderPen(
+                state.border, metrics.borderWidth, borderStyle);
             painter.setPen(borderPen);
             painter.setBrush(Qt::NoBrush);
             painter.drawPath(buttonPath);

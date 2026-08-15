@@ -2,6 +2,7 @@
 #define SNOW_SHOT_PRESENTATION_SCREENSHOTPINNEDCOPYSERVICE_H
 
 #include "snow_shot/presentation/screenshotclipboardservice.h"
+#include "snow_shot/presentation/screenshotexportcoordinator.h"
 #include "snow_shot/presentation/screenshotresultcompositor.h"
 
 #include <QByteArray>
@@ -13,7 +14,6 @@
 #include <memory>
 
 class QObject;
-class QThread;
 
 struct ScreenshotPinnedViewportCopyRequest {
     QByteArray documentSession;
@@ -47,12 +47,10 @@ class ScreenshotPinnedCopyService final {
 
     [[nodiscard]] bool beginRequest(RequestKind kind, quint64* generation);
 
-    std::unique_ptr<QThread> m_thread;
-    QObject* m_worker = nullptr;
-    QObject* m_completionContext = nullptr;
-    quint64 m_generation = 0;
-    RequestKind m_activeKind = RequestKind::None;
-    bool m_requestInFlight = false;
+    struct State;
+
+    ScreenshotExportJobHandle m_job;
+    std::shared_ptr<State> m_state;
 };
 
 #endif // SNOW_SHOT_PRESENTATION_SCREENSHOTPINNEDCOPYSERVICE_H

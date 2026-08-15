@@ -1106,20 +1106,42 @@
         <translation>切换元素层级：鼠标滚轮</translation>
     </message>
     <message>
-        <location filename="../include/snow_shot/presentation/screenshotshortcuthints.h" line="36"/>
-        <source>Copy color: C</source>
+        <source>Switch Selection Between Window and Window Sub-element: Tab</source>
+        <translation>在窗口和窗口子元素之间切换选区：Tab</translation>
+    </message>
+    <message>
+        <source>Move Entire Selection: Space</source>
+        <translation>移动整个选区：Space</translation>
+    </message>
+    <message>
+        <source>Keep Selection Width and Height Consistent: Shift</source>
+        <translation>保持选区宽高一致：Shift</translation>
+    </message>
+    <message>
+        <source>Select Previously Selected Area: R</source>
+        <translation>选择之前选中的区域：R</translation>
+    </message>
+    <message>
+        <source>Copy Color: C</source>
         <translation>复制颜色：C</translation>
     </message>
     <message>
-        <location filename="../include/snow_shot/presentation/screenshotshortcuthints.h" line="37"/>
-        <source>Switch color format: Shift</source>
+        <source>Switch Color Format: Shift</source>
         <translation>切换颜色格式：Shift</translation>
     </message>
     <message>
-        <location filename="../include/snow_shot/presentation/screenshotshortcuthints.h" line="39"/>
-        <source>Switch screenshot history: [ , ] [ . ]</source>
+        <source>Switch Screenshot History: [ , ] [ . ]</source>
         <translation>切换截图历史：[ , ] [ . ]</translation>
     </message>
+    <message><source>Switch Screenshot History</source><translation>切换截图历史</translation></message>
+    <message><source>Maintain aspect ratio: Shift</source><translation>保持宽高比：Shift</translation></message>
+    <message><source>Fixed-angle rotation: Shift</source><translation>固定角度旋转：Shift</translation></message>
+    <message><source>Scale from center: Alt</source><translation>从中心缩放：Alt</translation></message>
+    <message><source>Auto-align: Ctrl</source><translation>自动对齐：Ctrl</translation></message>
+    <message><source>Delete selected elements: Delete</source><translation>删除选中的元素：Delete</translation></message>
+    <message><source>Draw straight line: Shift</source><translation>绘制直线：Shift</translation></message>
+    <message><source>Vertical scroll: mouse wheel</source><translation>垂直滚动：鼠标滚轮</translation></message>
+    <message><source>Horizontal scroll: Shift + mouse wheel</source><translation>水平滚动：Shift + 鼠标滚轮</translation></message>
 </context>
 <context>
     <name>ScreenshotTableEditor</name>
@@ -1428,7 +1450,7 @@
     <message>
         <location filename="../src/presentation/tools/screenshottoolpalette.cpp" line="120"/>
         <source>Copy video</source>
-        <translation>复制视频</translation>
+        <translation>复制录屏</translation>
     </message>
     <message>
         <location filename="../src/presentation/tools/screenshottoolpalette.cpp" line="51"/>
@@ -1785,6 +1807,11 @@
         <translation>实线描边</translation>
     </message>
     <message>
+        <location filename="../src/presentation/tools/screenshottoolpalettestylecontrols.cpp" line="115"/>
+        <source>Pick color from canvas</source>
+        <translation>从画布拾取颜色</translation>
+    </message>
+    <message>
         <location filename="../src/presentation/tools/screenshottoolpalettestylecontrols.cpp" line="113"/>
         <source>Cross-line fill</source>
         <translation>交叉线填充</translation>
@@ -2083,10 +2110,17 @@
         <source>Screenshot shortcut</source>
         <translation>截图快捷键</translation>
     </message>
+    <message><source>Move Entire Selection</source><translation>移动整个选区</translation></message>
+    <message><source>Keep Selection Width and Height Consistent</source><translation>保持选区宽高一致</translation></message>
+    <message><source>Switch Selection Between Window and Window Sub-element</source><translation>在窗口和窗口子元素之间切换选区</translation></message>
+    <message><source>Previous Screenshot History</source><translation>上一条截图历史</translation></message>
+    <message><source>Next Screenshot History</source><translation>下一条截图历史</translation></message>
+    <message><source>Select Previously Selected Area</source><translation>选择之前选中的区域</translation></message>
+    <message><source>Copy Color</source><translation>复制颜色</translation></message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="891"/>
-        <source>Move tool</source>
-        <translation>移动工具</translation>
+        <source>Edit selection</source>
+        <translation>编辑选区</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="895"/>
@@ -2409,42 +2443,22 @@
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="159"/>
         <source>Start Screen Recording / Stop and Copy Video</source>
-        <translation>开始屏幕录制 / 停止并复制视频</translation>
+        <translation>开始/复制录屏</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="160"/>
         <source>Start a screen recording, or stop and copy the current video</source>
-        <translation>开始屏幕录制，或停止并复制当前视频</translation>
+        <translation>开始/复制录屏</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="161"/>
         <source>Copy video</source>
-        <translation>复制视频</translation>
+        <translation>复制录屏</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="162"/>
         <source>Recording toggle</source>
-        <translation>录制切换</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/settings/settingscatalog.cpp" line="170"/>
-        <source>Show/Hide Main Window</source>
-        <translation>显示/隐藏主窗口</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/settings/settingscatalog.cpp" line="171"/>
-        <source>Show the main window, or close it when it is already open</source>
-        <translation>显示主窗口，已打开时关闭窗口</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/settings/settingscatalog.cpp" line="173"/>
-        <source>Main window</source>
-        <translation>主窗口</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/settings/settingscatalog.cpp" line="174"/>
-        <source>Toggle window</source>
-        <translation>切换窗口</translation>
+        <translation>开始/复制录屏</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="184"/>
@@ -2607,6 +2621,36 @@
         <translation>系统托盘</translation>
     </message>
     <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="433"/>
+        <source>Menu Options</source>
+        <translation>菜单选项</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="435"/>
+        <source>Choose the functions shown in the system tray menu</source>
+        <translation>选择系统托盘菜单中显示的功能</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="436"/>
+        <source>Tray menu</source>
+        <translation>托盘菜单</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="1610"/>
+        <source>Disable Shortcut Functions</source>
+        <translation>禁用快捷功能</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="1605"/>
+        <source>Show Main Interface</source>
+        <translation>显示主界面</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="1612"/>
+        <source>Exit</source>
+        <translation>退出</translation>
+    </message>
+    <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="339"/>
         <source>Default</source>
         <translation>默认</translation>
@@ -2705,7 +2749,7 @@
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="433"/>
         <source>Pin Clipboard Content to Screen</source>
-        <translation>将剪贴板内容固定到屏幕</translation>
+        <translation>固定剪贴板内容到屏幕</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="434"/>
@@ -3968,24 +4012,6 @@ Change the shortcut and try again</source>
         <location filename="../src/presentation/components/storagestatussettingswidget.cpp" line="170"/>
         <source>None</source>
         <translation>无</translation>
-    </message>
-</context>
-<context>
-    <name>SystemTrayController</name>
-    <message>
-        <location filename="../src/presentation/services/systemtraycontroller.cpp" line="118"/>
-        <source>Screenshot</source>
-        <translation>屏幕截图</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/services/systemtraycontroller.cpp" line="120"/>
-        <source>Show Main Window</source>
-        <translation>显示主窗口</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/services/systemtraycontroller.cpp" line="121"/>
-        <source>Exit</source>
-        <translation>退出</translation>
     </message>
 </context>
 <context>

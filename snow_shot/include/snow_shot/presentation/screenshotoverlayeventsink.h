@@ -31,7 +31,7 @@ class ScreenshotOverlayEventSink {
                                                   const QPointF& localPosition,
                                                   const QPoint& angleDelta,
                                                   const QPoint& pixelDelta) = 0;
-    [[nodiscard]] virtual bool handleOverlayKeyPress(int key, Qt::KeyboardModifiers modifiers) = 0;
+    [[nodiscard]] virtual bool shouldBlockUnhandledOverlayKeyInput() const = 0;
     virtual void raiseToolbarForCanvasInteraction() = 0;
 };
 

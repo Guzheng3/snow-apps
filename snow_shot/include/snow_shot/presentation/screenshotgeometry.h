@@ -150,6 +150,9 @@ class ScreenshotGeometryMapper final {
     [[nodiscard]] static QPoint clampContentPositionToRect(const QPoint& desiredPosition,
                                                            const QRect& contentRect,
                                                            const QRect& bounds);
+    [[nodiscard]] static QPoint cursorPanelPosition(const QPoint& cursorPosition,
+                                                     const QSize& panelSize,
+                                                     const QRect& bounds, int gap);
     [[nodiscard]] static ScreenshotAnchoredToolbarPlacement
     anchoredToolbarPlacement(const QPoint& bottomRightAnchor, const QPoint& topRightAnchor,
                              const QRect& toolbarOccupiedRect, const QRect& bounds, int gap,

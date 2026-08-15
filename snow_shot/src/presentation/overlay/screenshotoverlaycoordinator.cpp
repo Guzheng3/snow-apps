@@ -15,9 +15,11 @@
 #include <limits>
 
 ScreenshotOverlayCoordinator::ScreenshotOverlayCoordinator(ScreenshotOverlayEventSink& eventSink,
-                                                           SnowCanvasRuntime& canvasRuntime)
+                                                           SnowCanvasRuntime& canvasRuntime,
+                                                           snow_shot::presentation::WindowShortcutManager&
+                                                               shortcutManager)
     : m_overlayPool(
-          eventSink, canvasRuntime,
+          eventSink, canvasRuntime, shortcutManager,
           ScreenshotOverlayPoolCallbacks{
               [this](ScreenshotOverlayWindow* overlay) { detachOverlayTransientUi(overlay); },
               [this](ScreenshotOverlayWindow* overlay) { clearOverlayCanvas(overlay); },
@@ -444,8 +446,16 @@ void ScreenshotOverlayCoordinator::setColorPickerCenterGuideLineColor(const QCol
 
 void ScreenshotOverlayCoordinator::updateShortcutHints(ScreenshotOverlayWindow* overlay,
                                                        ScreenshotShortcutHintMode mode,
-                                                       qreal opacity) {
-    m_uiHost.updateShortcutHints(overlay, mode, opacity);
+                                                       qreal opacity,
+                                                       const QRectF& selectionGlobal) {
+    m_uiHost.updateShortcutHints(overlay, mode, opacity, selectionGlobal);
+}
+
+void ScreenshotOverlayCoordinator::updateShortcutHints(ScreenshotOverlayWindow* overlay,
+                                                       const ScreenshotShortcutHintContext& context,
+                                                       qreal opacity,
+                                                       const QRectF& selectionGlobal) {
+    m_uiHost.updateShortcutHints(overlay, context, opacity, selectionGlobal);
 }
 
 void ScreenshotOverlayCoordinator::hideShortcutHints() {

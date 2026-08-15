@@ -113,6 +113,7 @@ constexpr double kMaxWatermarkFontSize = 512.0;
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Cross-line fill"),
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Line fill"),
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Solid fill"),
+    QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Pick color from canvas"),
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Current pen highlight stroke width"),
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Pen highlight stroke width %1 (%2px)"),
     QT_TRANSLATE_NOOP("ScreenshotToolPalette", "Dashed arrow stroke"),
@@ -593,6 +594,17 @@ adqt::widgets::AdColorPicker* ScreenshotToolPaletteStyleControls::createColorPic
     picker->setPopupLayerMode(adqt::widgets::AdColorPicker::PopupLayerMode::QtTool);
     picker->setPopupContentPlacement(adqt::widgets::AdColorPicker::PopupContentPlacement::Top);
     picker->setValue(adqt::widgets::AdColorValue::solid(initialColor));
+    auto* sampler = createScreenshotToolPaletteColorPickerSamplerButton(picker);
+    sampler->setObjectName(QStringLiteral("screenshot-color-picker-sampler"));
+    configureScreenshotToolPaletteTooltip(
+        sampler, ScreenshotToolPaletteTranslationText("Pick color from canvas"));
+    picker->setPreviewContent(sampler);
+    QObject::connect(sampler, &QAbstractButton::clicked, picker, [this, picker]() {
+        picker->setPopupVisible(false);
+        if (m_callbacks.canvasColorSamplingRequested) {
+            m_callbacks.canvasColorSamplingRequested(picker);
+        }
+    });
     return picker;
 }
 
@@ -3519,7 +3531,6 @@ void ScreenshotToolPaletteStyleControls::updateTextStyleControls(quint32 groups)
             updateIconOptionEditor(m_textAlignmentEditor, static_cast<int>(style.horizontalAlign),
                                    mixed(SnowCanvasTextStyleMixedHorizontalAlign));
         }
-        applyTextActiveButtonStyles();
         return;
     }
     SNOW_SHOT_TOOLBAR_PERF_COUNTER("style.text.property_group_refresh");
@@ -3554,27 +3565,6 @@ void ScreenshotToolPaletteStyleControls::updateTextStyleControls(quint32 groups)
 
     updateIconOptionEditor(m_textAlignmentEditor, static_cast<int>(style.horizontalAlign),
                            mixed(SnowCanvasTextStyleMixedHorizontalAlign));
-    applyTextActiveButtonStyles();
-}
-
-void ScreenshotToolPaletteStyleControls::applyTextActiveButtonStyles() {
-    const auto apply = [](const auto& buttons) {
-        for (adqt::widgets::AdButton* button : buttons) {
-            if (button != nullptr &&
-                button->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Tonal &&
-                button->accentRole() == adqt::widgets::AdButton::AccentRole::Primary) {
-                button->setButtonStyle(adqt::widgets::AdButton::ButtonStyle::Solid);
-            }
-        }
-    };
-
-    apply(m_textColorEditor.presets);
-    apply(m_textFontEditor.sizePresets);
-    apply(m_textStrokeEditor.widthButtons);
-    apply(m_textStrokeEditor.colorButtons);
-    apply(m_textFillEditor.colorPresets);
-    apply(m_textFillEditor.styleButtons);
-    apply(m_textAlignmentEditor.buttons);
 }
 
 void ScreenshotToolPaletteStyleControls::notifyTextStyleChanged() const {

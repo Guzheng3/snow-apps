@@ -63,6 +63,19 @@ bool ScreenshotIntelligentSelectionModel::setIndex(int index) {
     return true;
 }
 
+bool ScreenshotIntelligentSelectionModel::cycleIndex() {
+    if (m_hitRects.isEmpty()) {
+        return false;
+    }
+
+    const int nextIndex = m_index < 0 ? 0 : (m_index + 1) % m_hitRects.size();
+    const int previousIndex = m_index;
+    if (!setIndex(nextIndex)) {
+        return false;
+    }
+    return previousIndex != m_index;
+}
+
 int ScreenshotIntelligentSelectionModel::index() const {
     return m_index;
 }

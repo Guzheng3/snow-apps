@@ -35,10 +35,29 @@ QString collisionSafePath(const QString& directory, const QString& baseName,
     const QDir target(directory);
     QString candidate = target.filePath(QStringLiteral("%1.%2").arg(baseName, extension));
     for (int suffix = 1; QFileInfo::exists(candidate); ++suffix) {
-        candidate = target.filePath(
-            QStringLiteral("%1_%2.%3").arg(baseName).arg(suffix).arg(extension));
+        candidate =
+            target.filePath(QStringLiteral("%1_%2.%3").arg(baseName).arg(suffix).arg(extension));
     }
     return candidate;
+}
+
+template <typename Encoder>
+ScreenshotImageFileSaveResult writeAtomically(const QString& outputPath, Encoder&& encoder) {
+    QSaveFile file(outputPath);
+    if (!file.open(QIODevice::WriteOnly)) {
+        return {{}, file.errorString()};
+    }
+    QString encodeError;
+    if (!encoder(&file, &encodeError)) {
+        file.cancelWriting();
+        return {{},
+                encodeError.isEmpty() ? QStringLiteral("The image could not be encoded")
+                                      : encodeError};
+    }
+    if (!file.commit()) {
+        return {{}, file.errorString()};
+    }
+    return {outputPath, {}};
 }
 } // namespace
 
@@ -47,7 +66,7 @@ QString ScreenshotImageFileService::suggestedBaseName(const QDateTime& timestamp
 }
 
 QString ScreenshotImageFileService::suggestedBaseName(const QString& filenameFormat,
-                                                       const QDateTime& timestamp) {
+                                                      const QDateTime& timestamp) {
     QString result = filenameFormat.trimmed();
     static const QRegularExpression placeholder(QStringLiteral("\\{([^{}]+)\\}"));
     QList<QRegularExpressionMatch> matches;
@@ -100,8 +119,7 @@ QStringList ScreenshotImageFileService::automaticDirectories() {
     return directories;
 }
 
-QStringList ScreenshotImageFileService::automaticDirectories(
-    const QString& configuredDirectory) {
+QStringList ScreenshotImageFileService::automaticDirectories(const QString& configuredDirectory) {
     QStringList directories;
     const QString configured = QDir::cleanPath(configuredDirectory.trimmed());
     if (!configured.isEmpty() && QFileInfo(configured).isDir()) {
@@ -148,8 +166,7 @@ ScreenshotImageFileFormat ScreenshotImageFileService::formatForKey(const QString
     return ScreenshotImageFileFormat::Png;
 }
 
-QString ScreenshotImageFileService::normalizedPath(QString path,
-                                                   ScreenshotImageFileFormat format) {
+QString ScreenshotImageFileService::normalizedPath(QString path, ScreenshotImageFileFormat format) {
     path = QDir::cleanPath(path.trimmed());
     if (path.isEmpty()) {
         return {};
@@ -190,8 +207,9 @@ ScreenshotImageFileService::formatForPath(const QString& path) {
     return std::nullopt;
 }
 
-ScreenshotImageFileFormat ScreenshotImageFileService::formatForDialogSelection(
-    const QString& path, const QString& selectedFilter) {
+ScreenshotImageFileFormat
+ScreenshotImageFileService::formatForDialogSelection(const QString& path,
+                                                     const QString& selectedFilter) {
     if (const auto fromPath = formatForPath(path); fromPath.has_value()) {
         return *fromPath;
     }
@@ -206,8 +224,7 @@ ScreenshotImageFileFormat ScreenshotImageFileService::formatForDialogSelection(
     return ScreenshotImageFileFormat::Png;
 }
 
-snow::image::Format ScreenshotImageFileService::snowImageFormat(
-    ScreenshotImageFileFormat format) {
+snow::image::Format ScreenshotImageFileService::snowImageFormat(ScreenshotImageFileFormat format) {
     switch (format) {
     case ScreenshotImageFileFormat::Png:
         return snow::image::Format::png;
@@ -223,8 +240,8 @@ snow::image::Format ScreenshotImageFileService::snowImageFormat(
     return snow::image::Format::unknown;
 }
 
-snow::image::EncodeOptions ScreenshotImageFileService::encodeOptions(
-    ScreenshotImageFileFormat format) {
+snow::image::EncodeOptions
+ScreenshotImageFileService::encodeOptions(ScreenshotImageFileFormat format) {
     snow::image::EncodeOptions options;
     options.format = snowImageFormat(format);
     options.preserve_metadata = false;
@@ -248,8 +265,9 @@ snow::image::EncodeOptions ScreenshotImageFileService::encodeOptions(
     return options;
 }
 
-ScreenshotImageFileSaveResult ScreenshotImageFileService::write(
-    const QImage& image, const QString& path, ScreenshotImageFileFormat format) {
+ScreenshotImageFileSaveResult ScreenshotImageFileService::write(const QImage& image,
+                                                                const QString& path,
+                                                                ScreenshotImageFileFormat format) {
     if (image.isNull()) {
         return {{}, QStringLiteral("The screenshot image is empty")};
     }
@@ -258,29 +276,29 @@ ScreenshotImageFileSaveResult ScreenshotImageFileService::write(
         return {{}, QStringLiteral("No output file was selected")};
     }
 
-    QString encodeError;
-    const QByteArray encoded = snow_shot::image_codec::encode(
-        image, snowImageFormat(format), encodeOptions(format), &encodeError);
-    if (encoded.isEmpty()) {
-        return {{}, encodeError.isEmpty() ? QStringLiteral("The image could not be encoded")
-                                          : encodeError};
-    }
-
-    QSaveFile file(outputPath);
-    if (!file.open(QIODevice::WriteOnly)) {
-        return {{}, file.errorString()};
-    }
-    if (file.write(encoded) != encoded.size()) {
-        return {{}, file.errorString()};
-    }
-    if (!file.commit()) {
-        return {{}, file.errorString()};
-    }
-    return {outputPath, {}};
+    return writeAtomically(outputPath, [image, format](QIODevice* device, QString* error) {
+        return snow_shot::image_codec::encodeToDevice(image, device, snowImageFormat(format),
+                                                      encodeOptions(format), error);
+    });
 }
 
-ScreenshotImageFileSaveResult ScreenshotImageFileService::saveAutomatically(
-    const QImage& image) {
+ScreenshotImageFileSaveResult
+ScreenshotImageFileService::write(const ScreenshotImageRowSource& source, const QString& path,
+                                  ScreenshotImageFileFormat format) {
+    if (!source.isValid()) {
+        return {{}, QStringLiteral("The screenshot image source is empty")};
+    }
+    const QString outputPath = normalizedPath(path, format);
+    if (outputPath.isEmpty()) {
+        return {{}, QStringLiteral("No output file was selected")};
+    }
+    return writeAtomically(outputPath, [&source, format](QIODevice* device, QString* error) {
+        return snow_shot::image_codec::encodeToDevice(source, device, snowImageFormat(format),
+                                                      encodeOptions(format), error);
+    });
+}
+
+ScreenshotImageFileSaveResult ScreenshotImageFileService::saveAutomatically(const QImage& image) {
     return saveAutomatically(image, automaticDirectories(), QDateTime::currentDateTime());
 }
 
@@ -291,9 +309,8 @@ ScreenshotImageFileSaveResult ScreenshotImageFileService::saveAutomatically(
 }
 
 ScreenshotImageFileSaveResult ScreenshotImageFileService::saveAutomatically(
-    const QImage& image, const QStringList& candidateDirectories,
-    ScreenshotImageFileFormat format, const QString& filenameFormat,
-    const QDateTime& timestamp) {
+    const QImage& image, const QStringList& candidateDirectories, ScreenshotImageFileFormat format,
+    const QString& filenameFormat, const QDateTime& timestamp) {
     if (image.isNull()) {
         return {{}, QStringLiteral("The screenshot image is empty")};
     }
@@ -312,8 +329,8 @@ ScreenshotImageFileSaveResult ScreenshotImageFileService::saveAutomatically(
         }
         const QString directory = QDir::cleanPath(trimmedCandidate);
         if (!QDir().mkpath(directory)) {
-            lastError = QStringLiteral("The screenshot folder could not be created: %1")
-                            .arg(directory);
+            lastError =
+                QStringLiteral("The screenshot folder could not be created: %1").arg(directory);
             continue;
         }
 
@@ -323,6 +340,45 @@ ScreenshotImageFileSaveResult ScreenshotImageFileService::saveAutomatically(
             return result;
         }
         lastError = result.error;
+    }
+    return {{}, lastError};
+}
+
+ScreenshotImageFileSaveResult ScreenshotImageFileService::saveAutomatically(
+    const ScreenshotImageRowSource& source, const QStringList& candidateDirectories,
+    ScreenshotImageFileFormat format, const QString& filenameFormat, const QDateTime& timestamp) {
+    if (!source.isValid()) {
+        return {{}, QStringLiteral("The screenshot image source is empty")};
+    }
+
+    const QString baseName = suggestedBaseName(filenameFormat, timestamp);
+    if (baseName.isEmpty() || baseName.contains(QLatin1Char('/')) ||
+        baseName.contains(QLatin1Char('\\'))) {
+        return {{}, QStringLiteral("The screenshot filename format is invalid")};
+    }
+
+    QString lastError = QStringLiteral("No automatic screenshot folder is available");
+    for (const QString& candidate : candidateDirectories) {
+        const QString trimmedCandidate = candidate.trimmed();
+        if (trimmedCandidate.isEmpty()) {
+            continue;
+        }
+        const QString directory = QDir::cleanPath(trimmedCandidate);
+        if (!QDir().mkpath(directory)) {
+            lastError =
+                QStringLiteral("The screenshot folder could not be created: %1").arg(directory);
+            continue;
+        }
+
+        const QString path = collisionSafePath(directory, baseName, extension(format));
+        const ScreenshotImageFileSaveResult result = write(source, path, format);
+        if (result.succeeded()) {
+            return result;
+        }
+        lastError = result.error;
+        if (source.cancellationRequested && source.cancellationRequested()) {
+            break;
+        }
     }
     return {{}, lastError};
 }

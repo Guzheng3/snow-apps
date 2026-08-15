@@ -161,20 +161,8 @@ SettingsItemDefinition screenRecordCopyItem() {
         {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Copy video")),
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Recording toggle"))},
         GlobalShortcutAction::ScreenRecordCopy, QStringLiteral("global_shortcuts/screen_record_copy"),
-        []() { return custom_outlined_icons::ScreenshotCopy(); });
-}
-
-SettingsItemDefinition showOrHideMainWindowItem() {
-    return quickActionItem(
-        QStringLiteral("quick.show-or-hide-main-window"),
-        QT_TRANSLATE_NOOP("SettingsCatalog", "Show/Hide Main Window"),
-        QT_TRANSLATE_NOOP("SettingsCatalog",
-                          "Show the main window, or close it when it is already open"),
-        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Main window")),
-         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Toggle window"))},
-        GlobalShortcutAction::ShowOrHideMainWindow,
-        QStringLiteral("global_shortcuts/show_or_hide_main_window"),
-        []() { return outlined_icons::Appstore(); });
+        []() { return custom_outlined_icons::ScreenshotCopy(); },
+        SettingsShortcutAdjustment::None);
 }
 
 SettingsItemDefinition openCaptureHistoryItem() {
@@ -424,6 +412,18 @@ SettingsItemDefinition smartSelectionItem() {
          settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "MSAA"))},
         QStringLiteral("screenshot_selection/smart_selection"),
         SettingsSwitchDefinition{SettingsSwitchBinding::SmartSelection},
+    };
+}
+
+SettingsItemDefinition trayMenuOptionsItem() {
+    return {
+        QStringLiteral("tray.menu-options"),
+        settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Menu Options")),
+        settingsText(QT_TRANSLATE_NOOP(
+            "SettingsCatalog", "Choose the functions shown in the system tray menu")),
+        {settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Tray menu"))},
+        QStringLiteral("tray/menu_options"),
+        SettingsCustomDefinition{SettingsCustomRenderer::TrayMenuOptions},
     };
 }
 
@@ -888,7 +888,7 @@ QVector<SettingsItemDefinition> screenshotShortcutItems() {
     return {
         localShortcutItem(
             SettingsLocalShortcutScope::Screenshot, QStringLiteral("move_tool"),
-            QT_TRANSLATE_NOOP("SettingsCatalog", "Move tool"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Edit selection"),
             []() { return custom_outlined_icons::ToolMove(); }),
         localShortcutItem(
             SettingsLocalShortcutScope::Screenshot, QStringLiteral("move_cursor_up"),
@@ -906,6 +906,37 @@ QVector<SettingsItemDefinition> screenshotShortcutItems() {
             SettingsLocalShortcutScope::Screenshot, QStringLiteral("move_cursor_right"),
             QT_TRANSLATE_NOOP("SettingsCatalog", "Move cursor right"),
             []() { return outlined_icons::ArrowRight(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("move_entire_selection"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Move Entire Selection"),
+            []() { return custom_outlined_icons::ToolMove(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot,
+            QStringLiteral("keep_selection_width_and_height_consistent"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Keep Selection Width and Height Consistent"),
+            []() { return outlined_icons::Control(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot,
+            QStringLiteral("switch_selection_between_window_and_window_sub_element"),
+            QT_TRANSLATE_NOOP("SettingsCatalog",
+                              "Switch Selection Between Window and Window Sub-element"),
+            []() { return outlined_icons::Function(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("previous_screenshot_history"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Previous Screenshot History"),
+            []() { return outlined_icons::History(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("next_screenshot_history"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Next Screenshot History"),
+            []() { return outlined_icons::History(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("select_previously_selected_area"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Select Previously Selected Area"),
+            []() { return outlined_icons::Rest(); }),
+        localShortcutItem(
+            SettingsLocalShortcutScope::Screenshot, QStringLiteral("copy_color"),
+            QT_TRANSLATE_NOOP("SettingsCatalog", "Copy Color"),
+            []() { return outlined_icons::Copy(); }),
     };
 }
 
@@ -1057,7 +1088,6 @@ QVector<SettingsPageDefinition> builtInPages() {
                                                    "Other application shortcuts and actions")),
                     SettingsSectionReset::OtherShortcuts,
                     {
-                        showOrHideMainWindowItem(),
                         openCaptureHistoryItem(),
                         pinClipboardContentItem(),
                     },
@@ -1120,7 +1150,7 @@ QVector<SettingsPageDefinition> builtInPages() {
                     settingsText(QT_TRANSLATE_NOOP("SettingsCatalog",
                                                    "System tray availability and icon settings")),
                     SettingsSectionReset::TrayBehavior,
-                    {trayLeftClickItem()},
+                    {trayLeftClickItem(), trayMenuOptionsItem()},
                 },
                 {
                     QStringLiteral("global-hotkeys"),
@@ -1441,8 +1471,6 @@ QString shortcutConfigurationKey(GlobalShortcutAction action) {
         return QStringLiteral("global_shortcuts/screen_record");
     case GlobalShortcutAction::ScreenRecordCopy:
         return QStringLiteral("global_shortcuts/screen_record_copy");
-    case GlobalShortcutAction::ShowOrHideMainWindow:
-        return QStringLiteral("global_shortcuts/show_or_hide_main_window");
     case GlobalShortcutAction::OpenCaptureHistory:
         return QStringLiteral("global_shortcuts/open_capture_history");
     case GlobalShortcutAction::OpenSettings:
@@ -1522,18 +1550,86 @@ const SettingsItemDefinition* SettingsCatalog::item(const SettingsLocation& loca
 
 std::optional<SettingsCommand>
 SettingsCatalog::commandForShortcut(GlobalShortcutAction action) const {
+    const SettingsItemDefinition* itemDefinition = itemForShortcut(action);
+    if (itemDefinition != nullptr) {
+        return std::get<SettingsShortcutActionDefinition>(itemDefinition->payload).command;
+    }
+    return std::nullopt;
+}
+
+const SettingsItemDefinition*
+SettingsCatalog::itemForShortcut(GlobalShortcutAction action) const {
     for (const SettingsPageDefinition& pageDefinition : m_pages) {
         for (const SettingsSectionDefinition& sectionDefinition : pageDefinition.sections) {
             for (const SettingsItemDefinition& itemDefinition : sectionDefinition.items) {
                 const auto* shortcut =
                     std::get_if<SettingsShortcutActionDefinition>(&itemDefinition.payload);
                 if (shortcut != nullptr && shortcut->shortcutAction == action) {
-                    return shortcut->command;
+                    return &itemDefinition;
                 }
             }
         }
     }
-    return std::nullopt;
+    return nullptr;
+}
+
+QString SettingsCatalog::shortcutActionTitle(GlobalShortcutAction action,
+                                             int screenshotDelaySeconds) const {
+    const SettingsItemDefinition* itemDefinition = itemForShortcut(action);
+    if (itemDefinition == nullptr) {
+        return {};
+    }
+    const auto* shortcut =
+        std::get_if<SettingsShortcutActionDefinition>(&itemDefinition->payload);
+    Q_ASSERT(shortcut != nullptr);
+    QString title = itemDefinition->title.translated();
+    if (shortcut->adjustment == SettingsShortcutAdjustment::ScreenshotDelaySeconds) {
+        title = title.arg(std::clamp(screenshotDelaySeconds, 1, 10));
+    }
+    return title;
+}
+
+QVector<SettingsTrayMenuGroupDefinition> SettingsCatalog::trayMenuGroups() const {
+    QVector<SettingsTrayMenuGroupDefinition> groups;
+    const SettingsPageDefinition* quickPage = page(QString::fromLatin1(QUICK_PAGE_ID));
+    if (quickPage != nullptr) {
+        groups.reserve(quickPage->sections.size() + 1);
+        for (const SettingsSectionDefinition& sectionDefinition : quickPage->sections) {
+            SettingsTrayMenuGroupDefinition group;
+            group.id = sectionDefinition.id;
+            for (const SettingsItemDefinition& itemDefinition : sectionDefinition.items) {
+                const auto* shortcut =
+                    std::get_if<SettingsShortcutActionDefinition>(&itemDefinition.payload);
+                if (shortcut == nullptr) {
+                    continue;
+                }
+                group.options.push_back({itemDefinition.id,
+                                          itemDefinition.title,
+                                          SettingsTrayMenuOptionKind::QuickAction,
+                                          shortcut->shortcutAction, shortcut->iconFactory});
+            }
+            if (!group.options.isEmpty()) {
+                groups.push_back(std::move(group));
+            }
+        }
+    }
+
+    SettingsTrayMenuGroupDefinition systemGroup;
+    systemGroup.id = QStringLiteral("system");
+    systemGroup.options = {
+        {QStringLiteral("tray.disable-shortcut-functions"),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Disable Shortcut Functions")),
+         SettingsTrayMenuOptionKind::DisableShortcutFunctions},
+        {QStringLiteral("tray.show-main-window"),
+         settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Show Main Interface")),
+         SettingsTrayMenuOptionKind::ShowMainWindow, GlobalShortcutAction::Screenshot,
+         []() { return custom_outlined_icons::Window(); }},
+        {QStringLiteral("tray.exit"), settingsText(QT_TRANSLATE_NOOP("SettingsCatalog", "Exit")),
+         SettingsTrayMenuOptionKind::Exit, GlobalShortcutAction::Screenshot,
+         []() { return custom_outlined_icons::Exit(); }},
+    };
+    groups.push_back(std::move(systemGroup));
+    return groups;
 }
 
 SettingsLocation SettingsCatalog::resolveLocation(const SettingsLocation& requested) const {
@@ -2080,17 +2176,28 @@ QStringList SettingsCatalog::validationErrors() const {
                 }
                 if (const auto* custom =
                         std::get_if<SettingsCustomDefinition>(&itemDefinition.payload)) {
-                    const bool rendererSupported =
-                        custom->renderer == SettingsCustomRenderer::StorageStatus ||
-                        custom->renderer == SettingsCustomRenderer::DrawingToolbarEditor;
-                    const QString expectedKey =
-                        custom->renderer == SettingsCustomRenderer::DrawingToolbarEditor
-                            ? QStringLiteral("screenshot_toolbar/layout")
-                            : QString();
+                    bool rendererSupported = false;
+                    QString expectedKey;
+                    storage::ConfigurationValueKind expectedKind =
+                        storage::ConfigurationValueKind::Structured;
+                    switch (custom->renderer) {
+                    case SettingsCustomRenderer::StorageStatus:
+                        rendererSupported = true;
+                        break;
+                    case SettingsCustomRenderer::DrawingToolbarEditor:
+                        rendererSupported = true;
+                        expectedKey = QStringLiteral("screenshot_toolbar/layout");
+                        expectedKind = storage::ConfigurationValueKind::Structured;
+                        break;
+                    case SettingsCustomRenderer::TrayMenuOptions:
+                        rendererSupported = true;
+                        expectedKey = QStringLiteral("tray/menu_options");
+                        expectedKind = storage::ConfigurationValueKind::StringList;
+                        break;
+                    }
                     if (itemDefinition.configurationKey != expectedKey || !rendererSupported ||
-                        (custom->renderer == SettingsCustomRenderer::DrawingToolbarEditor &&
-                         (schemaEntry == nullptr ||
-                          schemaEntry->valueKind != storage::ConfigurationValueKind::Structured))) {
+                        (custom->renderer != SettingsCustomRenderer::StorageStatus &&
+                         (schemaEntry == nullptr || schemaEntry->valueKind != expectedKind))) {
                         errors.push_back(
                             QStringLiteral("custom item is incomplete: %1").arg(itemDefinition.id));
                     }

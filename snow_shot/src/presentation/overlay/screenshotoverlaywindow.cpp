@@ -436,14 +436,7 @@ bool ScreenshotOverlayWindow::eventFilter(QObject* watched, QEvent* event) {
 }
 
 void ScreenshotOverlayWindow::keyPressEvent(QKeyEvent* event) {
-    // Key events can bubble from the canvas after its event filter declines to
-    // consume them. Inline text editing owns those keys; do not dispatch
-    // screenshot shortcuts from the parent window in that state.
-    if (m_canvas != nullptr && m_canvas->hasActiveTextEditing()) {
-        QWidget::keyPressEvent(event);
-        return;
-    }
-    if (m_eventSink.handleOverlayKeyPress(event->key(), event->modifiers())) {
+    if (m_eventSink.shouldBlockUnhandledOverlayKeyInput()) {
         event->accept();
         return;
     }
@@ -594,12 +587,11 @@ bool ScreenshotOverlayWindow::handleCanvasKeyPress(QKeyEvent* event) {
     if (m_canvas != nullptr && m_canvas->hasActiveTextEditing()) {
         return false;
     }
-    if (!m_eventSink.handleOverlayKeyPress(event->key(), event->modifiers())) {
-        return false;
+    if (m_eventSink.shouldBlockUnhandledOverlayKeyInput()) {
+        event->accept();
+        return true;
     }
-
-    event->accept();
-    return true;
+    return false;
 }
 
 bool ScreenshotOverlayWindow::handleCanvasMouseEvent(QMouseEvent* event) {

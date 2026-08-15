@@ -12,6 +12,8 @@
 #include <memory>
 #include <new>
 #include <span>
+#include <stop_token>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -267,6 +269,138 @@ bool publishBytes(std::span<const std::byte> source, SnowShotImageCodecBuffer* o
     return true;
 }
 
+bool callbackCancelled(void* context, SnowShotImageCodecCancelCallback callback) noexcept {
+    return callback != nullptr && callback(context) != 0;
+}
+
+snow::image::Status callbackError(snow::image::ErrorCode code, std::string_view message) {
+    return snow::image::Status::error(code, std::string(message), "snow-shot codec bridge");
+}
+
+class CallbackRasterSource final : public snow::image::RasterSource {
+  public:
+    CallbackRasterSource(const SnowShotImageCodecRgba8Source& source, snow::image::Format format)
+        : source_(source) {
+        descriptor_.format = format;
+        descriptor_.canvas_width = source.width;
+        descriptor_.canvas_height = source.height;
+        snow::image::RasterFrameDescriptor frame;
+        frame.width = source.width;
+        frame.height = source.height;
+        frame.layout.color_model = snow::image::ColorModel::rgb;
+        frame.layout.alpha = snow::image::AlphaMode::straight;
+        frame.layout.planes.push_back({snow::image::PlaneSemantic::packed, source.width,
+                                       source.height, snow::image::kRgba8, 8});
+        descriptor_.frames.push_back(std::move(frame));
+    }
+
+    const snow::image::DocumentDescriptor& descriptor() const noexcept override {
+        return descriptor_;
+    }
+
+    snow::image::RasterAccess access() const noexcept override {
+        return snow::image::RasterAccess::sequential_rows | snow::image::RasterAccess::random_rows;
+    }
+
+    snow::image::Result<void> read_rows(std::uint32_t frameIndex, std::uint32_t planeIndex,
+                                        std::uint32_t firstRow, std::uint32_t rowCount,
+                                        std::size_t destinationStride,
+                                        std::span<std::byte> destination,
+                                        std::stop_token stop) const override {
+        if (stop.stop_requested() || cancelled()) {
+            return callbackError(snow::image::ErrorCode::cancelled,
+                                 "Image encoding was cancelled.");
+        }
+        const std::uint64_t rowBytes = static_cast<std::uint64_t>(source_.width) * 4U;
+        const std::uint64_t required =
+            rowCount == 0
+                ? 0
+                : static_cast<std::uint64_t>(destinationStride) * (rowCount - 1U) + rowBytes;
+        if (frameIndex != 0 || planeIndex != 0 || rowCount == 0 || firstRow > source_.height ||
+            rowCount > source_.height - firstRow || destinationStride < rowBytes ||
+            required > destination.size()) {
+            return callbackError(snow::image::ErrorCode::invalid_argument,
+                                 "The requested image row range is invalid.");
+        }
+        if (source_.read_rows(source_.context, firstRow, rowCount, destinationStride,
+                              reinterpret_cast<std::uint8_t*>(destination.data()),
+                              destination.size()) == 0) {
+            return callbackError(snow::image::ErrorCode::io_error,
+                                 cancelled() ? "Image encoding was cancelled."
+                                             : "The image row provider failed.");
+        }
+        return {};
+    }
+
+  private:
+    bool cancelled() const noexcept {
+        return callbackCancelled(source_.context, source_.is_cancelled);
+    }
+
+    SnowShotImageCodecRgba8Source source_{};
+    snow::image::DocumentDescriptor descriptor_;
+};
+
+class CallbackByteSink final : public snow::image::ByteSink {
+  public:
+    explicit CallbackByteSink(const SnowShotImageCodecByteSink& sink) : sink_(sink) {}
+
+    snow::image::Result<void> write(std::span<const std::byte> source) override {
+        if (cancelled()) {
+            return callbackError(snow::image::ErrorCode::cancelled,
+                                 "Image encoding was cancelled.");
+        }
+        if (!source.empty() &&
+            sink_.write(sink_.context, reinterpret_cast<const std::uint8_t*>(source.data()),
+                        source.size()) == 0) {
+            return callbackError(snow::image::ErrorCode::io_error,
+                                 cancelled() ? "Image encoding was cancelled."
+                                             : "The image output writer failed.");
+        }
+        return {};
+    }
+
+    snow::image::Result<std::uint64_t> position() const override {
+        std::uint64_t result = 0;
+        if (sink_.position(sink_.context, &result) == 0) {
+            return callbackError(snow::image::ErrorCode::io_error,
+                                 "The image output position is unavailable.");
+        }
+        return result;
+    }
+
+    snow::image::Result<void> seek(std::uint64_t position) override {
+        if (!seekable() || sink_.seek == nullptr || sink_.seek(sink_.context, position) == 0) {
+            return callbackError(snow::image::ErrorCode::io_error,
+                                 "The image output could not seek.");
+        }
+        return {};
+    }
+
+    snow::image::Result<void> flush() override {
+        if (cancelled()) {
+            return callbackError(snow::image::ErrorCode::cancelled,
+                                 "Image encoding was cancelled.");
+        }
+        if (sink_.flush(sink_.context) == 0) {
+            return callbackError(snow::image::ErrorCode::io_error,
+                                 "The image output could not be flushed.");
+        }
+        return {};
+    }
+
+    bool seekable() const noexcept override {
+        return sink_.seekable != 0;
+    }
+
+  private:
+    bool cancelled() const noexcept {
+        return callbackCancelled(sink_.context, sink_.is_cancelled);
+    }
+
+    SnowShotImageCodecByteSink sink_{};
+};
+
 } // namespace
 
 uint32_t snow_shot_image_codec_abi_version(void) {
@@ -340,6 +474,53 @@ int32_t snow_shot_image_codec_encode_rgba8(const uint8_t* pixels, uint64_t pixel
         setError(error, errorCapacity, "Image encoding failed unexpectedly.");
     }
     return 0;
+}
+
+int32_t snow_shot_image_codec_encode_rgba8_stream(
+    const SnowShotImageCodecRgba8Source* source, const SnowShotImageCodecByteSink* sink,
+    const SnowShotImageCodecEncodeOptions* bridgeOptions, uint64_t* bytesWritten, char* error,
+    uint64_t errorCapacity) {
+    clearError(error, errorCapacity);
+    if (bytesWritten != nullptr) {
+        *bytesWritten = 0;
+    }
+    try {
+        if (source == nullptr || sink == nullptr || bytesWritten == nullptr ||
+            source->struct_size != sizeof(SnowShotImageCodecRgba8Source) ||
+            sink->struct_size != sizeof(SnowShotImageCodecByteSink) ||
+            source->abi_version != SNOW_SHOT_IMAGE_CODEC_ABI_VERSION ||
+            sink->abi_version != SNOW_SHOT_IMAGE_CODEC_ABI_VERSION || source->width == 0 ||
+            source->height == 0 || source->read_rows == nullptr || sink->write == nullptr ||
+            sink->position == nullptr || sink->flush == nullptr ||
+            (sink->seekable != 0 && sink->seek == nullptr)) {
+            setError(error, errorCapacity, "The streaming image callbacks are invalid.");
+            return 0;
+        }
+        snow::image::EncodeOptions options;
+        if (!optionsFromBridge(bridgeOptions, &options, error, errorCapacity)) {
+            return 0;
+        }
+        CallbackRasterSource raster(*source, options.format);
+        auto outputSink = std::make_shared<CallbackByteSink>(*sink);
+        snow::image::Output output{std::move(outputSink), nameHint(options.format)};
+        snow::image::Result<snow::image::EncodeResult> result =
+            service().encode(raster, output, options);
+        if (!result) {
+            setError(error, errorCapacity, result.error().message);
+            return 0;
+        }
+        *bytesWritten = result.value().bytes_written;
+        return *bytesWritten > 0 ? 1 : 0;
+    } catch (const std::bad_alloc&) {
+        setError(error, errorCapacity, "Streaming image encoding ran out of memory.");
+        return 0;
+    } catch (const std::exception& exception) {
+        setError(error, errorCapacity, exception.what());
+        return 0;
+    } catch (...) {
+        setError(error, errorCapacity, "Streaming image encoding failed unexpectedly.");
+        return 0;
+    }
 }
 
 int32_t snow_shot_image_codec_decode_rgba8(const uint8_t* encoded, uint64_t encodedSize,

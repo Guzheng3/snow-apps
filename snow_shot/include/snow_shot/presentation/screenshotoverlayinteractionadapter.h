@@ -34,7 +34,7 @@ class ScreenshotOverlayEventAdapter final : public ScreenshotOverlayEventSink {
     [[nodiscard]] bool handleOverlayWheel(ScreenshotOverlayWindow* overlay,
                                           const QPointF& localPosition, const QPoint& angleDelta,
                                           const QPoint& pixelDelta) override;
-    [[nodiscard]] bool handleOverlayKeyPress(int key, Qt::KeyboardModifiers modifiers) override;
+    [[nodiscard]] bool shouldBlockUnhandledOverlayKeyInput() const override;
     void raiseToolbarForCanvasInteraction() override;
 
   private:

@@ -15,6 +15,10 @@ class ScreenshotIntelligentSelectionModel final {
                                           const QRectF& selectableBounds,
                                           qreal minimumSelectionSize);
     [[nodiscard]] bool setIndex(int index);
+    // Advances through the current window-to-sub-element hit path. Selection
+    // levels wrap so Tab can always switch back to the window after the last
+    // sub-element.
+    [[nodiscard]] bool cycleIndex();
     [[nodiscard]] int index() const;
     [[nodiscard]] bool hasCurrentSelection() const;
     [[nodiscard]] QRectF currentSelection() const;

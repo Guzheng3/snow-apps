@@ -6,6 +6,10 @@
 
 #include <QString>
 
+namespace adqt::widgets {
+class AdColorPicker;
+}
+
 class ScreenshotToolbarCommandSink {
   public:
     virtual ~ScreenshotToolbarCommandSink() = default;
@@ -70,6 +74,7 @@ class ScreenshotToolbarCommandSink {
     virtual void deleteSelectedElements() {}
     virtual void repositionToolbarForContentChange() = 0;
     virtual void hideColorPickersForScreenshotUi() = 0;
+    virtual void beginCanvasColorSampling(adqt::widgets::AdColorPicker*) {}
 };
 
 class ScreenshotSelectionToolbarCommandSink {

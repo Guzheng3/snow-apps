@@ -569,6 +569,9 @@ ScreenshotToolPalette::ScreenshotToolPalette(const Options& options, QWidget* pa
                 updateToolbarGeometry();
                 emit visibleContentChanged();
             },
+            [this](adqt::widgets::AdColorPicker* picker) {
+                emit canvasColorSamplingRequested(picker);
+            },
         },
         m_styleDefaults);
 

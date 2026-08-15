@@ -1,6 +1,9 @@
 #include "snow_shot/presentation/languagemanager.h"
+#include "snow_shot/presentation/globalshortcutmanager.h"
+#include "snow_shot/presentation/settings/settingscatalog.h"
 #include "snow_shot/presentation/systemtraycontroller.h"
 #include "snow_shot/storage/applicationstorage.h"
+#include "snow_shot/storage/settingsadapters.h"
 
 #include "widgets/context_menu.h"
 
@@ -123,19 +126,79 @@ int main(int argc, char* argv[]) {
 
     auto* menu = dynamic_cast<adqt::widgets::AdContextMenu*>(trayIcon->contextMenu());
     require(menu != nullptr, "the tray should use the Ant Design context menu");
-    require(menu->minimumWidth() == 300 && menu->maximumWidth() == 300,
-            "tray context menu should have a fixed width of 300");
-    const QList<QAction*> actions = menu->actions();
-    require(actions.size() == 4, "the tray menu should contain three actions and one separator");
-    requireActionText(actions[0], QStringLiteral("Screenshot"), "Screenshot should be first");
-    require(actions[1]->isSeparator(), "the second menu entry should be a separator");
-    requireActionText(actions[2], QStringLiteral("Show Main Window"),
-                      "Show Main Window should follow the separator");
-    requireActionText(actions[3], QStringLiteral("Exit"), "Exit should be last");
+    require(menu->minimumWidth() == 300,
+            "tray context menu should retain its 300-pixel minimum width");
+    const auto actionForId = [menu](const QString& id) {
+        for (QAction* action : menu->actions()) {
+            if (action != nullptr && action->data().toString() == id) {
+                return action;
+            }
+        }
+        return static_cast<QAction*>(nullptr);
+    };
+    const auto visibleActions = [menu]() {
+        QList<QAction*> result;
+        for (QAction* action : menu->actions()) {
+            if (action != nullptr && action->isVisible()) {
+                result.push_back(action);
+            }
+        }
+        return result;
+    };
+    const QStringList defaultMenuOptions = snow_shot::storage::TraySettings().menuOptions();
+    controller.setMenuOptions(defaultMenuOptions);
+    const QList<QAction*> defaultVisibleActions = visibleActions();
+    auto* screenshotMenuAction = actionForId(QStringLiteral("quick.screenshot"));
+    auto* delayedScreenshotMenuAction =
+        actionForId(QStringLiteral("quick.screenshot-delay"));
+    auto* recordingToggleMenuAction =
+        actionForId(QStringLiteral("quick.screen-record-copy"));
+    auto* disableMenuAction =
+        actionForId(QStringLiteral("tray.disable-shortcut-functions"));
+    auto* showMainWindowMenuAction =
+        actionForId(QStringLiteral("tray.show-main-window"));
+    auto* exitMenuAction = actionForId(QStringLiteral("tray.exit"));
+    require(controller.menuOptions() == defaultMenuOptions && defaultVisibleActions.size() == 13 &&
+                screenshotMenuAction != nullptr && screenshotMenuAction->isVisible() &&
+                delayedScreenshotMenuAction != nullptr &&
+                delayedScreenshotMenuAction->isVisible() &&
+                recordingToggleMenuAction != nullptr &&
+                !recordingToggleMenuAction->isVisible() &&
+                !screenshotMenuAction->icon().isNull() && disableMenuAction != nullptr &&
+                disableMenuAction->isVisible() && disableMenuAction->isCheckable() &&
+                !disableMenuAction->isChecked() && showMainWindowMenuAction != nullptr &&
+                showMainWindowMenuAction->isVisible() &&
+                !showMainWindowMenuAction->icon().isNull() && exitMenuAction != nullptr &&
+                exitMenuAction->isVisible() && !exitMenuAction->icon().isNull() &&
+                defaultVisibleActions.at(5)->isSeparator() &&
+                defaultVisibleActions.at(7)->isSeparator() &&
+                defaultVisibleActions.at(9)->isSeparator() &&
+                defaultVisibleActions.at(10) == disableMenuAction &&
+                defaultVisibleActions.at(11) == showMainWindowMenuAction,
+            "the tray menu should expose the ten default options in four catalog groups");
+    requireActionText(screenshotMenuAction, QStringLiteral("Screenshot"),
+                      "Screenshot should use its catalog label");
+    requireActionText(delayedScreenshotMenuAction, QStringLiteral("Delay 3s to Execute"),
+                      "Delayed screenshot should use the canonical shortcut title");
+    requireActionText(recordingToggleMenuAction,
+                      QStringLiteral("Start Screen Recording / Stop and Copy Video"),
+                      "Recording toggle should use the canonical shortcut title");
+    controller.setScreenshotDelaySeconds(7);
+    require(controller.screenshotDelaySeconds() == 7,
+            "the tray should retain a normalized screenshot delay value");
+    requireActionText(delayedScreenshotMenuAction, QStringLiteral("Delay 7s to Execute"),
+                      "the tray should refresh the canonical delayed screenshot title");
+    controller.setScreenshotDelaySeconds(3);
+    requireActionText(showMainWindowMenuAction, QStringLiteral("Show Main Interface"),
+                      "Show Main Interface should follow Disable Shortcut Functions");
+    requireActionText(exitMenuAction, QStringLiteral("Exit"), "Exit should be last");
 
     int screenshotRequests = 0;
     int showMainWindowRequests = 0;
     int exitRequests = 0;
+    int disableChanges = 0;
+    bool shortcutsDisabled = false;
+    QVector<snow_shot::presentation::GlobalShortcutAction> quickActions;
     QObject::connect(&controller,
                      &snow_shot::presentation::SystemTrayController::screenshotRequested,
                      [&screenshotRequests]() { ++screenshotRequests; });
@@ -144,6 +207,18 @@ int main(int argc, char* argv[]) {
                      [&showMainWindowRequests]() { ++showMainWindowRequests; });
     QObject::connect(&controller, &snow_shot::presentation::SystemTrayController::exitRequested,
                      [&exitRequests]() { ++exitRequests; });
+    QObject::connect(
+        &controller, &snow_shot::presentation::SystemTrayController::quickActionRequested,
+        [&quickActions](snow_shot::presentation::GlobalShortcutAction action) {
+            quickActions.push_back(action);
+        });
+    QObject::connect(
+        &controller,
+        &snow_shot::presentation::SystemTrayController::shortcutFunctionsDisabledChanged,
+        [&disableChanges, &shortcutsDisabled](bool disabled) {
+            ++disableChanges;
+            shortcutsDisabled = disabled;
+        });
 
     trayIcon->activated(QSystemTrayIcon::Trigger);
     trayIcon->activated(QSystemTrayIcon::Context);
@@ -162,30 +237,69 @@ int main(int argc, char* argv[]) {
     require(controller.leftClickAction() == QStringLiteral("screenshot"),
             "an unsupported tray left-click action should fall back to Screenshot");
 
-    actions[0]->trigger();
-    actions[2]->trigger();
-    actions[3]->trigger();
-    require(screenshotRequests == 2, "the Screenshot menu action should request a screenshot");
-    require(showMainWindowRequests == 2, "the Show Main Window action should emit its request");
+    screenshotMenuAction->trigger();
+    showMainWindowMenuAction->trigger();
+    exitMenuAction->trigger();
+    require(quickActions ==
+                QVector<snow_shot::presentation::GlobalShortcutAction>{
+                    snow_shot::presentation::GlobalShortcutAction::Screenshot},
+            "generated tray actions should emit their catalog shortcut commands");
+    require(screenshotRequests == 1 && showMainWindowRequests == 2,
+            "Show Main Interface should emit the dedicated tray request");
     require(exitRequests == 1, "the Exit action should emit its request");
+
+    disableMenuAction->trigger();
+    require(controller.shortcutFunctionsDisabled() && disableChanges == 1 && shortcutsDisabled,
+            "the disable command should expose its checked session state");
+    controller.setMenuOptions({QStringLiteral("quick.screenshot"), QStringLiteral("tray.exit")});
+    const QList<QAction*> compactVisibleActions = visibleActions();
+    require(!controller.shortcutFunctionsDisabled() && disableChanges == 2 &&
+                !shortcutsDisabled && compactVisibleActions.size() == 3 &&
+                compactVisibleActions.at(1)->isSeparator(),
+            "hiding the disable command should re-enable shortcuts and collapse empty groups");
+    controller.setMenuOptions(defaultMenuOptions);
 
     require(languageManager.setLanguage(QStringLiteral("zh_CN")),
             "the Simplified Chinese translation should load");
-    requireActionText(actions[0], QStringLiteral("\u5c4f\u5e55\u622a\u56fe"),
-                      "Screenshot should translate to Simplified Chinese");
-    requireActionText(actions[2], QStringLiteral("\u663e\u793a\u4e3b\u7a97\u53e3"),
-                      "Show Main Window should translate to Simplified Chinese");
-    requireActionText(actions[3], QStringLiteral("\u9000\u51fa"),
-                      "Exit should translate to Simplified Chinese");
+    requireActionText(screenshotMenuAction, QStringLiteral("\u622a\u56fe"),
+                       "Screenshot should translate to Simplified Chinese");
+    requireActionText(
+        delayedScreenshotMenuAction,
+        snow_shot::presentation::settings::builtInSettingsCatalog().shortcutActionTitle(
+            snow_shot::presentation::GlobalShortcutAction::ScreenshotDelay, 3),
+        "Simplified Chinese tray text should equal the canonical shortcut title");
+    requireActionText(
+        recordingToggleMenuAction,
+        snow_shot::presentation::settings::builtInSettingsCatalog().shortcutActionTitle(
+            snow_shot::presentation::GlobalShortcutAction::ScreenRecordCopy),
+        "Simplified Chinese recording text should equal the canonical shortcut title");
+    requireActionText(showMainWindowMenuAction, QStringLiteral("\u663e\u793a\u4e3b\u754c\u9762"),
+                       "Show Main Interface should translate to Simplified Chinese");
+    requireActionText(disableMenuAction, QStringLiteral("\u7981\u7528\u5feb\u6377\u529f\u80fd"),
+                      "Disable Shortcut Functions should translate to Simplified Chinese");
+    requireActionText(exitMenuAction, QStringLiteral("\u9000\u51fa"),
+                       "Exit should translate to Simplified Chinese");
 
     require(languageManager.setLanguage(QStringLiteral("zh_TW")),
             "the Traditional Chinese translation should load");
-    requireActionText(actions[0], QStringLiteral("\u87a2\u5e55\u622a\u5716"),
-                      "Screenshot should translate to Traditional Chinese");
-    requireActionText(actions[2], QStringLiteral("\u986f\u793a\u4e3b\u8996\u7a97"),
-                      "Show Main Window should translate to Traditional Chinese");
-    requireActionText(actions[3], QStringLiteral("\u7d50\u675f"),
-                      "Exit should translate to Traditional Chinese");
+    requireActionText(screenshotMenuAction, QStringLiteral("\u622a\u5716"),
+                       "Screenshot should translate to Traditional Chinese");
+    requireActionText(
+        delayedScreenshotMenuAction,
+        snow_shot::presentation::settings::builtInSettingsCatalog().shortcutActionTitle(
+            snow_shot::presentation::GlobalShortcutAction::ScreenshotDelay, 3),
+        "Traditional Chinese tray text should equal the canonical shortcut title");
+    requireActionText(
+        recordingToggleMenuAction,
+        snow_shot::presentation::settings::builtInSettingsCatalog().shortcutActionTitle(
+            snow_shot::presentation::GlobalShortcutAction::ScreenRecordCopy),
+        "Traditional Chinese recording text should equal the canonical shortcut title");
+    requireActionText(showMainWindowMenuAction, QStringLiteral("\u986f\u793a\u4e3b\u4ecb\u9762"),
+                       "Show Main Interface should translate to Traditional Chinese");
+    requireActionText(disableMenuAction, QStringLiteral("\u505c\u7528\u5feb\u6377\u529f\u80fd"),
+                      "Disable Shortcut Functions should translate to Traditional Chinese");
+    requireActionText(exitMenuAction, QStringLiteral("\u7d50\u675f"),
+                       "Exit should translate to Traditional Chinese");
 
     snow_shot::storage::ApplicationStorage::instance().shutdown();
     return 0;

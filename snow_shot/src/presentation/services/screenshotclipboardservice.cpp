@@ -3,10 +3,116 @@
 #include "screenshotclipboardperfinstrumentation.h"
 
 #include <QClipboard>
+#include <QCoreApplication>
 #include <QDebug>
+#include <QElapsedTimer>
+#include <QPointer>
+#include <QThread>
+#include <QTimer>
 
+#include <algorithm>
+#include <array>
 #include <cstring>
 #include <limits>
+#include <memory>
+#include <utility>
+
+namespace {
+constexpr int kMaximumCommitAttempts = 5;
+constexpr qint64 kMaximumCommitDurationMs = 300;
+constexpr std::array<int, kMaximumCommitAttempts - 1> kCommitRetryDelaysMs{10, 25, 60, 100};
+
+struct ClipboardPublishAttempt final {
+    ScreenshotClipboardCommitFailure failure = ScreenshotClipboardCommitFailure::None;
+    quint32 nativeError = 0;
+
+    [[nodiscard]] bool succeeded() const {
+        return failure == ScreenshotClipboardCommitFailure::None;
+    }
+};
+
+class ClipboardCommitOperation final : public QObject {
+  public:
+    using Attempt = std::function<ClipboardPublishAttempt()>;
+
+    ClipboardCommitOperation(QObject* receiver, std::shared_ptr<std::atomic_bool> cancelled,
+                             Attempt attempt,
+                             ScreenshotClipboardService::CommitCompletion completion)
+        : m_receiver(receiver), m_cancelled(std::move(cancelled)), m_attempt(std::move(attempt)),
+          m_completion(std::move(completion)) {
+        if (receiver != nullptr) {
+            connect(receiver, &QObject::destroyed, this, [this]() { finish({}, false); });
+        }
+    }
+
+    void start() {
+        m_elapsed.start();
+        QTimer::singleShot(0, this, [this]() { runAttempt(); });
+    }
+
+  private:
+    void runAttempt() {
+        if (m_finished) {
+            return;
+        }
+        if (m_cancelled == nullptr || m_cancelled->load(std::memory_order_acquire)) {
+            ScreenshotClipboardCommitResult result;
+            result.failure = ScreenshotClipboardCommitFailure::Cancelled;
+            result.attempts = m_attempts;
+            finish(result, true);
+            return;
+        }
+
+        ++m_attempts;
+        const ClipboardPublishAttempt attempt = m_attempt();
+        if (attempt.succeeded()) {
+            ScreenshotClipboardCommitResult result;
+            result.attempts = m_attempts;
+            finish(result, true);
+            return;
+        }
+
+        const bool retryable = attempt.failure == ScreenshotClipboardCommitFailure::Busy;
+        if (retryable && m_attempts < kMaximumCommitAttempts) {
+            const int requestedDelay =
+                kCommitRetryDelaysMs[static_cast<std::size_t>(m_attempts - 1)];
+            const qint64 remaining = kMaximumCommitDurationMs - m_elapsed.elapsed();
+            if (remaining > 0) {
+                QTimer::singleShot(static_cast<int>((std::min)(remaining, qint64(requestedDelay))),
+                                   this, [this]() { runAttempt(); });
+                return;
+            }
+        }
+
+        ScreenshotClipboardCommitResult result;
+        result.failure = attempt.failure;
+        result.nativeError = attempt.nativeError;
+        result.attempts = m_attempts;
+        finish(result, true);
+    }
+
+    void finish(ScreenshotClipboardCommitResult result, bool notify) {
+        if (m_finished) {
+            return;
+        }
+        m_finished = true;
+        if (notify && !m_receiver.isNull() && m_completion) {
+            m_completion(result);
+        }
+        m_completion = {};
+        m_attempt = {};
+        deleteLater();
+    }
+
+    QPointer<QObject> m_receiver;
+    std::shared_ptr<std::atomic_bool> m_cancelled;
+    Attempt m_attempt;
+    ScreenshotClipboardService::CommitCompletion m_completion;
+    QElapsedTimer m_elapsed;
+    int m_attempts = 0;
+    bool m_finished = false;
+};
+} // namespace
 
 #if defined(Q_OS_WIN) || defined(_WIN32)
 #ifndef NOMINMAX
@@ -16,9 +122,9 @@
 
 namespace {
 HWND clipboardOwnerWindow() {
-    static const HWND owner = CreateWindowExW(0, L"STATIC", L"SnowShotClipboardOwner", 0, 0, 0,
-                                               0, 0, HWND_MESSAGE, nullptr,
-                                               GetModuleHandleW(nullptr), nullptr);
+    static const HWND owner =
+        CreateWindowExW(0, L"STATIC", L"SnowShotClipboardOwner", 0, 0, 0, 0, 0, HWND_MESSAGE,
+                        nullptr, GetModuleHandleW(nullptr), nullptr);
     return owner;
 }
 
@@ -47,17 +153,14 @@ HGLOBAL prepareDibV5(const ScreenshotClipboardPixelSource& source) {
         image = sourceImage.convertToFormat(QImage::Format_ARGB32);
         SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.compatibility_conversion", 1);
     }
-    SNOW_SHOT_CLIPBOARD_PERF_COUNTER(
-        "clipboard.conversion_detached",
-        image.constBits() != sourceImage.constBits() ? 1 : 0);
+    SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.conversion_detached",
+                                     image.constBits() != sourceImage.constBits() ? 1 : 0);
 
     const quint64 stride = static_cast<quint64>(image.width()) * 4;
     const quint64 pixelBytes = stride * static_cast<quint64>(image.height());
     const quint64 totalBytes = sizeof(BITMAPV5HEADER) + pixelBytes;
-    SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.pixel_bytes",
-                                     static_cast<qint64>(pixelBytes));
-    SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.dib_bytes",
-                                     static_cast<qint64>(totalBytes));
+    SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.pixel_bytes", static_cast<qint64>(pixelBytes));
+    SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.dib_bytes", static_cast<qint64>(totalBytes));
     if (pixelBytes > std::numeric_limits<DWORD>::max() ||
         totalBytes > std::numeric_limits<SIZE_T>::max()) {
         SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.failure.image_too_large", 1);
@@ -130,8 +233,8 @@ HGLOBAL prepareDibV5(const ScreenshotClipboardPixelSource& source) {
     } else {
         SNOW_SHOT_CLIPBOARD_PERF_SCOPE("clipboard.copy_pixels");
         for (int row = 0; row < image.height(); ++row) {
-            std::memcpy(destination + static_cast<quint64>(row) * stride,
-                        image.constScanLine(row), static_cast<std::size_t>(stride));
+            std::memcpy(destination + static_cast<quint64>(row) * stride, image.constScanLine(row),
+                        static_cast<std::size_t>(stride));
         }
     }
     {
@@ -142,11 +245,68 @@ HGLOBAL prepareDibV5(const ScreenshotClipboardPixelSource& source) {
     return allocation;
 }
 
-bool publishDibV5(void** handle) {
+HGLOBAL prepareDibV5(const ScreenshotImageRowSource& source) {
+    SNOW_SHOT_CLIPBOARD_PERF_SCOPE("clipboard.prepare_rows_total");
+    if (!source.isValid()) {
+        return nullptr;
+    }
+    const quint64 stride = static_cast<quint64>(source.size.width()) * 4U;
+    const quint64 pixelBytes = stride * static_cast<quint64>(source.size.height());
+    const quint64 totalBytes = sizeof(BITMAPV5HEADER) + pixelBytes;
+    if (pixelBytes > std::numeric_limits<DWORD>::max() ||
+        totalBytes > std::numeric_limits<SIZE_T>::max() ||
+        stride > static_cast<quint64>(std::numeric_limits<qsizetype>::max()) ||
+        pixelBytes > static_cast<quint64>(std::numeric_limits<qsizetype>::max())) {
+        return nullptr;
+    }
+
+    HGLOBAL allocation = GlobalAlloc(GMEM_MOVEABLE, static_cast<SIZE_T>(totalBytes));
+    if (allocation == nullptr) {
+        return nullptr;
+    }
+    void* memory = GlobalLock(allocation);
+    if (memory == nullptr) {
+        GlobalFree(allocation);
+        return nullptr;
+    }
+
+    auto* header = static_cast<BITMAPV5HEADER*>(memory);
+    std::memset(header, 0, sizeof(*header));
+    header->bV5Size = sizeof(BITMAPV5HEADER);
+    header->bV5Width = source.size.width();
+    header->bV5Height = -source.size.height();
+    header->bV5Planes = 1;
+    header->bV5BitCount = 32;
+    header->bV5Compression = BI_BITFIELDS;
+    header->bV5SizeImage = static_cast<DWORD>(pixelBytes);
+    header->bV5RedMask = 0x00ff0000;
+    header->bV5GreenMask = 0x0000ff00;
+    header->bV5BlueMask = 0x000000ff;
+    header->bV5AlphaMask = 0xff000000;
+    header->bV5CSType = LCS_sRGB;
+    header->bV5Intent = LCS_GM_IMAGES;
+
+    auto* pixels = reinterpret_cast<uchar*>(header + 1);
+    const bool read = source.readRows(0, source.size.height(), static_cast<qsizetype>(stride),
+                                      pixels, static_cast<qsizetype>(pixelBytes));
+    if (read) {
+        for (quint64 offset = 0; offset < pixelBytes; offset += 4) {
+            std::swap(pixels[offset], pixels[offset + 2]);
+        }
+    }
+    GlobalUnlock(allocation);
+    if (!read || (source.cancellationRequested && source.cancellationRequested())) {
+        GlobalFree(allocation);
+        return nullptr;
+    }
+    return allocation;
+}
+
+ClipboardPublishAttempt publishDibV5(void** handle) {
     SNOW_SHOT_CLIPBOARD_PERF_SCOPE("clipboard.publish_total");
     if (handle == nullptr || *handle == nullptr) {
         SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.failure.invalid_payload", 1);
-        return false;
+        return {ScreenshotClipboardCommitFailure::InvalidPayload, ERROR_INVALID_DATA};
     }
 
     const HGLOBAL allocation = static_cast<HGLOBAL>(*handle);
@@ -164,8 +324,9 @@ bool publishDibV5(void** handle) {
         const DWORD error = GetLastError();
         SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.failure.open", 1);
         SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.last_error", error);
-        qWarning("Failed to open the Windows clipboard");
-        return false;
+        return {owner == nullptr ? ScreenshotClipboardCommitFailure::ClipboardUnavailable
+                                 : ScreenshotClipboardCommitFailure::Busy,
+                error};
     }
 
     bool emptied = false;
@@ -195,15 +356,55 @@ bool publishDibV5(void** handle) {
             emptied ? "clipboard.failure.set_data" : "clipboard.failure.empty", 1);
         SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.last_error", clipboardError);
         qWarning("Failed to publish CF_DIBV5 clipboard image");
-        return false;
+        return {emptied ? ScreenshotClipboardCommitFailure::PublishFailed
+                        : ScreenshotClipboardCommitFailure::ClearFailed,
+                clipboardError};
     }
 
     *handle = nullptr;
     SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.success", 1);
-    return true;
+    return {};
 }
 } // namespace
 #endif
+
+QString ScreenshotClipboardCommitResult::errorString() const {
+    switch (failure) {
+    case ScreenshotClipboardCommitFailure::None:
+        return {};
+    case ScreenshotClipboardCommitFailure::Cancelled:
+        return QStringLiteral("The clipboard operation was cancelled");
+    case ScreenshotClipboardCommitFailure::InvalidPayload:
+        return QStringLiteral("The prepared clipboard image is invalid");
+    case ScreenshotClipboardCommitFailure::ClipboardUnavailable:
+        return QStringLiteral("The clipboard is unavailable");
+    case ScreenshotClipboardCommitFailure::Busy:
+        return QStringLiteral("The clipboard is busy");
+    case ScreenshotClipboardCommitFailure::ClearFailed:
+        return QStringLiteral("The clipboard could not be cleared");
+    case ScreenshotClipboardCommitFailure::PublishFailed:
+        return QStringLiteral("The clipboard did not accept the image");
+    }
+    return QStringLiteral("The clipboard operation failed");
+}
+
+ScreenshotClipboardCommitHandle::ScreenshotClipboardCommitHandle(
+    std::shared_ptr<std::atomic_bool> cancelled)
+    : m_cancelled(std::move(cancelled)) {}
+
+void ScreenshotClipboardCommitHandle::cancel() const {
+    if (m_cancelled != nullptr) {
+        m_cancelled->store(true, std::memory_order_release);
+    }
+}
+
+bool ScreenshotClipboardCommitHandle::isValid() const {
+    return m_cancelled != nullptr;
+}
+
+bool ScreenshotClipboardCommitHandle::isCancellationRequested() const {
+    return !isValid() || m_cancelled->load(std::memory_order_acquire);
+}
 
 ScreenshotClipboardPayload::~ScreenshotClipboardPayload() {
     reset();
@@ -220,7 +421,8 @@ void ScreenshotClipboardPayload::reset() noexcept {
 #endif
 }
 
-ScreenshotClipboardPayload::ScreenshotClipboardPayload(ScreenshotClipboardPayload&& other) noexcept {
+ScreenshotClipboardPayload::ScreenshotClipboardPayload(
+    ScreenshotClipboardPayload&& other) noexcept {
 #if defined(Q_OS_WIN) || defined(_WIN32)
     m_nativeHandle = other.m_nativeHandle;
     other.m_nativeHandle = nullptr;
@@ -229,8 +431,8 @@ ScreenshotClipboardPayload::ScreenshotClipboardPayload(ScreenshotClipboardPayloa
 #endif
 }
 
-ScreenshotClipboardPayload& ScreenshotClipboardPayload::operator=(
-    ScreenshotClipboardPayload&& other) noexcept {
+ScreenshotClipboardPayload&
+ScreenshotClipboardPayload::operator=(ScreenshotClipboardPayload&& other) noexcept {
     if (this == &other) {
         return *this;
     }
@@ -252,8 +454,8 @@ bool ScreenshotClipboardPayload::isValid() const {
 #endif
 }
 
-ScreenshotClipboardPayload ScreenshotClipboardService::prepare(
-    ScreenshotClipboardPixelSource source) {
+ScreenshotClipboardPayload
+ScreenshotClipboardService::prepare(ScreenshotClipboardPixelSource source) {
     if (!source.isValid()) {
         qWarning("Ignoring null screenshot clipboard image");
         return {};
@@ -269,14 +471,72 @@ ScreenshotClipboardPayload ScreenshotClipboardService::prepare(
 #endif
 }
 
+ScreenshotClipboardPayload
+ScreenshotClipboardService::prepare(const ScreenshotImageRowSource& source) {
+    if (!source.isValid()) {
+        return {};
+    }
+#if defined(Q_OS_WIN) || defined(_WIN32)
+    ScreenshotClipboardPayload payload;
+    payload.m_nativeHandle = prepareDibV5(source);
+    return payload;
+#else
+    QImage image(source.size, QImage::Format_RGBA8888);
+    if (image.isNull() || !source.readRows(0, image.height(), image.bytesPerLine(), image.bits(),
+                                           image.sizeInBytes())) {
+        return {};
+    }
+    ScreenshotClipboardPayload payload;
+    payload.m_image = std::move(image);
+    return payload;
+#endif
+}
+
 ScreenshotClipboardPayload ScreenshotClipboardService::prepareImage(const QImage& image) {
     return prepare(ScreenshotClipboardPixelSource(image));
 }
 
-bool ScreenshotClipboardService::publish(QClipboard* clipboard, ScreenshotClipboardPayload payload) {
+ScreenshotClipboardCommitHandle
+ScreenshotClipboardService::commit(QClipboard* clipboard, QObject* receiver,
+                                   ScreenshotClipboardPayload payload,
+                                   CommitCompletion completion) {
+    QCoreApplication* application = QCoreApplication::instance();
+    if (receiver == nullptr || !completion || application == nullptr ||
+        QThread::currentThread() != application->thread()) {
+        return {};
+    }
+
+    auto cancelled = std::make_shared<std::atomic_bool>(false);
+    auto sharedPayload = std::make_shared<ScreenshotClipboardPayload>(std::move(payload));
 #if defined(Q_OS_WIN) || defined(_WIN32)
     Q_UNUSED(clipboard);
-    return publishDibV5(&payload.m_nativeHandle);
+    auto attempt = [sharedPayload]() { return publishDibV5(&sharedPayload->m_nativeHandle); };
+#else
+    const QPointer<QClipboard> guardedClipboard(clipboard);
+    auto attempt = [guardedClipboard, sharedPayload]() {
+        if (guardedClipboard.isNull()) {
+            return ClipboardPublishAttempt{ScreenshotClipboardCommitFailure::ClipboardUnavailable,
+                                           0};
+        }
+        if (!sharedPayload->isValid()) {
+            return ClipboardPublishAttempt{ScreenshotClipboardCommitFailure::InvalidPayload, 0};
+        }
+        guardedClipboard->setImage(sharedPayload->m_image, QClipboard::Clipboard);
+        sharedPayload->reset();
+        return ClipboardPublishAttempt{};
+    };
+#endif
+    auto* operation = new ClipboardCommitOperation(receiver, cancelled, std::move(attempt),
+                                                   std::move(completion));
+    operation->start();
+    return ScreenshotClipboardCommitHandle(std::move(cancelled));
+}
+
+bool ScreenshotClipboardService::publish(QClipboard* clipboard,
+                                         ScreenshotClipboardPayload payload) {
+#if defined(Q_OS_WIN) || defined(_WIN32)
+    Q_UNUSED(clipboard);
+    return publishDibV5(&payload.m_nativeHandle).succeeded();
 #else
     if (clipboard == nullptr || !payload.isValid()) {
         qWarning("Screenshot clipboard is unavailable");

@@ -2435,6 +2435,9 @@ AdColorPicker::~AdColorPicker() {
   disconnect(triggerContentDestroyedConnection_);
   triggerContentDestroyedConnection_ = {};
   triggerContent_ = nullptr;
+  disconnect(previewContentDestroyedConnection_);
+  previewContentDestroyedConnection_ = {};
+  previewContent_ = nullptr;
   if (state_) {
     disconnect(state_.data(), nullptr, this, nullptr);
   }
@@ -2706,6 +2709,10 @@ void AdColorPicker::setValue(const AdColorValue& value) {
   importColorValue(toLegacyColorValue(value), false, false, true);
 }
 
+void AdColorPicker::commitValue(const AdColorValue& value) {
+  importColorValue(toLegacyColorValue(value), true, true, true);
+}
+
 QVector<AdColorPicker::PresetItem> AdColorPicker::presets() const { return presets_; }
 
 void AdColorPicker::setPresets(const QVector<PresetItem>& presets) {
@@ -2787,6 +2794,52 @@ void AdColorPicker::setTriggerContent(QWidget* widget) {
   setActiveTriggerWidget(currentTriggerWidget());
   syncPopoverSourceWidget();
   emit triggerContentChanged(triggerContent_);
+  refreshStyle();
+}
+
+QWidget* AdColorPicker::previewContent() const { return previewContent_; }
+
+void AdColorPicker::setPreviewContent(QWidget* widget) {
+  ensureEditorUi();
+  if (widget == this || widget == sliderContainer_ || widget == sliderGroup_ ||
+      widget == previewSwatch_) {
+    return;
+  }
+  if (previewContent_ == widget) {
+    return;
+  }
+
+  disconnect(previewContentDestroyedConnection_);
+  previewContentDestroyedConnection_ = {};
+  if (previewContent_) {
+    previewContent_->hide();
+    if (auto* layout = qobject_cast<QHBoxLayout*>(sliderContainer_->layout())) {
+      layout->removeWidget(previewContent_);
+    }
+  }
+
+  previewContent_ = widget;
+  if (previewContent_) {
+    previewContentDestroyedConnection_ =
+        connect(previewContent_, &QObject::destroyed, this, [this]() {
+          previewContent_.clear();
+          previewContentDestroyedConnection_ = {};
+          // QWidget removes itself from its parent layout after QObject emits
+          // destroyed. Defer the replacement so the layout is no longer
+          // traversing the widget being deleted.
+          QTimer::singleShot(0, this, [this]() {
+            if (previewContent_) {
+              return;
+            }
+            syncPreviewContentWidget();
+            emit previewContentChanged(nullptr);
+            refreshStyle();
+          });
+        });
+  }
+
+  syncPreviewContentWidget();
+  emit previewContentChanged(previewContent_);
   refreshStyle();
 }
 
@@ -4081,6 +4134,7 @@ void AdColorPicker::ensureEditorUi() {
   previewSwatch_->setObjectName(QStringLiteral("ad-color-picker-preview-swatch"));
   previewSwatch_->setFixedSize(currentMetrics.previewSwatchSize, currentMetrics.previewSwatchSize);
   sliderContainerLayout->addWidget(previewSwatch_, 0, Qt::AlignCenter);
+  syncPreviewContentWidget();
   sliderContainer_->setFixedHeight(sliderContainerHeightFromMetrics(
       currentMetrics.previewSwatchSize, currentMetrics.sliderVisualHeight,
       sliderGroupGapFromMetrics(currentMetrics.marginSM, currentMetrics.sliderMarginCross),
@@ -4814,6 +4868,9 @@ void AdColorPicker::refreshStyle(bool preserveCurrentTriggerWidth) {
   }
   if (previewSwatch_) {
     previewSwatch_->setFixedSize(style.metrics.previewSwatchSize, style.metrics.previewSwatchSize);
+  }
+  if (previewContent_) {
+    previewContent_->setFixedSize(style.metrics.previewSwatchSize, style.metrics.previewSwatchSize);
   }
 
   if (popover_) {
@@ -5611,6 +5668,31 @@ void AdColorPicker::refreshPreviewSwatch() {
       swatch->setSolidFill(currentEditableColor());
     }
   }
+}
+
+void AdColorPicker::syncPreviewContentWidget() {
+  if (!sliderContainer_ || !previewSwatch_) {
+    return;
+  }
+  auto* layout = qobject_cast<QHBoxLayout*>(sliderContainer_->layout());
+  if (layout == nullptr) {
+    return;
+  }
+
+  layout->removeWidget(previewSwatch_);
+  previewSwatch_->hide();
+  if (!previewContent_) {
+    layout->addWidget(previewSwatch_, 0, Qt::AlignCenter);
+    previewSwatch_->show();
+    return;
+  }
+
+  if (previewContent_->parentWidget() != sliderContainer_) {
+    previewContent_->setParent(sliderContainer_);
+  }
+  layout->removeWidget(previewContent_);
+  layout->addWidget(previewContent_, 0, Qt::AlignCenter);
+  previewContent_->show();
 }
 
 void AdColorPicker::updateFormatInputText() {

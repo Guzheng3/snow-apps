@@ -11,6 +11,9 @@ class ScreenshotDisplaySession;
 class ScreenshotOverlayEventSink;
 class ScreenshotOverlayWindow;
 class SnowCanvasRuntime;
+namespace snow_shot::presentation {
+class WindowShortcutManager;
+}
 
 struct ScreenshotOverlayPoolCallbacks {
     std::function<void(ScreenshotOverlayWindow*)> detachOverlayUi;
@@ -20,6 +23,7 @@ struct ScreenshotOverlayPoolCallbacks {
 class ScreenshotOverlayPool final {
   public:
     ScreenshotOverlayPool(ScreenshotOverlayEventSink& eventSink, SnowCanvasRuntime& canvasRuntime,
+                          snow_shot::presentation::WindowShortcutManager& shortcutManager,
                           ScreenshotOverlayPoolCallbacks callbacks);
 
     void prewarmDisplayPool(ScreenshotDisplaySession& displaySession, int displayCount);
@@ -36,6 +40,7 @@ class ScreenshotOverlayPool final {
 
     ScreenshotOverlayEventSink& m_eventSink;
     SnowCanvasRuntime& m_canvasRuntime;
+    snow_shot::presentation::WindowShortcutManager& m_shortcutManager;
     ScreenshotOverlayPoolCallbacks m_callbacks;
 };
 

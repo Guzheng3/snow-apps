@@ -20,7 +20,6 @@ enum class GlobalShortcutAction {
     ScreenshotFocusedWindow,
     ScreenRecord,
     ScreenRecordCopy,
-    ShowOrHideMainWindow,
     OpenCaptureHistory,
     OpenSettings,
     PinClipboardContent,
@@ -97,6 +96,8 @@ class GlobalShortcutManager final : public QObject {
     [[nodiscard]] GlobalShortcutRegistrationState state(GlobalShortcutAction action) const;
     [[nodiscard]] GlobalShortcutValidationResult validateShortcut(const QString& shortcut) const;
     void setShortcuts(GlobalShortcutAction action, const QStringList& shortcuts);
+    void setShortcutFunctionsEnabled(bool enabled);
+    [[nodiscard]] bool shortcutFunctionsEnabled() const;
     void retryRegistrations();
 
   signals:

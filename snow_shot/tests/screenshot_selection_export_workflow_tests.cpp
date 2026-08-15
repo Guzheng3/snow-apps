@@ -58,10 +58,15 @@ class FakeComposer final : public ScreenshotSelectionImageComposerPort {
 
 class FakeDestination final : public ScreenshotSelectionExportDestinationPort {
   public:
-    bool publishClipboard(ScreenshotClipboardPayload payload) override {
+    bool publishClipboard(QObject*, ScreenshotClipboardPayload payload,
+                          ClipboardCompletion completion) override {
         ++publishCount;
         receivedValidPayload = payload.isValid();
-        return publicationSucceeds;
+        if (!schedulingSucceeds) {
+            return false;
+        }
+        completion(publicationSucceeds);
+        return true;
     }
 
     bool presentPinnedSelection(const ScreenshotPinnedSelectionRequest&) override {
@@ -69,6 +74,7 @@ class FakeDestination final : public ScreenshotSelectionExportDestinationPort {
     }
 
     bool publicationSucceeds = true;
+    bool schedulingSucceeds = true;
     bool receivedValidPayload = false;
     int publishCount = 0;
 };
@@ -168,12 +174,12 @@ void invalidPayloadDoesNotPublish() {
 void staleResultHasNoSideEffects() {
     Fixture fixture;
     bool completionCalled = false;
-    require(fixture.workflow.copySelectionToClipboard(
-                []() { return false; },
-                [&completionCalled](bool, QImage image) {
-                    completionCalled = true;
-                    require(image.isNull(), "stale result returned an image");
-                }),
+    require(fixture.workflow.copySelectionToClipboard([]() { return false; },
+                                                      [&completionCalled](bool, QImage image) {
+                                                          completionCalled = true;
+                                                          require(image.isNull(),
+                                                                  "stale result returned an image");
+                                                      }),
             "stale-result request was not scheduled");
     require(fixture.destination.publishCount == 0 && fixture.store.writeCount == 0 &&
                 completionCalled,

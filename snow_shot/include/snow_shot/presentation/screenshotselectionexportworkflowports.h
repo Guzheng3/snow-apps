@@ -54,24 +54,30 @@ class ScreenshotSelectionImageComposerPort {
 
     virtual ~ScreenshotSelectionImageComposerPort() = default;
 
-    [[nodiscard]] virtual bool requestSelectionResult(
-        const QRect& selection, const ScreenshotResultStyle& style, QObject* receiver,
-        ImageCallback callback) = 0;
-    [[nodiscard]] virtual bool requestSelectionClipboard(
-        const QRect& selection, const ScreenshotResultStyle& style, QObject* receiver,
-        ClipboardCallback callback) = 0;
+    [[nodiscard]] virtual bool requestSelectionResult(const QRect& selection,
+                                                      const ScreenshotResultStyle& style,
+                                                      QObject* receiver,
+                                                      ImageCallback callback) = 0;
+    [[nodiscard]] virtual bool requestSelectionClipboard(const QRect& selection,
+                                                         const ScreenshotResultStyle& style,
+                                                         QObject* receiver,
+                                                         ClipboardCallback callback) = 0;
     [[nodiscard]] virtual std::optional<ScreenshotPinnedSelectionRequest>
     preparePinnedSelection(const QRect& selection, const ScreenshotResultStyle& style) const = 0;
-    [[nodiscard]] virtual bool schedulePinnedSelection(
-        ScreenshotPinnedSelectionRequest request, QObject* receiver,
-        PinRequestCallback callback) = 0;
+    [[nodiscard]] virtual bool schedulePinnedSelection(ScreenshotPinnedSelectionRequest request,
+                                                       QObject* receiver,
+                                                       PinRequestCallback callback) = 0;
 };
 
 class ScreenshotSelectionExportDestinationPort {
   public:
+    using ClipboardCompletion = std::function<void(bool)>;
+
     virtual ~ScreenshotSelectionExportDestinationPort() = default;
 
-    [[nodiscard]] virtual bool publishClipboard(ScreenshotClipboardPayload payload) = 0;
+    [[nodiscard]] virtual bool publishClipboard(QObject* receiver,
+                                                ScreenshotClipboardPayload payload,
+                                                ClipboardCompletion completion) = 0;
 
     [[nodiscard]] virtual bool
     presentPinnedSelection(const ScreenshotPinnedSelectionRequest& request) = 0;

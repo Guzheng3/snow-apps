@@ -886,6 +886,29 @@ QPoint ScreenshotGeometryMapper::clampContentPositionToRect(const QPoint& desire
                   std::clamp(desiredPosition.y(), minY, maxY));
 }
 
+QPoint ScreenshotGeometryMapper::cursorPanelPosition(const QPoint& cursorPosition,
+                                                      const QSize& panelSize,
+                                                      const QRect& bounds, int gap) {
+    const int effectiveGap = std::max(0, gap);
+    const QPoint bottomRightPosition =
+        cursorPosition + QPoint(effectiveGap, effectiveGap);
+    if (panelSize.isEmpty() || !bounds.isValid()) {
+        return bottomRightPosition;
+    }
+
+    const int boundsRight = bounds.left() + bounds.width();
+    const int boundsBottom = bounds.top() + bounds.height();
+    const bool useLeft = bottomRightPosition.x() + panelSize.width() > boundsRight;
+    const bool useTop = bottomRightPosition.y() + panelSize.height() > boundsBottom;
+    const QPoint desiredPosition(
+        useLeft ? cursorPosition.x() - effectiveGap - panelSize.width()
+                : bottomRightPosition.x(),
+        useTop ? cursorPosition.y() - effectiveGap - panelSize.height()
+               : bottomRightPosition.y());
+
+    return clampContentPositionToRect(desiredPosition, QRect(QPoint(), panelSize), bounds);
+}
+
 ScreenshotAnchoredToolbarPlacement ScreenshotGeometryMapper::anchoredToolbarPlacement(
     const QPoint& bottomRightAnchor, const QPoint& topRightAnchor, const QRect& toolbarOccupiedRect,
     const QRect& bounds, int gap, const QRect& topRightToolbarRect,

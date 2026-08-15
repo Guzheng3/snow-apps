@@ -3133,9 +3133,9 @@ void textStyleControlsExposeAndEmitAllRequestedProperties() {
     }
     require(activeFontSizePreset != nullptr &&
                 activeFontSizePreset->buttonStyle() ==
-                    adqt::widgets::AdButton::ButtonStyle::Solid &&
+                    adqt::widgets::AdButton::ButtonStyle::Tonal &&
                 activeFontSizePreset->accentRole() == adqt::widgets::AdButton::AccentRole::Primary,
-            "the active text style button should match the main toolbar active style");
+            "the active text style button should use the shared style-toolbar active state");
     auto* fontSelect = qobject_cast<adqt::widgets::AdSelect*>(
         controlWithAccessibleName(palette, "Text font family"));
     require(fontSelect != nullptr, "text font-family select should be present");
@@ -3282,9 +3282,9 @@ void textStyleControlsExposeAndEmitAllRequestedProperties() {
     auto* xlFontSizePreset = qobject_cast<adqt::widgets::AdButton*>(
         controlWithTooltip(palette, "Text font size XL (54px)"));
     require(xlFontSizePreset != nullptr &&
-                xlFontSizePreset->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Solid &&
+                xlFontSizePreset->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Tonal &&
                 activeFontSizePreset->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Text,
-            "changing text size should move the main-toolbar active style to the new preset");
+            "changing text size should move the shared style-toolbar active state to the new preset");
     clickStyleControl(palette, "Line text fill");
     require(changeCount == 2 && emittedStyle.fillStyle == SnowCanvasFillStyle::Line,
             "text fill pattern should update");
@@ -3936,6 +3936,15 @@ void configurationDrivenStyleEditorsShareStructuralContracts() {
                     picker->popupContentPlacement() ==
                         adqt::widgets::AdColorPicker::PopupContentPlacement::Top,
                 "color, fill, stroke, and width-color editors should share the picker shell");
+        auto* sampler = dynamic_cast<ColorPickerSamplerButton*>(picker->previewContent());
+        require(sampler != nullptr && sampler->focusPolicy() == Qt::NoFocus &&
+                    sampler->sizeClass() == adqt::widgets::AdButton::SizeClass::Small &&
+                    sampler->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Text &&
+                    sampler->accentRole() == adqt::widgets::AdButton::AccentRole::Neutral &&
+                    !sampler->icon().isNull() && sampler->iconSize() == QSize(14, 14) &&
+                    sampler->toolTip() == QStringLiteral("Pick color from canvas") &&
+                    sampler->accessibleName() == sampler->toolTip(),
+                "canvas-color samplers should match the neighboring neutral icon-button style");
     }
     require(dynamic_cast<ColorSwatchButton*>(colorPicker->triggerContent()) != nullptr &&
                 dynamic_cast<FillStylePreviewTrigger*>(fillPicker->triggerContent()) != nullptr &&
@@ -3946,6 +3955,27 @@ void configurationDrivenStyleEditorsShareStructuralContracts() {
                 !colorPicker->alphaChannelEnabled() && fillPicker->alphaChannelEnabled() &&
                 !strokePicker->alphaChannelEnabled() && !widthColorPicker->alphaChannelEnabled(),
             "picker configuration should preserve trigger and alpha differences");
+
+    auto* sampler = dynamic_cast<ColorPickerSamplerButton*>(colorPicker->previewContent());
+    adqt::widgets::AdColorPicker* samplingTarget = nullptr;
+    QObject::connect(&palette, &ScreenshotToolPalette::canvasColorSamplingRequested, &palette,
+                     [&samplingTarget](adqt::widgets::AdColorPicker* picker) {
+                         samplingTarget = picker;
+                     });
+    colorPicker->setPopupVisible(true);
+    require(colorPicker->popupVisible(), "color picker popup should open before sampling");
+    sampler->click();
+    require(samplingTarget == colorPicker && !colorPicker->popupVisible(),
+            "canvas sampler should close its picker and request sampling for the owning picker");
+    int completedColorChanges = 0;
+    QObject::connect(colorPicker, &adqt::widgets::AdColorPicker::editingFinished, &palette,
+                     [&completedColorChanges](const adqt::widgets::AdColorValue&) {
+                         ++completedColorChanges;
+                     });
+    colorPicker->commitValue(adqt::widgets::AdColorValue::solid(QColor(QStringLiteral("#123456"))));
+    require(completedColorChanges == 1 &&
+                colorPicker->value().solidColor == QColor(QStringLiteral("#123456")),
+            "externally sampled colors should use completed picker change semantics");
 
     QWidget* startArrowhead = controlWithAccessibleName(palette, "Start arrowhead");
     QWidget* endArrowhead = controlWithAccessibleName(palette, "End arrowhead");
@@ -3986,6 +4016,44 @@ void configurationDrivenStyleEditorsShareStructuralContracts() {
     palette.setActiveTool(ScreenshotToolPalette::Tool::RectangleFilter);
     require(filterSelect->size() == scaledSelectSize,
             "filter select should apply the same metrics when its editor activates");
+}
+
+void canvasColorSamplerButtonRequestsAndCommits() {
+    ScreenshotToolPalette palette(ScreenshotToolPalette::Options{});
+    palette.setActiveTool(ScreenshotToolPalette::Tool::Shape);
+    auto* picker = colorPickerWithAccessibleName(palette, "Stroke color");
+    auto* sampler = picker == nullptr
+                        ? nullptr
+                        : dynamic_cast<ColorPickerSamplerButton*>(picker->previewContent());
+    require(picker != nullptr && sampler != nullptr && sampler->focusPolicy() == Qt::NoFocus &&
+                sampler->sizeClass() == adqt::widgets::AdButton::SizeClass::Small &&
+                sampler->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Text &&
+                sampler->accentRole() == adqt::widgets::AdButton::AccentRole::Neutral &&
+                !sampler->icon().isNull() && sampler->iconSize() == QSize(14, 14) &&
+                sampler->toolTip() == QStringLiteral("Pick color from canvas") &&
+                sampler->accessibleName() == sampler->toolTip(),
+            "drawing color picker should expose a neutral icon-style canvas sampler button");
+
+    adqt::widgets::AdColorPicker* samplingTarget = nullptr;
+    QObject::connect(&palette, &ScreenshotToolPalette::canvasColorSamplingRequested, &palette,
+                     [&samplingTarget](adqt::widgets::AdColorPicker* requested) {
+                         samplingTarget = requested;
+                     });
+    picker->setPopupVisible(true);
+    require(picker->popupVisible(), "color picker popup should open before sampling");
+    sampler->click();
+    require(samplingTarget == picker && !picker->popupVisible(),
+            "canvas sampler should close its picker and request the owning picker");
+
+    int completedChanges = 0;
+    QObject::connect(picker, &adqt::widgets::AdColorPicker::editingFinished, &palette,
+                     [&completedChanges](const adqt::widgets::AdColorValue&) {
+                         ++completedChanges;
+                     });
+    const QColor sampledColor(QStringLiteral("#123456"));
+    picker->commitValue(adqt::widgets::AdColorValue::solid(sampledColor));
+    require(completedChanges == 1 && picker->value().solidColor == sampledColor,
+            "sampled colors should use completed picker change semantics");
 }
 
 void styleToolbarRowSpacingFollowsPhysicalScale() {
@@ -5149,6 +5217,10 @@ int main(int argc, char** argv) {
             "failed to initialize isolated toolbar test storage");
     if (application.arguments().contains(QStringLiteral("--ocr-translation-only"))) {
         ocrToolReplacesSelectionActionToolbarContents();
+        return 0;
+    }
+    if (application.arguments().contains(QStringLiteral("--canvas-color-sampling-only"))) {
+        canvasColorSamplerButtonRequestsAndCommits();
         return 0;
     }
     if (application.arguments().contains(QStringLiteral("--toolbar-layout-only"))) {

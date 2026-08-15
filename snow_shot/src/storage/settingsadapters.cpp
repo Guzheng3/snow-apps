@@ -64,6 +64,13 @@ const QStringList& screenshotShortcutActionIds() {
         QStringLiteral("move_cursor_down"),
         QStringLiteral("move_cursor_left"),
         QStringLiteral("move_cursor_right"),
+        QStringLiteral("move_entire_selection"),
+        QStringLiteral("keep_selection_width_and_height_consistent"),
+        QStringLiteral("switch_selection_between_window_and_window_sub_element"),
+        QStringLiteral("previous_screenshot_history"),
+        QStringLiteral("next_screenshot_history"),
+        QStringLiteral("select_previously_selected_area"),
+        QStringLiteral("copy_color"),
     };
     return ids;
 }
@@ -78,6 +85,13 @@ QString screenshotShortcutKey(const QString& actionId) {
     return screenshotShortcutActionIds().contains(actionId)
                ? QStringLiteral("screenshot_shortcuts/") + actionId
                : QString();
+}
+
+bool screenshotHistoryShortcutAllowed(const QString& actionId, const QString& shortcut) {
+    const bool historyAction = actionId == QStringLiteral("previous_screenshot_history") ||
+                               actionId == QStringLiteral("next_screenshot_history");
+    return historyAction &&
+           (shortcut == QStringLiteral(",") || shortcut == QStringLiteral("."));
 }
 
 bool isReservedLocalShortcut(const QString& shortcut) {
@@ -256,14 +270,6 @@ bool ShortcutSettings::setScreenRecordCopy(const QStringList& shortcuts) const {
     return setShortcutValue(QStringLiteral("global_shortcuts/screen_record_copy"), shortcuts);
 }
 
-QStringList ShortcutSettings::showOrHideMainWindow() const {
-    return shortcutValue(QStringLiteral("global_shortcuts/show_or_hide_main_window"));
-}
-
-bool ShortcutSettings::setShowOrHideMainWindow(const QStringList& shortcuts) const {
-    return setShortcutValue(QStringLiteral("global_shortcuts/show_or_hide_main_window"), shortcuts);
-}
-
 QStringList ShortcutSettings::openCaptureHistory() const {
     return shortcutValue(QStringLiteral("global_shortcuts/open_capture_history"));
 }
@@ -431,6 +437,66 @@ bool ScreenshotShortcutSettings::setMoveCursorRight(const QStringList& value) co
     return setShortcuts(QStringLiteral("move_cursor_right"), value);
 }
 
+QStringList ScreenshotShortcutSettings::moveEntireSelection() const {
+    return shortcuts(QStringLiteral("move_entire_selection"));
+}
+
+bool ScreenshotShortcutSettings::setMoveEntireSelection(const QStringList& value) const {
+    return setShortcuts(QStringLiteral("move_entire_selection"), value);
+}
+
+QStringList ScreenshotShortcutSettings::keepSelectionWidthAndHeightConsistent() const {
+    return shortcuts(QStringLiteral("keep_selection_width_and_height_consistent"));
+}
+
+bool ScreenshotShortcutSettings::setKeepSelectionWidthAndHeightConsistent(
+    const QStringList& value) const {
+    return setShortcuts(QStringLiteral("keep_selection_width_and_height_consistent"), value);
+}
+
+QStringList ScreenshotShortcutSettings::switchSelectionBetweenWindowAndWindowSubElement() const {
+    return shortcuts(
+        QStringLiteral("switch_selection_between_window_and_window_sub_element"));
+}
+
+bool ScreenshotShortcutSettings::setSwitchSelectionBetweenWindowAndWindowSubElement(
+    const QStringList& value) const {
+    return setShortcuts(
+        QStringLiteral("switch_selection_between_window_and_window_sub_element"), value);
+}
+
+QStringList ScreenshotShortcutSettings::previousScreenshotHistory() const {
+    return shortcuts(QStringLiteral("previous_screenshot_history"));
+}
+
+bool ScreenshotShortcutSettings::setPreviousScreenshotHistory(const QStringList& value) const {
+    return setShortcuts(QStringLiteral("previous_screenshot_history"), value);
+}
+
+QStringList ScreenshotShortcutSettings::nextScreenshotHistory() const {
+    return shortcuts(QStringLiteral("next_screenshot_history"));
+}
+
+bool ScreenshotShortcutSettings::setNextScreenshotHistory(const QStringList& value) const {
+    return setShortcuts(QStringLiteral("next_screenshot_history"), value);
+}
+
+QStringList ScreenshotShortcutSettings::selectPreviouslySelectedArea() const {
+    return shortcuts(QStringLiteral("select_previously_selected_area"));
+}
+
+bool ScreenshotShortcutSettings::setSelectPreviouslySelectedArea(const QStringList& value) const {
+    return setShortcuts(QStringLiteral("select_previously_selected_area"), value);
+}
+
+QStringList ScreenshotShortcutSettings::copyColor() const {
+    return shortcuts(QStringLiteral("copy_color"));
+}
+
+bool ScreenshotShortcutSettings::setCopyColor(const QStringList& value) const {
+    return setShortcuts(QStringLiteral("copy_color"), value);
+}
+
 bool ScreenshotShortcutSettings::isReservedShortcut(const QString& shortcut) {
     return isReservedLocalShortcut(shortcut);
 }
@@ -465,12 +531,6 @@ bool ScreenshotShortcutSettings::setAllShortcutsAtomic(
     }
     QMap<QString, QJsonValue> values;
     QSet<QString> seen;
-    const auto drawingShortcuts = DrawingShortcutSettings().allShortcuts();
-    for (auto it = drawingShortcuts.cbegin(); it != drawingShortcuts.cend(); ++it) {
-        for (const QString& shortcut : it.value()) {
-            seen.insert(shortcut.toCaseFolded());
-        }
-    }
     for (const QString& actionId : screenshotShortcutActionIds()) {
         if (!shortcutsByAction.contains(actionId)) {
             return false;
@@ -484,7 +544,9 @@ bool ScreenshotShortcutSettings::setAllShortcutsAtomic(
         for (const QJsonValue& item : normalized.value.toArray()) {
             const QString shortcut = item.toString();
             const QString binding = shortcut.toCaseFolded();
-            if (isReservedShortcut(shortcut) || seen.contains(binding)) {
+            if ((!screenshotHistoryShortcutAllowed(actionId, shortcut) &&
+                 isReservedShortcut(shortcut)) ||
+                seen.contains(binding)) {
                 return false;
             }
             seen.insert(binding);
@@ -608,12 +670,6 @@ bool DrawingShortcutSettings::setAllShortcutsAtomic(
     }
     QMap<QString, QJsonValue> values;
     QSet<QString> seen;
-    const auto screenshotShortcuts = ScreenshotShortcutSettings().allShortcuts();
-    for (auto it = screenshotShortcuts.cbegin(); it != screenshotShortcuts.cend(); ++it) {
-        for (const QString& shortcut : it.value()) {
-            seen.insert(shortcut.toCaseFolded());
-        }
-    }
     for (const QString& toolId : drawingShortcutToolIds()) {
         if (!shortcutsByTool.contains(toolId)) {
             return false;
@@ -918,6 +974,14 @@ QString TraySettings::leftClickAction() const {
 
 bool TraySettings::setLeftClickAction(const QString& action) const {
     return cache().setValue(QStringLiteral("tray/left_click_action"), action);
+}
+
+QStringList TraySettings::menuOptions() const {
+    return stringList(cache().value(QStringLiteral("tray/menu_options")));
+}
+
+bool TraySettings::setMenuOptions(const QStringList& options) const {
+    return cache().setValue(QStringLiteral("tray/menu_options"), stringArray(options));
 }
 
 bool SystemSettings::autoStartAtBoot() const {

@@ -240,6 +240,10 @@ void ScreenshotToolbarWindow::connectActionCommands(ScreenshotToolPalette& toolP
 }
 
 void ScreenshotToolbarWindow::connectStyleCommands(ScreenshotToolPalette& toolPalette) {
+    connect(&toolPalette, &ScreenshotToolPalette::canvasColorSamplingRequested, this,
+            [this](adqt::widgets::AdColorPicker* picker) {
+                m_commands.beginCanvasColorSampling(picker);
+            });
     connect(&toolPalette, &ScreenshotToolPalette::sendSelectionToBackRequested, this,
             [this]() { m_commands.reorderSelectedElements(SnowCanvasSelectionOrder::SendToBack); });
     connect(&toolPalette, &ScreenshotToolPalette::sendSelectionBackwardRequested, this, [this]() {

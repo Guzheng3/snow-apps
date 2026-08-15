@@ -139,6 +139,50 @@ void selectionShadowDefaultsToRequestedColor() {
             "reset selections should restore the #333333 shadow color");
 }
 
+void marqueeDragUsesTheSharedGeometryTransactionWithoutMinimumInflation() {
+    ScreenshotSelectionModel selection;
+    selection.setSelectionStartEnd(QPointF(40.0, 50.0), QPointF(40.0, 50.0));
+    selection.beginMoveDrag(QPointF(40.0, 50.0));
+
+    const QRectF marquee = selection.selectionRectForDrag(
+        ScreenshotSelectionDragMode::Marquee, QPointF(43.0, 54.0),
+        QRectF(0.0, 0.0, 100.0, 100.0), kMinimumSelectionSize);
+    require(marquee == QRectF(40.0, 50.0, 3.0, 4.0),
+            "marquee drags must use their actual pointer span without resize minimums");
+    require(!screenshotSelectionDragAnchor(marquee, ScreenshotSelectionDragMode::Marquee,
+                                           QPointF(43.0, 54.0), kMinimumSelectionSize)
+                 .has_value(),
+            "marquee drags must sample the color picker at the pointer, not a resize handle");
+    require(screenshotSelectionDragModeForPoint(QRectF(10.0, 10.0, 20.0, 20.0),
+                                                QPointF(50.0, 50.0), false, 8.0,
+                                                kMinimumSelectionSize) ==
+                ScreenshotSelectionDragMode::BottomRight,
+            "Move must classify a point outside the selection as a directional resize");
+}
+
+void marqueeDragCanMaintainAnAspectRatio() {
+    const QRectF bounds(0.0, 0.0, 200.0, 200.0);
+    const QRectF square = draggedScreenshotSelectionRect(
+        ScreenshotSelectionDragMode::Marquee, QRectF(), QPointF(40.0, 50.0),
+        QPointF(70.0, 100.0), bounds, kMinimumSelectionSize, 1.0);
+    require(square == QRectF(40.0, 50.0, 50.0, 50.0),
+            "locked marquee drags should expand the shorter pointer span proportionally");
+
+    const QRectF flipped = draggedScreenshotSelectionRect(
+        ScreenshotSelectionDragMode::Marquee, QRectF(), QPointF(100.0, 100.0),
+        QPointF(40.0, 50.0), bounds, kMinimumSelectionSize, 0.5);
+    require(std::abs(flipped.width() - 100.0) < kComparisonTolerance &&
+                std::abs(flipped.height() - 50.0) < kComparisonTolerance &&
+                flipped.left() == 0.0 && flipped.top() == 50.0,
+            "locked marquee drags should retain their ratio when crossing both axes");
+
+    const QRectF clipped = draggedScreenshotSelectionRect(
+        ScreenshotSelectionDragMode::Marquee, QRectF(), QPointF(180.0, 180.0),
+        QPointF(240.0, 230.0), bounds, kMinimumSelectionSize, 1.0);
+    require(clipped == QRectF(180.0, 180.0, 20.0, 20.0),
+            "locked marquee drags should remain inside the canvas bounds");
+}
+
 CapturedDisplayModel syntheticDisplay(const QRect& physicalRect, const QRect& canvasRect) {
     CapturedDisplayModel display;
     display.physicalRect = physicalRect;
@@ -199,6 +243,8 @@ int main() {
     lockedResizeAllowsFlippingAcrossOppositeEdges();
     lockedCornerResizeCanFlipBothAxes();
     unlockedResizeCanChangeAspectRatio();
+    marqueeDragUsesTheSharedGeometryTransactionWithoutMinimumInflation();
+    marqueeDragCanMaintainAnAspectRatio();
     selectionShadowDefaultsToRequestedColor();
     physicalPointMappingUsesHalfOpenMonitorBounds();
     physicalWindowRectIsClippedAndMappedAcrossMonitors();

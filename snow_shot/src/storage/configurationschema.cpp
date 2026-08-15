@@ -181,12 +181,6 @@ const QVector<ConfigurationSchemaEntry> kEntries = {
      std::nullopt,
      {},
      2},
-    {QStringLiteral("global_shortcuts/show_or_hide_main_window"),
-     QJsonArray(),
-     ConfigurationValueKind::StringList,
-     std::nullopt,
-     {},
-     2},
     {QStringLiteral("global_shortcuts/open_capture_history"),
      QJsonArray(),
      ConfigurationValueKind::StringList,
@@ -295,6 +289,26 @@ const QVector<ConfigurationSchemaEntry> kEntries = {
     {QStringLiteral("screenshot_shortcuts/move_cursor_right"),
      QJsonArray{QStringLiteral("D"), QStringLiteral("Right")},
      ConfigurationValueKind::StringList, std::nullopt, {}, 2},
+    {QStringLiteral("screenshot_shortcuts/move_entire_selection"),
+     QJsonArray{QStringLiteral("Space")},
+     ConfigurationValueKind::StringList, std::nullopt, {}, 2},
+    {QStringLiteral("screenshot_shortcuts/keep_selection_width_and_height_consistent"),
+     QJsonArray{QStringLiteral("Shift")},
+     ConfigurationValueKind::StringList, std::nullopt, {}, 2},
+    {QStringLiteral("screenshot_shortcuts/switch_selection_between_window_and_window_sub_element"),
+     QJsonArray{QStringLiteral("Tab")},
+     ConfigurationValueKind::StringList, std::nullopt, {}, 2},
+    {QStringLiteral("screenshot_shortcuts/previous_screenshot_history"),
+     QJsonArray{QStringLiteral(",")},
+     ConfigurationValueKind::StringList, std::nullopt, {}, 2},
+    {QStringLiteral("screenshot_shortcuts/next_screenshot_history"),
+     QJsonArray{QStringLiteral(".")},
+     ConfigurationValueKind::StringList, std::nullopt, {}, 2},
+    {QStringLiteral("screenshot_shortcuts/select_previously_selected_area"),
+     QJsonArray{QStringLiteral("R")},
+     ConfigurationValueKind::StringList, std::nullopt, {}, 2},
+    {QStringLiteral("screenshot_shortcuts/copy_color"), QJsonArray{QStringLiteral("C")},
+     ConfigurationValueKind::StringList, std::nullopt, {}, 2},
     {QStringLiteral("screenshot_toolbar/arrow_line_tool"),
      QStringLiteral("arrow"),
      ConfigurationValueKind::String,
@@ -361,6 +375,34 @@ const QVector<ConfigurationSchemaEntry> kEntries = {
      ConfigurationValueKind::String,
      std::nullopt,
      {QStringLiteral("screenshot"), QStringLiteral("show_main_window")}},
+    {QStringLiteral("tray/menu_options"),
+     QJsonArray{QStringLiteral("quick.screenshot"),
+                QStringLiteral("quick.screenshot-delay"),
+                QStringLiteral("quick.screenshot-fixed"),
+                QStringLiteral("quick.screenshot-ocr"),
+                QStringLiteral("quick.screenshot-copy"),
+                QStringLiteral("quick.screen-record"),
+                QStringLiteral("quick.pin-clipboard-content"),
+                QStringLiteral("tray.disable-shortcut-functions"),
+                QStringLiteral("tray.show-main-window"),
+                QStringLiteral("tray.exit")},
+     ConfigurationValueKind::StringList,
+     std::nullopt,
+     {QStringLiteral("quick.screenshot"),
+      QStringLiteral("quick.screenshot-delay"),
+      QStringLiteral("quick.screenshot-fixed"),
+      QStringLiteral("quick.screenshot-ocr"),
+      QStringLiteral("quick.screenshot-copy"),
+      QStringLiteral("quick.screenshot-full-screen"),
+      QStringLiteral("quick.screenshot-focused-window"),
+      QStringLiteral("quick.screen-record"),
+      QStringLiteral("quick.screen-record-copy"),
+      QStringLiteral("quick.open-capture-history"),
+      QStringLiteral("quick.pin-clipboard-content"),
+      QStringLiteral("tray.disable-shortcut-functions"),
+      QStringLiteral("tray.show-main-window"),
+      QStringLiteral("tray.exit")},
+     14},
     {QStringLiteral("screenshot_selection/previous_selection"), QJsonValue::Null,
      ConfigurationValueKind::Structured},
     {QStringLiteral("screenshot_selection/smart_selection"), true, ConfigurationValueKind::Boolean},
@@ -481,10 +523,17 @@ ConfigurationNormalization normalizeLanguage(const QJsonValue& value) {
     return {normalized, true, normalized != value.toString()};
 }
 
-QString canonicalShortcut(const QString& input) {
+QString canonicalShortcut(const QString& input, bool allowModifierOnlyShift) {
     const QString trimmed = input.trimmed();
     if (trimmed.isEmpty()) {
         return {};
+    }
+    // Shift is intentionally supported as a modifier-only local shortcut. Qt
+    // reports its press as Key_Shift with ShiftModifier, which is distinct
+    // from an ordinary Shift-modified key combination.
+    if (allowModifierOnlyShift &&
+        trimmed.compare(QStringLiteral("Shift"), Qt::CaseInsensitive) == 0) {
+        return QStringLiteral("Shift");
     }
     QKeySequence sequence = QKeySequence::fromString(trimmed, QKeySequence::PortableText);
     if (sequence.isEmpty()) {
@@ -495,6 +544,10 @@ QString canonicalShortcut(const QString& input) {
     }
     const QKeyCombination combination = sequence[0];
     const Qt::Key key = combination.key();
+    if (allowModifierOnlyShift && key == Qt::Key_Shift &&
+        combination.keyboardModifiers() == Qt::ShiftModifier) {
+        return QStringLiteral("Shift");
+    }
     if (key == Qt::Key_unknown || key == Qt::Key_Control || key == Qt::Key_Alt ||
         key == Qt::Key_Shift || key == Qt::Key_Meta || key == Qt::Key_AltGr ||
         key == Qt::Key_Super_L || key == Qt::Key_Super_R) {
@@ -504,7 +557,8 @@ QString canonicalShortcut(const QString& input) {
     return portable;
 }
 
-ConfigurationNormalization normalizeShortcuts(const QJsonValue& value, int maximumItems) {
+ConfigurationNormalization normalizeShortcuts(const QJsonValue& value, int maximumItems,
+                                              bool allowModifierOnlyShift) {
     if (!value.isArray()) {
         return {};
     }
@@ -516,7 +570,7 @@ ConfigurationNormalization normalizeShortcuts(const QJsonValue& value, int maxim
             changed = true;
             continue;
         }
-        const QString shortcut = canonicalShortcut(item.toString());
+        const QString shortcut = canonicalShortcut(item.toString(), allowModifierOnlyShift);
         if (shortcut.isEmpty() || seen.contains(shortcut) ||
             (maximumItems >= 0 && normalized.size() >= maximumItems)) {
             changed = true;
@@ -855,6 +909,9 @@ ConfigurationNormalization ConfigurationSchema::normalize(const QString& key,
     if (key == QStringLiteral("drawing/quick_selection_disabled_tools")) {
         return normalizeAllowedStringList(*schemaEntry, value);
     }
+    if (key == QStringLiteral("tray/menu_options")) {
+        return normalizeAllowedStringList(*schemaEntry, value);
+    }
     if (key == QStringLiteral("screen_recording/frame_rate")) {
         return normalizeAllowedInteger(value, {10, 15, 24, 30, 60, 120, 83});
     }
@@ -883,7 +940,8 @@ ConfigurationNormalization ConfigurationSchema::normalize(const QString& key,
         return {normalizedValue, true, normalizedValue != value.toString()};
     }
     case ConfigurationValueKind::StringList:
-        return normalizeShortcuts(value, schemaEntry->maximumListItems);
+        return normalizeShortcuts(value, schemaEntry->maximumListItems,
+                                  key.startsWith(QStringLiteral("screenshot_shortcuts/")));
     case ConfigurationValueKind::Structured:
         break;
     }

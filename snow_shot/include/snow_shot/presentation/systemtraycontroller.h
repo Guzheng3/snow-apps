@@ -3,15 +3,23 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
 
 #include <memory>
 
+namespace snow_shot::presentation::settings {
+class SettingsCatalog;
+}
+
 namespace snow_shot::presentation {
+enum class GlobalShortcutAction;
+
 class SystemTrayController final : public QObject {
     Q_OBJECT
 
   public:
     explicit SystemTrayController(QObject* parent = nullptr);
+    SystemTrayController(const settings::SettingsCatalog& catalog, QObject* parent = nullptr);
     ~SystemTrayController() override;
 
     void show();
@@ -24,10 +32,17 @@ class SystemTrayController final : public QObject {
     [[nodiscard]] QString customIconPath() const;
     void setLeftClickAction(const QString& action);
     [[nodiscard]] QString leftClickAction() const;
+    void setScreenshotDelaySeconds(int seconds);
+    [[nodiscard]] int screenshotDelaySeconds() const;
+    void setMenuOptions(const QStringList& options);
+    [[nodiscard]] QStringList menuOptions() const;
+    [[nodiscard]] bool shortcutFunctionsDisabled() const;
 
   signals:
     void screenshotRequested();
     void showMainWindowRequested();
+    void quickActionRequested(snow_shot::presentation::GlobalShortcutAction action);
+    void shortcutFunctionsDisabledChanged(bool disabled);
     void exitRequested();
 
   private:

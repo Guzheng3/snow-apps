@@ -54,6 +54,9 @@ void ScreenshotInteractionState::setQrTool() {
 }
 
 void ScreenshotInteractionState::confirmSelection() {
+    if (m_dragging) {
+        return;
+    }
     m_mode = ScreenshotCaptureMode::MovingSelection;
     m_dragMode = ScreenshotSelectionDragMode::None;
     m_dragging = false;
@@ -78,22 +81,13 @@ void ScreenshotInteractionState::returnToSelectionMode(bool selectorReady) {
     m_dragging = false;
 }
 
-void ScreenshotInteractionState::enterManualSelectionDrag() {
-    m_mode = ScreenshotCaptureMode::ManualSelecting;
-    m_dragMode = ScreenshotSelectionDragMode::None;
-    m_dragging = true;
-}
-
-void ScreenshotInteractionState::enterManualSelectionDragFromIntelligent() {
-    enterManualSelectionDrag();
-}
-
-bool ScreenshotInteractionState::enterMovingSelectionDrag(ScreenshotSelectionDragMode dragMode) {
+bool ScreenshotInteractionState::enterSelectionDrag(ScreenshotSelectionDragMode dragMode) {
     if (dragMode == ScreenshotSelectionDragMode::None) {
         return false;
     }
 
-    m_mode = ScreenshotCaptureMode::MovingSelection;
+    // A selection is unconfirmed for the entire create/move/resize transaction.
+    m_mode = ScreenshotCaptureMode::ManualSelecting;
     m_dragMode = dragMode;
     m_dragging = true;
     return true;
@@ -138,6 +132,16 @@ bool ScreenshotInteractionState::intelligentSelecting() const {
 
 bool ScreenshotInteractionState::manualSelecting() const {
     return m_mode == ScreenshotCaptureMode::ManualSelecting;
+}
+
+bool ScreenshotInteractionState::marqueeSelecting() const {
+    return manualSelecting() &&
+           (!m_dragging || m_dragMode == ScreenshotSelectionDragMode::Marquee);
+}
+
+bool ScreenshotInteractionState::modifyingSelection() const {
+    return manualSelecting() && m_dragging &&
+           m_dragMode != ScreenshotSelectionDragMode::Marquee;
 }
 
 bool ScreenshotInteractionState::movingSelection() const {

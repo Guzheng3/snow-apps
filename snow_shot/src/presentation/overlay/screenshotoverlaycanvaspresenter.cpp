@@ -394,6 +394,9 @@ void ScreenshotOverlayCanvasPresenter::setOverlayCursor(
     }
 
     switch (dragMode) {
+    case ScreenshotSelectionDragMode::Marquee:
+        canvas->setCursor(Qt::CrossCursor);
+        break;
     case ScreenshotSelectionDragMode::All:
         canvas->setCursor(Qt::SizeAllCursor);
         break;

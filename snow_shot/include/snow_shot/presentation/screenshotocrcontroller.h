@@ -2,6 +2,7 @@
 #define SNOW_SHOT_PRESENTATION_SCREENSHOTOCRCONTROLLER_H
 
 #include "snow_shot/presentation/screenshotinteractionstate.h"
+#include "snow_shot/presentation/screenshotselectiongeometry.h"
 #include "snow_shot/presentation/screenshotmessageservice.h"
 #include "snow_shot/presentation/screenshotocrrecognitionservice.h"
 #include "snow_shot/presentation/screenshotqrrecognitionservice.h"
@@ -44,6 +45,13 @@ struct ScreenshotOcrControllerContext {
     SnowShotApiClient* tableRecognition = nullptr;
     std::function<void()> hideColorPicker = []() {};
     std::function<void()> cancelCapture = []() {};
+    std::function<ScreenshotSelectionDragMode(const QPointF&)> selectionResizeDragMode =
+        [](const QPointF&) { return ScreenshotSelectionDragMode::None; };
+    std::function<bool(const QPointF&)> beginSelectionResize = [](const QPointF&) {
+        return false;
+    };
+    std::function<void(const QPointF&)> updateSelectionResize = [](const QPointF&) {};
+    std::function<void(const QPointF&)> finishSelectionResize = [](const QPointF&) {};
 };
 
 class ScreenshotOcrController final : public QObject {
@@ -119,6 +127,7 @@ class ScreenshotOcrController final : public QObject {
     void restorePreviousToolAfterFailure();
     void showStatus(const QString& message, bool error) const;
     [[nodiscard]] bool ensureRecognitionWindow();
+    void updateRecognitionWindowGeometry();
     void destroyRecognitionWindow();
     [[nodiscard]] QString currentCacheKey() const;
 

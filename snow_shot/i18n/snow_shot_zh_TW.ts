@@ -1106,20 +1106,42 @@
         <translation>切換元素層級：滑鼠滾輪</translation>
     </message>
     <message>
-        <location filename="../include/snow_shot/presentation/screenshotshortcuthints.h" line="36"/>
-        <source>Copy color: C</source>
+        <source>Switch Selection Between Window and Window Sub-element: Tab</source>
+        <translation>在視窗和視窗子元素之間切換選取區：Tab</translation>
+    </message>
+    <message>
+        <source>Move Entire Selection: Space</source>
+        <translation>移動整個選取區：Space</translation>
+    </message>
+    <message>
+        <source>Keep Selection Width and Height Consistent: Shift</source>
+        <translation>保持選取區寬高一致：Shift</translation>
+    </message>
+    <message>
+        <source>Select Previously Selected Area: R</source>
+        <translation>選取先前選取的區域：R</translation>
+    </message>
+    <message>
+        <source>Copy Color: C</source>
         <translation>複製色彩：C</translation>
     </message>
     <message>
-        <location filename="../include/snow_shot/presentation/screenshotshortcuthints.h" line="37"/>
-        <source>Switch color format: Shift</source>
+        <source>Switch Color Format: Shift</source>
         <translation>切換色彩格式：Shift</translation>
     </message>
     <message>
-        <location filename="../include/snow_shot/presentation/screenshotshortcuthints.h" line="39"/>
-        <source>Switch screenshot history: [ , ] [ . ]</source>
+        <source>Switch Screenshot History: [ , ] [ . ]</source>
         <translation>切換螢幕擷取歷史：[ , ] [ . ]</translation>
     </message>
+    <message><source>Switch Screenshot History</source><translation>切換螢幕擷取歷史</translation></message>
+    <message><source>Maintain aspect ratio: Shift</source><translation>保持寬高比：Shift</translation></message>
+    <message><source>Fixed-angle rotation: Shift</source><translation>固定角度旋轉：Shift</translation></message>
+    <message><source>Scale from center: Alt</source><translation>從中心縮放：Alt</translation></message>
+    <message><source>Auto-align: Ctrl</source><translation>自動對齊：Ctrl</translation></message>
+    <message><source>Delete selected elements: Delete</source><translation>刪除選取的元素：Delete</translation></message>
+    <message><source>Draw straight line: Shift</source><translation>繪製直線：Shift</translation></message>
+    <message><source>Vertical scroll: mouse wheel</source><translation>垂直捲動：滑鼠滾輪</translation></message>
+    <message><source>Horizontal scroll: Shift + mouse wheel</source><translation>水平捲動：Shift + 滑鼠滾輪</translation></message>
 </context>
 <context>
     <name>ScreenshotTableEditor</name>
@@ -1785,6 +1807,11 @@
         <translation>實線描邊</translation>
     </message>
     <message>
+        <location filename="../src/presentation/tools/screenshottoolpalettestylecontrols.cpp" line="115"/>
+        <source>Pick color from canvas</source>
+        <translation>從畫布擷取色彩</translation>
+    </message>
+    <message>
         <location filename="../src/presentation/tools/screenshottoolpalettestylecontrols.cpp" line="113"/>
         <source>Cross-line fill</source>
         <translation>交叉線填充</translation>
@@ -2083,10 +2110,17 @@
         <source>Screenshot shortcut</source>
         <translation>截圖快速鍵</translation>
     </message>
+    <message><source>Move Entire Selection</source><translation>移動整個選取區</translation></message>
+    <message><source>Keep Selection Width and Height Consistent</source><translation>保持選取區寬高一致</translation></message>
+    <message><source>Switch Selection Between Window and Window Sub-element</source><translation>在視窗和視窗子元素之間切換選取區</translation></message>
+    <message><source>Previous Screenshot History</source><translation>上一筆螢幕擷取歷史</translation></message>
+    <message><source>Next Screenshot History</source><translation>下一筆螢幕擷取歷史</translation></message>
+    <message><source>Select Previously Selected Area</source><translation>選取先前選取的區域</translation></message>
+    <message><source>Copy Color</source><translation>複製色彩</translation></message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="891"/>
-        <source>Move tool</source>
-        <translation>移動工具</translation>
+        <source>Edit selection</source>
+        <translation>編輯選取範圍</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="895"/>
@@ -2427,26 +2461,6 @@
         <translation>切換錄製</translation>
     </message>
     <message>
-        <location filename="../src/presentation/settings/settingscatalog.cpp" line="170"/>
-        <source>Show/Hide Main Window</source>
-        <translation>顯示/隱藏主視窗</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/settings/settingscatalog.cpp" line="171"/>
-        <source>Show the main window, or close it when it is already open</source>
-        <translation>顯示主視窗，已開啟時則關閉視窗</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/settings/settingscatalog.cpp" line="173"/>
-        <source>Main window</source>
-        <translation>主視窗</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/settings/settingscatalog.cpp" line="174"/>
-        <source>Toggle window</source>
-        <translation>切換視窗</translation>
-    </message>
-    <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="184"/>
         <source>Open the screenshot history page in the main window</source>
         <translation>在主視窗開啟螢幕擷取歷史</translation>
@@ -2607,6 +2621,36 @@
         <translation>系統匣</translation>
     </message>
     <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="433"/>
+        <source>Menu Options</source>
+        <translation>選單選項</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="435"/>
+        <source>Choose the functions shown in the system tray menu</source>
+        <translation>選擇系統匣選單中顯示的功能</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="436"/>
+        <source>Tray menu</source>
+        <translation>系統匣選單</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="1610"/>
+        <source>Disable Shortcut Functions</source>
+        <translation>停用快捷功能</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="1605"/>
+        <source>Show Main Interface</source>
+        <translation>顯示主介面</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="1612"/>
+        <source>Exit</source>
+        <translation>結束</translation>
+    </message>
+    <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="339"/>
         <source>Default</source>
         <translation>預設</translation>
@@ -2705,7 +2749,7 @@
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="433"/>
         <source>Pin Clipboard Content to Screen</source>
-        <translation>將剪貼簿內容釘選到螢幕</translation>
+        <translation>固定剪貼簿內容到螢幕</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="434"/>
@@ -3968,24 +4012,6 @@ Change the shortcut and try again</source>
         <location filename="../src/presentation/components/storagestatussettingswidget.cpp" line="170"/>
         <source>None</source>
         <translation>無</translation>
-    </message>
-</context>
-<context>
-    <name>SystemTrayController</name>
-    <message>
-        <location filename="../src/presentation/services/systemtraycontroller.cpp" line="118"/>
-        <source>Screenshot</source>
-        <translation>螢幕截圖</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/services/systemtraycontroller.cpp" line="120"/>
-        <source>Show Main Window</source>
-        <translation>顯示主視窗</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/services/systemtraycontroller.cpp" line="121"/>
-        <source>Exit</source>
-        <translation>結束</translation>
     </message>
 </context>
 <context>

@@ -45,6 +45,7 @@ struct ScreenshotToolPaletteStyleControlCallbacks {
     std::function<void(const SnowCanvasWatermarkConfig& config)> watermarkConfigChanged;
     std::function<void(const SnowCanvasWatermarkConfig& config)> watermarkPreviewChanged;
     std::function<void()> visibleContentChanged;
+    std::function<void(adqt::widgets::AdColorPicker* picker)> canvasColorSamplingRequested;
 };
 
 class ScreenshotToolPaletteStyleControls final : private ScreenshotToolPaletteStyleState {
@@ -189,7 +190,6 @@ class ScreenshotToolPaletteStyleControls final : private ScreenshotToolPaletteSt
     [[nodiscard]] ScreenshotToolPaletteRectangleStyleModel& activeCreationShapeStyle();
     [[nodiscard]] SnowCanvasShapeKind activeShapeKind() const;
     void notifyTextStyleChanged() const;
-    void applyTextActiveButtonStyles();
     void updateWatermarkControls();
     void refreshWatermarkOpacityMetrics(const ScreenshotToolPaletteButtonMetrics& metrics);
     void notifyWatermarkConfigChanged() const;

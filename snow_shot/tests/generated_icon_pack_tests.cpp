@@ -69,8 +69,8 @@ void everySnowShotEntryRenders() {
     adqt::icons::IconRegistry registry;
     const auto registered = icons::registerWith(registry);
     require(registered.ok(), "Snow Shot pack registration should succeed");
-    require(icons::pack().definition().entries.size() == 71,
-            "Snow Shot pack should contain all 71 project-owned assets");
+    require(icons::pack().definition().entries.size() == 75,
+            "Snow Shot pack should contain all 75 project-owned assets");
 
     adqt::icons::IconRenderRequest request;
     request.logicalSize = QSize(32, 32);
@@ -204,6 +204,10 @@ int main(int argc, char** argv) {
     try {
         if (application.arguments().contains(QStringLiteral("--ocr-translate-only"))) {
             ocrTranslateIconUsesTheSuppliedProjectAsset();
+            return 0;
+        }
+        if (application.arguments().contains(QStringLiteral("--all-entries-only"))) {
+            everySnowShotEntryRenders();
             return 0;
         }
         everySnowShotEntryRenders();

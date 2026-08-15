@@ -6,13 +6,14 @@
 #include "snow_shot/presentation/screenshotpinnedwindow.h"
 #include "snow_shot/presentation/screenshottoolpalette.h"
 #include "snow_shot/presentation/screenshottoolpalettehost.h"
+#include "snow_shot/presentation/windowshortcutmanager.h"
+#include "snow_shot/storage/applicationstorage.h"
+#include "snow_shot/storage/configurationstore.h"
 #include "snow_shot/storage/settingsadapters.h"
 
 #include "snow_draw_engine_qt/snow_canvas_widget.h"
 
 #include <QEvent>
-#include <QKeyEvent>
-#include <QKeySequence>
 #include <QPointer>
 #include <QScreen>
 #include <QTimer>
@@ -50,8 +51,11 @@ ScreenshotToolPalette::Options pinnedEditToolbarOptions() {
 
 ScreenshotPinnedEditController::ScreenshotPinnedEditController(ScreenshotPinnedWindow& pinnedWindow,
                                                                SnowCanvasWidget& canvas,
+                                                               snow_shot::presentation::WindowShortcutManager&
+                                                                   shortcutManager,
                                                                QObject* parent)
-    : QObject(parent), m_pinnedWindow(pinnedWindow), m_canvas(canvas) {
+    : QObject(parent), m_pinnedWindow(pinnedWindow), m_canvas(canvas),
+      m_shortcutManager(shortcutManager) {
     m_canvas.installEventFilter(this);
     m_toolbarWindow = new ScreenshotFloatingToolPaletteWindow(pinnedEditToolbarOptions());
     m_toolbarWindow->setAttribute(Qt::WA_DeleteOnClose, false);
@@ -168,6 +172,19 @@ ScreenshotPinnedEditController::ScreenshotPinnedEditController(ScreenshotPinnedW
         }
     });
 
+    registerDrawingShortcuts();
+    reloadDrawingShortcuts();
+    auto& storage = snow_shot::storage::ApplicationStorage::instance();
+    if (storage.isInitialized()) {
+        connect(&storage.configuration(),
+                &snow_shot::storage::ConfigurationStore::valueChanged, this,
+                [this](const QString& key, const QJsonValue&) {
+                    if (key.startsWith(QStringLiteral("drawing_shortcuts/"))) {
+                        reloadDrawingShortcuts();
+                    }
+                });
+    }
+
     updatePlacement();
 }
 
@@ -180,10 +197,6 @@ bool ScreenshotPinnedEditController::editMode() const {
 }
 
 bool ScreenshotPinnedEditController::eventFilter(QObject* watched, QEvent* event) {
-    if (watched == &m_canvas && event != nullptr && event->type() == QEvent::KeyPress &&
-        m_editMode && handleDrawingShortcut(static_cast<QKeyEvent*>(event))) {
-        return true;
-    }
     if (watched == &m_canvas && event != nullptr && event->type() == QEvent::Wheel && m_editMode) {
         auto* wheelEvent = static_cast<QWheelEvent*>(event);
         const int deltaY = !wheelEvent->pixelDelta().isNull() ? wheelEvent->pixelDelta().y()
@@ -217,37 +230,36 @@ bool ScreenshotPinnedEditController::eventFilter(QObject* watched, QEvent* event
     return QObject::eventFilter(watched, event);
 }
 
-bool ScreenshotPinnedEditController::handleDrawingShortcut(QKeyEvent* event) {
-    if (event == nullptr || event->isAutoRepeat() || m_canvas.hasActiveTextEditing()) {
-        return false;
+void ScreenshotPinnedEditController::registerDrawingShortcuts() {
+    const auto shortcuts = snow_shot::storage::DrawingShortcutSettings().allShortcuts();
+    for (auto tool = shortcuts.cbegin(); tool != shortcuts.cend(); ++tool) {
+        snow_shot::presentation::WindowShortcutManager::Binding binding;
+        binding.id = QStringLiteral("pinned.drawing.") + tool.key();
+        binding.priority =
+            snow_shot::presentation::WindowShortcutManager::StandardPriority::DrawingShortcut;
+        binding.canActivate = [this](const auto&) {
+            return m_editMode && !m_canvas.hasActiveTextEditing() &&
+                   m_toolbarWindow != nullptr && m_toolbarWindow->palette() != nullptr;
+        };
+        binding.activate = [this, toolId = tool.key()](const auto&) {
+            ScreenshotToolPalette* toolbar =
+                m_toolbarWindow != nullptr ? m_toolbarWindow->palette() : nullptr;
+            return toolbar != nullptr && toolbar->activateDrawingShortcut(toolId);
+        };
+        m_drawingShortcutBindings.insert(
+            tool.key(), m_shortcutManager.addBinding(this, std::move(binding)));
     }
+}
 
-    const QString pressed =
-        QKeySequence(QKeyCombination(event->modifiers(), Qt::Key(event->key())))
-            .toString(QKeySequence::PortableText)
-            .trimmed();
-    if (pressed.isEmpty() ||
-        snow_shot::storage::DrawingShortcutSettings::isReservedShortcut(pressed)) {
-        return false;
+void ScreenshotPinnedEditController::reloadDrawingShortcuts() {
+    const snow_shot::storage::DrawingShortcutSettings settings;
+    for (auto binding = m_drawingShortcutBindings.cbegin();
+         binding != m_drawingShortcutBindings.cend(); ++binding) {
+        static_cast<void>(m_shortcutManager.setKeyCombinations(
+            binding.value(),
+            snow_shot::presentation::WindowShortcutManager::keyCombinationsFromPortableText(
+                settings.shortcuts(binding.key()))));
     }
-
-    ScreenshotToolPalette* toolbar =
-        m_toolbarWindow != nullptr ? m_toolbarWindow->palette() : nullptr;
-    if (toolbar == nullptr) {
-        return false;
-    }
-    const auto shortcutsByTool =
-        snow_shot::storage::DrawingShortcutSettings().allShortcuts();
-    for (auto toolIt = shortcutsByTool.cbegin(); toolIt != shortcutsByTool.cend(); ++toolIt) {
-        for (const QString& shortcut : toolIt.value()) {
-            if (shortcut.compare(pressed, Qt::CaseInsensitive) == 0 &&
-                toolbar->activateDrawingShortcut(toolIt.key())) {
-                event->accept();
-                return true;
-            }
-        }
-    }
-    return false;
 }
 
 ScreenshotFloatingToolPaletteWindow* ScreenshotPinnedEditController::toolbarWindow() const {

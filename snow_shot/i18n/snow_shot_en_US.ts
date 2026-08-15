@@ -1107,20 +1107,42 @@
         <translation>Switch element level: mouse wheel</translation>
     </message>
     <message>
-        <location filename="../include/snow_shot/presentation/screenshotshortcuthints.h" line="36"/>
-        <source>Copy color: C</source>
-        <translation>Copy color: C</translation>
+        <source>Switch Selection Between Window and Window Sub-element: Tab</source>
+        <translation>Switch Selection Between Window and Window Sub-element: Tab</translation>
     </message>
     <message>
-        <location filename="../include/snow_shot/presentation/screenshotshortcuthints.h" line="37"/>
-        <source>Switch color format: Shift</source>
-        <translation>Switch color format: Shift</translation>
+        <source>Move Entire Selection: Space</source>
+        <translation>Move Entire Selection: Space</translation>
     </message>
     <message>
-        <location filename="../include/snow_shot/presentation/screenshotshortcuthints.h" line="39"/>
-        <source>Switch screenshot history: [ , ] [ . ]</source>
-        <translation>Switch screenshot history: [ , ] [ . ]</translation>
+        <source>Keep Selection Width and Height Consistent: Shift</source>
+        <translation>Keep Selection Width and Height Consistent: Shift</translation>
     </message>
+    <message>
+        <source>Select Previously Selected Area: R</source>
+        <translation>Select Previously Selected Area: R</translation>
+    </message>
+    <message>
+        <source>Copy Color: C</source>
+        <translation>Copy Color: C</translation>
+    </message>
+    <message>
+        <source>Switch Color Format: Shift</source>
+        <translation>Switch Color Format: Shift</translation>
+    </message>
+    <message>
+        <source>Switch Screenshot History: [ , ] [ . ]</source>
+        <translation>Switch Screenshot History: [ , ] [ . ]</translation>
+    </message>
+    <message><source>Switch Screenshot History</source><translation>Switch Screenshot History</translation></message>
+    <message><source>Maintain aspect ratio: Shift</source><translation>Maintain aspect ratio: Shift</translation></message>
+    <message><source>Fixed-angle rotation: Shift</source><translation>Fixed-angle rotation: Shift</translation></message>
+    <message><source>Scale from center: Alt</source><translation>Scale from center: Alt</translation></message>
+    <message><source>Auto-align: Ctrl</source><translation>Auto-align: Ctrl</translation></message>
+    <message><source>Delete selected elements: Delete</source><translation>Delete selected elements: Delete</translation></message>
+    <message><source>Draw straight line: Shift</source><translation>Draw straight line: Shift</translation></message>
+    <message><source>Vertical scroll: mouse wheel</source><translation>Vertical scroll: mouse wheel</translation></message>
+    <message><source>Horizontal scroll: Shift + mouse wheel</source><translation>Horizontal scroll: Shift + mouse wheel</translation></message>
 </context>
 <context>
     <name>ScreenshotTableEditor</name>
@@ -1786,6 +1808,11 @@
         <translation>Solid stroke</translation>
     </message>
     <message>
+        <location filename="../src/presentation/tools/screenshottoolpalettestylecontrols.cpp" line="115"/>
+        <source>Pick color from canvas</source>
+        <translation>Pick color from canvas</translation>
+    </message>
+    <message>
         <location filename="../src/presentation/tools/screenshottoolpalettestylecontrols.cpp" line="113"/>
         <source>Cross-line fill</source>
         <translation>Cross-line fill</translation>
@@ -2084,10 +2111,17 @@
         <source>Screenshot shortcut</source>
         <translation>Screenshot shortcut</translation>
     </message>
+    <message><source>Move Entire Selection</source><translation>Move Entire Selection</translation></message>
+    <message><source>Keep Selection Width and Height Consistent</source><translation>Keep Selection Width and Height Consistent</translation></message>
+    <message><source>Switch Selection Between Window and Window Sub-element</source><translation>Switch Selection Between Window and Window Sub-element</translation></message>
+    <message><source>Previous Screenshot History</source><translation>Previous Screenshot History</translation></message>
+    <message><source>Next Screenshot History</source><translation>Next Screenshot History</translation></message>
+    <message><source>Select Previously Selected Area</source><translation>Select Previously Selected Area</translation></message>
+    <message><source>Copy Color</source><translation>Copy Color</translation></message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="891"/>
-        <source>Move tool</source>
-        <translation>Move tool</translation>
+        <source>Edit selection</source>
+        <translation>Edit selection</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="895"/>
@@ -2428,26 +2462,6 @@
         <translation>Recording toggle</translation>
     </message>
     <message>
-        <location filename="../src/presentation/settings/settingscatalog.cpp" line="170"/>
-        <source>Show/Hide Main Window</source>
-        <translation>Show/Hide Main Window</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/settings/settingscatalog.cpp" line="171"/>
-        <source>Show the main window, or close it when it is already open</source>
-        <translation>Show the main window, or close it when it is already open</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/settings/settingscatalog.cpp" line="173"/>
-        <source>Main window</source>
-        <translation>Main window</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/settings/settingscatalog.cpp" line="174"/>
-        <source>Toggle window</source>
-        <translation>Toggle window</translation>
-    </message>
-    <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="184"/>
         <source>Open the screenshot history page in the main window</source>
         <translation>Open the screenshot history page in the main window</translation>
@@ -2606,6 +2620,36 @@
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="331"/>
         <source>System tray</source>
         <translation>System tray</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="433"/>
+        <source>Menu Options</source>
+        <translation>Menu Options</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="435"/>
+        <source>Choose the functions shown in the system tray menu</source>
+        <translation>Choose the functions shown in the system tray menu</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="436"/>
+        <source>Tray menu</source>
+        <translation>Tray menu</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="1610"/>
+        <source>Disable Shortcut Functions</source>
+        <translation>Disable Shortcut Functions</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="1605"/>
+        <source>Show Main Interface</source>
+        <translation>Show Main Interface</translation>
+    </message>
+    <message>
+        <location filename="../src/presentation/settings/settingscatalog.cpp" line="1612"/>
+        <source>Exit</source>
+        <translation>Exit</translation>
     </message>
     <message>
         <location filename="../src/presentation/settings/settingscatalog.cpp" line="339"/>
@@ -3969,24 +4013,6 @@ Change the shortcut and try again</translation>
         <location filename="../src/presentation/components/storagestatussettingswidget.cpp" line="170"/>
         <source>None</source>
         <translation>None</translation>
-    </message>
-</context>
-<context>
-    <name>SystemTrayController</name>
-    <message>
-        <location filename="../src/presentation/services/systemtraycontroller.cpp" line="118"/>
-        <source>Screenshot</source>
-        <translation>Screenshot</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/services/systemtraycontroller.cpp" line="120"/>
-        <source>Show Main Window</source>
-        <translation>Show Main Window</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/services/systemtraycontroller.cpp" line="121"/>
-        <source>Exit</source>
-        <translation>Exit</translation>
     </message>
 </context>
 <context>

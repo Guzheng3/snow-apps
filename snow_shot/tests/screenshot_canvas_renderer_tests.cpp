@@ -79,7 +79,7 @@ class NoopOverlayEventSink final : public ScreenshotOverlayEventSink {
         return false;
     }
 
-    bool handleOverlayKeyPress(int, Qt::KeyboardModifiers) override {
+    bool shouldBlockUnhandledOverlayKeyInput() const override {
         return false;
     }
 
@@ -611,33 +611,56 @@ void screenshotUiPreferencesNormalizeAndApplyPickerVisibilityPolicies() {
 }
 
 void shortcutHintStagesUseTheExactRequiredLines() {
-    const QStringList selectionLines{
-        QStringLiteral("Copy color: C"),
-        QStringLiteral("Switch color format: Shift"),
-        QStringLiteral("Switch screenshot history: [ , ] [ . ]"),
+    const QStringList commonLines{
+        QStringLiteral("Select Previously Selected Area: R"),
+        QStringLiteral("Copy Color: C"),
+        QStringLiteral("Switch Color Format: Shift"),
+        QStringLiteral("Switch Screenshot History: [ , ] [ . ]"),
     };
-    QStringList smartLines{QStringLiteral("Switch element level: mouse wheel")};
-    smartLines.append(selectionLines);
+    const QStringList selectionLines{
+        QStringLiteral("Move Entire Selection: Space"),
+        QStringLiteral("Keep Selection Width and Height Consistent: Shift"),
+    };
+    QStringList resizeLines = selectionLines;
+    resizeLines.append(commonLines);
+    QStringList smartLines{
+        QStringLiteral("Switch element level: mouse wheel"),
+        QStringLiteral("Switch Selection Between Window and Window Sub-element: Tab"),
+    };
+    smartLines.append(commonLines);
 
+    ScreenshotShortcutHintContext hintContext;
+    hintContext.activeTool = ScreenshotActiveTool::Move;
+
+    hintContext.captureMode = ScreenshotCaptureMode::IntelligentSelecting;
     const ScreenshotShortcutHintMode smartMode =
-        screenshotShortcutHintModeForState(true, false, false, true);
+        screenshotShortcutHintModeForContext(hintContext);
+    const QStringList smartContextLines = screenshotShortcutHintLines(hintContext);
+
+    hintContext.captureMode = ScreenshotCaptureMode::ManualSelecting;
     const ScreenshotShortcutHintMode manualMode =
-        screenshotShortcutHintModeForState(false, true, false, true);
+        screenshotShortcutHintModeForContext(hintContext);
+    const QStringList manualContextLines = screenshotShortcutHintLines(hintContext);
+
+    hintContext.captureMode = ScreenshotCaptureMode::MovingSelection;
     const ScreenshotShortcutHintMode confirmedMoveMode =
-        screenshotShortcutHintModeForState(false, false, true, true);
+        screenshotShortcutHintModeForContext(hintContext);
+    const QStringList confirmedMoveContextLines = screenshotShortcutHintLines(hintContext);
 
     require(smartMode == ScreenshotShortcutHintMode::SmartSelection &&
-                screenshotShortcutHintLines(smartMode) == smartLines,
-            "smart selection must show the exact four shortcut hint lines");
+                smartContextLines == smartLines,
+            "smart selection must show the exact six context-appropriate shortcut hint lines");
     require(manualMode == ScreenshotShortcutHintMode::Selection &&
-                screenshotShortcutHintLines(manualMode) == selectionLines,
-            "manual selection must show the exact three shortcut hint lines");
+                manualContextLines == resizeLines,
+            "manual selection must show the exact six shortcut hint lines");
     require(confirmedMoveMode == ScreenshotShortcutHintMode::Selection &&
-                screenshotShortcutHintLines(confirmedMoveMode) == selectionLines,
+                confirmedMoveContextLines == resizeLines,
             "a confirmed selection with Move active must show the manual hint lines");
-    require(screenshotShortcutHintModeForState(false, false, true, false) ==
+
+    hintContext.activeTool = ScreenshotActiveTool::Select;
+    require(screenshotShortcutHintModeForContext(hintContext) ==
                     ScreenshotShortcutHintMode::Hidden &&
-                screenshotShortcutHintLines(ScreenshotShortcutHintMode::Hidden).isEmpty(),
+                screenshotShortcutHintLines(hintContext).isEmpty(),
             "shortcut hints must be hidden outside the three required stages");
 }
 

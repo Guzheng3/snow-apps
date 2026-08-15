@@ -4,6 +4,8 @@
 
 #include <QAbstractTextDocumentLayout>
 #include <QClipboard>
+#include <QCoreApplication>
+#include <QFile>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QMimeData>
@@ -15,6 +17,7 @@
 #include <QTextDocument>
 #include <QTextFrame>
 #include <QTextOption>
+#include <QThread>
 #include <QUrl>
 #include <QVariant>
 
@@ -30,6 +33,7 @@ constexpr int kMaximumRichTextHeight = 32768;
 constexpr qint64 kMaximumRichTextPixels = 64LL * 1024LL * 1024LL;
 constexpr qint64 kMaximumClipboardImagePixels = 64LL * 1000LL * 1000LL;
 constexpr qint64 kMaximumClipboardImageBytes = 256LL * 1024LL * 1024LL;
+constexpr qint64 kMaximumEncodedImageBytes = 256LL * 1024LL * 1024LL;
 constexpr qreal kFormattedTextPadding = 16.0;
 
 class RestrictedTextDocument final : public QTextDocument {
@@ -50,18 +54,33 @@ class RestrictedTextDocument final : public QTextDocument {
     }
 };
 
+bool cancellationRequested(const ScreenshotClipboardContentReader::CancellationCheck& cancelled) {
+    return cancelled && cancelled();
+}
+
+std::shared_ptr<QTextDocument> makeRestrictedDocument() {
+    return std::shared_ptr<QTextDocument>(
+        new RestrictedTextDocument(), [](QTextDocument* document) {
+            if (document == nullptr) {
+                return;
+            }
+            if (document->thread() == QThread::currentThread()) {
+                delete document;
+            } else {
+                QMetaObject::invokeMethod(document, &QObject::deleteLater, Qt::QueuedConnection);
+            }
+        });
+}
+
 struct EncodedImageFormat {
     const char* mimeType;
     snow::image::Format format;
 };
 
 constexpr EncodedImageFormat kEncodedImageFormats[] = {
-    {"image/png", snow::image::Format::png},
-    {"image/jpeg", snow::image::Format::jpeg},
-    {"image/jpg", snow::image::Format::jpeg},
-    {"image/webp", snow::image::Format::webp},
-    {"image/jxl", snow::image::Format::jxl},
-    {"image/avif", snow::image::Format::avif},
+    {"image/png", snow::image::Format::png},  {"image/jpeg", snow::image::Format::jpeg},
+    {"image/jpg", snow::image::Format::jpeg}, {"image/webp", snow::image::Format::webp},
+    {"image/jxl", snow::image::Format::jxl},  {"image/avif", snow::image::Format::avif},
 };
 
 struct FileImageFormat {
@@ -70,12 +89,9 @@ struct FileImageFormat {
 };
 
 constexpr FileImageFormat kFileImageFormats[] = {
-    {"png", snow::image::Format::png},
-    {"jpg", snow::image::Format::jpeg},
-    {"jpeg", snow::image::Format::jpeg},
-    {"webp", snow::image::Format::webp},
-    {"jxl", snow::image::Format::jxl},
-    {"avif", snow::image::Format::avif},
+    {"png", snow::image::Format::png},   {"jpg", snow::image::Format::jpeg},
+    {"jpeg", snow::image::Format::jpeg}, {"webp", snow::image::Format::webp},
+    {"jxl", snow::image::Format::jxl},   {"avif", snow::image::Format::avif},
 };
 
 QImage normalizedImage(QImage image) {
@@ -83,8 +99,8 @@ QImage normalizedImage(QImage image) {
         return {};
     }
     const qint64 pixels = static_cast<qint64>(image.width()) * image.height();
-    if (pixels <= 0 || pixels > kMaximumClipboardImagePixels ||
-        image.sizeInBytes() <= 0 || image.sizeInBytes() > kMaximumClipboardImageBytes) {
+    if (pixels <= 0 || pixels > kMaximumClipboardImagePixels || image.sizeInBytes() <= 0 ||
+        image.sizeInBytes() > kMaximumClipboardImageBytes) {
         return {};
     }
     image.setDevicePixelRatio(1.0);
@@ -151,9 +167,14 @@ std::optional<ScreenshotClipboardContent> imageContent(QImage image) {
     return result;
 }
 
-std::optional<ScreenshotClipboardContent> renderTextDocument(
-    std::shared_ptr<QTextDocument> document, QString plainText, qreal devicePixelRatio) {
+std::optional<ScreenshotClipboardContent>
+renderTextDocument(std::shared_ptr<QTextDocument> document, QString plainText,
+                   qreal devicePixelRatio, const QColor& baseColor,
+                   const ScreenshotClipboardContentReader::CancellationCheck& cancelled) {
     if (document == nullptr || !std::isfinite(devicePixelRatio) || devicePixelRatio <= 0.0) {
+        return std::nullopt;
+    }
+    if (cancellationRequested(cancelled)) {
         return std::nullopt;
     }
 
@@ -199,7 +220,10 @@ std::optional<ScreenshotClipboardContent> renderTextDocument(
         return std::nullopt;
     }
     image.setDevicePixelRatio(devicePixelRatio);
-    image.fill(QGuiApplication::palette().color(QPalette::Base));
+    image.fill(baseColor.isValid() ? baseColor : QColor(Qt::white));
+    if (cancellationRequested(cancelled)) {
+        return std::nullopt;
+    }
     QPainter painter(&image);
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setRenderHint(QPainter::TextAntialiasing, true);
@@ -212,16 +236,20 @@ std::optional<ScreenshotClipboardContent> renderTextDocument(
     result.formattedDocument = std::move(document);
     result.plainText = std::move(plainText);
     result.formattedTextDevicePixelRatio = devicePixelRatio;
+    if (QCoreApplication* application = QCoreApplication::instance();
+        result.formattedDocument != nullptr && application != nullptr &&
+        result.formattedDocument->thread() != application->thread()) {
+        result.formattedDocument->moveToThread(application->thread());
+    }
     return result;
 }
 
-std::shared_ptr<QTextDocument> makeDocument(const QString& source, bool html,
-                                            QString* plainText) {
+std::shared_ptr<QTextDocument> makeDocument(const QString& source, bool html, QString* plainText) {
     if (plainText == nullptr) {
         return {};
     }
 
-    auto document = std::make_shared<RestrictedTextDocument>();
+    auto document = makeRestrictedDocument();
     if (html) {
         if (source.trimmed().isEmpty()) {
             return {};
@@ -242,17 +270,24 @@ std::shared_ptr<QTextDocument> makeDocument(const QString& source, bool html,
     return document;
 }
 
-std::optional<ScreenshotClipboardContent> readEncodedImage(const QMimeData* mimeData) {
-    for (const EncodedImageFormat& candidate : kEncodedImageFormats) {
-        if (!mimeData->hasFormat(QLatin1String(candidate.mimeType))) {
+std::optional<ScreenshotClipboardContent>
+readEncodedImage(const QList<ScreenshotClipboardEncodedImage>& images,
+                 const ScreenshotClipboardContentReader::CancellationCheck& cancelled) {
+    for (const ScreenshotClipboardEncodedImage& imageData : images) {
+        if (cancellationRequested(cancelled)) {
+            return std::nullopt;
+        }
+        const auto format =
+            std::find_if(std::begin(kEncodedImageFormats), std::end(kEncodedImageFormats),
+                         [&imageData](const EncodedImageFormat& candidate) {
+                             return imageData.mimeType == QLatin1String(candidate.mimeType);
+                         });
+        if (format == std::end(kEncodedImageFormats) || imageData.bytes.isEmpty() ||
+            imageData.bytes.size() > kMaximumEncodedImageBytes) {
             continue;
         }
-        const QByteArray encoded = mimeData->data(QLatin1String(candidate.mimeType));
-        if (encoded.isEmpty()) {
-            continue;
-        }
-        if (QImage image = snow_shot::image_codec::decode(encoded, candidate.format,
-                                                           candidate.mimeType);
+        if (QImage image =
+                snow_shot::image_codec::decode(imageData.bytes, format->format, format->mimeType);
             !image.isNull()) {
             return imageContent(std::move(image));
         }
@@ -260,87 +295,165 @@ std::optional<ScreenshotClipboardContent> readEncodedImage(const QMimeData* mime
     return std::nullopt;
 }
 
-std::optional<ScreenshotClipboardContent> readFileImage(const QMimeData* mimeData) {
+std::optional<ScreenshotClipboardContent>
+readFileImage(const ScreenshotClipboardLocalImage& localImage,
+              const ScreenshotClipboardContentReader::CancellationCheck& cancelled) {
+    const auto format =
+        std::find_if(std::begin(kFileImageFormats), std::end(kFileImageFormats),
+                     [&localImage](const FileImageFormat& candidate) {
+                         return localImage.suffix == QLatin1String(candidate.suffix);
+                     });
+    if (format == std::end(kFileImageFormats) || cancellationRequested(cancelled)) {
+        return std::nullopt;
+    }
+
+    const QFileInfo before(localImage.absolutePath);
+    if (!before.exists() || !before.isFile() || !before.isReadable() ||
+        before.size() != localImage.size ||
+        before.lastModified().toUTC() != localImage.lastModifiedUtc || before.size() <= 0 ||
+        before.size() > kMaximumEncodedImageBytes) {
+        return std::nullopt;
+    }
+    QFile file(before.absoluteFilePath());
+    if (!file.open(QIODevice::ReadOnly)) {
+        return std::nullopt;
+    }
+    const QByteArray encoded = file.read(kMaximumEncodedImageBytes + 1);
+    file.close();
+    const QFileInfo after(localImage.absolutePath);
+    if (encoded.isEmpty() || encoded.size() > kMaximumEncodedImageBytes ||
+        after.size() != localImage.size ||
+        after.lastModified().toUTC() != localImage.lastModifiedUtc ||
+        cancellationRequested(cancelled)) {
+        return std::nullopt;
+    }
+    return imageContent(snow_shot::image_codec::decode(encoded, format->format,
+                                                       QByteArray("image/") + format->suffix));
+}
+} // namespace
+
+std::optional<ScreenshotClipboardContent>
+ScreenshotClipboardContentReader::read(QClipboard* clipboard, qreal devicePixelRatio) {
+    auto captured = snapshot(clipboard, devicePixelRatio);
+    return captured.has_value() ? decode(std::move(*captured)) : std::nullopt;
+}
+
+std::optional<ScreenshotClipboardContent>
+ScreenshotClipboardContentReader::readMimeData(const QMimeData* mimeData, qreal devicePixelRatio) {
+    auto captured = snapshotMimeData(mimeData, devicePixelRatio,
+                                     QGuiApplication::palette().color(QPalette::Base));
+    return captured.has_value() ? decode(std::move(*captured)) : std::nullopt;
+}
+
+std::optional<ScreenshotClipboardContentSnapshot>
+ScreenshotClipboardContentReader::snapshot(QClipboard* clipboard, qreal devicePixelRatio) {
+    return clipboard == nullptr
+               ? std::nullopt
+               : snapshotMimeData(clipboard->mimeData(), devicePixelRatio,
+                                  QGuiApplication::palette().color(QPalette::Base));
+}
+
+std::optional<ScreenshotClipboardContentSnapshot>
+ScreenshotClipboardContentReader::snapshotMimeData(const QMimeData* mimeData,
+                                                   qreal devicePixelRatio,
+                                                   const QColor& baseColor) {
+    if (mimeData == nullptr || !std::isfinite(devicePixelRatio) || devicePixelRatio <= 0.0) {
+        return std::nullopt;
+    }
+
+    ScreenshotClipboardContentSnapshot snapshot;
+    snapshot.devicePixelRatio = devicePixelRatio;
+    snapshot.baseColor = baseColor;
+
+    for (const EncodedImageFormat& candidate : kEncodedImageFormats) {
+        const QLatin1String mimeType(candidate.mimeType);
+        if (!mimeData->hasFormat(mimeType)) {
+            continue;
+        }
+        QByteArray bytes = mimeData->data(mimeType);
+        if (!bytes.isEmpty() && bytes.size() <= kMaximumEncodedImageBytes) {
+            snapshot.encodedImages.push_back(
+                ScreenshotClipboardEncodedImage{std::move(bytes), mimeType});
+        }
+    }
+
+    if (const QVariant imageValue = mimeData->imageData(); imageValue.isValid()) {
+        if (imageValue.canConvert<QImage>()) {
+            snapshot.detachedImage = imageValue.value<QImage>();
+        } else if (imageValue.canConvert<QPixmap>()) {
+            snapshot.detachedImage = imageValue.value<QPixmap>().toImage();
+        }
+    }
+
     for (const QUrl& url : mimeData->urls()) {
         if (!url.isLocalFile()) {
             continue;
         }
         const QFileInfo fileInfo(url.toLocalFile());
         const QString suffix = fileInfo.suffix().toLower();
-        const auto format = std::find_if(std::begin(kFileImageFormats),
-                                         std::end(kFileImageFormats),
-                                         [&suffix](const FileImageFormat& candidate) {
-                                             return suffix == QLatin1String(candidate.suffix);
-                                         });
-        if (format == std::end(kFileImageFormats)) {
-            continue;
+        const bool supported =
+            std::any_of(std::begin(kFileImageFormats), std::end(kFileImageFormats),
+                        [&suffix](const FileImageFormat& candidate) {
+                            return suffix == QLatin1String(candidate.suffix);
+                        });
+        if (supported) {
+            snapshot.localImage =
+                ScreenshotClipboardLocalImage{fileInfo.absoluteFilePath(), suffix, fileInfo.size(),
+                                              fileInfo.lastModified().toUTC()};
+            break;
         }
-
-        // The first supported local image URL owns the file-image tier. A
-        // corrupt or unreadable file falls through to HTML/plain text, but a
-        // later URL is never silently substituted.
-        if (!fileInfo.exists() || !fileInfo.isFile() || !fileInfo.isReadable()) {
-            return std::nullopt;
-        }
-        QImage image = snow_shot::image_codec::decodeFile(fileInfo.absoluteFilePath(),
-                                                           format->format);
-        return imageContent(std::move(image));
-    }
-    return std::nullopt;
-}
-} // namespace
-
-std::optional<ScreenshotClipboardContent> ScreenshotClipboardContentReader::read(
-    QClipboard* clipboard, qreal devicePixelRatio) {
-    return clipboard == nullptr ? std::nullopt
-                                : readMimeData(clipboard->mimeData(), devicePixelRatio);
-}
-
-std::optional<ScreenshotClipboardContent> ScreenshotClipboardContentReader::readMimeData(
-    const QMimeData* mimeData, qreal devicePixelRatio) {
-    if (mimeData == nullptr || !std::isfinite(devicePixelRatio) || devicePixelRatio <= 0.0) {
-        return std::nullopt;
-    }
-
-    if (const QVariant imageValue = mimeData->imageData(); imageValue.isValid()) {
-        if (imageValue.canConvert<QImage>()) {
-            if (auto result = imageContent(imageValue.value<QImage>()); result.has_value()) {
-                return result;
-            }
-        }
-        if (imageValue.canConvert<QPixmap>()) {
-            if (auto result = imageContent(imageValue.value<QPixmap>().toImage());
-                result.has_value()) {
-                return result;
-            }
-        }
-    }
-
-    if (auto result = readEncodedImage(mimeData); result.has_value()) {
-        return result;
-    }
-    if (auto result = readFileImage(mimeData); result.has_value()) {
-        return result;
     }
 
     if (mimeData->hasHtml()) {
+        snapshot.html = mimeData->html();
+    }
+    if (mimeData->hasText()) {
+        snapshot.text = mimeData->text();
+    }
+    return snapshot.isValid()
+               ? std::optional<ScreenshotClipboardContentSnapshot>(std::move(snapshot))
+               : std::nullopt;
+}
+
+std::optional<ScreenshotClipboardContent>
+ScreenshotClipboardContentReader::decode(ScreenshotClipboardContentSnapshot snapshot,
+                                         CancellationCheck cancelled) {
+    if (!snapshot.isValid() || !std::isfinite(snapshot.devicePixelRatio) ||
+        snapshot.devicePixelRatio <= 0.0 || cancellationRequested(cancelled)) {
+        return std::nullopt;
+    }
+
+    if (auto result = readEncodedImage(snapshot.encodedImages, cancelled); result.has_value()) {
+        return result;
+    }
+    if (cancellationRequested(cancelled)) {
+        return std::nullopt;
+    }
+    if (auto result = imageContent(std::move(snapshot.detachedImage)); result.has_value()) {
+        return result;
+    }
+    if (snapshot.localImage.has_value()) {
+        if (auto result = readFileImage(*snapshot.localImage, cancelled); result.has_value()) {
+            return result;
+        }
+    }
+    if (!snapshot.html.isEmpty()) {
         QString plainText;
-        if (auto document = makeDocument(mimeData->html(), true, &plainText);
-            document != nullptr) {
-            if (auto result = renderTextDocument(std::move(document), std::move(plainText),
-                                                 devicePixelRatio);
+        if (auto document = makeDocument(snapshot.html, true, &plainText); document != nullptr) {
+            if (auto result =
+                    renderTextDocument(std::move(document), std::move(plainText),
+                                       snapshot.devicePixelRatio, snapshot.baseColor, cancelled);
                 result.has_value()) {
                 return result;
             }
         }
     }
-
-    if (mimeData->hasText()) {
+    if (!snapshot.text.isEmpty()) {
         QString plainText;
-        if (auto document = makeDocument(mimeData->text(), false, &plainText);
-            document != nullptr) {
-            if (auto result = renderTextDocument(std::move(document), std::move(plainText),
-                                                 devicePixelRatio);
+        if (auto document = makeDocument(snapshot.text, false, &plainText); document != nullptr) {
+            if (auto result =
+                    renderTextDocument(std::move(document), std::move(plainText),
+                                       snapshot.devicePixelRatio, snapshot.baseColor, cancelled);
                 result.has_value()) {
                 return result;
             }

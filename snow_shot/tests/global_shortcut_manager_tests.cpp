@@ -227,7 +227,6 @@ void everyQuickActionHasIndependentPersistenceAndRegistration() {
         {shortcuts::GlobalShortcutAction::ScreenshotFocusedWindow, QStringLiteral("Ctrl+Alt+7")},
         {shortcuts::GlobalShortcutAction::ScreenRecord, QStringLiteral("Ctrl+Alt+8")},
         {shortcuts::GlobalShortcutAction::ScreenRecordCopy, QStringLiteral("Ctrl+Alt+9")},
-        {shortcuts::GlobalShortcutAction::ShowOrHideMainWindow, QStringLiteral("Ctrl+Alt+A")},
         {shortcuts::GlobalShortcutAction::OpenCaptureHistory, QStringLiteral("Ctrl+Alt+B")},
         {shortcuts::GlobalShortcutAction::OpenSettings, QStringLiteral("Ctrl+Alt+C")},
         {shortcuts::GlobalShortcutAction::PinClipboardContent,
@@ -306,6 +305,37 @@ void focusedFullscreenSuppressionIsCheckedForEveryActivation() {
             "hotkeys should resume as soon as no focused fullscreen window exists");
 }
 
+void shortcutFunctionsCanBeDisabledWithoutReconciliation() {
+    IsolatedSettings settings;
+    auto backend = std::make_unique<FakeGlobalShortcutBackend>();
+    auto* const backendPtr = backend.get();
+    shortcuts::GlobalShortcutManager manager(std::move(backend), settings.organization,
+                                              settings.application);
+    manager.initialize();
+    manager.setShortcuts(shortcuts::GlobalShortcutAction::Screenshot,
+                         {QStringLiteral("Ctrl+Alt+1")});
+
+    int activationCount = 0;
+    QObject::connect(&manager, &shortcuts::GlobalShortcutManager::activated, &manager,
+                     [&activationCount](shortcuts::GlobalShortcutAction) { ++activationCount; });
+    backendPtr->activate(QStringLiteral("Ctrl+Alt+1"));
+    require(activationCount == 1 && manager.shortcutFunctionsEnabled(),
+            "global shortcuts should activate before the disable gate is enabled");
+
+    manager.setShortcutFunctionsEnabled(false);
+    const auto stateWhileDisabled =
+        manager.state(shortcuts::GlobalShortcutAction::Screenshot);
+    backendPtr->activate(QStringLiteral("Ctrl+Alt+1"));
+    require(!manager.shortcutFunctionsEnabled() && activationCount == 1 &&
+                stateWhileDisabled.status == shortcuts::GlobalShortcutStatus::Registered,
+            "disabling shortcut functions should suppress activation without unregistering keys");
+
+    manager.setShortcutFunctionsEnabled(true);
+    backendPtr->activate(QStringLiteral("Ctrl+Alt+1"));
+    require(manager.shortcutFunctionsEnabled() && activationCount == 2,
+            "re-enabling shortcut functions should resume activation immediately");
+}
+
 #ifdef Q_OS_WIN
 void nativeWindowsBackendRegistersAndReleases() {
     IsolatedSettings settings;
@@ -366,6 +396,7 @@ int main(int argc, char** argv) {
     releasedApplicationConflictIsReconciled();
     everyQuickActionHasIndependentPersistenceAndRegistration();
     focusedFullscreenSuppressionIsCheckedForEveryActivation();
+    shortcutFunctionsCanBeDisabledWithoutReconciliation();
 #ifdef Q_OS_WIN
     nativeWindowsBackendRegistersAndReleases();
 #endif

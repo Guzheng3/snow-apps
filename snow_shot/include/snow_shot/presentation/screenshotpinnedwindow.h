@@ -2,6 +2,8 @@
 #define SNOW_SHOT_PRESENTATION_SCREENSHOTPINNEDWINDOW_H
 
 #include "snow_draw_engine_qt/snow_canvas_runtime.h"
+#include "snow_shot/presentation/screenshotclipboardservice.h"
+#include "snow_shot/presentation/screenshotexportcoordinator.h"
 #include "snow_shot/presentation/screenshotimagesource.h"
 #include "snow_shot/presentation/screenshotresultcompositor.h"
 
@@ -18,11 +20,16 @@
 #include <QWidget>
 
 #include <memory>
+#include <functional>
+#include <vector>
 
 namespace adqt::widgets {
 class AdButton;
 class AdContextMenu;
 } // namespace adqt::widgets
+namespace snow_shot::presentation {
+class WindowShortcutManager;
+}
 
 class QAction;
 class QActionGroup;
@@ -126,6 +133,7 @@ class ScreenshotPinnedWindow final : public QWidget {
     void wheelEvent(QWheelEvent* event) override;
 
     void createUi();
+    void registerWindowShortcuts();
     void createContextMenu();
     void applyRuntimeBorderColor();
     void updateShowMainInterfaceAction();
@@ -135,7 +143,10 @@ class ScreenshotPinnedWindow final : public QWidget {
     void updateCanvasViewport();
     void updateControlsGeometry();
     void destroyCanvas();
-    bool ensureMaterializedImage();
+    using MaterializationCallback = std::function<void(bool)>;
+    void requestMaterializedImage(MaterializationCallback callback);
+    void finishMaterializedImage(ScreenshotExportTaskResult result);
+    void commitClipboardPayload(ScreenshotClipboardPayload payload);
     void ensureEditController();
     void setEditMode(bool enabled);
     void setOcrMode(bool enabled);
@@ -199,7 +210,11 @@ class ScreenshotPinnedWindow final : public QWidget {
     bool isControlsPanelPosition(const QPoint& position) const;
 
     SnowCanvasRuntime m_runtime;
+    std::unique_ptr<snow_shot::presentation::WindowShortcutManager> m_shortcutManager;
     std::unique_ptr<ScreenshotPinnedCopyService> m_copyService;
+    ScreenshotExportJobHandle m_materializationJob;
+    ScreenshotClipboardCommitHandle m_clipboardCommit;
+    std::vector<MaterializationCallback> m_materializationCallbacks;
     SnowCanvasWidget* m_canvas = nullptr;
     std::unique_ptr<ScreenshotCanvasRenderer> m_screenshotRenderer;
     QFrame* m_borderFrame = nullptr;

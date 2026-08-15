@@ -14,6 +14,7 @@
 #include <QUrl>
 
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <stdexcept>
 
@@ -70,7 +71,7 @@ void namingAndFormatSelection() {
                 QStringLiteral("jpg"),
             "JPEG should use the canonical jpg extension");
     require(ScreenshotImageFileService::formatForKey(QStringLiteral("jpeg")) ==
-                ScreenshotImageFileFormat::Jpeg &&
+                    ScreenshotImageFileFormat::Jpeg &&
                 ScreenshotImageFileService::formatForKey(QStringLiteral("webp")) ==
                     ScreenshotImageFileFormat::Webp &&
                 ScreenshotImageFileService::formatForKey(QStringLiteral("unsupported")) ==
@@ -133,8 +134,7 @@ void writesLosslessImageAndPreservesCollisionNames() {
     require(result.succeeded(), "automatic PNG save should succeed");
     require(result.path == QDir(directory.path()).filePath(base + QStringLiteral("_1.png")),
             "automatic saves must preserve existing files and add a numeric suffix");
-    require(snow_shot::image_codec::inspectFile(result.path, snow::image::Format::png,
-                                                QSize(3, 2)),
+    require(snow_shot::image_codec::inspectFile(result.path, snow::image::Format::png, QSize(3, 2)),
             "the automatic PNG must be encoded by snow_image");
 }
 
@@ -159,6 +159,46 @@ void writesEveryAdvertisedFormat() {
                     result.path, ScreenshotImageFileService::snowImageFormat(format), QSize(3, 2)),
                 "an advertised Save As output could not be inspected by snow_image");
     }
+}
+
+void streamsRowsToAtomicFileAndCancelsWithoutPublishing() {
+    QTemporaryDir directory;
+    require(directory.isValid(), "temporary streaming directory could not be created");
+    const QImage pixels = image();
+    int rowRequests = 0;
+    ScreenshotImageRowSource source;
+    source.size = pixels.size();
+    source.readRows = [&pixels, &rowRequests](int firstRow, int rowCount,
+                                              qsizetype destinationStride, uchar* destination,
+                                              qsizetype destinationSize) {
+        const qsizetype rowBytes = pixels.width() * 4;
+        if (firstRow < 0 || rowCount <= 0 || firstRow + rowCount > pixels.height() ||
+            destinationStride < rowBytes ||
+            destinationSize < destinationStride * (rowCount - 1) + rowBytes) {
+            return false;
+        }
+        ++rowRequests;
+        for (int row = 0; row < rowCount; ++row) {
+            std::memcpy(destination + row * destinationStride, pixels.constScanLine(firstRow + row),
+                        static_cast<std::size_t>(rowBytes));
+        }
+        return true;
+    };
+
+    const QString outputPath = QDir(directory.path()).filePath(QStringLiteral("rows.png"));
+    const ScreenshotImageFileSaveResult saved =
+        ScreenshotImageFileService::write(source, outputPath, ScreenshotImageFileFormat::Png);
+    require(saved.succeeded() && rowRequests > 0 &&
+                snow_shot::image_codec::inspectFile(saved.path, snow::image::Format::png,
+                                                    pixels.size()),
+            "row-source save must stream a valid PNG through the atomic file");
+
+    source.cancellationRequested = []() { return true; };
+    const QString cancelledPath = QDir(directory.path()).filePath(QStringLiteral("cancelled.png"));
+    const ScreenshotImageFileSaveResult cancelled =
+        ScreenshotImageFileService::write(source, cancelledPath, ScreenshotImageFileFormat::Png);
+    require(!cancelled.succeeded() && !QFileInfo::exists(cancelledPath),
+            "a cancelled row-source save must not publish its temporary file");
 }
 
 void configuredAutomaticOutputUsesFormatDirectoryAndFilename() {
@@ -209,7 +249,8 @@ void retriesNextDirectoryAndPublishesFileOnlyClipboardData() {
     const QMimeData* mime = clipboard->mimeData();
     require(mime != nullptr && mime->urls().size() == 1 && mime->hasUrls() &&
                 mime->urls().constFirst().isLocalFile() &&
-                mime->urls().constFirst().toLocalFile() == QFileInfo(result.path).absoluteFilePath() &&
+                mime->urls().constFirst().toLocalFile() ==
+                    QFileInfo(result.path).absoluteFilePath() &&
                 !mime->hasImage(),
             "file clipboard mode must publish a local file URL without image data");
 }
@@ -237,6 +278,7 @@ int main(int argc, char** argv) {
         namingAndFormatSelection();
         writesLosslessImageAndPreservesCollisionNames();
         writesEveryAdvertisedFormat();
+        streamsRowsToAtomicFileAndCancelsWithoutPublishing();
         configuredAutomaticOutputUsesFormatDirectoryAndFilename();
         retriesNextDirectoryAndPublishesFileOnlyClipboardData();
         codecOptionsUseFastLosslessAndMaximumJpegQuality();

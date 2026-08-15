@@ -9,6 +9,7 @@
 #include "snow_shot/storage/settingsadapters.h"
 
 #include <QApplication>
+#include <QJsonArray>
 #include <QJsonValue>
 #include <QTimer>
 
@@ -21,6 +22,16 @@ const QString kTrayEnabledKey = QStringLiteral("tray/enabled");
 const QString kTrayIconKey = QStringLiteral("tray/icon");
 const QString kTrayCustomIconKey = QStringLiteral("tray/custom_icon");
 const QString kTrayLeftClickActionKey = QStringLiteral("tray/left_click_action");
+const QString kTrayMenuOptionsKey = QStringLiteral("tray/menu_options");
+const QString kScreenshotDelaySecondsKey = QStringLiteral("screenshot/delay_seconds");
+
+QStringList stringList(const QJsonValue& value) {
+    QStringList result;
+    for (const QJsonValue& item : value.toArray()) {
+        result.push_back(item.toString());
+    }
+    return result;
+}
 } // namespace
 
 class ApplicationController::Impl {
@@ -39,6 +50,17 @@ class ApplicationController::Impl {
                              systemTray.hide();
                              QApplication::quit();
                          });
+        QObject::connect(&systemTray,
+                         &presentation::SystemTrayController::quickActionRequested, &q,
+                         [this](presentation::GlobalShortcutAction action) {
+                             dispatchQuickAction(action);
+                         });
+        QObject::connect(
+            &systemTray,
+            &presentation::SystemTrayController::shortcutFunctionsDisabledChanged, &q,
+            [this](bool disabled) {
+                globalShortcutManager.setShortcutFunctionsEnabled(!disabled);
+            });
         QObject::connect(&globalShortcutManager, &presentation::GlobalShortcutManager::activated,
                          &q, [this](presentation::GlobalShortcutAction action) {
                              dispatchQuickAction(action);
@@ -55,7 +77,10 @@ class ApplicationController::Impl {
         applyRuntimeConfiguration(configuration.value(kTrayIconKey), kTrayIconKey);
         applyRuntimeConfiguration(configuration.value(kTrayCustomIconKey), kTrayCustomIconKey);
         applyRuntimeConfiguration(configuration.value(kTrayLeftClickActionKey),
-                                  kTrayLeftClickActionKey);
+                                   kTrayLeftClickActionKey);
+        applyRuntimeConfiguration(configuration.value(kTrayMenuOptionsKey), kTrayMenuOptionsKey);
+        applyRuntimeConfiguration(configuration.value(kScreenshotDelaySecondsKey),
+                                   kScreenshotDelaySecondsKey);
         QObject::connect(&configuration, &storage::ConfigurationStore::valueChanged, &q,
                          [this](const QString& key, const QJsonValue& value) {
                              applyRuntimeConfiguration(value, key);
@@ -104,6 +129,10 @@ class ApplicationController::Impl {
             systemTray.setCustomIconPath(value.toString());
         } else if (key == kTrayLeftClickActionKey) {
             systemTray.setLeftClickAction(value.toString(QStringLiteral("screenshot")));
+        } else if (key == kTrayMenuOptionsKey) {
+            systemTray.setMenuOptions(stringList(value));
+        } else if (key == kScreenshotDelaySecondsKey) {
+            systemTray.setScreenshotDelaySeconds(value.toInt(3));
         }
     }
 
@@ -168,9 +197,6 @@ class ApplicationController::Impl {
                 controller->startOrStopScreenRecordingAndCopy();
             }
             break;
-        case presentation::GlobalShortcutAction::ShowOrHideMainWindow:
-            toggleMainWindow();
-            break;
         case presentation::GlobalShortcutAction::OpenCaptureHistory:
             ensureMainWindow().showScreenshotHistory();
             break;
@@ -183,18 +209,6 @@ class ApplicationController::Impl {
             }
             break;
         }
-    }
-
-    void toggleMainWindow() {
-        if (mainWindow == nullptr) {
-            showMainWindow();
-            return;
-        }
-        // The quick action is intentionally one-way after construction: an
-        // existing window is closed regardless of whether it is currently
-        // visible, hidden, or minimized.  Showing an existing window belongs
-        // to the explicit Show Main Window/tray action.
-        mainWindow->close();
     }
 
     void showMainWindow() {

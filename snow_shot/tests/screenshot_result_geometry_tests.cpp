@@ -79,6 +79,25 @@ void fullResolutionPlacementCentersWithoutFitting() {
                 !availableNative.contains(placement.nativeGeometry),
             "full-resolution placement should center in the work area while allowing overflow");
 }
+
+void cursorPanelPlacementUsesEveryAvailableQuadrant() {
+    constexpr int gap = 16;
+    const QRect bounds(0, 0, 800, 600);
+    const QSize panelSize(160, 220);
+
+    require(ScreenshotGeometryMapper::cursorPanelPosition(QPoint(100, 100), panelSize, bounds,
+                                                          gap) == QPoint(116, 116),
+            "cursor panel should prefer the bottom-right position");
+    require(ScreenshotGeometryMapper::cursorPanelPosition(QPoint(700, 100), panelSize, bounds,
+                                                          gap) == QPoint(524, 116),
+            "cursor panel should move to bottom-left when the right side is too narrow");
+    require(ScreenshotGeometryMapper::cursorPanelPosition(QPoint(100, 500), panelSize, bounds,
+                                                          gap) == QPoint(116, 264),
+            "cursor panel should move to top-right when the bottom side is too short");
+    require(ScreenshotGeometryMapper::cursorPanelPosition(QPoint(700, 500), panelSize, bounds,
+                                                          gap) == QPoint(524, 264),
+            "cursor panel should move to top-left when the right and bottom sides are too small");
+}
 } // namespace
 
 int main() {
@@ -87,6 +106,7 @@ int main() {
         fitUsesAvailableGeometryMarginAndNeverUpscales();
         fitDoesNotDropBelowMinimumZoom();
         fullResolutionPlacementCentersWithoutFitting();
+        cursorPanelPlacementUsesEveryAvailableQuadrant();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return EXIT_FAILURE;

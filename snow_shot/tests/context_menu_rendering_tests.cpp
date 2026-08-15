@@ -24,6 +24,7 @@
 
 #include "theme/theme_manager.h"
 #include "widgets/context_menu.h"
+#include "widgets/detail/button_rendering.h"
 
 namespace {
 
@@ -130,6 +131,25 @@ void dirtyRenderTargetCornersAreCleared() {
     for (const QPoint& corner : cornerPixels(image.size())) {
         require(image.pixelColor(corner).alpha() == 0,
                 "context menu did not clear a dirty rounded-corner pixel to transparent");
+    }
+}
+
+void borderGeometryUsesWholeDevicePixels() {
+    constexpr std::array<qreal, 4> devicePixelRatios = {1.0, 1.25, 1.5, 2.0};
+    for (const qreal devicePixelRatio : devicePixelRatios) {
+        const qreal logicalWidth =
+            adqt::widgets::detail::deviceAlignedPenWidth(1.0, devicePixelRatio);
+        const int physicalWidth = qRound(logicalWidth * devicePixelRatio);
+        require(physicalWidth >= 1 && qFuzzyCompare(logicalWidth * devicePixelRatio,
+                                                    static_cast<qreal>(physicalWidth)),
+                "border width was not quantized to a whole device pixel");
+
+        const qreal center =
+            adqt::widgets::detail::deviceAlignedStrokeCenter(16.0, logicalWidth, devicePixelRatio);
+        const qreal physicalCenter = center * devicePixelRatio;
+        const qreal phase = (physicalWidth % 2 == 0) ? 0.0 : 0.5;
+        require(std::abs(physicalCenter - (qRound(physicalCenter - phase) + phase)) < 0.001,
+                "border center was not aligned to the device pixel phase");
     }
 }
 
@@ -241,6 +261,7 @@ int main(int argc, char** argv) {
     QApplication application(argc, argv);
     adqt::theme::ThemeManager::instance().applyTo(application);
     try {
+        borderGeometryUsesWholeDevicePixels();
         nativePopupCornersCompositeOverTheirBackdrop();
         dirtyRenderTargetCornersAreCleared();
         return 0;

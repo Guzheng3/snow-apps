@@ -222,7 +222,18 @@ void newSettingsSchemaDefaultsAndValidationAreComplete() {
                 defaultValue("screen_recording/video_filename_format").toString() ==
                     QStringLiteral("SnowShot_Video_{YYYY-MM-DD_HH-mm-ss}") &&
                 defaultValue("tray/left_click_action").toString() ==
-                    QStringLiteral("screenshot"),
+                    QStringLiteral("screenshot") &&
+                defaultValue("tray/menu_options").toArray() ==
+                    QJsonArray{QStringLiteral("quick.screenshot"),
+                               QStringLiteral("quick.screenshot-delay"),
+                               QStringLiteral("quick.screenshot-fixed"),
+                               QStringLiteral("quick.screenshot-ocr"),
+                               QStringLiteral("quick.screenshot-copy"),
+                               QStringLiteral("quick.screen-record"),
+                               QStringLiteral("quick.pin-clipboard-content"),
+                               QStringLiteral("tray.disable-shortcut-functions"),
+                               QStringLiteral("tray.show-main-window"),
+                               QStringLiteral("tray.exit")},
             "new settings defaults do not match the requested contract");
 
     const QMap<QString, QJsonArray> drawingShortcutDefaults{
@@ -263,7 +274,16 @@ void newSettingsSchemaDefaultsAndValidationAreComplete() {
         {QStringLiteral("move_cursor_left"),
          QJsonArray{QStringLiteral("A"), QStringLiteral("Left")}},
         {QStringLiteral("move_cursor_right"),
-         QJsonArray{QStringLiteral("D"), QStringLiteral("Right")}},
+          QJsonArray{QStringLiteral("D"), QStringLiteral("Right")}},
+        {QStringLiteral("move_entire_selection"), QJsonArray{QStringLiteral("Space")}},
+        {QStringLiteral("keep_selection_width_and_height_consistent"),
+         QJsonArray{QStringLiteral("Shift")}},
+        {QStringLiteral("switch_selection_between_window_and_window_sub_element"),
+         QJsonArray{QStringLiteral("Tab")}},
+        {QStringLiteral("previous_screenshot_history"), QJsonArray{QStringLiteral(",")}},
+        {QStringLiteral("next_screenshot_history"), QJsonArray{QStringLiteral(".")}},
+        {QStringLiteral("select_previously_selected_area"), QJsonArray{QStringLiteral("R")}},
+        {QStringLiteral("copy_color"), QJsonArray{QStringLiteral("C")}},
     };
     for (auto it = screenshotShortcutDefaults.cbegin();
          it != screenshotShortcutDefaults.cend(); ++it) {
@@ -637,13 +657,21 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
                 !tray.setLeftClickAction(QStringLiteral("unsupported")) &&
                 !globalShortcuts.disableOnFocusedFullscreenWindow() &&
                 globalShortcuts.setDisableOnFocusedFullscreenWindow(true) &&
-                globalShortcuts.disableOnFocusedFullscreenWindow(),
+                globalShortcuts.disableOnFocusedFullscreenWindow() &&
+                tray.menuOptions().size() == 10 &&
+                tray.menuOptions().contains(QStringLiteral("tray.show-main-window")) &&
+                tray.setMenuOptions({QStringLiteral("tray.exit"),
+                                     QStringLiteral("quick.screenshot"),
+                                     QStringLiteral("quick.screenshot"),
+                                     QStringLiteral("unknown")}) &&
+                tray.menuOptions() ==
+                    QStringList{QStringLiteral("tray.exit"), QStringLiteral("quick.screenshot")},
             "tray and global-hotkey adapters must round-trip and validate their settings");
 
     const storage::DrawingShortcutSettings drawingShortcuts;
     const storage::ScreenshotShortcutSettings screenshotShortcuts;
     const QMap<QString, QStringList> screenshotDefaults = screenshotShortcuts.allShortcuts();
-    require(screenshotDefaults.size() == 5 &&
+    require(screenshotDefaults.size() == 12 &&
                 screenshotShortcuts.moveTool() == QStringList{QStringLiteral("M")} &&
                 screenshotShortcuts.moveCursorUp() ==
                     QStringList{QStringLiteral("W"), QStringLiteral("Up")} &&
@@ -651,23 +679,45 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
                     QStringList{QStringLiteral("S"), QStringLiteral("Down")} &&
                 screenshotShortcuts.moveCursorLeft() ==
                     QStringList{QStringLiteral("A"), QStringLiteral("Left")} &&
-                screenshotShortcuts.moveCursorRight() ==
-                    QStringList{QStringLiteral("D"), QStringLiteral("Right")} &&
-                screenshotShortcuts.shortcuts(QStringLiteral("unsupported")).isEmpty() &&
+                 screenshotShortcuts.moveCursorRight() ==
+                     QStringList{QStringLiteral("D"), QStringLiteral("Right")} &&
+                 screenshotShortcuts.moveEntireSelection() ==
+                     QStringList{QStringLiteral("Space")} &&
+                 screenshotShortcuts.keepSelectionWidthAndHeightConsistent() ==
+                     QStringList{QStringLiteral("Shift")} &&
+                 screenshotShortcuts.switchSelectionBetweenWindowAndWindowSubElement() ==
+                     QStringList{QStringLiteral("Tab")} &&
+                 screenshotShortcuts.previousScreenshotHistory() ==
+                     QStringList{QStringLiteral(",")} &&
+                 screenshotShortcuts.nextScreenshotHistory() ==
+                     QStringList{QStringLiteral(".")} &&
+                 screenshotShortcuts.selectPreviouslySelectedArea() ==
+                     QStringList{QStringLiteral("R")} &&
+                 screenshotShortcuts.copyColor() == QStringList{QStringLiteral("C")} &&
+                 screenshotShortcuts.shortcuts(QStringLiteral("unsupported")).isEmpty() &&
                 !screenshotShortcuts.setShortcuts(QStringLiteral("unsupported"),
                                                   {QStringLiteral("Q")}),
-            "screenshot shortcut adapter must expose five stable actions and defaults");
+            "screenshot shortcut adapter must expose twelve stable actions and defaults");
     require(screenshotShortcuts.setMoveTool({QStringLiteral("Alt+M")}) &&
                 screenshotShortcuts.moveTool() == QStringList{QStringLiteral("Alt+M")} &&
                 screenshotShortcuts.setMoveCursorUp({QStringLiteral("Ctrl+Alt+Up")}) &&
                 screenshotShortcuts.moveCursorUp() ==
                     QStringList{QStringLiteral("Ctrl+Alt+Up")},
             "screenshot shortcuts must round-trip through the typed adapter");
-    const QMap<QString, QStringList> screenshotBeforeCollision =
-        screenshotShortcuts.allShortcuts();
-    require(!screenshotShortcuts.setMoveCursorRight({QStringLiteral("1")}) &&
-                screenshotShortcuts.allShortcuts() == screenshotBeforeCollision,
-            "screenshot shortcuts must reject keys assigned to drawing tools atomically");
+    require(screenshotShortcuts.setMoveCursorRight({QStringLiteral("1")}) &&
+                screenshotShortcuts.moveCursorRight() == QStringList{QStringLiteral("1")},
+            "screenshot shortcuts must allow a key assigned in the drawing category");
+    QMap<QString, QStringList> swappedHistoryShortcuts = screenshotShortcuts.allShortcuts();
+    swappedHistoryShortcuts.insert(QStringLiteral("previous_screenshot_history"),
+                                   {QStringLiteral(".")});
+    swappedHistoryShortcuts.insert(QStringLiteral("next_screenshot_history"),
+                                   {QStringLiteral(",")});
+    require(screenshotShortcuts.setAllShortcutsAtomic(swappedHistoryShortcuts) &&
+                screenshotShortcuts.previousScreenshotHistory() ==
+                    QStringList{QStringLiteral(".")} &&
+                screenshotShortcuts.nextScreenshotHistory() ==
+                    QStringList{QStringLiteral(",")},
+            "history shortcuts must allow comma and period to be swapped atomically");
 
     const QMap<QString, QStringList> defaults = drawingShortcuts.allShortcuts();
     require(defaults.size() == 10 &&
@@ -693,6 +743,9 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
                 drawingShortcuts.shape() ==
                     QStringList{QStringLiteral("Ctrl+Shift+K"), QStringLiteral("Alt+1")},
             "drawing shortcut adapter must persist normalized tool shortcuts");
+    require(drawingShortcuts.setWatermark({QStringLiteral("Alt+M")}) &&
+                drawingShortcuts.watermark() == QStringList{QStringLiteral("Alt+M")},
+            "drawing shortcuts must allow a key assigned in the screenshot category");
     const QMap<QString, QStringList> beforeCollision = drawingShortcuts.allShortcuts();
     require(!drawingShortcuts.setArrow({QStringLiteral("ctrl+shift+k")}) &&
                 drawingShortcuts.allShortcuts() == beforeCollision,

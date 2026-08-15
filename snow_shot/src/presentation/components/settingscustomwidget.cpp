@@ -7,6 +7,8 @@
 #include "snow_shot/presentation/styles/thememanager.h"
 
 #include "widgets/button.h"
+#include "widgets/checkbox.h"
+#include "widgets/divider.h"
 
 #include <QApplication>
 #include <QBoxLayout>
@@ -18,6 +20,7 @@
 #include <QEvent>
 #include <QFrame>
 #include <QGraphicsDropShadowEffect>
+#include <QGridLayout>
 #include <QHash>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -25,6 +28,8 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPalette>
+#include <QSet>
+#include <QSignalBlocker>
 #include <QStyle>
 #include <QVBoxLayout>
 
@@ -577,6 +582,193 @@ void clearPosition(ToolbarPositionWidget* position, QWidget* buttonParent) {
 }
 } // namespace
 
+class TrayMenuOptionsSettingsWidget final : public SettingsCustomWidget {
+  public:
+    TrayMenuOptionsSettingsWidget(
+        const snow_shot::presentation::settings::SettingsCatalog& catalog,
+        const snow_shot::presentation::settings::SettingsItemDefinition& definition,
+        snow_shot::presentation::settings::SettingsRuntimeBindings& runtimeBindings,
+        QWidget* parent = nullptr)
+        : SettingsCustomWidget(parent), m_catalog(catalog), m_definition(definition),
+          m_runtimeBindings(runtimeBindings) {
+        initialize();
+    }
+
+    void applyTheme(const snow_shot::presentation::styles::ThemeColorScheme& scheme) override {
+        QFont titleFont = m_title->font();
+        titleFont.setPixelSize(scheme.metricAlias.fontSizeLG);
+        titleFont.setWeight(QFont::Medium);
+        m_title->setFont(titleFont);
+        QPalette titlePalette = m_title->palette();
+        titlePalette.setColor(QPalette::WindowText, scheme.alias.textPrimary);
+        m_title->setPalette(titlePalette);
+
+        QFont descriptionFont = m_description->font();
+        descriptionFont.setPixelSize(scheme.metricAlias.fontSize);
+        descriptionFont.setWeight(QFont::Normal);
+        m_description->setFont(descriptionFont);
+        QPalette descriptionPalette = m_description->palette();
+        descriptionPalette.setColor(QPalette::WindowText, scheme.alias.textMuted);
+        m_description->setPalette(descriptionPalette);
+    }
+
+    void retranslateUi() override {
+        if (m_title == nullptr) {
+            return;
+        }
+        m_title->setText(m_definition.title.translated());
+        m_description->setText(m_definition.description.translated());
+        const auto groups = m_catalog.trayMenuGroups();
+        for (const auto& group : groups) {
+            for (const auto& option : group.options) {
+                if (auto* checkbox = m_checkboxes.value(option.id)) {
+                    const QString label = translatedOptionLabel(option);
+                    checkbox->setText(label);
+                    checkbox->setAccessibleName(label);
+                }
+            }
+        }
+    }
+
+  protected:
+    void changeEvent(QEvent* event) override {
+        SettingsCustomWidget::changeEvent(event);
+        if (event != nullptr && event->type() == QEvent::LanguageChange) {
+            retranslateUi();
+        }
+    }
+
+  private:
+    QString translatedOptionLabel(
+        const snow_shot::presentation::settings::SettingsTrayMenuOptionDefinition& option) const {
+        if (option.kind ==
+            snow_shot::presentation::settings::SettingsTrayMenuOptionKind::QuickAction) {
+            const QString title = m_catalog.shortcutActionTitle(
+                option.shortcutAction,
+                m_runtimeBindings.integerValue(
+                    snow_shot::presentation::settings::SettingsIntegerBinding::ScreenshotDelaySeconds));
+            Q_ASSERT(!title.isEmpty());
+            return title;
+        }
+        return option.label.translated();
+    }
+
+    void initialize() {
+        setObjectName(QStringLiteral("settings-tray-menu-options"));
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+        auto* rootLayout = new QVBoxLayout(this);
+        rootLayout->setContentsMargins(0, 0, 0, 0);
+        rootLayout->setSpacing(6);
+
+        m_title = new QLabel(this);
+        m_title->setObjectName(QStringLiteral("settings-tray-menu-options-title"));
+        rootLayout->addWidget(m_title);
+
+        m_description = new QLabel(this);
+        m_description->setObjectName(QStringLiteral("settings-tray-menu-options-description"));
+        m_description->setWordWrap(true);
+        rootLayout->addWidget(m_description);
+
+        auto* options = new QWidget(this);
+        options->setObjectName(QStringLiteral("settings-tray-menu-options-grid"));
+        auto* grid = new QGridLayout(options);
+        grid->setContentsMargins(0, 6, 0, 0);
+        grid->setHorizontalSpacing(
+            snow_shot::presentation::styles::ThemeManager::instance()
+                .themeColorScheme()
+                .metricAlias.marginLG);
+        grid->setVerticalSpacing(6);
+        grid->setColumnStretch(0, 1);
+        grid->setColumnStretch(1, 1);
+
+        int row = 0;
+        bool firstGroup = true;
+        for (const auto& group : m_catalog.trayMenuGroups()) {
+            if (group.options.isEmpty()) {
+                continue;
+            }
+            if (!firstGroup) {
+                auto* separator = new adqt::widgets::AdDivider(options);
+                separator->setObjectName(
+                    QStringLiteral("settings-tray-menu-options-separator-%1").arg(group.id));
+                separator->setFixedHeight(1);
+                grid->addWidget(separator, row++, 0, 1, 2);
+            }
+
+            const int optionCount = static_cast<int>(group.options.size());
+            for (int index = 0; index < optionCount; ++index) {
+                const auto& option = group.options.at(index);
+                auto* checkbox = new adqt::widgets::AdCheckbox(options);
+                checkbox->setObjectName(
+                    QStringLiteral("settings-tray-menu-option-%1").arg(option.id));
+                checkbox->setProperty("trayMenuOptionId", option.id);
+                checkbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+                m_checkboxes.insert(option.id, checkbox);
+                connect(checkbox, &QAbstractButton::toggled, this,
+                        [this](bool) { applySelection(); });
+                grid->addWidget(checkbox, row + index / 2, index % 2);
+            }
+            row += (optionCount + 1) / 2;
+            firstGroup = false;
+        }
+        rootLayout->addWidget(options);
+
+        connect(&m_runtimeBindings,
+                &snow_shot::presentation::settings::SettingsRuntimeBindings::synchronized, this,
+                [this]() {
+                    retranslateUi();
+                    syncFromRuntime();
+                });
+        retranslateUi();
+        applyTheme(snow_shot::presentation::styles::ThemeManager::instance().themeColorScheme());
+        syncFromRuntime();
+    }
+
+    void syncFromRuntime() {
+        const QVariantList values = m_runtimeBindings.multiSelectValue(
+            snow_shot::presentation::settings::SettingsMultiSelectBinding::TrayMenuOptions);
+        QSet<QString> selected;
+        for (const QVariant& value : values) {
+            selected.insert(value.toString());
+        }
+        m_syncing = true;
+        for (auto it = m_checkboxes.cbegin(); it != m_checkboxes.cend(); ++it) {
+            const QSignalBlocker blocker(it.value());
+            it.value()->setChecked(selected.contains(it.key()));
+        }
+        m_syncing = false;
+    }
+
+    void applySelection() {
+        if (m_syncing) {
+            return;
+        }
+        QVariantList values;
+        for (const auto& group : m_catalog.trayMenuGroups()) {
+            for (const auto& option : group.options) {
+                const auto* checkbox = m_checkboxes.value(option.id);
+                if (checkbox != nullptr && checkbox->isChecked()) {
+                    values.push_back(option.id);
+                }
+            }
+        }
+        if (!m_runtimeBindings.applyMultiSelectValue(
+                snow_shot::presentation::settings::SettingsMultiSelectBinding::TrayMenuOptions,
+                values)) {
+            syncFromRuntime();
+        }
+    }
+
+    const snow_shot::presentation::settings::SettingsCatalog& m_catalog;
+    const snow_shot::presentation::settings::SettingsItemDefinition& m_definition;
+    snow_shot::presentation::settings::SettingsRuntimeBindings& m_runtimeBindings;
+    QLabel* m_title = nullptr;
+    QLabel* m_description = nullptr;
+    QHash<QString, adqt::widgets::AdCheckbox*> m_checkboxes;
+    bool m_syncing = false;
+};
+
 struct DrawingToolbarEditorSettingsWidget::Private {
     Private(DrawingToolbarEditorSettingsWidget& sourceOwner,
             snow_shot::presentation::settings::SettingsRuntimeBindings& sourceRuntimeBindings)
@@ -922,6 +1114,8 @@ void DrawingToolbarEditorSettingsWidget::changeEvent(QEvent* event) {
 
 SettingsCustomWidget* createSettingsCustomWidget(
     snow_shot::presentation::settings::SettingsCustomRenderer renderer,
+    const snow_shot::presentation::settings::SettingsCatalog& catalog,
+    const snow_shot::presentation::settings::SettingsItemDefinition& definition,
     snow_shot::presentation::settings::SettingsRuntimeBindings& runtimeBindings, QWidget* parent) {
     using snow_shot::presentation::settings::SettingsCustomRenderer;
     switch (renderer) {
@@ -929,6 +1123,8 @@ SettingsCustomWidget* createSettingsCustomWidget(
         return new StorageStatusSettingsWidget(runtimeBindings, parent);
     case SettingsCustomRenderer::DrawingToolbarEditor:
         return new DrawingToolbarEditorSettingsWidget(runtimeBindings, parent);
+    case SettingsCustomRenderer::TrayMenuOptions:
+        return new TrayMenuOptionsSettingsWidget(catalog, definition, runtimeBindings, parent);
     }
     return nullptr;
 }

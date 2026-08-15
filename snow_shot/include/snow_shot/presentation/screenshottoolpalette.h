@@ -31,6 +31,7 @@ class QWheelEvent;
 
 namespace adqt::widgets {
 class AdButton;
+class AdColorPicker;
 class AdPopover;
 class AdRadioButtonGroup;
 class AdSelect;
@@ -254,6 +255,7 @@ class ScreenshotToolPalette final : public QWidget {
     void textStylePopupInteractionBegan();
     void textStylePopupInteractionEnded();
     void serialNumberStyleChanged(const SnowCanvasSerialNumberStyle& style);
+    void canvasColorSamplingRequested(adqt::widgets::AdColorPicker* picker);
     void sendSelectionToBackRequested();
     void sendSelectionBackwardRequested();
     void bringSelectionForwardRequested();

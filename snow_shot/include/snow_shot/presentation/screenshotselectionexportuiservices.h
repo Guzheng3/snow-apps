@@ -3,6 +3,7 @@
 
 #include "snow_shot/presentation/screenshotselectionexportworkflowports.h"
 
+#include <atomic>
 #include <functional>
 #include <memory>
 
@@ -23,7 +24,9 @@ class ScreenshotSelectionExportUiServices final : public ScreenshotSelectionExpo
         std::function<void()> showMainWindowRequested = {});
     ~ScreenshotSelectionExportUiServices() override;
 
-    [[nodiscard]] bool publishClipboard(ScreenshotClipboardPayload payload) override;
+    [[nodiscard]] bool publishClipboard(QObject* receiver, ScreenshotClipboardPayload payload,
+                                        ClipboardCompletion completion) override;
+    void cancelClipboardPublication();
     void setClipboardImage(const QImage& image);
     [[nodiscard]] bool presentPinnedImage(const QImage& image, QScreen* screen,
                                           const QRect& nativeGeometry,
@@ -41,6 +44,8 @@ class ScreenshotSelectionExportUiServices final : public ScreenshotSelectionExpo
     SnowShotApiClient* m_tableRecognition = nullptr;
     std::function<void()> m_showMainWindowRequested;
     std::unique_ptr<ScreenshotPinnedWindowPool> m_windowPool;
+    ScreenshotClipboardCommitHandle m_clipboardCommit;
+    std::shared_ptr<std::atomic_bool> m_clipboardCompletionEnabled;
 };
 
 #endif // SNOW_SHOT_PRESENTATION_SCREENSHOTSELECTIONEXPORTUISERVICES_H

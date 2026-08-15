@@ -49,9 +49,7 @@ class ScreenshotInteractionState final {
     void applySelectionParams();
     void enterScrollingCapture();
     void returnToSelectionMode(bool selectorReady);
-    void enterManualSelectionDrag();
-    void enterManualSelectionDragFromIntelligent();
-    [[nodiscard]] bool enterMovingSelectionDrag(ScreenshotSelectionDragMode dragMode);
+    [[nodiscard]] bool enterSelectionDrag(ScreenshotSelectionDragMode dragMode);
     void finishDrag();
     void cancelDrag();
 
@@ -63,6 +61,8 @@ class ScreenshotInteractionState final {
     [[nodiscard]] bool moveToolActive() const;
     [[nodiscard]] bool intelligentSelecting() const;
     [[nodiscard]] bool manualSelecting() const;
+    [[nodiscard]] bool marqueeSelecting() const;
+    [[nodiscard]] bool modifyingSelection() const;
     [[nodiscard]] bool movingSelection() const;
     [[nodiscard]] bool editing() const;
     [[nodiscard]] bool scrollingCapture() const;

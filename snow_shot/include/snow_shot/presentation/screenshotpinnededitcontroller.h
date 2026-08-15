@@ -3,23 +3,27 @@
 
 #include <QObject>
 #include <QPoint>
+#include <QMap>
 #include <QRect>
 
 #include "snow_draw_engine_qt/snow_canvas_types.h"
 
 class QScreen;
 class QEvent;
-class QKeyEvent;
 class ScreenshotFloatingToolPaletteWindow;
 class ScreenshotPinnedWindow;
 class ScreenshotToolPaletteHost;
 class SnowCanvasWidget;
+namespace snow_shot::presentation {
+class WindowShortcutManager;
+}
 
 class ScreenshotPinnedEditController final : public QObject {
     Q_OBJECT
 
   public:
     ScreenshotPinnedEditController(ScreenshotPinnedWindow& pinnedWindow, SnowCanvasWidget& canvas,
+                                   snow_shot::presentation::WindowShortcutManager& shortcutManager,
                                    QObject* parent = nullptr);
     ~ScreenshotPinnedEditController() override;
 
@@ -39,7 +43,8 @@ class ScreenshotPinnedEditController final : public QObject {
 
   private:
     bool eventFilter(QObject* watched, QEvent* event) override;
-    bool handleDrawingShortcut(QKeyEvent* event);
+    void registerDrawingShortcuts();
+    void reloadDrawingShortcuts();
     QScreen* placementScreen() const;
     QRect placementLogicalBounds() const;
     QRect placementPhysicalBounds() const;
@@ -53,6 +58,8 @@ class ScreenshotPinnedEditController final : public QObject {
 
     ScreenshotPinnedWindow& m_pinnedWindow;
     SnowCanvasWidget& m_canvas;
+    snow_shot::presentation::WindowShortcutManager& m_shortcutManager;
+    QMap<QString, quint64> m_drawingShortcutBindings;
     ScreenshotFloatingToolPaletteWindow* m_toolbarWindow = nullptr;
     QPoint m_globalContentPosition;
     bool m_editMode = false;

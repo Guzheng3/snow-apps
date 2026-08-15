@@ -1477,6 +1477,43 @@ pub unsafe extern "C" fn snow_stitch_snapshot_info(
 
 #[unsafe(no_mangle)]
 /// # Safety
+/// `snapshot` must remain live and unmodified during the call. `destination`
+/// must be writable for `destination_len` bytes.
+pub unsafe extern "C" fn snow_stitch_snapshot_copy_rows(
+    snapshot: *const SnowStitchSnapshotImpl,
+    top: u32,
+    rows: u32,
+    destination_stride: usize,
+    destination: *mut u8,
+    destination_len: usize,
+) -> u8 {
+    if destination.is_null() {
+        set_last_error("snapshot row destination is null");
+        return 0;
+    }
+    let Some(snapshot) = (unsafe { snapshot.as_ref() }) else {
+        set_last_error("stitch snapshot is null");
+        return 0;
+    };
+    let bytes = unsafe { slice::from_raw_parts_mut(destination, destination_len) };
+    match snapshot
+        .snapshot
+        .canvas
+        .copy_rows_strided(top, rows, destination_stride, bytes)
+    {
+        Ok(()) => {
+            clear_last_error();
+            1
+        }
+        Err(error) => {
+            set_last_error(error);
+            0
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+/// # Safety
 /// `snapshot` must remain live and unmodified for the duration of the call.
 pub unsafe extern "C" fn snow_stitch_snapshot_slice_rows(
     snapshot: *const SnowStitchSnapshotImpl,
@@ -1837,6 +1874,22 @@ mod tests {
         assert!(!slice.is_null());
         assert!(unsafe { snow_stitch_snapshot_slice_rows(snapshot, 1, 1) }.is_null());
         unsafe { snow_stitch_session_destroy(session) };
+        let mut copied = [0_u8; 24];
+        assert_eq!(
+            unsafe {
+                snow_stitch_snapshot_copy_rows(
+                    slice,
+                    0,
+                    1,
+                    copied.len(),
+                    copied.as_mut_ptr(),
+                    copied.len(),
+                )
+            },
+            1
+        );
+        assert!(copied[..20].iter().all(|byte| *byte == 0x7f));
+        assert!(copied[20..].iter().all(|byte| *byte == 0));
         let image = unsafe { snow_stitch_snapshot_materialize(snapshot) };
         assert!(!image.is_null());
         let scaled = unsafe { snow_stitch_snapshot_render_scaled(slice, 1, 3) };
