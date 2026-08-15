@@ -65,6 +65,12 @@ class ApplicationController::Impl {
                          &q, [this](presentation::GlobalShortcutAction action) {
                              dispatchQuickAction(action);
                          });
+        QObject::connect(&globalShortcutManager, &presentation::GlobalShortcutManager::stateChanged,
+                         &q,
+                         [this](presentation::GlobalShortcutAction action,
+                                const presentation::GlobalShortcutRegistrationState& state) {
+                             systemTray.setGlobalShortcuts(action, state.shortcuts);
+                         });
         QObject::connect(&app, &QCoreApplication::aboutToQuit, &systemTray,
                          &presentation::SystemTrayController::hide);
         auto& applicationStorage = storage::ApplicationStorage::instance();

@@ -612,6 +612,7 @@ void screenshotUiPreferencesNormalizeAndApplyPickerVisibilityPolicies() {
 
 void shortcutHintStagesUseTheExactRequiredLines() {
     const QStringList commonLines{
+      QStringLiteral("Move cursor: W, S, A, D, Arrow keys"),
         QStringLiteral("Select Previously Selected Area: R"),
         QStringLiteral("Copy Color: C"),
         QStringLiteral("Switch Color Format: Shift"),
@@ -625,7 +626,7 @@ void shortcutHintStagesUseTheExactRequiredLines() {
     resizeLines.append(commonLines);
     QStringList smartLines{
         QStringLiteral("Switch element level: mouse wheel"),
-        QStringLiteral("Switch Selection Between Window and Window Sub-element: Tab"),
+        QStringLiteral("Select Window/Window Sub-element: Tab"),
     };
     smartLines.append(commonLines);
 

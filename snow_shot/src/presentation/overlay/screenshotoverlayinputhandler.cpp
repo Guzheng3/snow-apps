@@ -11,6 +11,7 @@
 #include "snow_shot/storage/settingsadapters.h"
 
 #include <QApplication>
+#include <QCursor>
 
 #include <algorithm>
 #include <utility>
@@ -80,8 +81,15 @@ bool ScreenshotOverlayInputHandler::beginSelectionResizeAtCanvasPosition(
         m_context.geometry.displayForCanvasPoint(m_context.displaySession, canvasPosition);
     ScreenshotOverlayWindow* overlay =
         display != nullptr ? m_context.displaySession.overlayForDisplay(display) : nullptr;
-    m_context.interaction.setTransientMoveTool();
-    m_context.actions.setTransientActiveTool(ScreenshotActiveTool::Move);
+    if (m_toolBeforeSelectionResize.has_value()) {
+        if (!m_context.actions.activateToolForSelectionResize(ScreenshotActiveTool::Move)) {
+            m_toolBeforeSelectionResize.reset();
+            restoreScrollingCaptureAfterFailedResize();
+            return false;
+        }
+    } else {
+        m_context.interaction.setMoveTool(m_context.selection.hasPixelSelection(), false);
+    }
     beginSelectionDrag(overlay, canvasPosition, dragMode);
     if (!m_context.interaction.dragging()) {
         restoreToolAfterSelectionResize();
@@ -131,8 +139,15 @@ void ScreenshotOverlayInputHandler::handleMousePress(ScreenshotOverlayWindow* ov
         } else {
             m_toolBeforeSelectionResize = activeTool;
         }
-        m_context.interaction.setTransientMoveTool();
-        m_context.actions.setTransientActiveTool(ScreenshotActiveTool::Move);
+        if (m_toolBeforeSelectionResize.has_value()) {
+            if (!m_context.actions.activateToolForSelectionResize(ScreenshotActiveTool::Move)) {
+                m_toolBeforeSelectionResize.reset();
+                restoreScrollingCaptureAfterFailedResize();
+                return;
+            }
+        } else {
+            m_context.interaction.setMoveTool(m_context.selection.hasPixelSelection(), false);
+        }
         beginSelectionDrag(overlay, virtualPosition, borderDragMode);
         if (!m_context.interaction.dragging()) {
             restoreToolAfterSelectionResize();
@@ -584,14 +599,21 @@ bool ScreenshotOverlayInputHandler::releaseKeepSelectionAspectRatioShortcut() {
     return true;
 }
 
-bool ScreenshotOverlayInputHandler::cycleIntelligentSelectionShortcut() {
-    if (!m_context.interaction.intelligentSelecting() ||
-        !m_context.intelligentSelection.cycleIndex()) {
+bool ScreenshotOverlayInputHandler::toggleIntelligentSelectionTargetShortcut() {
+    if (!m_context.interaction.intelligentSelecting()) {
         return false;
     }
 
+    m_context.intelligentSelection.toggleSelectionTarget();
     m_context.intelligentSelection.clearPress();
-    m_context.selection.setSelectionRect(m_context.intelligentSelection.currentSelection());
+    if (m_context.intelligentSelection.hasCurrentSelection()) {
+        m_context.selection.setSelectionRect(m_context.intelligentSelection.currentSelection());
+    } else {
+        m_context.selection.clearSelection();
+    }
+    m_context.actions.requestUiSelectorHitTest(
+        m_context.geometry.physicalPositionForLogicalPoint(m_context.displaySession,
+                                                           QCursor::pos()));
     m_context.actions.updateOverlayState();
     return true;
 }
@@ -603,7 +625,6 @@ void ScreenshotOverlayInputHandler::requestIntelligentSelectionHitTest(
 
 void ScreenshotOverlayInputHandler::setIntelligentSelectionIndex(int index) {
     if (!m_context.intelligentSelection.setIndex(index)) {
-        m_context.intelligentSelection.reset();
         m_context.selection.clearSelection();
         return;
     }
@@ -714,8 +735,9 @@ void ScreenshotOverlayInputHandler::restoreToolAfterSelectionResize() {
           m_context.interaction.modifyingSelection())) {
         return;
     }
-    m_context.interaction.setCanvasTool(previousTool);
-    m_context.actions.setTransientActiveTool(previousTool);
+    if (!m_context.actions.activateToolForSelectionResize(previousTool)) {
+        m_toolBeforeSelectionResize = previousTool;
+    }
 }
 
 void ScreenshotOverlayInputHandler::restoreScrollingCaptureAfterFailedResize() {

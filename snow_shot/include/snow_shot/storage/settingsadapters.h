@@ -169,6 +169,14 @@ class DrawingShortcutSettings final {
     bool setAllShortcutsAtomic(const QMap<QString, QStringList>& shortcutsByTool) const;
 };
 
+class PinToScreenShortcutSettings final {
+  public:
+    [[nodiscard]] QStringList shortcuts(const QString& actionId) const;
+    bool setShortcuts(const QString& actionId, const QStringList& shortcuts) const;
+    [[nodiscard]] QMap<QString, QStringList> allShortcuts() const;
+    bool setAllShortcutsAtomic(const QMap<QString, QStringList>& shortcutsByAction) const;
+};
+
 struct ScreenshotTranslationConfiguration {
     QString sourceLanguage;
     QString targetLanguage;
@@ -274,6 +282,12 @@ class SystemSettings final {
   public:
     [[nodiscard]] bool autoStartAtBoot() const;
     bool setAutoStartAtBoot(bool enabled) const;
+};
+
+class NetworkSettings final {
+  public:
+    [[nodiscard]] QString proxy() const;
+    bool setProxy(const QString& proxy) const;
 };
 
 class HistorySettings final {

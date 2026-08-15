@@ -16,6 +16,7 @@
 class QKeyEvent;
 class QFocusEvent;
 class QEvent;
+class QContextMenuEvent;
 class QMouseEvent;
 class QPaintEvent;
 class QResizeEvent;
@@ -109,7 +110,11 @@ class ScreenshotRecognitionWindow final : public QWidget {
     void showQrContents(const QStringList& contents);
     void clearQrContents();
 
+  signals:
+    void embeddedContextMenuRequested(const QPoint& globalPosition);
+
   protected:
+    void contextMenuEvent(QContextMenuEvent* event) override;
     void focusOutEvent(QFocusEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;

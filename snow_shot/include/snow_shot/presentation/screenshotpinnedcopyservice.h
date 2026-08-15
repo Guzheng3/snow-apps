@@ -26,6 +26,7 @@ struct ScreenshotPinnedViewportCopyRequest {
 class ScreenshotPinnedCopyService final {
   public:
     using Callback = std::function<void(ScreenshotClipboardPayload)>;
+    using ImageCallback = std::function<void(QImage)>;
 
     ScreenshotPinnedCopyService();
     ~ScreenshotPinnedCopyService();
@@ -35,6 +36,8 @@ class ScreenshotPinnedCopyService final {
 
     [[nodiscard]] bool requestCurrentViewport(ScreenshotPinnedViewportCopyRequest request,
                                               QObject* receiver, Callback callback);
+    [[nodiscard]] bool requestCurrentImage(ScreenshotPinnedViewportCopyRequest request,
+                                           QObject* receiver, ImageCallback callback);
     [[nodiscard]] bool requestOriginalImage(QImage image, QObject* receiver, Callback callback);
     void invalidate();
 
@@ -42,6 +45,7 @@ class ScreenshotPinnedCopyService final {
     enum class RequestKind {
         None,
         CurrentViewport,
+        CurrentImage,
         OriginalImage,
     };
 

@@ -182,7 +182,8 @@ bool ScreenshotColorPickerController::cycleFormat(const ScreenshotColorPickerCon
 
 bool ScreenshotColorPickerController::moveCursor(int dx, int dy,
                                                  const ScreenshotColorPickerContext& context) {
-    if (!enabled(context) || m_displaySession.isEmpty()) {
+    const bool canMoveDrawingCursor = context.active && context.drawingToolActive;
+    if ((!enabled(context) && !canMoveDrawingCursor) || m_displaySession.isEmpty()) {
         return false;
     }
 
@@ -204,6 +205,9 @@ bool ScreenshotColorPickerController::moveCursor(int dx, int dy,
 
     if (nextPoint == currentPoint) {
         rememberCursorPhysicalPoint(currentPoint);
+        if (canMoveDrawingCursor) {
+            return true;
+        }
         if (context.dragging) {
             updateForSelectionDrag(canvasPositionForPhysicalPoint(currentPoint), context);
         } else {
@@ -214,6 +218,11 @@ bool ScreenshotColorPickerController::moveCursor(int dx, int dy,
 
     if (!setPhysicalCursorPosition(nextPoint)) {
         return false;
+    }
+
+    if (canMoveDrawingCursor) {
+        rememberCursorPhysicalPoint(nextPoint);
+        return true;
     }
 
     if (context.dragging) {

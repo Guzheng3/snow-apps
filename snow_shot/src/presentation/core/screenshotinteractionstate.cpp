@@ -45,13 +45,6 @@ void ScreenshotInteractionState::setMoveTool(bool hasSelection, bool selectorRea
                            : ScreenshotCaptureMode::ManualSelecting;
 }
 
-void ScreenshotInteractionState::setTransientMoveTool() {
-    m_activeTool = ScreenshotActiveTool::Move;
-    m_mode = ScreenshotCaptureMode::MovingSelection;
-    m_dragMode = ScreenshotSelectionDragMode::None;
-    m_dragging = false;
-}
-
 void ScreenshotInteractionState::setCanvasTool(ScreenshotActiveTool tool) {
     m_activeTool = tool;
     m_mode = ScreenshotCaptureMode::Editing;

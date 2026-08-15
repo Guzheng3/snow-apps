@@ -81,8 +81,11 @@ class CaptureRuntime final : public ScreenshotCaptureRuntimePort {
     void destroyDisplayPool(ScreenshotDisplaySession&) override {}
     void resetForNewCapture(ScreenshotDisplaySession&) override {}
     void prepareDisplayModels(ScreenshotDisplaySession&) override {}
-    void applyDisplayModels(ScreenshotDisplaySession&) override {}
+    void applyDisplayModels(ScreenshotDisplaySession&) override {
+        ++applyDisplayModelsCalls;
+    }
     [[nodiscard]] bool preparePreCaptureOverlayWindows(ScreenshotDisplaySession&) override {
+        ++preparePreCaptureOverlayCalls;
         return true;
     }
     void showOverlayWindows(const ScreenshotDisplaySession&, ScreenshotOverlayShowMode) override {
@@ -109,6 +112,8 @@ class CaptureRuntime final : public ScreenshotCaptureRuntimePort {
     mutable int clearOverlayCanvasCalls = 0;
     int clearDisplayCalls = 0;
     int showOverlayCalls = 0;
+    int applyDisplayModelsCalls = 0;
+    int preparePreCaptureOverlayCalls = 0;
     int hideOverlayCalls = 0;
     int clearDocumentCalls = 0;
     int prewarmToolbarCalls = 0;
@@ -312,6 +317,53 @@ void capturePresentedRunsAfterCapturedOverlayIsShown() {
             "capture-presented callback must run once after the captured overlay is shown");
 }
 
+void silentCaptureNeverPreparesOrShowsOverlays() {
+    ScreenshotCaptureState state;
+    state.sessionState = ScreenshotSessionState::IdlePrepared;
+    ScreenshotDisplaySession displaySession;
+    ScreenshotGeometryMapper geometry;
+    ScreenshotInteractionState interaction;
+    ScreenshotSelectionModel selection;
+    ScreenshotIntelligentSelectionModel intelligentSelection;
+    CaptureRuntime runtime;
+    int capturePresentedCalls = 0;
+    ScreenshotCaptureWorkflow workflow({
+        state,
+        runtime,
+        geometry,
+        displaySession,
+        interaction,
+        selection,
+        intelligentSelection,
+        ScreenshotCapturePresentationCallbacks{
+            {},
+            {},
+            {},
+            [&capturePresentedCalls]() { ++capturePresentedCalls; },
+        },
+    });
+
+    CapturedDisplayModel snapshot;
+    snapshot.stableId = QStringLiteral("primary");
+    snapshot.name = QStringLiteral("Primary");
+    snapshot.physicalRect = QRect(0, 0, 64, 48);
+    snapshot.image = QImage(snapshot.physicalRect.size(), QImage::Format_RGBA8888);
+    snapshot.image.fill(Qt::blue);
+
+    workflow.startCapture(ScreenshotCapturePresentationMode::Silent);
+    require(runtime.eventSink != nullptr, "capture workflow did not register its event sink");
+    runtime.eventSink->handleCaptureFinished(state.sessionId, {snapshot});
+
+    require(runtime.preparePreCaptureOverlayCalls == 0,
+            "silent capture must not prepare screenshot windows");
+    require(runtime.showOverlayCalls == 0 && runtime.applyDisplayModelsCalls == 0,
+            "silent capture must not bind or show screenshot windows");
+    require(runtime.startWorkflowRefreshCalls == 0,
+            "silent capture must not initialize smart selection");
+    require(capturePresentedCalls == 1,
+            "silent capture must notify the controller when pixels are ready");
+}
+
 void capturedImagePlacementFollowsNormalizedCanvasGeometry() {
     CapturedDisplayModel snapshot;
     snapshot.stableId = QStringLiteral("secondary-display");
@@ -341,6 +393,7 @@ int main() {
     captureInitializesSelectorBeforeCapturing();
     restartingCaptureReleasesPreviousSelectorCache();
     capturePresentedRunsAfterCapturedOverlayIsShown();
+    silentCaptureNeverPreparesOrShowsOverlays();
     capturedImagePlacementFollowsNormalizedCanvasGeometry();
     return 0;
 }

@@ -69,6 +69,7 @@ class ScreenshotOcrController final : public QObject {
     void activateQr();
     // Leaves the visible recognition tool but deliberately keeps requests and cache entries alive.
     void deactivate();
+    void deactivateForSelectionResize();
     // Invalidates the capture session and cancels all recognition work.
     void invalidateSession();
     [[nodiscard]] bool active() const;
@@ -124,6 +125,7 @@ class ScreenshotOcrController final : public QObject {
     void applyOcrBackgroundToOverlays(
         const std::shared_ptr<ScreenshotOcrPresentation>& presentation) const;
     void clearOcrBackgroundFromOverlays() const;
+    void deactivateImpl(bool preserveRecognitionWindow);
     void restorePreviousToolAfterFailure();
     void showStatus(const QString& message, bool error) const;
     [[nodiscard]] bool ensureRecognitionWindow();

@@ -10,6 +10,8 @@
 
 #include <functional>
 
+class QNetworkAccessManager;
+
 struct SnowShotTableResult {
     QString html;
     QString error;
@@ -71,6 +73,8 @@ class SnowShotApiClient final : public QObject {
     ~SnowShotApiClient() override;
 
     [[nodiscard]] const QString& baseUrl() const;
+    [[nodiscard]] bool usesSystemProxy() const;
+    void setUseSystemProxy(bool enabled);
     [[nodiscard]] const QVector<SnowShotChatModel>& cachedChatModels() const;
     [[nodiscard]] RequestToken extractTable(const QImage& image, QObject* receiver,
                                              Completion completion);
@@ -88,11 +92,13 @@ class SnowShotApiClient final : public QObject {
 
   private:
     struct Request;
+    [[nodiscard]] QNetworkAccessManager* networkAccessManager();
     void finish(RequestToken token, SnowShotTableResult result);
     void finishChatModels(RequestToken token, SnowShotChatModelsResult result);
     void finishTranslation(RequestToken token, SnowShotTranslationResult result);
 
     QString m_baseUrl;
+    bool m_useSystemProxy = false;
     RequestToken m_nextToken = 0;
     QHash<RequestToken, Request*> m_requests;
     QVector<SnowShotChatModel> m_cachedChatModels;

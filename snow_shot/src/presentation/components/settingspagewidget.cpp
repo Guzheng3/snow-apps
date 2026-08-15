@@ -165,30 +165,27 @@ class SettingsPageWidget::Impl {
             list->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
             auto* listLayout = new QVBoxLayout(list);
             listLayout->setContentsMargins(0, 0, 0, 0);
-            const bool compactShortcutGrid = page->id == QStringLiteral("hotkey-settings") &&
-                                             (sectionDefinition.id ==
-                                                  QStringLiteral("screenshot-shortcuts") ||
-                                              sectionDefinition.id ==
-                                                  QStringLiteral("drawing-shortcuts"));
-            listLayout->setSpacing(compactShortcutGrid
+            const bool twoColumnItemGrid =
+                sectionDefinition.itemLayout == settings::SettingsSectionItemLayout::TwoColumnGrid;
+            listLayout->setSpacing(twoColumnItemGrid
                                        ? 0
                                        : (page->id == QStringLiteral("quick-functions")
                                               ? metric.padding
                                               : metric.paddingLG));
 
-            QGridLayout* shortcutGrid = nullptr;
-            if (compactShortcutGrid) {
-                shortcutGrid = new QGridLayout;
-                shortcutGrid->setContentsMargins(0, 0, 0, 0);
-                shortcutGrid->setHorizontalSpacing(metric.marginLG);
-                shortcutGrid->setVerticalSpacing(metric.marginLG);
-                shortcutGrid->setColumnStretch(0, 1);
-                shortcutGrid->setColumnStretch(1, 1);
-                listLayout->addLayout(shortcutGrid);
+            QGridLayout* itemGrid = nullptr;
+            if (twoColumnItemGrid) {
+                itemGrid = new QGridLayout;
+                itemGrid->setContentsMargins(0, 0, 0, 0);
+                itemGrid->setHorizontalSpacing(metric.marginLG);
+                itemGrid->setVerticalSpacing(metric.marginLG);
+                itemGrid->setColumnStretch(0, 1);
+                itemGrid->setColumnStretch(1, 1);
+                listLayout->addLayout(itemGrid);
             }
 
             for (int itemIndex = 0; itemIndex < sectionDefinition.items.size(); ++itemIndex) {
-                buildItem(sectionDefinition.items.at(itemIndex), list, listLayout, shortcutGrid,
+                buildItem(sectionDefinition.items.at(itemIndex), list, listLayout, itemGrid,
                           itemIndex);
             }
             contentLayout->addWidget(list);
@@ -200,14 +197,14 @@ class SettingsPageWidget::Impl {
     }
 
     void buildItem(const settings::SettingsItemDefinition& definition, QWidget* list,
-                   QVBoxLayout* listLayout, QGridLayout* shortcutGrid = nullptr,
+                   QVBoxLayout* listLayout, QGridLayout* itemGrid = nullptr,
                    int itemIndex = 0) {
         RuntimeItem runtime;
         runtime.definition = &definition;
 
-        const auto addItemWidget = [listLayout, shortcutGrid, itemIndex](QWidget* widget) {
-            if (shortcutGrid != nullptr) {
-                shortcutGrid->addWidget(widget, itemIndex / 2, itemIndex % 2);
+        const auto addItemWidget = [listLayout, itemGrid, itemIndex](QWidget* widget) {
+            if (itemGrid != nullptr) {
+                itemGrid->addWidget(widget, itemIndex / 2, itemIndex % 2);
             } else {
                 listLayout->addWidget(widget);
             }
@@ -612,7 +609,9 @@ class SettingsPageWidget::Impl {
                     config.validationScope =
                         payload.scope == settings::SettingsLocalShortcutScope::Screenshot
                             ? ShortcutKeyRowConfig::ValidationScope::ScreenshotShortcut
-                            : ShortcutKeyRowConfig::ValidationScope::DrawingShortcut;
+                            : payload.scope == settings::SettingsLocalShortcutScope::Drawing
+                                  ? ShortcutKeyRowConfig::ValidationScope::DrawingShortcut
+                                  : ShortcutKeyRowConfig::ValidationScope::PinnedWindowShortcut;
                     config.presentation =
                         ShortcutKeyRowConfig::Presentation::CompactFormField;
                     auto* control = new ShortcutKeyRow(config, metric, mainWindowMetric, list);

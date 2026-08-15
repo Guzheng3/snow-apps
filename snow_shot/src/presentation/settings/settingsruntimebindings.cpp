@@ -46,10 +46,12 @@ QStringList stringListDefault(const QString& key) {
 }
 
 QString localShortcutKey(SettingsLocalShortcutScope scope, const QString& shortcutId) {
-    return (scope == SettingsLocalShortcutScope::Screenshot
-                ? QStringLiteral("screenshot_shortcuts/")
-                : QStringLiteral("drawing_shortcuts/")) +
-           shortcutId;
+    const QString prefix = scope == SettingsLocalShortcutScope::Screenshot
+                               ? QStringLiteral("screenshot_shortcuts/")
+                               : scope == SettingsLocalShortcutScope::Drawing
+                                     ? QStringLiteral("drawing_shortcuts/")
+                                     : QStringLiteral("pin_to_screen_shortcuts/");
+    return prefix + shortcutId;
 }
 
 storage::CaptureHistoryPolicy defaultHistoryPolicy() {
@@ -142,6 +144,8 @@ QVariant BuiltInSettingsRuntimeBindings::selectValue(SettingsSelectBinding bindi
         return storage.configuration().value(QStringLiteral("system/application_priority"))
             .toString();
     }
+    case SettingsSelectBinding::Proxy:
+        return storage::NetworkSettings().proxy();
     case SettingsSelectBinding::ScreenshotToolbarSize:
         return storage::ScreenshotUiSettings().toolbarSize();
     case SettingsSelectBinding::ColorPickerDisplayMode:
@@ -224,6 +228,8 @@ bool BuiltInSettingsRuntimeBindings::applySelectValue(SettingsSelectBinding bind
         }
         return persisted;
     }
+    case SettingsSelectBinding::Proxy:
+        return storage::NetworkSettings().setProxy(value.toString());
     case SettingsSelectBinding::ScreenshotToolbarSize:
         return storage::ScreenshotUiSettings().setToolbarSize(value.toString());
     case SettingsSelectBinding::ColorPickerDisplayMode:
@@ -606,7 +612,10 @@ QStringList BuiltInSettingsRuntimeBindings::localShortcuts(SettingsLocalShortcut
     if (scope == SettingsLocalShortcutScope::Screenshot) {
         return storage::ScreenshotShortcutSettings().shortcuts(shortcutId);
     }
-    return storage::DrawingShortcutSettings().shortcuts(shortcutId);
+    if (scope == SettingsLocalShortcutScope::Drawing) {
+        return storage::DrawingShortcutSettings().shortcuts(shortcutId);
+    }
+    return storage::PinToScreenShortcutSettings().shortcuts(shortcutId);
 }
 
 GlobalShortcutValidationResult BuiltInSettingsRuntimeBindings::validateLocalShortcut(
@@ -623,13 +632,16 @@ GlobalShortcutValidationResult BuiltInSettingsRuntimeBindings::validateLocalShor
         (shortcutId == QStringLiteral("previous_screenshot_history") ||
          shortcutId == QStringLiteral("next_screenshot_history")) &&
         (canonical == QStringLiteral(",") || canonical == QStringLiteral("."));
-    if (storage::ScreenshotShortcutSettings::isReservedShortcut(canonical) &&
+    if (scope != SettingsLocalShortcutScope::PinToScreen &&
+        storage::ScreenshotShortcutSettings::isReservedShortcut(canonical) &&
         !isScreenshotHistoryShortcut) {
         return {canonical, false, GlobalShortcutFailureReason::InvalidShortcut};
     }
     const auto all = scope == SettingsLocalShortcutScope::Screenshot
                          ? storage::ScreenshotShortcutSettings().allShortcuts()
-                         : storage::DrawingShortcutSettings().allShortcuts();
+                         : scope == SettingsLocalShortcutScope::Drawing
+                               ? storage::DrawingShortcutSettings().allShortcuts()
+                               : storage::PinToScreenShortcutSettings().allShortcuts();
     for (auto it = all.cbegin(); it != all.cend(); ++it) {
         if (it.key() == shortcutId) {
             continue;
@@ -655,7 +667,10 @@ bool BuiltInSettingsRuntimeBindings::applyLocalShortcuts(
     if (scope == SettingsLocalShortcutScope::Screenshot) {
         return storage::ScreenshotShortcutSettings().setShortcuts(shortcutId, shortcuts);
     }
-    return storage::DrawingShortcutSettings().setShortcuts(shortcutId, shortcuts);
+    if (scope == SettingsLocalShortcutScope::Drawing) {
+        return storage::DrawingShortcutSettings().setShortcuts(shortcutId, shortcuts);
+    }
+    return storage::PinToScreenShortcutSettings().setShortcuts(shortcutId, shortcuts);
 }
 
 SettingsActionState
@@ -836,6 +851,25 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
         }
         return storage::ScreenshotShortcutSettings().setAllShortcutsAtomic(defaults);
     }
+    case SettingsSectionReset::ScreenshotOtherShortcuts: {
+        QMap<QString, QStringList> defaults;
+        for (const QString& actionId : {QStringLiteral("table_recognition"),
+                                        QStringLiteral("qr_code_recognition"),
+                                        QStringLiteral("video_recording"),
+                                        QStringLiteral("text_recognition"),
+                                        QStringLiteral("text_translation"),
+                                        QStringLiteral("scrolling_screenshot"),
+                                        QStringLiteral("save_as_file")}) {
+            defaults.insert(
+                actionId,
+                stringListDefault(QStringLiteral("screenshot_shortcuts/") + actionId));
+        }
+        QMap<QString, QStringList> all = storage::ScreenshotShortcutSettings().allShortcuts();
+        for (auto it = defaults.cbegin(); it != defaults.cend(); ++it) {
+            all.insert(it.key(), it.value());
+        }
+        return storage::ScreenshotShortcutSettings().setAllShortcutsAtomic(all);
+    }
     case SettingsSectionReset::DrawingShortcuts: {
         QMap<QString, QStringList> defaults;
         for (const QString& toolId : {QStringLiteral("select"), QStringLiteral("shape"),
@@ -848,6 +882,23 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
                             stringListDefault(QStringLiteral("drawing_shortcuts/") + toolId));
         }
         return storage::DrawingShortcutSettings().setAllShortcutsAtomic(defaults);
+    }
+    case SettingsSectionReset::PinToScreenShortcuts: {
+        QMap<QString, QStringList> defaults;
+        for (const QString& actionId : {QStringLiteral("copy_to_clipboard"),
+                                        QStringLiteral("copy_original_content"),
+                                        QStringLiteral("show_text_recognition_results"),
+                                        QStringLiteral("drawing_mode"),
+                                        QStringLiteral("thumbnail_mode"),
+                                        QStringLiteral("close_window"),
+                                        QStringLiteral("move_cursor_up"),
+                                        QStringLiteral("move_cursor_down"),
+                                        QStringLiteral("move_cursor_left"),
+                                        QStringLiteral("move_cursor_right")}) {
+            defaults.insert(actionId, stringListDefault(QStringLiteral("pin_to_screen_shortcuts/") +
+                                                        actionId));
+        }
+        return storage::PinToScreenShortcutSettings().setAllShortcutsAtomic(defaults);
     }
     case SettingsSectionReset::PinToScreen:
         return storage::ApplicationStorage::instance().configuration().setValues({
@@ -930,6 +981,10 @@ bool BuiltInSettingsRuntimeBindings::resetSection(SettingsSectionReset reset) {
             storage::ConfigurationSchema::defaultValue(
                 QStringLiteral("system/auto_start_at_boot"))
                 .toBool());
+    case SettingsSectionReset::Network:
+        return applySelectValue(
+            SettingsSelectBinding::Proxy,
+            storage::ConfigurationSchema::defaultValue(QStringLiteral("network/proxy")));
     case SettingsSectionReset::SystemSettings: {
         auto& storage = storage::ApplicationStorage::instance();
         if (!storage.isInitialized()) {

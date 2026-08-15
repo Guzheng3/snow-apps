@@ -33,6 +33,7 @@ struct ScreenshotWindowCapture::Impl final {
         SnowCaptureWindowSessionConfig config{};
         config.hwnd = static_cast<intptr_t>(nativeWindowHandle);
         config.capture_retry_count = 1;
+        config.wgc_update_mode = SNOW_CAPTURE_WGC_UPDATE_MODE_COMPLETE_ONLY;
         session = snow_capture_window_session_create(&config);
         if (session == nullptr) {
             error = nativeCaptureError("Failed to create window capture session");

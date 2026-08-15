@@ -19,6 +19,7 @@ struct CapturedDisplayModel;
 struct ScreenshotColorPickerContext {
     bool active = false;
     bool moveToolActive = false;
+    bool drawingToolActive = false;
     bool intelligentSelecting = false;
     bool manualSelecting = false;
     bool movingSelection = false;

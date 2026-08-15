@@ -5,6 +5,11 @@
 #include <QRectF>
 #include <QVector>
 
+enum class ScreenshotIntelligentSelectionTarget {
+    Window,
+    WindowSubElement,
+};
+
 class ScreenshotIntelligentSelectionModel final {
   public:
     void reset();
@@ -15,10 +20,8 @@ class ScreenshotIntelligentSelectionModel final {
                                           const QRectF& selectableBounds,
                                           qreal minimumSelectionSize);
     [[nodiscard]] bool setIndex(int index);
-    // Advances through the current window-to-sub-element hit path. Selection
-    // levels wrap so Tab can always switch back to the window after the last
-    // sub-element.
-    [[nodiscard]] bool cycleIndex();
+    void toggleSelectionTarget();
+    [[nodiscard]] ScreenshotIntelligentSelectionTarget selectionTarget() const;
     [[nodiscard]] int index() const;
     [[nodiscard]] bool hasCurrentSelection() const;
     [[nodiscard]] QRectF currentSelection() const;
@@ -33,6 +36,8 @@ class ScreenshotIntelligentSelectionModel final {
   private:
     QVector<QRectF> m_hitRects;
     int m_index = -1;
+    ScreenshotIntelligentSelectionTarget m_selectionTarget =
+        ScreenshotIntelligentSelectionTarget::Window;
     bool m_pressActive = false;
     QPointF m_pressPosition;
     QRectF m_pressSelection;

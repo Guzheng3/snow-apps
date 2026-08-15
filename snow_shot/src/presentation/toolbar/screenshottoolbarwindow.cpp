@@ -38,6 +38,7 @@ ScreenshotToolPalette::Options screenshotToolbarOptions() {
     options.showTextTool = true;
     options.showSerialNumberTool = true;
     options.showOcrTool = true;
+    options.showTextTranslationTool = true;
     options.showTableTool = true;
     options.showQrTool = true;
     options.showScreenRecordButton = true;
@@ -193,6 +194,10 @@ void ScreenshotToolbarWindow::connectToolCommands(ScreenshotToolPalette& toolPal
     });
     connect(&toolPalette, &ScreenshotToolPalette::ocrRequested, this, [this]() {
         m_commands.setOcrTool();
+        setActiveToolAndReposition(ScreenshotToolPalette::Tool::Ocr);
+    });
+    connect(&toolPalette, &ScreenshotToolPalette::textTranslationRequested, this, [this]() {
+        m_commands.setTextTranslationTool();
         setActiveToolAndReposition(ScreenshotToolPalette::Tool::Ocr);
     });
     connect(&toolPalette, &ScreenshotToolPalette::tableRequested, this, [this]() {

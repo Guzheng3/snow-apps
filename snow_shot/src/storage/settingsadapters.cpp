@@ -71,6 +71,29 @@ const QStringList& screenshotShortcutActionIds() {
         QStringLiteral("next_screenshot_history"),
         QStringLiteral("select_previously_selected_area"),
         QStringLiteral("copy_color"),
+        QStringLiteral("table_recognition"),
+        QStringLiteral("qr_code_recognition"),
+        QStringLiteral("video_recording"),
+        QStringLiteral("text_recognition"),
+        QStringLiteral("text_translation"),
+        QStringLiteral("scrolling_screenshot"),
+        QStringLiteral("save_as_file"),
+    };
+    return ids;
+}
+
+const QStringList& pinToScreenShortcutActionIds() {
+    static const QStringList ids = {
+        QStringLiteral("copy_to_clipboard"),
+        QStringLiteral("copy_original_content"),
+        QStringLiteral("show_text_recognition_results"),
+        QStringLiteral("drawing_mode"),
+        QStringLiteral("thumbnail_mode"),
+        QStringLiteral("close_window"),
+        QStringLiteral("move_cursor_up"),
+        QStringLiteral("move_cursor_down"),
+        QStringLiteral("move_cursor_left"),
+        QStringLiteral("move_cursor_right"),
     };
     return ids;
 }
@@ -84,6 +107,12 @@ QString drawingShortcutKey(const QString& toolId) {
 QString screenshotShortcutKey(const QString& actionId) {
     return screenshotShortcutActionIds().contains(actionId)
                ? QStringLiteral("screenshot_shortcuts/") + actionId
+               : QString();
+}
+
+QString pinToScreenShortcutKey(const QString& actionId) {
+    return pinToScreenShortcutActionIds().contains(actionId)
+               ? QStringLiteral("pin_to_screen_shortcuts/") + actionId
                : QString();
 }
 
@@ -696,6 +725,58 @@ bool DrawingShortcutSettings::setAllShortcutsAtomic(
     return cache().setValues(values);
 }
 
+QStringList PinToScreenShortcutSettings::shortcuts(const QString& actionId) const {
+    const QString key = pinToScreenShortcutKey(actionId);
+    return key.isEmpty() ? QStringList{} : shortcutValue(key);
+}
+
+bool PinToScreenShortcutSettings::setShortcuts(const QString& actionId,
+                                               const QStringList& value) const {
+    if (pinToScreenShortcutKey(actionId).isEmpty()) {
+        return false;
+    }
+    QMap<QString, QStringList> next = allShortcuts();
+    next.insert(actionId, value);
+    return setAllShortcutsAtomic(next);
+}
+
+QMap<QString, QStringList> PinToScreenShortcutSettings::allShortcuts() const {
+    QMap<QString, QStringList> result;
+    for (const QString& actionId : pinToScreenShortcutActionIds()) {
+        result.insert(actionId, shortcutValue(pinToScreenShortcutKey(actionId)));
+    }
+    return result;
+}
+
+bool PinToScreenShortcutSettings::setAllShortcutsAtomic(
+    const QMap<QString, QStringList>& shortcutsByAction) const {
+    if (shortcutsByAction.size() != pinToScreenShortcutActionIds().size()) {
+        return false;
+    }
+    QMap<QString, QJsonValue> values;
+    QSet<QString> seen;
+    for (const QString& actionId : pinToScreenShortcutActionIds()) {
+        if (!shortcutsByAction.contains(actionId)) {
+            return false;
+        }
+        const QString key = pinToScreenShortcutKey(actionId);
+        const ConfigurationNormalization normalized =
+            ConfigurationSchema::normalize(key, stringArray(shortcutsByAction.value(actionId)));
+        if (!normalized.valid) {
+            return false;
+        }
+        for (const QJsonValue& item : normalized.value.toArray()) {
+            const QString binding = item.toString().toCaseFolded();
+            if (seen.contains(binding)) {
+                return false;
+            }
+            seen.insert(binding);
+        }
+        values.insert(key, normalized.value);
+    }
+    return cache().setValues(values);
+}
+
 QString ScreenshotUiSettings::toolbarSize() const {
     return cache().value(QStringLiteral("screenshot_ui/toolbar_size")).toString();
 }
@@ -990,6 +1071,14 @@ bool SystemSettings::autoStartAtBoot() const {
 
 bool SystemSettings::setAutoStartAtBoot(bool enabled) const {
     return cache().setValue(QStringLiteral("system/auto_start_at_boot"), enabled);
+}
+
+QString NetworkSettings::proxy() const {
+    return cache().value(QStringLiteral("network/proxy")).toString();
+}
+
+bool NetworkSettings::setProxy(const QString& proxy) const {
+    return cache().setValue(QStringLiteral("network/proxy"), proxy);
 }
 
 CaptureHistoryPolicy HistorySettings::policy() const {

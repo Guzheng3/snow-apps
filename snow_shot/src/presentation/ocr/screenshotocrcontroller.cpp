@@ -470,13 +470,23 @@ void ScreenshotOcrController::handleQrLinkActivated(const QUrl& url) {
 }
 
 void ScreenshotOcrController::deactivate() {
+    deactivateImpl(false);
+}
+
+void ScreenshotOcrController::deactivateForSelectionResize() {
+    deactivateImpl(true);
+}
+
+void ScreenshotOcrController::deactivateImpl(bool preserveRecognitionWindow) {
     m_session->deactivate();
     if (!m_active && m_canvasStates.isEmpty() && m_recognitionWindow == nullptr) {
         return;
     }
     m_active = false;
     clearOcrBackgroundFromOverlays();
-    destroyRecognitionWindow();
+    if (!preserveRecognitionWindow) {
+        destroyRecognitionWindow();
+    }
     m_context.displaySession.forEachOverlay([](qsizetype, ScreenshotOverlayWindow* overlay) {
         if (overlay != nullptr && overlay->canvas() != nullptr) {
             overlay->canvas()->unsetCursor();
@@ -626,13 +636,7 @@ bool ScreenshotOcrController::ensureRecognitionWindow() {
             m_context.finishSelectionResize(canvasPosition);
             updateRecognitionWindowGeometry();
         },
-        [this]() {
-            QTimer::singleShot(0, this, [this]() {
-                if (m_active) {
-                    activateMode(m_mode);
-                }
-            });
-        },
+        []() {},
     });
     if (!window->present(config)) {
         delete window;

@@ -5,6 +5,7 @@
 void ScreenshotIntelligentSelectionModel::reset() {
     clearHitPath();
     clearPress();
+    m_selectionTarget = ScreenshotIntelligentSelectionTarget::Window;
 }
 
 void ScreenshotIntelligentSelectionModel::clearHitPath() {
@@ -48,8 +49,11 @@ bool ScreenshotIntelligentSelectionModel::applyCanvasHitPath(const QVector<QRect
         return setIndex(m_index);
     }
 
+    const int preferredIndex = m_index;
     m_hitRects = boundedHitRects;
-    return setIndex(0);
+    return setIndex(m_selectionTarget == ScreenshotIntelligentSelectionTarget::Window
+                        ? 0
+                        : std::max(1, preferredIndex));
 }
 
 bool ScreenshotIntelligentSelectionModel::setIndex(int index) {
@@ -58,22 +62,30 @@ bool ScreenshotIntelligentSelectionModel::setIndex(int index) {
         return false;
     }
 
-    const int maxIndex = static_cast<int>(m_hitRects.size() - 1);
-    m_index = std::clamp(index, 0, maxIndex);
+    const int minimumIndex =
+        m_selectionTarget == ScreenshotIntelligentSelectionTarget::Window ? 0 : 1;
+    const int maximumIndex = m_selectionTarget == ScreenshotIntelligentSelectionTarget::Window
+                                 ? 0
+                                 : static_cast<int>(m_hitRects.size() - 1);
+    if (minimumIndex > maximumIndex) {
+        m_index = -1;
+        return false;
+    }
+
+    m_index = std::clamp(index, minimumIndex, maximumIndex);
     return true;
 }
 
-bool ScreenshotIntelligentSelectionModel::cycleIndex() {
-    if (m_hitRects.isEmpty()) {
-        return false;
-    }
+void ScreenshotIntelligentSelectionModel::toggleSelectionTarget() {
+    m_selectionTarget = m_selectionTarget == ScreenshotIntelligentSelectionTarget::Window
+                            ? ScreenshotIntelligentSelectionTarget::WindowSubElement
+                            : ScreenshotIntelligentSelectionTarget::Window;
+    static_cast<void>(
+        setIndex(m_selectionTarget == ScreenshotIntelligentSelectionTarget::Window ? 0 : 1));
+}
 
-    const int nextIndex = m_index < 0 ? 0 : (m_index + 1) % m_hitRects.size();
-    const int previousIndex = m_index;
-    if (!setIndex(nextIndex)) {
-        return false;
-    }
-    return previousIndex != m_index;
+ScreenshotIntelligentSelectionTarget ScreenshotIntelligentSelectionModel::selectionTarget() const {
+    return m_selectionTarget;
 }
 
 int ScreenshotIntelligentSelectionModel::index() const {

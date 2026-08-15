@@ -41,7 +41,6 @@ class ScreenshotInteractionState final {
     void beginCapture();
     void enterOverlayVisible(bool selectorReady);
     void setMoveTool(bool hasSelection, bool selectorReady);
-    void setTransientMoveTool();
     void setCanvasTool(ScreenshotActiveTool tool);
     void setOcrTool();
     void setTableTool();

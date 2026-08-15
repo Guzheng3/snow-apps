@@ -12,6 +12,7 @@
 #include <QCoreApplication>
 #include <QFile>
 #include <QImage>
+#include <QKeySequence>
 #include <QMenu>
 #include <QString>
 #include <QSystemTrayIcon>
@@ -183,6 +184,21 @@ int main(int argc, char* argv[]) {
     requireActionText(recordingToggleMenuAction,
                       QStringLiteral("Start Screen Recording / Stop and Copy Video"),
                       "Recording toggle should use the canonical shortcut title");
+    const QString screenshotShortcut = QStringLiteral("Ctrl+Alt+1");
+    const QString alternateScreenshotShortcut = QStringLiteral("Meta+Shift+S");
+    const auto nativeShortcut = [](const QString& portableShortcut) {
+        return QKeySequence::fromString(portableShortcut, QKeySequence::PortableText)
+            .toString(QKeySequence::NativeText);
+    };
+    const QString screenshotShortcutHint = nativeShortcut(screenshotShortcut) +
+                                           QStringLiteral(" / ") +
+                                           nativeShortcut(alternateScreenshotShortcut);
+    controller.setGlobalShortcuts(snow_shot::presentation::GlobalShortcutAction::Screenshot,
+                                  {screenshotShortcut, alternateScreenshotShortcut});
+    requireActionText(screenshotMenuAction, QStringLiteral("Screenshot\t") + screenshotShortcutHint,
+                      "quick tray actions should display all configured global shortcuts");
+    require(screenshotMenuAction->shortcut().isEmpty(),
+            "displayed global shortcuts must not become menu-local shortcuts");
     controller.setScreenshotDelaySeconds(7);
     require(controller.screenshotDelaySeconds() == 7,
             "the tray should retain a normalized screenshot delay value");
@@ -261,7 +277,8 @@ int main(int argc, char* argv[]) {
 
     require(languageManager.setLanguage(QStringLiteral("zh_CN")),
             "the Simplified Chinese translation should load");
-    requireActionText(screenshotMenuAction, QStringLiteral("\u622a\u56fe"),
+    requireActionText(screenshotMenuAction,
+                      QStringLiteral("\u622a\u56fe\t") + screenshotShortcutHint,
                        "Screenshot should translate to Simplified Chinese");
     requireActionText(
         delayedScreenshotMenuAction,
@@ -282,7 +299,8 @@ int main(int argc, char* argv[]) {
 
     require(languageManager.setLanguage(QStringLiteral("zh_TW")),
             "the Traditional Chinese translation should load");
-    requireActionText(screenshotMenuAction, QStringLiteral("\u622a\u5716"),
+    requireActionText(screenshotMenuAction,
+                      QStringLiteral("\u622a\u5716\t") + screenshotShortcutHint,
                        "Screenshot should translate to Traditional Chinese");
     requireActionText(
         delayedScreenshotMenuAction,
@@ -300,6 +318,10 @@ int main(int argc, char* argv[]) {
                       "Disable Shortcut Functions should translate to Traditional Chinese");
     requireActionText(exitMenuAction, QStringLiteral("\u7d50\u675f"),
                        "Exit should translate to Traditional Chinese");
+    controller.setGlobalShortcuts(
+        snow_shot::presentation::GlobalShortcutAction::Screenshot, {});
+    requireActionText(screenshotMenuAction, QStringLiteral("\u622a\u5716"),
+                      "clearing a global shortcut should remove its tray menu hint");
 
     snow_shot::storage::ApplicationStorage::instance().shutdown();
     return 0;

@@ -19,6 +19,11 @@ option(SNOW_SHOT_BUILD_TESTS "Build Snow Shot test executables." OFF)
 option(SNOW_SHOT_BUILD_BENCHMARKS "Build opt-in native Snow Shot benchmarks." OFF)
 option(SNOW_SHOT_RELEASE_STATIC "Prefer static Snow Shot release linkage." OFF)
 option(SNOW_SHOT_QT_STATIC "Link Snow Shot against a static Qt build." OFF)
+unset(SNOW_SHOT_CAMERA_SHUTTER_AUDIO_SOURCE CACHE)
+set(
+    SNOW_SHOT_CAMERA_SHUTTER_AUDIO_SOURCE
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/audios/camera_shutter.mp3"
+)
 option(
     SNOW_SHOT_ENABLE_AGGRESSIVE_RELEASE_OPTIMIZATION
     "Enable aggressive compiler and linker optimizations for Release."
@@ -794,7 +799,27 @@ endif()
 target_compile_definitions(snow_shot PRIVATE
     SNOW_SHOT_API_BASE_URL=\"${SNOW_SHOT_API_BASE_URL}\"
 )
+if(WIN32)
+    target_compile_definitions(snow_shot PRIVATE
+        SNOW_SHOT_CAMERA_SHUTTER_AUDIO_SOURCE=\"${SNOW_SHOT_CAMERA_SHUTTER_AUDIO_SOURCE}\"
+    )
+endif()
 target_link_libraries(snow_shot PRIVATE snow_shot_image_codec)
+
+if(EXISTS "${SNOW_SHOT_CAMERA_SHUTTER_AUDIO_SOURCE}")
+    add_custom_command(TARGET snow_shot POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E make_directory
+            "$<TARGET_FILE_DIR:snow_shot>/audios"
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+            "${SNOW_SHOT_CAMERA_SHUTTER_AUDIO_SOURCE}"
+            "$<TARGET_FILE_DIR:snow_shot>/audios/camera_shutter.mp3"
+        COMMENT "Staging the camera shutter audio"
+        VERBATIM
+    )
+else()
+    message(WARNING
+        "Camera shutter audio was not found: ${SNOW_SHOT_CAMERA_SHUTTER_AUDIO_SOURCE}")
+endif()
 
 qt_add_resources(snow_shot "snow_shot_app_assets"
     PREFIX "/snow-shot/app-icons"
@@ -1014,6 +1039,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         src/presentation/selector/screenshotselectorpolicy.h
     )
     target_include_directories(snow-shot-selector-policy-tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/presentation/selector"
         "${SNOW_SHOT_CAPTURE_CRATES_DIR}/crates/snow-ui-selector-c/include"
     )
@@ -1621,6 +1647,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         src/presentation/overlay/screenshotselectionshadowrenderer.cpp
         src/presentation/services/screenshotcanvascolorsamplerwindow.cpp
         src/presentation/services/screenshotclipboardservice.cpp
+        src/presentation/services/screenshotimagefileservice.cpp
         src/presentation/services/screenshotmessageservice.cpp
         src/presentation/selection/screenshotselectiongeometry.cpp
         src/presentation/selection/screenshotselectionmodel.cpp
@@ -1657,6 +1684,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         Qt6::Network
         Qt6::Widgets
         snow_draw_engine_qt_canvas
+        snow_shot_image_codec
         snow_shot_window_shortcuts
     )
     if(WIN32)
@@ -1807,6 +1835,7 @@ if(SNOW_SHOT_BUILD_TESTS)
             src/presentation/overlay/screenshotcanvasrenderer.cpp
             src/presentation/overlay/screenshotselectionshadowrenderer.cpp
             src/presentation/services/screenshotclipboardservice.cpp
+            src/presentation/services/screenshotimagefileservice.cpp
             src/presentation/pinned/screenshotpinnededitcontroller.cpp
             src/presentation/pinned/screenshotpinnedcopyservice.cpp
             src/presentation/services/screenshotexportcoordinator.cpp
@@ -1836,6 +1865,7 @@ if(SNOW_SHOT_BUILD_TESTS)
             ant_design_qt
             Qt6::GuiPrivate
             Qt6::Widgets
+            snow_shot_image_codec
             snow_draw_engine_qt_canvas
             snow_shot_window_shortcuts
             comctl32
@@ -2739,6 +2769,7 @@ if(WIN32)
         runtimeobject
         user32
         userenv
+        winmm
         windowsapp
         ws2_32
     )
@@ -2925,6 +2956,12 @@ install(TARGETS snow_shot
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+if(EXISTS "${SNOW_SHOT_CAMERA_SHUTTER_AUDIO_SOURCE}")
+    install(FILES "${SNOW_SHOT_CAMERA_SHUTTER_AUDIO_SOURCE}"
+        DESTINATION "${CMAKE_INSTALL_BINDIR}/audios"
+        RENAME camera_shutter.mp3
+    )
+endif()
 install(TARGETS snow_shot_image_codec_backend
     RUNTIME_DEPENDENCY_SET snow_shot_image_runtime_dependencies
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

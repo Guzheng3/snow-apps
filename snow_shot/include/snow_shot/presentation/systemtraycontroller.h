@@ -34,6 +34,7 @@ class SystemTrayController final : public QObject {
     [[nodiscard]] QString leftClickAction() const;
     void setScreenshotDelaySeconds(int seconds);
     [[nodiscard]] int screenshotDelaySeconds() const;
+    void setGlobalShortcuts(GlobalShortcutAction action, const QStringList& shortcuts);
     void setMenuOptions(const QStringList& options);
     [[nodiscard]] QStringList menuOptions() const;
     [[nodiscard]] bool shortcutFunctionsDisabled() const;

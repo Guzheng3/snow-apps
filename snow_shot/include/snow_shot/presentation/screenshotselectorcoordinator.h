@@ -30,7 +30,8 @@ class ScreenshotSelectorCoordinator final : public QObject, public ScreenshotSel
     void destroyService();
 
     [[nodiscard]] bool startRefresh(const QVector<std::uintptr_t>& excludedHwnds) override;
-    [[nodiscard]] bool requestHitTest(const QPoint& physicalPoint) override;
+    [[nodiscard]] bool requestHitTest(const QPoint& physicalPoint,
+                                      ScreenshotSelectorHitTestMode mode) override;
     void startNextHitTest() override;
 
   signals:
@@ -49,6 +50,8 @@ class ScreenshotSelectorCoordinator final : public QObject, public ScreenshotSel
     bool m_hitTestInFlight = false;
     bool m_hasPendingHitTestPoint = false;
     QPoint m_pendingHitTestPoint;
+    ScreenshotSelectorHitTestMode m_pendingHitTestMode =
+        ScreenshotSelectorHitTestMode::Window;
     QVector<std::uintptr_t> m_lastExcludedHwnds;
 };
 

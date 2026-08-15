@@ -1,6 +1,7 @@
 #ifndef SNOW_SHOT_PRESENTATION_SCREENSHOTSELECTIONEXPORTUISERVICES_H
 #define SNOW_SHOT_PRESENTATION_SCREENSHOTSELECTIONEXPORTUISERVICES_H
 
+#include "snow_shot/presentation/screenshotclipboardcontent.h"
 #include "snow_shot/presentation/screenshotselectionexportworkflowports.h"
 
 #include <atomic>
@@ -33,7 +34,8 @@ class ScreenshotSelectionExportUiServices final : public ScreenshotSelectionExpo
                                           const QSize& fullResolutionScaleBasis = {},
                                           std::shared_ptr<QTextDocument> formattedTextDocument = {},
                                           const QString& formattedPlainText = {},
-                                          qreal formattedTextDevicePixelRatio = 1.0);
+                                          qreal formattedTextDevicePixelRatio = 1.0,
+                                          ScreenshotClipboardOriginalContent originalContent = {});
     [[nodiscard]] bool
     presentPinnedSelection(const ScreenshotPinnedSelectionRequest& request) override;
 

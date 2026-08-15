@@ -480,6 +480,31 @@ QString formatDrawingShortcutForTooltip(QString shortcut) {
     return shortcut;
 }
 
+void applyScreenshotShortcutTooltip(QWidget* widget, const QString& source,
+                                    const QString& actionId) {
+    if (widget == nullptr || source.isEmpty() || actionId.isEmpty()) {
+        return;
+    }
+
+    const QStringList shortcuts =
+        snow_shot::storage::ScreenshotShortcutSettings().shortcuts(actionId);
+    QStringList displayShortcuts;
+    for (const QString& shortcut : shortcuts) {
+        const QString displayShortcut = formatDrawingShortcutForTooltip(shortcut);
+        if (!displayShortcut.isEmpty()) {
+            displayShortcuts.push_back(displayShortcut);
+        }
+    }
+    if (displayShortcuts.isEmpty()) {
+        return;
+    }
+
+    const QString title = ScreenshotToolPaletteTranslationText(source).translated();
+    widget->setToolTip(QStringLiteral("%1 (%2)")
+                           .arg(title, displayShortcuts.join(QStringLiteral(", "))));
+    widget->setAccessibleName(title);
+}
+
 void applyDrawingShortcutTooltip(QWidget* widget, const QString& source,
                                  const QString& itemId = QString()) {
     if (widget == nullptr || source.isEmpty()) {
@@ -1215,6 +1240,10 @@ void ScreenshotToolPalette::refreshTableQrTrigger() {
     } else {
         configureScreenshotToolPaletteTooltip(m_tableButton,
                                               table ? "Table recognition" : "QR code recognition");
+        applyScreenshotShortcutTooltip(
+            m_tableButton, table ? QStringLiteral("Table recognition")
+                                 : QStringLiteral("QR code recognition"),
+            table ? QStringLiteral("table_recognition") : QStringLiteral("qr_code_recognition"));
     }
     setScreenshotToolPaletteToolButtonIcon(m_tableButton,
                                            table ? custom_outlined_icons::TableRecognition()
@@ -1375,6 +1404,9 @@ void ScreenshotToolPalette::setOcrEnabled(bool enabled) {
     m_ocrEnabled = enabled;
     if (m_ocrButton != nullptr) {
         m_ocrButton->setEnabled(enabled);
+    }
+    if (m_textTranslationButton != nullptr) {
+        m_textTranslationButton->setEnabled(enabled);
     }
 }
 
@@ -2488,7 +2520,8 @@ void ScreenshotToolPalette::createMainToolbar(const Options& options) {
 
     const bool hasEditingTools = addMainToolButtons(options, panelLayout);
     const bool hasSecondaryTools =
-        options.showScreenRecordButton || options.showOcrTool || options.showTableTool ||
+        options.showScreenRecordButton || options.showOcrTool || options.showTextTranslationTool ||
+        options.showTableTool ||
         options.showQrTool || options.showScrollingScreenshotTool || options.showSaveButton ||
         (!options.showRecordingControls && (options.actions & PinAction) != 0);
     if (hasEditingTools && hasSecondaryTools) {
@@ -2838,7 +2871,8 @@ void ScreenshotToolPalette::applyMainToolbarLayout(bool notify) {
     addFixedWidget(m_redoButton);
 
     QVector<QWidget*> secondaryTools{m_tableButton, m_screenRecordButton, m_pinButton, m_ocrButton,
-                                     m_scrollingScreenshotButton, m_saveButton};
+                                     m_textTranslationButton, m_scrollingScreenshotButton,
+                                     m_saveButton};
     secondaryTools.erase(std::remove(secondaryTools.begin(), secondaryTools.end(), nullptr),
                          secondaryTools.end());
     if (!secondaryTools.isEmpty() && hasContent) {
@@ -3099,6 +3133,8 @@ bool ScreenshotToolPalette::addMainSecondaryButtons(const Options& options, QBox
     if (options.showTableTool && options.showQrTool) {
         m_tableButton =
             addToolButton("Table recognition", custom_outlined_icons::TableRecognition());
+        applyScreenshotShortcutTooltip(m_tableButton, QStringLiteral("Table recognition"),
+                                       QStringLiteral("table_recognition"));
         m_tableButton->setObjectName(QStringLiteral("screenshotTableQrButton"));
         m_tableButton->setBusyIndicatorPresentation(
             adqt::widgets::AdButton::BusyIndicatorPresentation::IsolatedSurface);
@@ -3129,11 +3165,16 @@ bool ScreenshotToolPalette::addMainSecondaryButtons(const Options& options, QBox
                 QStringLiteral("screenshotTableRecognitionOptionButton"));
             m_tableOptionButton->setBusyIndicatorPresentation(
                 adqt::widgets::AdButton::BusyIndicatorPresentation::IsolatedSurface);
+            applyScreenshotShortcutTooltip(m_tableOptionButton,
+                                           QStringLiteral("Table recognition"),
+                                           QStringLiteral("table_recognition"));
         }
         if (m_qrButton != nullptr) {
             m_qrButton->setObjectName(QStringLiteral("screenshotQrRecognitionOptionButton"));
             m_qrButton->setBusyIndicatorPresentation(
                 adqt::widgets::AdButton::BusyIndicatorPresentation::IsolatedSurface);
+            applyScreenshotShortcutTooltip(m_qrButton, QStringLiteral("QR code recognition"),
+                                           QStringLiteral("qr_code_recognition"));
         }
         connect(m_tableButton, &adqt::widgets::AdButton::clicked, this,
                 [this]() { activateTableQrTool(m_tableQrEntryTool); });
@@ -3143,6 +3184,8 @@ bool ScreenshotToolPalette::addMainSecondaryButtons(const Options& options, QBox
         m_tableQrEntryTool = Tool::Table;
         m_tableButton =
             addToolButton("Table recognition", custom_outlined_icons::TableRecognition());
+        applyScreenshotShortcutTooltip(m_tableButton, QStringLiteral("Table recognition"),
+                                       QStringLiteral("table_recognition"));
         m_tableButton->setBusyIndicatorPresentation(
             adqt::widgets::AdButton::BusyIndicatorPresentation::IsolatedSurface);
         addButton(m_tableButton);
@@ -3151,6 +3194,8 @@ bool ScreenshotToolPalette::addMainSecondaryButtons(const Options& options, QBox
     } else if (options.showQrTool) {
         m_tableQrEntryTool = Tool::Qr;
         m_tableButton = addToolButton("QR code recognition", custom_outlined_icons::ScanQrcode());
+        applyScreenshotShortcutTooltip(m_tableButton, QStringLiteral("QR code recognition"),
+                                       QStringLiteral("qr_code_recognition"));
         m_tableButton->setBusyIndicatorPresentation(
             adqt::widgets::AdButton::BusyIndicatorPresentation::IsolatedSurface);
         addButton(m_tableButton);
@@ -3160,6 +3205,8 @@ bool ScreenshotToolPalette::addMainSecondaryButtons(const Options& options, QBox
 
     if (options.showScreenRecordButton) {
         m_screenRecordButton = addToolButton("Record screen", custom_outlined_icons::RecordScreen());
+        applyScreenshotShortcutTooltip(m_screenRecordButton, QStringLiteral("Record screen"),
+                                       QStringLiteral("video_recording"));
         addButton(m_screenRecordButton);
         connect(m_screenRecordButton, &adqt::widgets::AdButton::clicked, this,
                 &ScreenshotToolPalette::screenRecordRequested);
@@ -3175,6 +3222,8 @@ bool ScreenshotToolPalette::addMainSecondaryButtons(const Options& options, QBox
 
     if (options.showOcrTool) {
         m_ocrButton = addToolButton("Text recognition", custom_outlined_icons::ToolRecognizeText());
+        applyScreenshotShortcutTooltip(m_ocrButton, QStringLiteral("Text recognition"),
+                                       QStringLiteral("text_recognition"));
         m_ocrButton->setBusyIndicatorPresentation(
             adqt::widgets::AdButton::BusyIndicatorPresentation::IsolatedSurface);
         addButton(m_ocrButton);
@@ -3184,9 +3233,27 @@ bool ScreenshotToolPalette::addMainSecondaryButtons(const Options& options, QBox
         });
     }
 
+    if (options.showTextTranslationTool) {
+        m_textTranslationButton =
+            addToolButton("Translate", custom_outlined_icons::OcrTranslate());
+        applyScreenshotShortcutTooltip(m_textTranslationButton, QStringLiteral("Translate"),
+                                       QStringLiteral("text_translation"));
+        m_textTranslationButton->setObjectName(QStringLiteral("screenshotTextTranslationButton"));
+        m_textTranslationButton->setBusyIndicatorPresentation(
+            adqt::widgets::AdButton::BusyIndicatorPresentation::IsolatedSurface);
+        addButton(m_textTranslationButton);
+        connect(m_textTranslationButton, &adqt::widgets::AdButton::clicked, this, [this]() {
+            setActiveTool(Tool::Ocr);
+            emit textTranslationRequested();
+        });
+    }
+
     if (options.showScrollingScreenshotTool) {
         m_scrollingScreenshotButton =
             addToolButton("Scrolling screenshot", custom_outlined_icons::ScrollingScreenshot());
+        applyScreenshotShortcutTooltip(m_scrollingScreenshotButton,
+                                       QStringLiteral("Scrolling screenshot"),
+                                       QStringLiteral("scrolling_screenshot"));
         m_scrollingScreenshotButton->setObjectName(
             QStringLiteral("screenshotScrollingScreenshotButton"));
         addButton(m_scrollingScreenshotButton);
@@ -3198,6 +3265,8 @@ bool ScreenshotToolPalette::addMainSecondaryButtons(const Options& options, QBox
 
     if (options.showSaveButton) {
         m_saveButton = addActionButton("Save as file", custom_outlined_icons::Save());
+        applyScreenshotShortcutTooltip(m_saveButton, QStringLiteral("Save as file"),
+                                       QStringLiteral("save_as_file"));
         m_saveButton->setObjectName(QStringLiteral("screenshotSaveAsFileButton"));
         addButton(m_saveButton);
         connect(m_saveButton, &adqt::widgets::AdButton::clicked, this,

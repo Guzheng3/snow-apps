@@ -26,6 +26,7 @@ QStringList hintLines(ScreenshotActiveTool tool,
 
 void toolMatrixMatchesRequestedVisibility() {
     const QStringList transformHints{
+        QStringLiteral("Move cursor: W, S, A, D, Arrow keys"),
         QStringLiteral("Maintain aspect ratio: Shift"),
         QStringLiteral("Fixed-angle rotation: Shift"),
         QStringLiteral("Scale from center: Alt"),
@@ -45,17 +46,21 @@ void toolMatrixMatchesRequestedVisibility() {
     require(hintLines(ScreenshotActiveTool::RectangleFilter) == transformHints,
             "rectangle-filter hint matrix changed");
 
-    QStringList penTransformHints{QStringLiteral("Draw straight line: Shift")};
-    penTransformHints.append(transformHints);
+    QStringList penTransformHints{
+        QStringLiteral("Move cursor: W, S, A, D, Arrow keys"),
+        QStringLiteral("Draw straight line: Shift")};
+    penTransformHints.append(transformHints.mid(1));
     require(hintLines(ScreenshotActiveTool::FreeDraw) == penTransformHints,
             "free-draw hint matrix changed");
     require(hintLines(ScreenshotActiveTool::PenFilter) == penTransformHints,
             "pen-filter hint matrix changed");
     require(hintLines(ScreenshotActiveTool::PenHighlight) ==
-                QStringList{QStringLiteral("Delete selected elements: Delete")},
+                QStringList{QStringLiteral("Move cursor: W, S, A, D, Arrow keys"),
+                            QStringLiteral("Delete selected elements: Delete")},
             "pen-highlighter hint matrix changed");
 
     const QStringList textTransformHints{
+        QStringLiteral("Move cursor: W, S, A, D, Arrow keys"),
         QStringLiteral("Fixed-angle rotation: Shift"),
         QStringLiteral("Scale from center: Alt"),
         QStringLiteral("Auto-align: Ctrl"),
@@ -68,6 +73,7 @@ void toolMatrixMatchesRequestedVisibility() {
 
     require(hintLines(ScreenshotActiveTool::Shape, {SnowCanvasTool::Shape}) ==
                 QStringList{
+                    QStringLiteral("Move cursor: W, S, A, D, Arrow keys"),
                     QStringLiteral("Maintain aspect ratio: Shift"),
                     QStringLiteral("Scale from center: Alt"),
                     QStringLiteral("Auto-align: Ctrl"),
@@ -75,12 +81,14 @@ void toolMatrixMatchesRequestedVisibility() {
             "shape quick-selection suppression changed");
     require(hintLines(ScreenshotActiveTool::Arrow, {SnowCanvasTool::Arrow}) ==
                 QStringList{
+                    QStringLiteral("Move cursor: W, S, A, D, Arrow keys"),
                     QStringLiteral("Fixed-angle rotation: Shift"),
                     QStringLiteral("Auto-align: Ctrl"),
                 },
             "arrow quick-selection suppression changed");
     require(hintLines(ScreenshotActiveTool::Line, {SnowCanvasTool::Line}) ==
                 QStringList{
+                    QStringLiteral("Move cursor: W, S, A, D, Arrow keys"),
                     QStringLiteral("Fixed-angle rotation: Shift"),
                     QStringLiteral("Auto-align: Ctrl"),
                 },
@@ -88,6 +96,7 @@ void toolMatrixMatchesRequestedVisibility() {
     require(hintLines(ScreenshotActiveTool::RectangleHighlight,
                       {SnowCanvasTool::RectangleHighlight}) ==
                 QStringList{
+                    QStringLiteral("Move cursor: W, S, A, D, Arrow keys"),
                     QStringLiteral("Maintain aspect ratio: Shift"),
                     QStringLiteral("Scale from center: Alt"),
                     QStringLiteral("Auto-align: Ctrl"),
@@ -96,22 +105,28 @@ void toolMatrixMatchesRequestedVisibility() {
     require(hintLines(ScreenshotActiveTool::RectangleFilter,
                       {SnowCanvasTool::RectangleFilter}) ==
                 QStringList{
+                    QStringLiteral("Move cursor: W, S, A, D, Arrow keys"),
                     QStringLiteral("Maintain aspect ratio: Shift"),
                     QStringLiteral("Scale from center: Alt"),
                     QStringLiteral("Auto-align: Ctrl"),
                 },
             "rectangle-filter quick-selection suppression changed");
     require(hintLines(ScreenshotActiveTool::FreeDraw, {SnowCanvasTool::FreeDraw}) ==
-                QStringList{QStringLiteral("Draw straight line: Shift")},
+                QStringList{QStringLiteral("Move cursor: W, S, A, D, Arrow keys"),
+                            QStringLiteral("Draw straight line: Shift")},
             "free-draw quick-selection suppression changed");
     require(hintLines(ScreenshotActiveTool::PenFilter, {SnowCanvasTool::PenFilter}) ==
-                QStringList{QStringLiteral("Draw straight line: Shift")},
+                QStringList{QStringLiteral("Move cursor: W, S, A, D, Arrow keys"),
+                            QStringLiteral("Draw straight line: Shift")},
             "pen-filter quick-selection suppression changed");
-    require(hintLines(ScreenshotActiveTool::PenHighlight, {SnowCanvasTool::PenHighlight}).isEmpty(),
+    require(hintLines(ScreenshotActiveTool::PenHighlight, {SnowCanvasTool::PenHighlight}) ==
+                QStringList{QStringLiteral("Move cursor: W, S, A, D, Arrow keys")},
             "pen-highlighter delete hint should be suppressed");
-    require(hintLines(ScreenshotActiveTool::Text, {SnowCanvasTool::Text}).isEmpty(),
+    require(hintLines(ScreenshotActiveTool::Text, {SnowCanvasTool::Text}) ==
+                QStringList{QStringLiteral("Move cursor: W, S, A, D, Arrow keys")},
             "text hints should be suppressed when quick selection is disabled");
-    require(hintLines(ScreenshotActiveTool::SerialNumber, {SnowCanvasTool::SerialNumber}).isEmpty(),
+    require(hintLines(ScreenshotActiveTool::SerialNumber, {SnowCanvasTool::SerialNumber}) ==
+                QStringList{QStringLiteral("Move cursor: W, S, A, D, Arrow keys")},
             "serial-number hints should be suppressed when quick selection is disabled");
 
     require(hintLines(ScreenshotActiveTool::Eraser).isEmpty() &&
@@ -187,8 +202,8 @@ void emptyContextsUseHiddenMode() {
 
     context.activeTool = ScreenshotActiveTool::PenHighlight;
     context.quickSelectionDisabledTools.insert(SnowCanvasTool::PenHighlight);
-    require(screenshotShortcutHintModeForContext(context) == ScreenshotShortcutHintMode::Hidden,
-            "a conditionally empty tool context should hide the widget");
+    require(screenshotShortcutHintModeForContext(context) == ScreenshotShortcutHintMode::Tool,
+            "cursor movement should keep a conditionally empty tool context visible");
 
     context.activeTool = ScreenshotActiveTool::Select;
     context.captureMode = ScreenshotCaptureMode::Inactive;

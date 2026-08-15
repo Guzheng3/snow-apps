@@ -12,6 +12,7 @@
 #include <QHash>
 #include <QIcon>
 #include <QImageReader>
+#include <QKeySequence>
 #include <QPixmap>
 #include <QSet>
 #include <QSystemTrayIcon>
@@ -68,6 +69,21 @@ QIcon loadImageIcon(const QString& path) {
     reader.setAutoTransform(true);
     const QImage image = reader.read();
     return image.isNull() ? QIcon() : QIcon(QPixmap::fromImage(image));
+}
+
+QString nativeShortcutText(const QStringList& shortcuts) {
+    QStringList nativeShortcuts;
+    for (const QString& shortcut : shortcuts) {
+        QKeySequence sequence = QKeySequence::fromString(shortcut, QKeySequence::PortableText);
+        if (sequence.isEmpty()) {
+            sequence = QKeySequence::fromString(shortcut, QKeySequence::NativeText);
+        }
+        const QString nativeShortcut = sequence.toString(QKeySequence::NativeText).trimmed();
+        if (!nativeShortcut.isEmpty() && !nativeShortcuts.contains(nativeShortcut)) {
+            nativeShortcuts.push_back(nativeShortcut);
+        }
+    }
+    return nativeShortcuts.join(QStringLiteral(" / "));
 }
 } // namespace
 
@@ -164,7 +180,13 @@ class SystemTrayController::Impl {
                                                                             screenshotDelaySeconds)
                                               : option.label.translated();
                     Q_ASSERT(!label.isEmpty());
-                    action->setText(label);
+                    const QString shortcut =
+                        option.kind == settings::SettingsTrayMenuOptionKind::QuickAction
+                            ? shortcutText.value(option.shortcutAction)
+                            : QString();
+                    action->setText(shortcut.isEmpty()
+                                        ? label
+                                        : label + QLatin1Char('\t') + shortcut);
                 }
             }
         }
@@ -230,6 +252,7 @@ class SystemTrayController::Impl {
     settings::SettingsCatalog catalog;
     QVector<settings::SettingsTrayMenuGroupDefinition> groups;
     QHash<QString, QAction*> actions;
+    QHash<GlobalShortcutAction, QString> shortcutText;
     QVector<QAction*> separatorsBeforeGroup;
     QAction* disableShortcutFunctionsAction = nullptr;
     QStringList menuOptions;
@@ -322,6 +345,20 @@ void SystemTrayController::setScreenshotDelaySeconds(int seconds) {
 
 int SystemTrayController::screenshotDelaySeconds() const {
     return m_impl->screenshotDelaySeconds;
+}
+
+void SystemTrayController::setGlobalShortcuts(GlobalShortcutAction action,
+                                               const QStringList& shortcuts) {
+    const QString shortcutText = nativeShortcutText(shortcuts);
+    if (m_impl->shortcutText.value(action) == shortcutText) {
+        return;
+    }
+    if (shortcutText.isEmpty()) {
+        m_impl->shortcutText.remove(action);
+    } else {
+        m_impl->shortcutText.insert(action, shortcutText);
+    }
+    m_impl->retranslateUi();
 }
 
 void SystemTrayController::setMenuOptions(const QStringList& options) {

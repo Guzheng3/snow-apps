@@ -8,6 +8,8 @@
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QNetworkAccessManager>
+#include <QNetworkProxy>
+#include <QNetworkProxyFactory>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QTimer>
@@ -22,6 +24,21 @@ constexpr int kWebpQuality = 75;
 constexpr int kRequestTimeoutMs = 35'000;
 constexpr int kTranslationTimeoutMs = 120'000;
 constexpr qsizetype kMaximumResponseBytes = 4 * 1024 * 1024;
+
+class SystemNetworkProxyFactory final : public QNetworkProxyFactory {
+  public:
+    QList<QNetworkProxy> queryProxy(const QNetworkProxyQuery& query) override {
+        return systemProxyForQuery(query);
+    }
+};
+
+void configureProxy(QNetworkAccessManager& manager, bool useSystemProxy) {
+    if (useSystemProxy) {
+        manager.setProxyFactory(new SystemNetworkProxyFactory);
+    } else {
+        manager.setProxy(QNetworkProxy::NoProxy);
+    }
+}
 
 QString normalizedBaseUrl(QString value) {
     value = value.trimmed();
@@ -80,6 +97,29 @@ const QString& SnowShotApiClient::baseUrl() const {
     return m_baseUrl;
 }
 
+bool SnowShotApiClient::usesSystemProxy() const {
+    return m_useSystemProxy;
+}
+
+void SnowShotApiClient::setUseSystemProxy(bool enabled) {
+    if (m_useSystemProxy == enabled) {
+        return;
+    }
+    m_useSystemProxy = enabled;
+    if (auto* manager = findChild<QNetworkAccessManager*>(); manager != nullptr) {
+        configureProxy(*manager, m_useSystemProxy);
+    }
+}
+
+QNetworkAccessManager* SnowShotApiClient::networkAccessManager() {
+    auto* manager = findChild<QNetworkAccessManager*>();
+    if (manager == nullptr) {
+        manager = new QNetworkAccessManager(this);
+        configureProxy(*manager, m_useSystemProxy);
+    }
+    return manager;
+}
+
 QImage SnowShotApiClient::prepareImage(const QImage& image) {
     if (image.isNull()) {
         return {};
@@ -123,10 +163,7 @@ SnowShotApiClient::RequestToken SnowShotApiClient::extractTable(const QImage& so
         return 0;
     }
 
-    auto* manager = findChild<QNetworkAccessManager*>();
-    if (manager == nullptr) {
-        manager = new QNetworkAccessManager(this);
-    }
+    auto* manager = networkAccessManager();
 
     const RequestToken token = ++m_nextToken;
     auto* requestState = new Request;
@@ -226,10 +263,7 @@ SnowShotApiClient::RequestToken SnowShotApiClient::fetchChatModels(
     if (receiver == nullptr || !completion || m_baseUrl.isEmpty()) {
         return 0;
     }
-    auto* manager = findChild<QNetworkAccessManager*>();
-    if (manager == nullptr) {
-        manager = new QNetworkAccessManager(this);
-    }
+    auto* manager = networkAccessManager();
     const RequestToken token = ++m_nextToken;
     auto* state = new Request;
     state->kind = Request::Kind::ChatModels;
@@ -295,10 +329,7 @@ SnowShotApiClient::RequestToken SnowShotApiClient::streamTranslation(
         input.model.trimmed().isEmpty() || input.text.isEmpty()) {
         return 0;
     }
-    auto* manager = findChild<QNetworkAccessManager*>();
-    if (manager == nullptr) {
-        manager = new QNetworkAccessManager(this);
-    }
+    auto* manager = networkAccessManager();
     const RequestToken token = ++m_nextToken;
     auto* state = new Request;
     state->kind = Request::Kind::Translation;

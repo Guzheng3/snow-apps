@@ -219,7 +219,8 @@ bool ScreenshotSelectionExportUiServices::presentPinnedSelection(
 bool ScreenshotSelectionExportUiServices::presentPinnedImage(
     const QImage& image, QScreen* screen, const QRect& nativeGeometry,
     const QSize& fullResolutionScaleBasis, std::shared_ptr<QTextDocument> formattedTextDocument,
-    const QString& formattedPlainText, qreal formattedTextDevicePixelRatio) {
+    const QString& formattedPlainText, qreal formattedTextDevicePixelRatio,
+    ScreenshotClipboardOriginalContent originalContent) {
     SNOW_SHOT_PIN_PERF_SCOPE("ui.present_pinned_image");
     if (image.isNull() || screen == nullptr || nativeGeometry.isEmpty()) {
         return false;
@@ -250,6 +251,7 @@ bool ScreenshotSelectionExportUiServices::presentPinnedImage(
     config.formattedTextDocument = std::move(formattedTextDocument);
     config.formattedPlainText = formattedPlainText;
     config.formattedTextDevicePixelRatio = formattedTextDevicePixelRatio;
+    config.originalClipboardContent = std::move(originalContent);
     config.recognition = m_recognition;
     config.qrRecognition = m_qrRecognition;
     config.tableRecognition = m_tableRecognition;

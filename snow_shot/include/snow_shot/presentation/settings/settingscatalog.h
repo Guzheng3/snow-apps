@@ -68,6 +68,7 @@ enum class SettingsSelectBinding {
     Theme,
     Language,
     ApplicationPriority,
+    Proxy,
     ScreenshotToolbarSize,
     ColorPickerDisplayMode,
     ScreenshotOcrAction,
@@ -218,6 +219,7 @@ struct SettingsShortcutActionDefinition {
 enum class SettingsLocalShortcutScope {
     Screenshot,
     Drawing,
+    PinToScreen,
 };
 
 struct SettingsLocalShortcutDefinition {
@@ -310,7 +312,9 @@ enum class SettingsSectionReset {
     DrawingToolbar,
     DrawingQuickSelection,
     ScreenshotEditorShortcuts,
+    ScreenshotOtherShortcuts,
     DrawingShortcuts,
+    PinToScreenShortcuts,
     PinToScreen,
     PinToScreenBehavior,
     Tray,
@@ -319,8 +323,14 @@ enum class SettingsSectionReset {
     ScreenRecordingOutput,
     GlobalHotkeys,
     SystemGeneral,
+    Network,
     SystemSettings,
     TextRecognition,
+};
+
+enum class SettingsSectionItemLayout {
+    VerticalList,
+    TwoColumnGrid,
 };
 
 struct SettingsSectionDefinition {
@@ -329,6 +339,7 @@ struct SettingsSectionDefinition {
     TranslatableText searchDescription;
     SettingsSectionReset reset = SettingsSectionReset::None;
     QVector<SettingsItemDefinition> items;
+    SettingsSectionItemLayout itemLayout = SettingsSectionItemLayout::VerticalList;
 };
 
 enum class SettingsPageKind {

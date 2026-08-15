@@ -70,6 +70,29 @@ void invalidatedViewportCopyIsSuppressed() {
     require(callbackCount == 0, "invalidated pinned copy reached its callback");
 }
 
+void currentImageRequestReturnsRenderedPixels() {
+    SnowCanvasRuntime runtime;
+    const QByteArray session = runtime.serializeDocumentSession();
+    require(!session.isEmpty(), "runtime session could not be serialized");
+    ScreenshotPinnedCopyService service;
+    QObject receiver;
+    QImage rendered;
+    QImage background(QSize(64, 48), QImage::Format_ARGB32_Premultiplied);
+    background.fill(QColor(12, 24, 36, 255));
+    ScreenshotPinnedViewportCopyRequest request{
+        session, std::move(background), QRectF(0.0, 0.0, 64.0, 48.0), QSize(64, 48), {},
+    };
+    require(service.requestCurrentImage(
+                std::move(request), &receiver,
+                [&rendered](QImage image) { rendered = std::move(image); }),
+            "pinned image export was not scheduled");
+    processUntil(*QCoreApplication::instance(), [&rendered]() { return !rendered.isNull(); });
+    require(rendered.size() == QSize(64, 48) &&
+                rendered.pixelColor(rendered.width() / 2, rendered.height() / 2) ==
+                    QColor(12, 24, 36, 255),
+            "pinned image export did not return the rendered pixels");
+}
+
 void destructionSuppressesQueuedCompletion() {
     QObject receiver;
     int callbackCount = 0;
@@ -91,6 +114,7 @@ int main(int argc, char** argv) {
     try {
         originalCopyCoalescesDuplicates();
         invalidatedViewportCopyIsSuppressed();
+        currentImageRequestReturnsRenderedPixels();
         destructionSuppressesQueuedCompletion();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

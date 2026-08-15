@@ -104,6 +104,7 @@ class ScreenshotToolPalette final : public QWidget {
         bool showTextTool = false;
         bool showSerialNumberTool = false;
         bool showOcrTool = false;
+        bool showTextTranslationTool = false;
         bool showTableTool = false;
         bool showQrTool = false;
         bool showScrollingScreenshotTool = false;
@@ -222,6 +223,7 @@ class ScreenshotToolPalette final : public QWidget {
     void textRequested();
     void serialNumberRequested();
     void ocrRequested();
+    void textTranslationRequested();
     void tableRequested();
     void qrRequested();
     void tableMergeRequested();
@@ -455,6 +457,7 @@ class ScreenshotToolPalette final : public QWidget {
     adqt::widgets::AdButton* m_textButton = nullptr;
     adqt::widgets::AdButton* m_serialNumberButton = nullptr;
     adqt::widgets::AdButton* m_ocrButton = nullptr;
+    adqt::widgets::AdButton* m_textTranslationButton = nullptr;
     adqt::widgets::AdButton* m_tableButton = nullptr;
     adqt::widgets::AdButton* m_tableOptionButton = nullptr;
     adqt::widgets::AdButton* m_qrButton = nullptr;

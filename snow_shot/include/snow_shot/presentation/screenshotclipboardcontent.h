@@ -21,12 +21,22 @@ enum class ScreenshotClipboardContentKind {
     FormattedText,
 };
 
+struct ScreenshotClipboardOriginalContent final {
+    QString html;
+    QString text;
+
+    [[nodiscard]] bool isEmpty() const {
+        return html.isEmpty() && text.isEmpty();
+    }
+};
+
 struct ScreenshotClipboardContent {
     ScreenshotClipboardContentKind kind = ScreenshotClipboardContentKind::Image;
     QImage image;
     std::shared_ptr<QTextDocument> formattedDocument;
     QString plainText;
     qreal formattedTextDevicePixelRatio = 1.0;
+    ScreenshotClipboardOriginalContent originalContent;
 
     [[nodiscard]] bool isValid() const {
         return !image.isNull() && !image.size().isEmpty() &&

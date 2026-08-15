@@ -3,7 +3,35 @@
 #include <QEnterEvent>
 #include <QScrollBar>
 #include <QTest>
+#include <QVBoxLayout>
 #include <QWidget>
+
+namespace {
+
+class TallerMinimumHintContent final : public QWidget {
+ public:
+  TallerMinimumHintContent() {
+    auto* rows = new QVBoxLayout(this);
+    rows->setContentsMargins(0, 0, 0, 0);
+    rows->setSpacing(12);
+
+    firstRow = new QWidget(this);
+    firstRow->setFixedHeight(24);
+    rows->addWidget(firstRow);
+
+    secondRow = new QWidget(this);
+    secondRow->setFixedHeight(24);
+    rows->addWidget(secondRow);
+  }
+
+  QSize sizeHint() const override { return QSize(240, 60); }
+  QSize minimumSizeHint() const override { return QSize(80, 180); }
+
+  QWidget* firstRow = nullptr;
+  QWidget* secondRow = nullptr;
+};
+
+}  // namespace
 
 class ScrollAreaTest final : public QObject {
   Q_OBJECT
@@ -12,6 +40,7 @@ class ScrollAreaTest final : public QObject {
   void horizontalOverlayMirrorsTheNativeScrollRange();
   void embeddedHorizontalScrollBarKeepsAStableExtent();
   void compactScrollBarBoundsItsMinimumSliderLength();
+  void fitToWidthDoesNotStretchToTheMinimumHintHeight();
 };
 
 void ScrollAreaTest::horizontalOverlayMirrorsTheNativeScrollRange() {
@@ -85,6 +114,27 @@ void ScrollAreaTest::compactScrollBarBoundsItsMinimumSliderLength() {
 
   QCOMPARE(bar.height(), 16);
   QVERIFY(bar.isVisible());
+}
+
+void ScrollAreaTest::fitToWidthDoesNotStretchToTheMinimumHintHeight() {
+  adqt::widgets::AdScrollArea area;
+  area.resize(320, 100);
+  area.setFitToWidth(true);
+
+  auto* content = new TallerMinimumHintContent;
+  area.setContentWidget(content);
+  area.show();
+  QCoreApplication::processEvents();
+
+  QCOMPARE(content->width(), area.viewport()->width());
+  QCOMPARE(content->height(), content->sizeHint().height());
+  QVERIFY(content->height() < content->minimumSizeHint().height());
+  QCOMPARE(content->secondRow->geometry().top() - content->firstRow->geometry().bottom() - 1,
+           content->layout()->spacing());
+
+  area.setFitToWidth(false);
+  QCoreApplication::processEvents();
+  QCOMPARE(content->height(), content->minimumSizeHint().height());
 }
 
 QTEST_MAIN(ScrollAreaTest)

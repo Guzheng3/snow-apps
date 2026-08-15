@@ -989,7 +989,9 @@ void manualSelectionCanMoveExistingSelection() {
     require(interaction.manualSelecting() && interaction.modifyingSelection() &&
                 interaction.dragging() &&
                 interaction.dragMode() == ScreenshotSelectionDragMode::All,
-            "manual selection press inside an existing rectangle did not enter whole-selection movement");
+          "manual selection press inside an existing rectangle did not enter "
+          "whole-selection "
+          "movement");
     require(selection.normalizedSelection() == QRectF(10, 10, 20, 20),
             "manual whole-selection movement changed the rectangle before the drag moved");
 
@@ -1051,7 +1053,7 @@ void moveToolModificationLeavesConfirmedStageUntilRelease() {
             "selection modification must confirm exactly once when the drag finishes");
 }
 
-void nonMoveToolTemporarilyResizesSelectionBorder() {
+void nonMoveToolPermanentlySwitchesForSelectionResize() {
     ScreenshotCaptureState captureState;
     ScreenshotDisplaySession displays;
     ScreenshotGeometryMapper geometry;
@@ -1062,15 +1064,22 @@ void nonMoveToolTemporarilyResizesSelectionBorder() {
     interaction.setCanvasTool(ScreenshotActiveTool::Shape);
 
     QVector<ScreenshotSelectionDragMode> cursors;
-    QVector<ScreenshotActiveTool> transientTools;
+    QVector<ScreenshotActiveTool> activatedTools;
     ScreenshotOverlayInputActions actions;
     actions.setOverlayCursor = [&cursors](ScreenshotOverlayWindow*,
                                           ScreenshotSelectionDragMode dragMode) {
         cursors.push_back(dragMode);
     };
-    actions.setTransientActiveTool = [&transientTools](ScreenshotActiveTool tool) {
-        transientTools.push_back(tool);
-    };
+    actions.activateToolForSelectionResize =
+        [&interaction, &activatedTools](ScreenshotActiveTool tool) {
+            activatedTools.push_back(tool);
+            if (tool == ScreenshotActiveTool::Move) {
+                interaction.setMoveTool(true, false);
+            } else {
+                interaction.setCanvasTool(tool);
+            }
+            return true;
+        };
     ScreenshotOverlayInputHandler handler({
         captureState,
         interaction,
@@ -1092,29 +1101,29 @@ void nonMoveToolTemporarilyResizesSelectionBorder() {
     handler.handleMousePress(nullptr, QPointF(30, 20));
     require(interaction.moveToolActive() && interaction.modifyingSelection() &&
                 interaction.dragMode() == ScreenshotSelectionDragMode::Right,
-            "pressing a selection border must temporarily enter a Move resize drag");
-    require(transientTools == QVector<ScreenshotActiveTool>{ScreenshotActiveTool::Move},
-            "selection-border resize must temporarily select the Move tool");
+            "pressing a selection border must permanently activate Move before resizing");
+    require(activatedTools == QVector<ScreenshotActiveTool>{ScreenshotActiveTool::Move},
+            "selection-border resize must use the permanent Move activation path");
 
     handler.handleMouseMove(nullptr, QPointF(40, 20));
     handler.handleMouseRelease(nullptr, QPointF(40, 20));
     require(selection.normalizedSelection() == QRectF(10, 10, 30, 20),
-            "the temporary Move gesture did not resize the selection");
+            "the Move tool did not resize the selection");
     require(interaction.activeTool() == ScreenshotActiveTool::Shape && interaction.editing() &&
                 !interaction.dragging(),
             "finishing selection resize must restore the previously active tool");
-    require(transientTools ==
+    require(activatedTools ==
                 QVector<ScreenshotActiveTool>{ScreenshotActiveTool::Move,
                                               ScreenshotActiveTool::Shape},
-            "selection resize must restore the previous toolbar tool after release");
+            "selection resize must permanently reactivate the previous tool after release");
 
     interaction.setCanvasTool(ScreenshotActiveTool::Shape);
     handler.handleMousePress(nullptr, QPointF(40, 20));
     handler.resetTransientShortcuts();
     require(interaction.activeTool() == ScreenshotActiveTool::Shape && interaction.editing(),
             "canceling selection resize must restore the previously active tool");
-    require(transientTools.constLast() == ScreenshotActiveTool::Shape,
-            "canceling selection resize must restore the previous toolbar tool");
+    require(activatedTools.constLast() == ScreenshotActiveTool::Shape,
+            "canceling selection resize must permanently reactivate the previous tool");
 }
 
 void recognitionAndScrollingToolsResizeSelectionBorder() {
@@ -1134,7 +1143,18 @@ void recognitionAndScrollingToolsResizeSelectionBorder() {
         interaction.setCanvasTool(tool);
         require(!interaction.selectionHandlesVisible(),
                 "recognition tools must hide selection control points");
+        QVector<ScreenshotActiveTool> activatedTools;
         ScreenshotOverlayInputActions actions;
+        actions.activateToolForSelectionResize =
+            [&interaction, &activatedTools](ScreenshotActiveTool activeTool) {
+                activatedTools.push_back(activeTool);
+                if (activeTool == ScreenshotActiveTool::Move) {
+                    interaction.setMoveTool(true, false);
+                } else {
+                    interaction.setCanvasTool(activeTool);
+                }
+                return true;
+            };
         ScreenshotOverlayInputHandler handler({
             captureState,
             interaction,
@@ -1150,9 +1170,9 @@ void recognitionAndScrollingToolsResizeSelectionBorder() {
                 "recognition tools must expose the selection border resize hit target");
         require(handler.beginSelectionResizeAtCanvasPosition(QPointF(30, 20)) &&
                     interaction.moveToolActive() && interaction.modifyingSelection(),
-                "recognition border press must enter the shared Move resize transaction");
-        require(!interaction.selectionHandlesVisible(),
-                "recognition selection resize must keep control points hidden");
+                "recognition border press must permanently activate Move before resizing");
+        require(interaction.selectionHandlesVisible(),
+                "permanent Move activation must restore normal selection control points");
         handler.updateSelectionResizeAtCanvasPosition(QPointF(40, 20));
         handler.finishSelectionResizeAtCanvasPosition(QPointF(40, 20));
         require(selection.normalizedSelection() == QRectF(10, 10, 30, 20) &&
@@ -1160,6 +1180,9 @@ void recognitionAndScrollingToolsResizeSelectionBorder() {
                 "recognition border resize must restore the active recognition tool");
         require(!interaction.selectionHandlesVisible(),
                 "restored recognition tools must keep selection control points hidden");
+        require(activatedTools ==
+                    QVector<ScreenshotActiveTool>{ScreenshotActiveTool::Move, tool},
+                "recognition resize must use permanent Move and recognition activations");
     }
 
     ScreenshotCaptureState captureState;
@@ -1371,8 +1394,10 @@ void configuredSelectionShortcutsRouteTabHistoryAndColorActions() {
     interaction.enterOverlayVisible(true);
     const QRectF windowSelection(10, 10, 40, 30);
     const QRectF childSelection(15, 15, 20, 12);
-    require(intelligent.applyCanvasHitPath({windowSelection, childSelection},
-                                           QRectF(0, 0, 100, 100), 1.0),
+    const QRectF nestedChildSelection(17, 17, 12, 8);
+    require(intelligent.applyCanvasHitPath(
+                {windowSelection, childSelection, nestedChildSelection},
+                QRectF(0, 0, 100, 100), 1.0),
             "failed to seed intelligent-selection candidates");
     selection.setSelectionRect(windowSelection);
 
@@ -1385,9 +1410,13 @@ void configuredSelectionShortcutsRouteTabHistoryAndColorActions() {
     int nextHistoryCalls = 0;
     int previousSelectionCalls = 0;
     int copyColorCalls = 0;
+    int selectorHitTestRequests = 0;
     bool previousSelectionAvailable = true;
     ScreenshotOverlayInputActions actions;
     actions.updateOverlayState = [&overlayUpdates]() { ++overlayUpdates; };
+    actions.requestUiSelectorHitTest = [&selectorHitTestRequests](const QPoint&) {
+        ++selectorHitTestRequests;
+    };
     actions.navigateHistoryPrevious = [&previousHistoryCalls]() {
         ++previousHistoryCalls;
         return true;
@@ -1417,12 +1446,54 @@ void configuredSelectionShortcutsRouteTabHistoryAndColorActions() {
         shortcutManager, handler, interaction, intelligent, actions);
 
     intelligent.beginPress(QPointF(18, 18), windowSelection);
-    require(dispatchShortcut(shortcutWindow, Qt::Key_Tab) && intelligent.index() == 1 &&
-                selection.normalizedSelection() == childSelection && !intelligent.pressActive(),
-            "Tab did not switch intelligent selection to the window sub-element");
-    require(dispatchShortcut(shortcutWindow, Qt::Key_Tab) && intelligent.index() == 0 &&
+    require(dispatchShortcut(shortcutWindow, Qt::Key_Tab) &&
+                intelligent.selectionTarget() ==
+                    ScreenshotIntelligentSelectionTarget::WindowSubElement &&
+                intelligent.index() == 1 &&
+                selection.normalizedSelection() == childSelection &&
+                !intelligent.pressActive() && selectorHitTestRequests == 1,
+            "Tab did not switch intelligent selection to window sub-elements");
+    require(intelligent.setIndex(0) && intelligent.index() == 1,
+            "window sub-element mode allowed the window selection level");
+    require(intelligent.setIndex(2) && intelligent.index() == 2 &&
+                intelligent.applyCanvasHitPath({QRectF(50, 10, 40, 30),
+                                                QRectF(55, 15, 20, 12),
+                                                QRectF(57, 17, 12, 8)},
+                                               QRectF(0, 0, 100, 100), 1.0) &&
+                intelligent.index() == 2,
+            "window sub-element mode did not persist across smart hit tests");
+    require(dispatchShortcut(shortcutWindow, Qt::Key_Tab) &&
+                intelligent.selectionTarget() == ScreenshotIntelligentSelectionTarget::Window &&
+                intelligent.index() == 0 &&
+                selection.normalizedSelection() == QRectF(50, 10, 40, 30) &&
+                selectorHitTestRequests == 2,
+            "Tab did not switch intelligent selection back to windows");
+    require(intelligent.setIndex(2) && intelligent.index() == 0,
+            "window mode allowed a window sub-element selection level");
+    require(intelligent.applyCanvasHitPath(
+                {windowSelection, childSelection, nestedChildSelection},
+                QRectF(0, 0, 100, 100), 1.0) &&
+                intelligent.currentSelection() == windowSelection,
+            "window mode did not persist across smart hit tests");
+    require(dispatchShortcut(shortcutWindow, Qt::Key_Tab) &&
+                !intelligent.applyCanvasHitPath({windowSelection},
+                                                QRectF(0, 0, 100, 100), 1.0) &&
+                !intelligent.hasCurrentSelection() && selectorHitTestRequests == 3,
+            "window sub-element mode fell back to a window without a sub-element");
+    require(handler.handleWheel(nullptr, QPointF(), QPoint(0, 120), QPoint()) &&
+                intelligent.selectionTarget() ==
+                    ScreenshotIntelligentSelectionTarget::WindowSubElement &&
+                selectorHitTestRequests == 4,
+            "element-level scrolling unexpectedly switched back to window mode");
+    require(dispatchShortcut(shortcutWindow, Qt::Key_Tab),
+            "Tab did not switch back to window mode after an empty sub-element hit");
+    require(intelligent.selectionTarget() == ScreenshotIntelligentSelectionTarget::Window,
+            "empty sub-element hit prevented switching back to window mode");
+    require(intelligent.currentSelection() == windowSelection &&
                 selection.normalizedSelection() == windowSelection,
-            "Tab did not wrap intelligent selection back to the window");
+            "window mode did not restore the available window selection");
+    require(selectorHitTestRequests == 5,
+            "switching back to window mode did not request a fresh hit test");
 
     intelligent.beginPress(QPointF(18, 18), windowSelection);
     previousSelectionAvailable = false;
@@ -1466,7 +1537,7 @@ void configuredSelectionShortcutsRouteTabHistoryAndColorActions() {
             "failed to restore intelligent-selection candidates after remapping");
     selection.setSelectionRect(windowSelection);
     require(!dispatchShortcut(shortcutWindow, Qt::Key_Tab) &&
-                dispatchShortcut(shortcutWindow, Qt::Key_J),
+                dispatchShortcut(shortcutWindow, Qt::Key_J) && selectorHitTestRequests == 6,
             "remapped Tab shortcut did not replace the default key");
     interaction.confirmSelection();
     require(!dispatchShortcut(shortcutWindow, Qt::Key_R) &&
@@ -1586,9 +1657,11 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
 
     interaction.setCanvasTool(ScreenshotActiveTool::Shape);
     require(dispatchShortcut(shortcutWindow, Qt::Key_W),
-            "colliding drawing shortcut was not handled outside Move mode");
-    require(drawingToolActivations == 1 && colorPickerMoves.isEmpty(),
-            "drawing shortcut must win when the higher-priority screenshot shortcut is ineligible");
+          "cursor shortcut was not handled in the drawing tool");
+  require(drawingToolActivations == 0 &&
+              colorPickerMoves == QVector<QPoint>{QPoint(0, -1)},
+          "drawing-tool cursor movement must use the higher-priority "
+          "screenshot shortcut");
 
     require(dispatchShortcut(shortcutWindow, Qt::Key_M),
             "default Move shortcut was not handled");
@@ -1598,23 +1671,28 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
     require(dispatchShortcut(shortcutWindow, Qt::Key_W) &&
                 dispatchShortcut(shortcutWindow, Qt::Key_Up),
             "default cursor-up shortcuts were not handled");
-    require(colorPickerMoves == QVector<QPoint>{QPoint(0, -1), QPoint(0, -1)},
+  require(colorPickerMoves ==
+              QVector<QPoint>{QPoint(0, -1), QPoint(0, -1), QPoint(0, -1)},
             "W and Up must move the color-picker cursor up by one pixel");
-    require(drawingToolActivations == 1,
-            "higher-priority screenshot shortcut must win a cross-category collision in Move mode");
+  require(drawingToolActivations == 0,
+          "higher-priority screenshot shortcut must win a cross-category "
+          "collision in Move mode");
 
-    cursorMoveHandles = false;
-    require(dispatchShortcut(shortcutWindow, Qt::Key_W) && drawingToolActivations == 2 &&
-                colorPickerMoves.size() == 2,
-            "declining screenshot shortcut must fall through to the drawing shortcut");
+  cursorMoveHandles = false;
+  require(dispatchShortcut(shortcutWindow, Qt::Key_W) &&
+              drawingToolActivations == 1 && colorPickerMoves.size() == 3,
+          "declining screenshot shortcut must fall through to the drawing "
+          "shortcut");
     cursorMoveHandles = true;
 
     require(shortcutSettings.setMoveCursorUp({QStringLiteral("Ctrl+Alt+K")}),
             "failed to customize the cursor-up shortcut");
     dispatchShortcut(shortcutWindow, Qt::Key_W);
-    require(drawingToolActivations == 3 && colorPickerMoves.size() == 2,
-            "removed screenshot shortcut must fall through to the colliding drawing shortcut");
-    require(dispatchShortcut(shortcutWindow, Qt::Key_K,
+  require(drawingToolActivations == 2 && colorPickerMoves.size() == 3,
+          "removed screenshot shortcut must fall through to the colliding "
+          "drawing shortcut");
+  require(
+      dispatchShortcut(shortcutWindow, Qt::Key_K,
                              Qt::ControlModifier | Qt::AltModifier) &&
                 colorPickerMoves.constLast() == QPoint(0, -1),
             "customized cursor shortcut must take effect without restarting capture");
@@ -1808,7 +1886,7 @@ int main(int argc, char** argv) {
     }
     if (QCoreApplication::arguments().contains(
             QStringLiteral("--selection-border-resize-only"))) {
-        nonMoveToolTemporarilyResizesSelectionBorder();
+        nonMoveToolPermanentlySwitchesForSelectionResize();
         recognitionAndScrollingToolsResizeSelectionBorder();
         return 0;
     }
@@ -1817,7 +1895,7 @@ int main(int argc, char** argv) {
         manualSelectionUsesSharedMarqueeTransaction();
         manualSelectionCanMoveExistingSelection();
         moveToolModificationLeavesConfirmedStageUntilRelease();
-        nonMoveToolTemporarilyResizesSelectionBorder();
+        nonMoveToolPermanentlySwitchesForSelectionResize();
         recognitionAndScrollingToolsResizeSelectionBorder();
         return 0;
     }
@@ -1869,7 +1947,7 @@ int main(int argc, char** argv) {
     manualSelectionUsesSharedMarqueeTransaction();
     manualSelectionCanMoveExistingSelection();
     moveToolModificationLeavesConfirmedStageUntilRelease();
-    nonMoveToolTemporarilyResizesSelectionBorder();
+    nonMoveToolPermanentlySwitchesForSelectionResize();
     recognitionAndScrollingToolsResizeSelectionBorder();
     completionGesturesRequireAConfirmedSelectionAndSupportedTool();
     sharedShiftShortcutChoosesResizeOrColorFormat();

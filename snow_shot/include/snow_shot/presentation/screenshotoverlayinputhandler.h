@@ -71,12 +71,11 @@ struct ScreenshotOverlayInputActions {
     // remain source-compatible.
     std::function<bool()> selectPreviousSelection = []() { return false; };
 
-    // Updates the toolbar indicator for a temporary border-resize gesture. The
-    // input handler owns the corresponding interaction-state transition.
-    std::function<void(ScreenshotActiveTool tool)> setTransientActiveTool =
-        [](ScreenshotActiveTool) {};
+    // Performs the same lasting tool activation as a direct toolbar command.
+    std::function<bool(ScreenshotActiveTool tool)> activateToolForSelectionResize =
+        [](ScreenshotActiveTool) { return false; };
 
-    // Keep sampler callbacks last to preserve existing positional initializers.
+    // Keep sampler callbacks together to preserve existing positional initializers.
     std::function<void()> cancelCanvasColorSampling = []() {};
     std::function<bool(ScreenshotOverlayWindow* overlay, const QPointF& localPosition)>
         sampleCanvasColor = [](ScreenshotOverlayWindow*, const QPointF&) { return false; };
@@ -93,6 +92,14 @@ struct ScreenshotOverlayInputActions {
 
     std::function<void(ScreenshotOverlayWindow* overlay, const QPointF& localPosition)>
         previewCanvasColor = [](ScreenshotOverlayWindow*, const QPointF&) {};
+
+    std::function<bool()> activateTextRecognition = []() { return false; };
+    std::function<bool()> activateTableRecognition = []() { return false; };
+    std::function<bool()> activateQrRecognition = []() { return false; };
+    std::function<bool()> startVideoRecording = []() { return false; };
+    std::function<bool()> startScrollingScreenshot = []() { return false; };
+    std::function<bool()> saveAsFile = []() { return false; };
+    std::function<bool()> activateTextTranslation = []() { return false; };
 };
 
 struct ScreenshotOverlayInputHandlerContext {
@@ -132,7 +139,7 @@ class ScreenshotOverlayInputHandler final {
         bool cycleColorFormatIfUnused);
     bool releaseMoveEntireSelectionShortcut();
     bool releaseKeepSelectionAspectRatioShortcut();
-    [[nodiscard]] bool cycleIntelligentSelectionShortcut();
+    [[nodiscard]] bool toggleIntelligentSelectionTargetShortcut();
     void resetTransientShortcuts();
     void armCanvasColorSampling();
     void cancelCanvasColorSampling();

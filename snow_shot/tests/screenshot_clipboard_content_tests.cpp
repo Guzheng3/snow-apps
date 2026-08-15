@@ -83,8 +83,24 @@ void encodedImageAndTextAreSupported() {
     const auto textContent = ScreenshotClipboardContentReader::readMimeData(&textMime, 1.0);
     require(textContent.has_value() && textContent->isFormattedText() &&
                 textContent->formattedDocument != nullptr && textContent->plainText == longText &&
+                textContent->originalContent.html.isEmpty() &&
+                textContent->originalContent.text == longText &&
                 textContent->image.width() == 1024 && !textContent->image.isNull(),
             "plain clipboard text should be rendered with a bounded image");
+}
+
+void formattedTextRetainsOriginalClipboardInput() {
+    QMimeData mime;
+    const QString html = QStringLiteral(
+        "<article data-source=\"clipboard\"><b>Original HTML</b></article>");
+    const QString text = QStringLiteral("Original HTML");
+    mime.setHtml(html);
+    mime.setText(text);
+
+    const auto content = ScreenshotClipboardContentReader::readMimeData(&mime, 1.0);
+    require(content.has_value() && content->isFormattedText() &&
+                content->originalContent.html == html && content->originalContent.text == text,
+            "formatted clipboard content should retain its original HTML and text inputs");
 }
 
 void encodedImagesPrecedeDetachedImagesAndCorruptionFallsBack() {
@@ -333,6 +349,7 @@ int main(int argc, char** argv) {
     directImageWinsOverRichText();
     oversizedDirectImagesAreIgnored();
     encodedImageAndTextAreSupported();
+    formattedTextRetainsOriginalClipboardInput();
     encodedImagesPrecedeDetachedImagesAndCorruptionFallsBack();
     localImageFilesAndPlainTextFallbackAreSupported();
     changedLocalFilesAreRejectedAndTextFallbackRemainsAvailable();

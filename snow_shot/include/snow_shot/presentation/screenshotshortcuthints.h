@@ -66,12 +66,13 @@ screenshotShortcutHintLines(ScreenshotShortcutHintMode mode) {
     }
 
     QStringList lines;
+    lines.push_back(QCoreApplication::translate(
+        "ScreenshotShortcutHintsWidget", "Move cursor: W, S, A, D, Arrow keys"));
     if (mode == ScreenshotShortcutHintMode::SmartSelection) {
         lines.push_back(QCoreApplication::translate(
             "ScreenshotShortcutHintsWidget", "Switch element level: mouse wheel"));
         lines.push_back(QCoreApplication::translate(
-            "ScreenshotShortcutHintsWidget",
-            "Switch Selection Between Window and Window Sub-element: Tab"));
+            "ScreenshotShortcutHintsWidget", "Select Window/Window Sub-element: Tab"));
     } else {
         lines.push_back(QCoreApplication::translate(
             "ScreenshotShortcutHintsWidget", "Move Entire Selection: Space"));
@@ -134,6 +135,15 @@ screenshotShortcutHintLines(const ScreenshotShortcutHintContext& context) {
     };
 
     QStringList lines;
+  if (context.activeTool != ScreenshotActiveTool::Eraser &&
+      context.activeTool != ScreenshotActiveTool::Ocr &&
+      context.activeTool != ScreenshotActiveTool::Table &&
+      context.activeTool != ScreenshotActiveTool::Qr &&
+      context.activeTool != ScreenshotActiveTool::Move &&
+      context.activeTool != ScreenshotActiveTool::Spotlight &&
+      context.activeTool != ScreenshotActiveTool::Watermark) {
+    append(lines, "Move cursor: W, S, A, D, Arrow keys");
+  }
     switch (context.activeTool) {
     case ScreenshotActiveTool::Select:
         append(lines, "Maintain aspect ratio: Shift");

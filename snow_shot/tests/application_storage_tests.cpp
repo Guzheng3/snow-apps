@@ -180,6 +180,7 @@ void newSettingsSchemaDefaultsAndValidationAreComplete() {
         return storage::ConfigurationSchema::defaultValue(QString::fromLatin1(key));
     };
     require(defaultValue("system/auto_start_at_boot").toBool() &&
+                defaultValue("network/proxy").toString() == QStringLiteral("none") &&
                 !defaultValue("global_shortcuts/disable_on_focused_fullscreen_window").toBool() &&
                 defaultValue("screenshot/auto_execute_after_text_recognition").toString() ==
                     QStringLiteral("no_action") &&
@@ -292,6 +293,33 @@ void newSettingsSchemaDefaultsAndValidationAreComplete() {
         require(entry != nullptr && entry->defaultValue.toArray() == it.value() &&
                     entry->maximumListItems == 2,
                 "screenshot shortcut defaults and list limits must remain stable");
+    }
+
+    const QMap<QString, QJsonArray> pinToScreenShortcutDefaults{
+        {QStringLiteral("copy_to_clipboard"), QJsonArray{QStringLiteral("Ctrl+C")}},
+        {QStringLiteral("copy_original_content"),
+         QJsonArray{QStringLiteral("Ctrl+Shift+C")}},
+        {QStringLiteral("show_text_recognition_results"),
+         QJsonArray{QStringLiteral("Ctrl+D")}},
+        {QStringLiteral("drawing_mode"), QJsonArray{QStringLiteral("Ctrl+E")}},
+        {QStringLiteral("thumbnail_mode"), QJsonArray{QStringLiteral("R")}},
+        {QStringLiteral("close_window"), QJsonArray{QStringLiteral("Esc")}},
+        {QStringLiteral("move_cursor_up"),
+         QJsonArray{QStringLiteral("W"), QStringLiteral("Up")}},
+        {QStringLiteral("move_cursor_down"),
+         QJsonArray{QStringLiteral("S"), QStringLiteral("Down")}},
+        {QStringLiteral("move_cursor_left"),
+         QJsonArray{QStringLiteral("A"), QStringLiteral("Left")}},
+        {QStringLiteral("move_cursor_right"),
+         QJsonArray{QStringLiteral("D"), QStringLiteral("Right")}},
+    };
+    for (auto it = pinToScreenShortcutDefaults.cbegin();
+         it != pinToScreenShortcutDefaults.cend(); ++it) {
+        const QString key = QStringLiteral("pin_to_screen_shortcuts/") + it.key();
+        const auto* entry = storage::ConfigurationSchema::entry(key);
+        require(entry != nullptr && entry->defaultValue.toArray() == it.value() &&
+                    entry->maximumListItems == 2,
+                "pinned-window shortcut defaults and list limits must remain stable");
     }
 
     for (const QString& malformed : {QStringLiteral("Ctrl+K, Ctrl+C"),
@@ -540,6 +568,52 @@ void screenshotTranslationSettingsRoundTripSupportedValues() {
             "translation language codes should normalize to their canonical persisted form");
 }
 
+void verifyPinToScreenShortcutSettings() {
+    const storage::PinToScreenShortcutSettings shortcuts;
+    const QMap<QString, QStringList> defaults = shortcuts.allShortcuts();
+    require(defaults.size() == 10 &&
+                defaults.value(QStringLiteral("copy_to_clipboard")) ==
+                    QStringList{QStringLiteral("Ctrl+C")} &&
+                defaults.value(QStringLiteral("copy_original_content")) ==
+                    QStringList{QStringLiteral("Ctrl+Shift+C")} &&
+                defaults.value(QStringLiteral("show_text_recognition_results")) ==
+                    QStringList{QStringLiteral("Ctrl+D")} &&
+                defaults.value(QStringLiteral("drawing_mode")) ==
+                    QStringList{QStringLiteral("Ctrl+E")} &&
+                defaults.value(QStringLiteral("thumbnail_mode")) ==
+                    QStringList{QStringLiteral("R")} &&
+                defaults.value(QStringLiteral("close_window")) ==
+                    QStringList{QStringLiteral("Esc")} &&
+                defaults.value(QStringLiteral("move_cursor_up")) ==
+                    QStringList{QStringLiteral("W"), QStringLiteral("Up")} &&
+                defaults.value(QStringLiteral("move_cursor_right")) ==
+                    QStringList{QStringLiteral("D"), QStringLiteral("Right")} &&
+                shortcuts.shortcuts(QStringLiteral("unsupported")).isEmpty() &&
+                !shortcuts.setShortcuts(QStringLiteral("unsupported"),
+                                        {QStringLiteral("Q")}),
+            "pinned-window shortcut adapter must expose ten stable actions and defaults");
+    require(shortcuts.setShortcuts(QStringLiteral("drawing_mode"),
+                                   {QStringLiteral("Alt+E")}) &&
+                shortcuts.shortcuts(QStringLiteral("drawing_mode")) ==
+                    QStringList{QStringLiteral("Alt+E")},
+            "pinned-window shortcuts must round-trip through the typed adapter");
+    QMap<QString, QStringList> duplicates = shortcuts.allShortcuts();
+    duplicates.insert(QStringLiteral("thumbnail_mode"), {QStringLiteral("Ctrl+C")});
+    require(!shortcuts.setAllShortcutsAtomic(duplicates),
+            "pinned-window shortcuts must reject duplicate bindings atomically");
+}
+
+void pinToScreenShortcutSettingsRoundTrip() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "failed to create pinned-shortcut adapter directory");
+    const QString executable = QDir(temporary.path()).filePath(QStringLiteral("bin"));
+    require(QDir().mkpath(executable),
+            "failed to create pinned-shortcut executable directory");
+    static_cast<void>(initialize(executable, temporary.path()));
+    verifyPinToScreenShortcutSettings();
+    storage::ApplicationStorage::instance().shutdown();
+}
+
 void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
     QTemporaryDir temporary;
     require(temporary.isValid(), "failed to create new-settings adapter directory");
@@ -650,8 +724,14 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
             "recording adapters must reject unadvertised values atomically");
 
     const storage::TraySettings tray;
+    const storage::NetworkSettings network;
     const storage::GlobalShortcutSettings globalShortcuts;
-    require(tray.leftClickAction() == QStringLiteral("screenshot") &&
+    require(network.proxy() == QStringLiteral("none") &&
+                network.setProxy(QStringLiteral("system")) &&
+                network.proxy() == QStringLiteral("system") &&
+                !network.setProxy(QStringLiteral("unsupported")) &&
+                network.proxy() == QStringLiteral("system") &&
+                tray.leftClickAction() == QStringLiteral("screenshot") &&
                 tray.setLeftClickAction(QStringLiteral("show_main_window")) &&
                 tray.leftClickAction() == QStringLiteral("show_main_window") &&
                 !tray.setLeftClickAction(QStringLiteral("unsupported")) &&
@@ -666,7 +746,7 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
                                      QStringLiteral("unknown")}) &&
                 tray.menuOptions() ==
                     QStringList{QStringLiteral("tray.exit"), QStringLiteral("quick.screenshot")},
-            "tray and global-hotkey adapters must round-trip and validate their settings");
+            "network, tray, and global-hotkey adapters must round-trip and validate settings");
 
     const storage::DrawingShortcutSettings drawingShortcuts;
     const storage::ScreenshotShortcutSettings screenshotShortcuts;
@@ -718,6 +798,8 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
                 screenshotShortcuts.nextScreenshotHistory() ==
                     QStringList{QStringLiteral(",")},
             "history shortcuts must allow comma and period to be swapped atomically");
+
+    verifyPinToScreenShortcutSettings();
 
     const QMap<QString, QStringList> defaults = drawingShortcuts.allShortcuts();
     require(defaults.size() == 10 &&
@@ -1097,6 +1179,12 @@ int main(int argc, char** argv) {
     QCoreApplication application(argc, argv);
     QCoreApplication::setOrganizationName(QStringLiteral("SnowShotTests"));
     QCoreApplication::setApplicationName(QStringLiteral("storage-tests"));
+    if (application.arguments().contains(QStringLiteral("--pin-shortcuts-only"))) {
+        newSettingsSchemaDefaultsAndValidationAreComplete();
+        pinToScreenShortcutSettingsRoundTrip();
+        storage::ApplicationStorage::instance().shutdown();
+        return 0;
+    }
     markerResolutionAndStatus();
     defaultsAndTypedRoundTrip();
     newSettingsSchemaDefaultsAndValidationAreComplete();

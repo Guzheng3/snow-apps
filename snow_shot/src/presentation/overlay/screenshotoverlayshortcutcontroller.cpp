@@ -21,6 +21,13 @@ bool recognitionTool(ScreenshotActiveTool tool) {
            tool == ScreenshotActiveTool::Qr;
 }
 
+bool drawingToolSupportsCursorMovement(ScreenshotActiveTool tool) {
+  return tool != ScreenshotActiveTool::Move &&
+         tool != ScreenshotActiveTool::Eraser &&
+         tool != ScreenshotActiveTool::Spotlight &&
+         tool != ScreenshotActiveTool::Watermark && !recognitionTool(tool);
+}
+
 QList<QKeyCombination> anyModifierCombinations(Qt::Key key) {
     QList<QKeyCombination> combinations;
     constexpr Qt::KeyboardModifier modifiers[] = {
@@ -191,6 +198,13 @@ struct ScreenshotOverlayShortcutController::Impl {
             QStringLiteral("next_screenshot_history"),
             QStringLiteral("select_previously_selected_area"),
             QStringLiteral("copy_color"),
+            QStringLiteral("table_recognition"),
+            QStringLiteral("qr_code_recognition"),
+            QStringLiteral("video_recording"),
+            QStringLiteral("text_recognition"),
+            QStringLiteral("text_translation"),
+            QStringLiteral("scrolling_screenshot"),
+            QStringLiteral("save_as_file"),
         };
         for (const QString& actionId : screenshotIds) {
             ShortcutManager::Binding binding;
@@ -198,6 +212,15 @@ struct ScreenshotOverlayShortcutController::Impl {
             binding.priority = ShortcutManager::StandardPriority::ScreenshotShortcut;
             binding.autoRepeat = actionId.startsWith(QStringLiteral("move_cursor_"));
             binding.canActivate = [this, actionId](const auto&) {
+                if (actionId == QStringLiteral("table_recognition") ||
+                    actionId == QStringLiteral("qr_code_recognition") ||
+                    actionId == QStringLiteral("text_recognition") ||
+                    actionId == QStringLiteral("text_translation") ||
+                    actionId == QStringLiteral("video_recording") ||
+                    actionId == QStringLiteral("scrolling_screenshot") ||
+                    actionId == QStringLiteral("save_as_file")) {
+                    return toolbarToolShortcutState();
+                }
                 if (actionId == QStringLiteral("previous_screenshot_history") ||
                     actionId == QStringLiteral("next_screenshot_history")) {
                     return !recognitionTool(interaction.activeTool()) &&
@@ -233,7 +256,10 @@ struct ScreenshotOverlayShortcutController::Impl {
                 if (actionId == QStringLiteral("move_tool")) {
                     return actions.mainToolbarVisible() && screenshotShortcutState();
                 }
-                return screenshotShortcutState() && interaction.moveToolActive();
+                return screenshotShortcutState() &&
+                       (interaction.moveToolActive() ||
+                        (interaction.editing() &&
+                         drawingToolSupportsCursorMovement(interaction.activeTool())));
             };
             binding.activate = [this, actionId](const auto& context) {
                 if (actionId == QStringLiteral("move_tool")) {
@@ -267,7 +293,7 @@ struct ScreenshotOverlayShortcutController::Impl {
                 }
                 if (actionId == QStringLiteral(
                         "switch_selection_between_window_and_window_sub_element")) {
-                    return inputHandler.cycleIntelligentSelectionShortcut();
+                    return inputHandler.toggleIntelligentSelectionTargetShortcut();
                 }
                 if (actionId == QStringLiteral("previous_screenshot_history")) {
                     return navigateHistory(true);
@@ -285,6 +311,27 @@ struct ScreenshotOverlayShortcutController::Impl {
                 }
                 if (actionId == QStringLiteral("copy_color")) {
                     return actions.copyColorPickerColorToClipboard();
+                }
+                if (actionId == QStringLiteral("table_recognition")) {
+                    return actions.activateTableRecognition();
+                }
+                if (actionId == QStringLiteral("qr_code_recognition")) {
+                    return actions.activateQrRecognition();
+                }
+                if (actionId == QStringLiteral("text_recognition")) {
+                    return actions.activateTextRecognition();
+                }
+                if (actionId == QStringLiteral("text_translation")) {
+                    return actions.activateTextTranslation();
+                }
+                if (actionId == QStringLiteral("video_recording")) {
+                    return actions.startVideoRecording();
+                }
+                if (actionId == QStringLiteral("scrolling_screenshot")) {
+                    return actions.startScrollingScreenshot();
+                }
+                if (actionId == QStringLiteral("save_as_file")) {
+                    return actions.saveAsFile();
                 }
                 return false;
             };

@@ -12,6 +12,7 @@
 #include <QApplication>
 #include <QChildEvent>
 #include <QClipboard>
+#include <QContextMenuEvent>
 #include <QEvent>
 #include <QFocusEvent>
 #include <QFrame>
@@ -835,10 +836,26 @@ bool ScreenshotRecognitionWindow::eventFilter(QObject* watched, QEvent* event) {
             installSelectionResizeEventFilters(childWidget);
         }
     }
+    if (event != nullptr && event->type() == QEvent::ContextMenu &&
+        m_presentationMode == PresentationMode::EmbeddedChild) {
+        auto* contextMenuEvent = static_cast<QContextMenuEvent*>(event);
+        emit embeddedContextMenuRequested(contextMenuEvent->globalPos());
+        contextMenuEvent->accept();
+        return true;
+    }
     if (handleSelectionResizeEvent(watched, event)) {
         return true;
     }
     return QWidget::eventFilter(watched, event);
+}
+
+void ScreenshotRecognitionWindow::contextMenuEvent(QContextMenuEvent* event) {
+    if (event != nullptr && m_presentationMode == PresentationMode::EmbeddedChild) {
+        emit embeddedContextMenuRequested(event->globalPos());
+        event->accept();
+        return;
+    }
+    QWidget::contextMenuEvent(event);
 }
 
 void ScreenshotRecognitionWindow::mousePressEvent(QMouseEvent* event) {

@@ -31,11 +31,36 @@ void invalidBackendFallsBackToMsaaWindowLookup() {
                 policy.mode == SNOW_UI_SELECTOR_HIT_TEST_MODE_WINDOW,
             "unknown selector backends must retain the MSAA window fallback");
 }
+
+void windowTargetUsesWindowOnlyLookup() {
+    require(screenshotSelectorHitTestMode(ScreenshotSelectorHitTestMode::Window) ==
+                SNOW_UI_SELECTOR_HIT_TEST_MODE_WINDOW,
+            "window target must not traverse window sub-elements");
+}
+
+void windowSubElementTargetUsesElementLookup() {
+    require(screenshotSelectorHitTestMode(ScreenshotSelectorHitTestMode::WindowSubElement) ==
+                SNOW_UI_SELECTOR_HIT_TEST_MODE_UI_ELEMENT,
+            "window sub-element target must traverse the element hierarchy");
+}
+
+void subElementTargetOverridesDisabledSmartSelectionLookup() {
+    const auto policy = screenshotSelectorLookupPolicy(false, QByteArrayLiteral("uia"));
+    require(policy.mode == SNOW_UI_SELECTOR_HIT_TEST_MODE_WINDOW &&
+                screenshotSelectorHitTestMode(
+                    ScreenshotSelectorHitTestMode::WindowSubElement) ==
+                    SNOW_UI_SELECTOR_HIT_TEST_MODE_UI_ELEMENT,
+            "window sub-element target must traverse even when the global lookup defaults to a "
+            "window");
+}
 } // namespace
 
 int main() {
     smartSelectionForcesMsaaElementLookup();
     disabledSelectionUsesWindowLookup();
     invalidBackendFallsBackToMsaaWindowLookup();
+    windowTargetUsesWindowOnlyLookup();
+    windowSubElementTargetUsesElementLookup();
+    subElementTargetOverridesDisabledSmartSelectionLookup();
     return 0;
 }

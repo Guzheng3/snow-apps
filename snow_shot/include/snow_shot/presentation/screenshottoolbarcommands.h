@@ -41,6 +41,7 @@ class ScreenshotToolbarCommandSink {
     virtual void setTextTool() = 0;
     virtual void setSerialNumberTool() = 0;
     virtual void setOcrTool() = 0;
+    virtual void setTextTranslationTool() { setOcrTool(); }
     virtual void setTableTool() {}
     virtual void setQrTool() {}
     virtual void mergeTableSelection() {}

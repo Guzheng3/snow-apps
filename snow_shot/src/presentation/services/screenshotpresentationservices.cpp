@@ -182,6 +182,12 @@ ScreenshotColorPickerContext ScreenshotPresentationServices::colorPickerContext(
                      !m_context.captureState.captureInProgress &&
                      !m_context.interaction.scrollingCapture();
     context.moveToolActive = m_context.interaction.moveToolActive();
+    const ScreenshotActiveTool activeTool = m_context.interaction.activeTool();
+    context.drawingToolActive =
+        m_context.interaction.editing() && activeTool != ScreenshotActiveTool::Eraser &&
+        activeTool != ScreenshotActiveTool::Spotlight &&
+        activeTool != ScreenshotActiveTool::Watermark && activeTool != ScreenshotActiveTool::Ocr &&
+        activeTool != ScreenshotActiveTool::Table && activeTool != ScreenshotActiveTool::Qr;
     context.intelligentSelecting = m_context.interaction.intelligentSelecting();
     context.manualSelecting = m_context.interaction.manualSelecting();
     context.movingSelection = m_context.interaction.movingSelection();

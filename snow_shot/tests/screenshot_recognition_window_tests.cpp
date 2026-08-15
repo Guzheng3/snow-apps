@@ -11,6 +11,7 @@
 
 #include <QApplication>
 #include <QClipboard>
+#include <QContextMenuEvent>
 #include <QDir>
 #include <QFrame>
 #include <QFocusEvent>
@@ -755,6 +756,24 @@ void formattedClipboardTextUsesASelectableQtDocument() {
                 qFuzzyCompare(textItem->scale(), 2.0),
             "formatted clipboard text should map canonical image pixels through the canvas "
             "transform using the owning display DPR");
+
+    QPoint requestedContextMenuPosition;
+    int contextMenuRequestCount = 0;
+    QObject::connect(&window, &ScreenshotRecognitionWindow::embeddedContextMenuRequested,
+                     &window, [&](const QPoint& globalPosition) {
+                         requestedContextMenuPosition = globalPosition;
+                         ++contextMenuRequestCount;
+                     });
+    const QPoint localContextMenuPosition = textLayer->viewport()->rect().center();
+    const QPoint globalContextMenuPosition =
+        textLayer->viewport()->mapToGlobal(localContextMenuPosition);
+    QContextMenuEvent contextMenuEvent(QContextMenuEvent::Mouse, localContextMenuPosition,
+                                       globalContextMenuPosition);
+    QApplication::sendEvent(textLayer->viewport(), &contextMenuEvent);
+    require(contextMenuRequestCount == 1 &&
+                requestedContextMenuPosition == globalContextMenuPosition &&
+                contextMenuEvent.isAccepted(),
+            "embedded formatted text should route context menus to its owning pinned window");
 
     textItem->clearFocus();
     textLayer->clearFocus();

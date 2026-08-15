@@ -2,6 +2,7 @@
 #define SNOW_SHOT_PRESENTATION_SCREENSHOTPINNEDWINDOW_H
 
 #include "snow_draw_engine_qt/snow_canvas_runtime.h"
+#include "snow_shot/presentation/screenshotclipboardcontent.h"
 #include "snow_shot/presentation/screenshotclipboardservice.h"
 #include "snow_shot/presentation/screenshotexportcoordinator.h"
 #include "snow_shot/presentation/screenshotimagesource.h"
@@ -10,6 +11,7 @@
 #include <QByteArray>
 #include <QColor>
 #include <QImage>
+#include <QMap>
 #include <QPoint>
 #include <QPointer>
 #include <QRect>
@@ -87,6 +89,7 @@ class ScreenshotPinnedWindow final : public QWidget {
         std::shared_ptr<QTextDocument> formattedTextDocument;
         QString formattedPlainText;
         qreal formattedTextDevicePixelRatio = 1.0;
+        ScreenshotClipboardOriginalContent originalClipboardContent;
         ScreenshotOcrRecognitionPort* recognition = nullptr;
         ScreenshotQrRecognitionPort* qrRecognition = nullptr;
         SnowShotApiClient* tableRecognition = nullptr;
@@ -125,6 +128,7 @@ class ScreenshotPinnedWindow final : public QWidget {
     bool eventFilter(QObject* watched, QEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
     void contextMenuEvent(QContextMenuEvent* event) override;
+    void paintEvent(QPaintEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void moveEvent(QMoveEvent* event) override;
     void showEvent(QShowEvent* event) override;
@@ -134,6 +138,7 @@ class ScreenshotPinnedWindow final : public QWidget {
 
     void createUi();
     void registerWindowShortcuts();
+    void reloadPinnedWindowShortcuts();
     void createContextMenu();
     void applyRuntimeBorderColor();
     void updateShowMainInterfaceAction();
@@ -168,6 +173,7 @@ class ScreenshotPinnedWindow final : public QWidget {
     QPointF canvasPositionForViewPosition(const QPointF& position) const;
     void copyCurrentViewport();
     void copyOriginalContent();
+    void saveAsFile();
     void invalidatePendingCopy();
     void applyImageOperation(const QTransform& operation, int quarterTurnDelta = 0);
     void resetImageTransform();
@@ -197,6 +203,8 @@ class ScreenshotPinnedWindow final : public QWidget {
     void hideOtherPinnedWindows();
     void closeOtherPinnedWindows();
     void closeAllPinnedWindows();
+    bool cursorMovementEnabled() const;
+    bool moveCursorBy(const QPoint& delta);
     bool startSystemWindowMove();
     bool windowDragEnabled() const;
     void updateWindowDragCursor(const QPoint& position);
@@ -211,8 +219,10 @@ class ScreenshotPinnedWindow final : public QWidget {
 
     SnowCanvasRuntime m_runtime;
     std::unique_ptr<snow_shot::presentation::WindowShortcutManager> m_shortcutManager;
+    QMap<QString, quint64> m_pinnedShortcutBindings;
     std::unique_ptr<ScreenshotPinnedCopyService> m_copyService;
     ScreenshotExportJobHandle m_materializationJob;
+    ScreenshotExportJobHandle m_fileSaveJob;
     ScreenshotClipboardCommitHandle m_clipboardCommit;
     std::vector<MaterializationCallback> m_materializationCallbacks;
     SnowCanvasWidget* m_canvas = nullptr;
@@ -250,6 +260,7 @@ class ScreenshotPinnedWindow final : public QWidget {
     std::shared_ptr<QTextDocument> m_formattedTextDocument;
     QString m_formattedPlainText;
     qreal m_formattedTextDevicePixelRatio = 1.0;
+    ScreenshotClipboardOriginalContent m_originalClipboardContent;
     QPointer<ScreenshotOcrRecognitionPort> m_recognition;
     QPointer<ScreenshotQrRecognitionPort> m_qrRecognition;
     QPointer<SnowShotApiClient> m_tableRecognition;

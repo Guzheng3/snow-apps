@@ -35,13 +35,19 @@ struct ScreenshotCaptureWorkflowContext {
     std::function<void()> captureTerminated = []() {};
 };
 
+enum class ScreenshotCapturePresentationMode {
+    Overlay,
+    Silent,
+};
+
 class ScreenshotCaptureWorkflow final : private ScreenshotCaptureWorkerEventSink {
   public:
     explicit ScreenshotCaptureWorkflow(ScreenshotCaptureWorkflowContext context);
     ~ScreenshotCaptureWorkflow() override;
 
     void prewarmResources();
-    void startCapture();
+    void startCapture(ScreenshotCapturePresentationMode presentationMode =
+                          ScreenshotCapturePresentationMode::Overlay);
     void cancelCapture();
     void handleInitialSmartSelectionResolved(quint64 sessionId);
 
@@ -79,6 +85,8 @@ class ScreenshotCaptureWorkflow final : private ScreenshotCaptureWorkerEventSink
     quint64 m_initialSmartSelectionPendingSessionId = 0;
     quint64 m_initialSmartSelectionResolvedSessionId = 0;
     quint64 m_visiblePresentationSessionId = 0;
+    ScreenshotCapturePresentationMode m_presentationMode =
+        ScreenshotCapturePresentationMode::Overlay;
     bool m_captureModelsClean = false;
     bool m_canvasRuntimeClean = false;
 };

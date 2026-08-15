@@ -444,6 +444,8 @@ ScreenshotClipboardContentReader::decode(ScreenshotClipboardContentSnapshot snap
                     renderTextDocument(std::move(document), std::move(plainText),
                                        snapshot.devicePixelRatio, snapshot.baseColor, cancelled);
                 result.has_value()) {
+                result->originalContent.html = std::move(snapshot.html);
+                result->originalContent.text = std::move(snapshot.text);
                 return result;
             }
         }
@@ -455,6 +457,8 @@ ScreenshotClipboardContentReader::decode(ScreenshotClipboardContentSnapshot snap
                     renderTextDocument(std::move(document), std::move(plainText),
                                        snapshot.devicePixelRatio, snapshot.baseColor, cancelled);
                 result.has_value()) {
+                result->originalContent.html = std::move(snapshot.html);
+                result->originalContent.text = std::move(snapshot.text);
                 return result;
             }
         }

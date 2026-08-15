@@ -19,8 +19,7 @@ SnowCanvasRuntime* workerRuntime() {
     return runtime->isValid() ? runtime.get() : nullptr;
 }
 
-ScreenshotClipboardPayload
-prepareCurrentViewport(const ScreenshotPinnedViewportCopyRequest& request) {
+QImage renderCurrentViewport(const ScreenshotPinnedViewportCopyRequest& request) {
     SnowCanvasRuntime* runtime = workerRuntime();
     if (request.backgroundImage.isNull() || !request.backgroundCanvasRect.isValid() ||
         request.backgroundCanvasRect.isEmpty() || !request.contentPixelSize.isValid() ||
@@ -31,6 +30,9 @@ prepareCurrentViewport(const ScreenshotPinnedViewportCopyRequest& request) {
         !runtime->restoreDocumentSession(request.documentSession)) {
         return {};
     }
+    if (request.documentSession.isEmpty() && !runtime->clearDocumentPreservingViewports()) {
+        return {};
+    }
 
     const QList<CanvasExportSource> sources{
         CanvasExportSource{request.backgroundImage, request.backgroundCanvasRect}};
@@ -39,8 +41,12 @@ prepareCurrentViewport(const ScreenshotPinnedViewportCopyRequest& request) {
     if (content.isNull()) {
         return {};
     }
-    return ScreenshotClipboardService::prepareImage(
-        ScreenshotResultCompositor::compose(content, request.resultStyle));
+    return ScreenshotResultCompositor::compose(content, request.resultStyle);
+}
+
+ScreenshotClipboardPayload
+prepareCurrentViewport(const ScreenshotPinnedViewportCopyRequest& request) {
+    return ScreenshotClipboardService::prepareImage(renderCurrentViewport(request));
 }
 } // namespace
 
@@ -155,6 +161,52 @@ bool ScreenshotPinnedCopyService::requestOriginalImage(QImage image, QObject* re
             state->activeKind = RequestKind::None;
             callback(result.clipboardPayload != nullptr ? std::move(*result.clipboardPayload)
                                                         : ScreenshotClipboardPayload{});
+        });
+    if (!m_job.isValid()) {
+        m_state->requestInFlight = false;
+        m_state->activeKind = RequestKind::None;
+        return false;
+    }
+    return true;
+}
+
+bool ScreenshotPinnedCopyService::requestCurrentImage(ScreenshotPinnedViewportCopyRequest request,
+                                                       QObject* receiver,
+                                                       ImageCallback callback) {
+    if (receiver == nullptr || !callback || request.backgroundImage.isNull()) {
+        return false;
+    }
+    quint64 generation = 0;
+    if (!beginRequest(RequestKind::CurrentImage, &generation)) {
+        return false;
+    }
+
+    m_job = ScreenshotExportCoordinator::shared().submit(
+        receiver, ScreenshotExportCoordinator::Priority::Foreground,
+        [request = std::move(request)](const ScreenshotExportCancellation& cancellation) mutable {
+            if (cancellation.isCancellationRequested()) {
+                return ScreenshotExportTaskResult::failure(
+                    ScreenshotExportFailureStage::Cancelled,
+                    QStringLiteral("The pinned image export was cancelled"));
+            }
+            QImage image = renderCurrentViewport(request);
+            if (image.isNull()) {
+                return ScreenshotExportTaskResult::failure(
+                    ScreenshotExportFailureStage::Render,
+                    QStringLiteral("The pinned image could not be rendered"));
+            }
+            ScreenshotExportTaskResult result;
+            result.image = std::move(image);
+            return result;
+        },
+        [state = m_state, generation,
+         callback = std::move(callback)](ScreenshotExportTaskResult result) mutable {
+            if (state == nullptr || generation != state->generation) {
+                return;
+            }
+            state->requestInFlight = false;
+            state->activeKind = RequestKind::None;
+            callback(result.succeeded() ? std::move(result.image) : QImage{});
         });
     if (!m_job.isValid()) {
         m_state->requestInFlight = false;

@@ -63,7 +63,12 @@ bool ScreenshotSelectorWorkflow::requestHitTest(const QPoint& physicalPoint) {
         return false;
     }
 
-    return m_context.selectorService.requestHitTest(physicalPoint);
+    const ScreenshotSelectorHitTestMode hitTestMode =
+        m_context.intelligentSelection.selectionTarget() ==
+                ScreenshotIntelligentSelectionTarget::Window
+            ? ScreenshotSelectorHitTestMode::Window
+            : ScreenshotSelectorHitTestMode::WindowSubElement;
+    return m_context.selectorService.requestHitTest(physicalPoint, hitTestMode);
 }
 
 void ScreenshotSelectorWorkflow::startNextHitTest() {

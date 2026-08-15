@@ -32,6 +32,7 @@ struct ShortcutKeyRowConfig {
         GlobalShortcut,
         ScreenshotShortcut,
         DrawingShortcut,
+        PinnedWindowShortcut,
     };
 
     QString title;

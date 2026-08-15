@@ -6,6 +6,8 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QNetworkAccessManager>
+#include <QNetworkProxy>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTimer>
@@ -94,6 +96,17 @@ void apiClientUsesModelCatalogAndStreamingChatContracts() {
     require(modelsRequest.startsWith("GET /api/v1/chat/models HTTP/1.1") &&
                 modelsRequest.toLower().contains("accept-language: zh-cn"),
             "model catalog request should use the documented endpoint and locale header");
+    auto* manager = client.findChild<QNetworkAccessManager*>();
+    require(manager != nullptr && manager->proxy().type() == QNetworkProxy::NoProxy &&
+                manager->proxyFactory() == nullptr && !client.usesSystemProxy(),
+            "network requests must bypass proxies by default");
+    client.setUseSystemProxy(true);
+    require(client.usesSystemProxy() && manager->proxyFactory() != nullptr,
+            "system proxy mode must install system proxy resolution on the request manager");
+    client.setUseSystemProxy(false);
+    require(!client.usesSystemProxy() && manager->proxy().type() == QNetworkProxy::NoProxy &&
+                manager->proxyFactory() == nullptr,
+            "disabling proxy mode must restore explicit no-proxy requests");
 
     QString streamedText;
     SnowShotTranslationResult translationResult;

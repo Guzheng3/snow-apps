@@ -747,6 +747,7 @@ void ScreenshotRecognitionSessionController::showTranslationSettingsModal(
                         });
         service->setCurrentValue(currentAvailable ? current.modelId
                                                    : availableModels.first().id);
+        service->setLoading(false);
         service->setEnabled(true);
     };
     if (!models.isEmpty()) {
@@ -767,8 +768,8 @@ void ScreenshotRecognitionSessionController::showTranslationSettingsModal(
         }
         alertGuard->hide();
         retryGuard->setBusy(true);
+        serviceGuard->setLoading(true);
         serviceGuard->setEnabled(false);
-        modalGuard->setContentLoading(true);
         m_settingsModelsRequestToken = m_tableRecognition->fetchChatModels(
             snow_shot::presentation::LanguageManager::instance().currentLocale().name(), this,
             [this, modalGuard, alertGuard, retryGuard, serviceGuard,
@@ -778,7 +779,7 @@ void ScreenshotRecognitionSessionController::showTranslationSettingsModal(
                     serviceGuard == nullptr) {
                     return;
                 }
-                modalGuard->setContentLoading(false);
+                serviceGuard->setLoading(false);
                 retryGuard->setBusy(false);
                 if (!result.succeeded()) {
                     serviceGuard->setEnabled(false);
@@ -792,7 +793,7 @@ void ScreenshotRecognitionSessionController::showTranslationSettingsModal(
                 applyModels(result.models);
             });
         if (m_settingsModelsRequestToken == 0) {
-            modalGuard->setContentLoading(false);
+            serviceGuard->setLoading(false);
             retryGuard->setBusy(false);
             alertGuard->setInformativeText(
                 tr("Translation service request could not be prepared"));
