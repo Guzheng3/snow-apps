@@ -567,14 +567,32 @@ void AdDivider::paintEvent(QPaintEvent* event) {
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setPen(pen);
   };
-  const auto alignedStrokeCenter = [&](qreal coordinate) {
-    return detail::deviceAlignedStrokeCenter(coordinate, railWidth, devicePixelRatio);
+  const auto alignedStrokeCenter = [&](qreal coordinate, bool vertical) {
+    // Include backing-store and parent translations before snapping to the Qt raster phase.
+    const QTransform deviceTransform = painter.deviceTransform();
+    bool invertible = false;
+    const QTransform inverseTransform = deviceTransform.inverted(&invertible);
+    if (!invertible) {
+      return detail::deviceAlignedStrokeCenter(coordinate, railWidth, devicePixelRatio);
+    }
+
+    QPointF devicePoint =
+        deviceTransform.map(vertical ? QPointF(coordinate, 0.0) : QPointF(0.0, coordinate));
+    const int physicalWidth = std::max(1, qRound(railWidth * devicePixelRatio));
+    const qreal phase = (physicalWidth % 2 == 0) ? 0.5 : 0.0;
+    if (vertical) {
+      devicePoint.setX(qRound(devicePoint.x() - phase) + phase);
+    } else {
+      devicePoint.setY(qRound(devicePoint.y() - phase) + phase);
+    }
+    const QPointF alignedPoint = inverseTransform.map(devicePoint);
+    return vertical ? alignedPoint.x() : alignedPoint.y();
   };
 
   if (orientation_ == Orientation::Vertical) {
     if (railVisible) {
       setRailPen();
-      const qreal x = alignedStrokeCenter((width() - 1) / 2.0);
+      const qreal x = alignedStrokeCenter((width() - 1) / 2.0, true);
       painter.drawLine(QPointF(x, 0.0), QPointF(x, std::max(0, height() - 1)));
     }
     return;
@@ -584,7 +602,7 @@ void AdDivider::paintEvent(QPaintEvent* event) {
   if (!hasContent()) {
     if (railVisible) {
       setRailPen();
-      const qreal y = alignedStrokeCenter((height() - 1) / 2.0);
+      const qreal y = alignedStrokeCenter((height() - 1) / 2.0, false);
       painter.drawLine(QPointF(0.0, y), QPointF(std::max(0, width() - 1), y));
     }
     return;
@@ -592,7 +610,7 @@ void AdDivider::paintEvent(QPaintEvent* event) {
 
   if (railVisible) {
     setRailPen();
-    const qreal y = alignedStrokeCenter((height() - 1) / 2.0);
+    const qreal y = alignedStrokeCenter((height() - 1) / 2.0, false);
     if (contentLayout.outerRect.left() > 0) {
       painter.drawLine(QPointF(0.0, y), QPointF(contentLayout.outerRect.left(), y));
     }

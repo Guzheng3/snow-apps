@@ -90,6 +90,9 @@ struct ScreenshotOverlayInputActions {
     // Tool-switch shortcuts mirror the main toolbar's availability. Contextual
     // screenshot shortcuts remain active while the toolbar is temporarily hidden.
     std::function<bool()> mainToolbarVisible = []() { return true; };
+
+    std::function<void(ScreenshotOverlayWindow* overlay, const QPointF& localPosition)>
+        previewCanvasColor = [](ScreenshotOverlayWindow*, const QPointF&) {};
 };
 
 struct ScreenshotOverlayInputHandlerContext {

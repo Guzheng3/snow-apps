@@ -80,7 +80,7 @@ bool ScreenshotOverlayInputHandler::beginSelectionResizeAtCanvasPosition(
         m_context.geometry.displayForCanvasPoint(m_context.displaySession, canvasPosition);
     ScreenshotOverlayWindow* overlay =
         display != nullptr ? m_context.displaySession.overlayForDisplay(display) : nullptr;
-    m_context.interaction.setMoveTool(true, false);
+    m_context.interaction.setTransientMoveTool();
     m_context.actions.setTransientActiveTool(ScreenshotActiveTool::Move);
     beginSelectionDrag(overlay, canvasPosition, dragMode);
     if (!m_context.interaction.dragging()) {
@@ -131,7 +131,7 @@ void ScreenshotOverlayInputHandler::handleMousePress(ScreenshotOverlayWindow* ov
         } else {
             m_toolBeforeSelectionResize = activeTool;
         }
-        m_context.interaction.setMoveTool(true, false);
+        m_context.interaction.setTransientMoveTool();
         m_context.actions.setTransientActiveTool(ScreenshotActiveTool::Move);
         beginSelectionDrag(overlay, virtualPosition, borderDragMode);
         if (!m_context.interaction.dragging()) {
@@ -244,6 +244,10 @@ bool ScreenshotOverlayInputHandler::shouldHandleMouseEvent(
 
 void ScreenshotOverlayInputHandler::handleMouseMove(ScreenshotOverlayWindow* overlay,
                                                     const QPointF& localPosition) {
+    if (m_canvasColorSamplingArmed) {
+        m_context.actions.previewCanvasColor(overlay, localPosition);
+        return;
+    }
     updateGuideLines(overlay, localPosition);
     if (m_context.interaction.intelligentSelecting()) {
         const QPointF virtualPosition = virtualPositionForOverlay(overlay, localPosition);

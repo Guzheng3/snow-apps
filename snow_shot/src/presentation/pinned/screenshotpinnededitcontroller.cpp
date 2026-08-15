@@ -1,5 +1,6 @@
 #include "snow_shot/presentation/screenshotpinnededitcontroller.h"
 
+#include "snow_shot/presentation/screenshotcanvascolorsamplerwindow.h"
 #include "snow_shot/presentation/screenshotfloatingtoolpalettewindow.h"
 #include "snow_shot/presentation/screenshotdefaultstyles.h"
 #include "snow_shot/presentation/screenshotgeometry.h"
@@ -13,12 +14,19 @@
 
 #include "snow_draw_engine_qt/snow_canvas_widget.h"
 
+#include "widgets/color_picker.h"
+
+#include <QApplication>
 #include <QEvent>
+#include <QKeyEvent>
+#include <QMouseEvent>
 #include <QPointer>
 #include <QScreen>
 #include <QTimer>
 #include <QWheelEvent>
 #include <QWindow>
+
+#include <algorithm>
 
 namespace {
 constexpr int kToolbarGap = 4;
@@ -47,6 +55,20 @@ ScreenshotToolPalette::Options pinnedEditToolbarOptions() {
     options.styleDefaults = snow_shot::presentation::screenshotCanvasStyleDefaults();
     return options;
 }
+
+bool wheelAdjustsStrokeWidth(SnowCanvasTool tool) {
+    switch (tool) {
+    case SnowCanvasTool::Shape:
+    case SnowCanvasTool::Arrow:
+    case SnowCanvasTool::Line:
+    case SnowCanvasTool::FreeDraw:
+    case SnowCanvasTool::RectangleHighlight:
+    case SnowCanvasTool::PenHighlight:
+        return true;
+    default:
+        return false;
+    }
+}
 } // namespace
 
 ScreenshotPinnedEditController::ScreenshotPinnedEditController(ScreenshotPinnedWindow& pinnedWindow,
@@ -57,6 +79,7 @@ ScreenshotPinnedEditController::ScreenshotPinnedEditController(ScreenshotPinnedW
     : QObject(parent), m_pinnedWindow(pinnedWindow), m_canvas(canvas),
       m_shortcutManager(shortcutManager) {
     m_canvas.installEventFilter(this);
+    m_canvasColorSamplerWindow = std::make_unique<ScreenshotCanvasColorSamplerWindow>();
     m_toolbarWindow = new ScreenshotFloatingToolPaletteWindow(pinnedEditToolbarOptions());
     m_toolbarWindow->setAttribute(Qt::WA_DeleteOnClose, false);
     m_toolbarWindow->setTransientOwnerWindow(&m_pinnedWindow);
@@ -150,6 +173,8 @@ ScreenshotPinnedEditController::ScreenshotPinnedEditController(ScreenshotPinnedW
                 [this]() { m_canvas.endTextStylePopupInteraction(m_toolbarWindow); });
         connect(toolbar, &ScreenshotToolPalette::serialNumberStyleChanged, this,
                 &ScreenshotPinnedEditController::applySerialNumberStyleFromPalette);
+        connect(toolbar, &ScreenshotToolPalette::canvasColorSamplingRequested, this,
+                &ScreenshotPinnedEditController::beginCanvasColorSampling);
         connect(toolbar, &ScreenshotToolPalette::confirmRequested, this,
                 [this]() { setEditMode(false); });
     }
@@ -197,7 +222,48 @@ bool ScreenshotPinnedEditController::editMode() const {
 }
 
 bool ScreenshotPinnedEditController::eventFilter(QObject* watched, QEvent* event) {
-    if (watched == &m_canvas && event != nullptr && event->type() == QEvent::Wheel && m_editMode) {
+    if (watched != &m_canvas || event == nullptr || !m_editMode) {
+        return QObject::eventFilter(watched, event);
+    }
+
+    if (!m_canvasColorSamplingTarget.isNull()) {
+        switch (event->type()) {
+        case QEvent::MouseMove: {
+            auto* mouseEvent = static_cast<QMouseEvent*>(event);
+            updateCanvasColorSamplingPreview(mouseEvent->position().toPoint());
+            mouseEvent->accept();
+            return true;
+        }
+        case QEvent::MouseButtonPress:
+        case QEvent::MouseButtonDblClick: {
+            auto* mouseEvent = static_cast<QMouseEvent*>(event);
+            if (mouseEvent->button() == Qt::RightButton) {
+                cancelCanvasColorSampling();
+            } else if (mouseEvent->button() == Qt::LeftButton) {
+                static_cast<void>(commitCanvasColorSample(mouseEvent->position().toPoint()));
+            }
+            mouseEvent->accept();
+            return true;
+        }
+        case QEvent::MouseButtonRelease:
+        case QEvent::Wheel:
+            event->accept();
+            return true;
+        case QEvent::KeyPress: {
+            auto* keyEvent = static_cast<QKeyEvent*>(event);
+            if (keyEvent->key() == Qt::Key_Escape) {
+                cancelCanvasColorSampling();
+                keyEvent->accept();
+                return true;
+            }
+            break;
+        }
+        default:
+            break;
+        }
+    }
+
+    if (event->type() == QEvent::Wheel) {
         auto* wheelEvent = static_cast<QWheelEvent*>(event);
         const int deltaY = !wheelEvent->pixelDelta().isNull() ? wheelEvent->pixelDelta().y()
                                                               : wheelEvent->angleDelta().y();
@@ -205,21 +271,29 @@ bool ScreenshotPinnedEditController::eventFilter(QObject* watched, QEvent* event
         const int direction = deltaY > 0 ? 1 : -1;
         bool handled = false;
         if (deltaY != 0 && host != nullptr) {
-            switch (m_canvas.canvasTool()) {
-            case SnowCanvasTool::Spotlight:
-                handled = host->stepSpotlightOpacity(direction);
-                break;
-            case SnowCanvasTool::RectangleFilter:
-                handled = host->stepFilterIntensity(direction);
-                break;
-            case SnowCanvasTool::PenFilter:
-                handled = host->stepPenFilterStrokeWidth(direction);
-                break;
-            case SnowCanvasTool::Watermark:
-                handled = host->stepWatermarkFontSize(direction);
-                break;
-            default:
-                break;
+            const SnowCanvasTool activeTool = m_canvas.canvasTool();
+            if (wheelAdjustsStrokeWidth(activeTool)) {
+                handled = host->stepStrokeWidth(direction);
+            } else {
+                switch (activeTool) {
+                case SnowCanvasTool::Select:
+                    handled = host->stepSelectionOpacity(direction);
+                    break;
+                case SnowCanvasTool::Spotlight:
+                    handled = host->stepSpotlightOpacity(direction);
+                    break;
+                case SnowCanvasTool::RectangleFilter:
+                    handled = host->stepFilterIntensity(direction);
+                    break;
+                case SnowCanvasTool::PenFilter:
+                    handled = host->stepPenFilterStrokeWidth(direction);
+                    break;
+                case SnowCanvasTool::Watermark:
+                    handled = host->stepWatermarkFontSize(direction);
+                    break;
+                default:
+                    break;
+                }
             }
         }
         if (handled) {
@@ -296,6 +370,7 @@ void ScreenshotPinnedEditController::setEditMode(bool enabled) {
         return;
     }
 
+    cancelCanvasColorSampling();
     static_cast<void>(m_canvas.resetEditingState());
     m_canvas.setInteractionEnabled(false);
     m_canvas.clearFocus();
@@ -385,6 +460,7 @@ void ScreenshotPinnedEditController::hideToolbar() {
 }
 
 void ScreenshotPinnedEditController::destroyToolbar() {
+    cancelCanvasColorSampling();
     if (m_toolbarWindow == nullptr) {
         return;
     }
@@ -525,4 +601,105 @@ void ScreenshotPinnedEditController::markToolbarManuallyPlaced() {
 
     m_manuallyPlaced = true;
     m_globalContentPosition = m_toolbarWindow->contentPosition();
+}
+
+void ScreenshotPinnedEditController::beginCanvasColorSampling(
+    adqt::widgets::AdColorPicker* picker) {
+    if (picker == nullptr || !m_editMode) {
+        return;
+    }
+
+    cancelCanvasColorSampling();
+    m_canvasColorSamplingTarget = picker;
+    m_canvasColorSamplingDestroyedConnection =
+        connect(picker, &QObject::destroyed, this,
+                [this]() { cancelCanvasColorSampling(); });
+    if (m_canvasColorSamplerWindow != nullptr) {
+        m_canvasColorSamplerWindow->beginSampling();
+    }
+    setCanvasColorSamplingCursor(true);
+
+    const QPoint localPosition = m_canvas.mapFromGlobal(QCursor::pos());
+    if (m_canvas.rect().contains(localPosition)) {
+        updateCanvasColorSamplingPreview(localPosition);
+    }
+}
+
+void ScreenshotPinnedEditController::cancelCanvasColorSampling() {
+    m_canvasColorSamplingTarget.clear();
+    disconnect(m_canvasColorSamplingDestroyedConnection);
+    m_canvasColorSamplingDestroyedConnection = {};
+    if (m_canvasColorSamplerWindow != nullptr) {
+        m_canvasColorSamplerWindow->endSampling();
+    }
+    setCanvasColorSamplingCursor(false);
+}
+
+QImage ScreenshotPinnedEditController::canvasColorPreviewAt(const QPoint& localPosition) const {
+    if (!m_canvas.rect().contains(localPosition)) {
+        return {};
+    }
+
+    constexpr int previewSize = 7;
+    constexpr int previewRadius = previewSize / 2;
+    const QRect grabRect =
+        QRect(localPosition - QPoint(previewRadius, previewRadius), QSize(previewSize, previewSize))
+            .intersected(m_canvas.rect());
+    const QImage grabbedImage = m_canvas.grab(grabRect).toImage();
+    if (grabbedImage.isNull()) {
+        return {};
+    }
+
+    const qreal devicePixelRatio = std::max<qreal>(1.0, grabbedImage.devicePixelRatio());
+    const QPoint localCenter = localPosition - grabRect.topLeft();
+    const QPoint imageCenter(qRound(localCenter.x() * devicePixelRatio),
+                             qRound(localCenter.y() * devicePixelRatio));
+    QImage preview(previewSize, previewSize, QImage::Format_ARGB32_Premultiplied);
+    for (int y = 0; y < previewSize; ++y) {
+        for (int x = 0; x < previewSize; ++x) {
+            const int sourceX =
+                std::clamp(imageCenter.x() + x - previewRadius, 0, grabbedImage.width() - 1);
+            const int sourceY =
+                std::clamp(imageCenter.y() + y - previewRadius, 0, grabbedImage.height() - 1);
+            preview.setPixelColor(x, y, grabbedImage.pixelColor(sourceX, sourceY));
+        }
+    }
+    return preview;
+}
+
+void ScreenshotPinnedEditController::updateCanvasColorSamplingPreview(
+    const QPoint& localPosition) {
+    if (m_canvasColorSamplerWindow == nullptr || m_canvasColorSamplingTarget.isNull()) {
+        return;
+    }
+    const QImage preview = canvasColorPreviewAt(localPosition);
+    if (!preview.isNull()) {
+        m_canvasColorSamplerWindow->updateSample(preview, m_canvas.mapToGlobal(localPosition));
+    }
+}
+
+bool ScreenshotPinnedEditController::commitCanvasColorSample(const QPoint& localPosition) {
+    QPointer<adqt::widgets::AdColorPicker> picker = m_canvasColorSamplingTarget;
+    const QImage preview = canvasColorPreviewAt(localPosition);
+    cancelCanvasColorSampling();
+    if (picker.isNull() || preview.isNull()) {
+        return false;
+    }
+
+    const QColor sampled = preview.pixelColor(preview.width() / 2, preview.height() / 2);
+    if (!sampled.isValid()) {
+        return false;
+    }
+    picker->commitValue(adqt::widgets::AdColorValue::solid(sampled));
+    return true;
+}
+
+void ScreenshotPinnedEditController::setCanvasColorSamplingCursor(bool enabled) {
+    if (enabled && !m_canvasColorSamplingCursorOverridden) {
+        QApplication::setOverrideCursor(ScreenshotCanvasColorSamplerWindow::samplingCursor());
+        m_canvasColorSamplingCursorOverridden = true;
+    } else if (!enabled && m_canvasColorSamplingCursorOverridden) {
+        QApplication::restoreOverrideCursor();
+        m_canvasColorSamplingCursorOverridden = false;
+    }
 }

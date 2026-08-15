@@ -41,6 +41,7 @@ class ScreenshotInteractionState final {
     void beginCapture();
     void enterOverlayVisible(bool selectorReady);
     void setMoveTool(bool hasSelection, bool selectorReady);
+    void setTransientMoveTool();
     void setCanvasTool(ScreenshotActiveTool tool);
     void setOcrTool();
     void setTableTool();
@@ -69,12 +70,14 @@ class ScreenshotInteractionState final {
     [[nodiscard]] bool selecting() const;
     [[nodiscard]] bool selectionToolbarMode() const;
     [[nodiscard]] bool canResizeSelection() const;
+    [[nodiscard]] bool selectionHandlesVisible() const;
 
   private:
     ScreenshotActiveTool m_activeTool = ScreenshotActiveTool::Move;
     ScreenshotCaptureMode m_mode = ScreenshotCaptureMode::Inactive;
     ScreenshotSelectionDragMode m_dragMode = ScreenshotSelectionDragMode::None;
     bool m_dragging = false;
+    bool m_recognitionSelectionActive = false;
 };
 
 #endif // SNOW_SHOT_PRESENTATION_SCREENSHOTINTERACTIONSTATE_H

@@ -106,8 +106,11 @@ void ScreenshotPresentationServices::presentOverlayState(const QRectF& selection
     m_context.overlayCoordinator.updateOverlayState(
         m_context.displaySession, selection, m_context.selection.cornerRadius(),
         m_context.selection.shadowWidth(), m_context.selection.shadowColor(),
-        m_selectionToolbarHovered, m_context.interaction.intelligentSelecting(),
-        m_context.interaction.marqueeSelecting(), m_context.interaction.dragging());
+        m_selectionToolbarHovered,
+        !m_context.interaction.intelligentSelecting() &&
+            m_context.interaction.selectionHandlesVisible(),
+        m_context.interaction.intelligentSelecting(), m_context.interaction.marqueeSelecting(),
+        m_context.interaction.dragging());
 
     m_context.overlayCoordinator.updateGuideLinesAtGlobalPosition(
         m_context.displaySession, QCursor::pos(), m_context.interaction.selecting(),

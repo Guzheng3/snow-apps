@@ -692,7 +692,6 @@ class TrayMenuOptionsSettingsWidget final : public SettingsCustomWidget {
                 auto* separator = new adqt::widgets::AdDivider(options);
                 separator->setObjectName(
                     QStringLiteral("settings-tray-menu-options-separator-%1").arg(group.id));
-                separator->setFixedHeight(1);
                 grid->addWidget(separator, row++, 0, 1, 2);
             }
 

@@ -98,6 +98,20 @@ void cursorPanelPlacementUsesEveryAvailableQuadrant() {
                                                           gap) == QPoint(524, 264),
             "cursor panel should move to top-left when the right and bottom sides are too small");
 }
+
+void cursorPanelPlacementRespectsOffsetMonitorBounds() {
+    constexpr int gap = 14;
+    const QRect bounds(-1920, -160, 1920, 1080);
+    const QSize panelSize(228, 84);
+
+    require(ScreenshotGeometryMapper::cursorPanelPosition(QPoint(-10, 900), panelSize, bounds,
+                                                          gap) == QPoint(-252, 802),
+            "cursor panel should flip above-left inside an offset monitor");
+    const QPoint clamped = ScreenshotGeometryMapper::cursorPanelPosition(
+        QPoint(-1918, -158), QSize(2400, 1200), bounds, gap);
+    require(clamped == bounds.topLeft(),
+            "an oversized cursor panel should clamp to an offset monitor origin");
+}
 } // namespace
 
 int main() {
@@ -107,6 +121,7 @@ int main() {
         fitDoesNotDropBelowMinimumZoom();
         fullResolutionPlacementCentersWithoutFitting();
         cursorPanelPlacementUsesEveryAvailableQuadrant();
+        cursorPanelPlacementRespectsOffsetMonitorBounds();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return EXIT_FAILURE;

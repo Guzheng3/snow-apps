@@ -27,36 +27,51 @@ QImage renderDivider(AdDivider* divider, const QColor& background = Qt::white) {
 }
 
 QImage renderDividerAtDpr(AdDivider* divider, qreal devicePixelRatio,
-                          const QColor& background = Qt::white) {
+                          qreal crossAxisTranslation = 0.0, const QColor& background = Qt::white) {
   const QSize physicalSize(qCeil(divider->width() * devicePixelRatio),
                            qCeil(divider->height() * devicePixelRatio));
   QImage image(physicalSize, QImage::Format_ARGB32_Premultiplied);
   image.setDevicePixelRatio(devicePixelRatio);
   image.fill(background);
   QPainter painter(&image);
+  if (divider->orientation() == AdDivider::Orientation::Horizontal) {
+    painter.translate(0.0, crossAxisTranslation);
+  } else {
+    painter.translate(crossAxisTranslation, 0.0);
+  }
   divider->render(&painter, QPoint(), QRegion(), QWidget::DrawChildren);
   return image;
 }
 
-qreal railCoverageAtCenter(const QImage& image, AdDivider::Orientation orientation) {
+struct RailProfile {
   qreal coverage = 0.0;
+  qreal peakCoverage = 0.0;
+};
+
+RailProfile railProfileAtCenter(const QImage& image, AdDivider::Orientation orientation) {
+  RailProfile profile;
   if (orientation == AdDivider::Orientation::Horizontal) {
     const int x = image.width() / 2;
     for (int y = 0; y < image.height(); ++y) {
-      coverage += (255 - image.pixelColor(x, y).red()) / 255.0;
+      const qreal pixelCoverage = (255 - image.pixelColor(x, y).red()) / 255.0;
+      profile.coverage += pixelCoverage;
+      profile.peakCoverage = std::max(profile.peakCoverage, pixelCoverage);
     }
-    return coverage;
+    return profile;
   }
 
   const int y = image.height() / 2;
   for (int x = 0; x < image.width(); ++x) {
-    coverage += (255 - image.pixelColor(x, y).red()) / 255.0;
+    const qreal pixelCoverage = (255 - image.pixelColor(x, y).red()) / 255.0;
+    profile.coverage += pixelCoverage;
+    profile.peakCoverage = std::max(profile.peakCoverage, pixelCoverage);
   }
-  return coverage;
+  return profile;
 }
 
-qreal renderRailCoverage(AdDivider::Orientation orientation, int crossAxisExtent,
-                         qreal devicePixelRatio, qreal logicalLineWidth) {
+RailProfile renderRailProfile(AdDivider::Orientation orientation, int crossAxisExtent,
+                              qreal devicePixelRatio, qreal logicalLineWidth,
+                              qreal crossAxisTranslation) {
   AdDivider divider;
   divider.setOrientation(orientation);
   divider.setVariant(AdDivider::Variant::Solid);
@@ -66,7 +81,8 @@ qreal renderRailCoverage(AdDivider::Orientation orientation, int crossAxisExtent
   divider.setComponentTokens(tokens);
   divider.resize(orientation == AdDivider::Orientation::Horizontal ? QSize(80, crossAxisExtent)
                                                                    : QSize(crossAxisExtent, 80));
-  return railCoverageAtCenter(renderDividerAtDpr(&divider, devicePixelRatio), orientation);
+  return railProfileAtCenter(renderDividerAtDpr(&divider, devicePixelRatio, crossAxisTranslation),
+                             orientation);
 }
 
 int nonBackgroundPixelsOnRow(const QImage& image, int y, const QColor& background = Qt::white) {
@@ -431,29 +447,40 @@ void DividerTest::railThicknessIsDevicePixelAligned() {
   constexpr qreal logicalLineWidth = 1.0;
   const QList<qreal> devicePixelRatios = {1.0, 1.25, 1.5, 1.75, 2.0};
   const QList<int> crossAxisExtents = {16, 17};
+  const QList<qreal> crossAxisTranslations = {0.0, 0.2, 0.4, 0.6};
   const QList<AdDivider::Orientation> orientations = {AdDivider::Orientation::Horizontal,
                                                       AdDivider::Orientation::Vertical};
 
   for (const qreal devicePixelRatio : devicePixelRatios) {
     std::optional<qreal> referenceCoverage;
+    std::optional<qreal> referencePeakCoverage;
     for (const AdDivider::Orientation orientation : orientations) {
       for (const int crossAxisExtent : crossAxisExtents) {
-        const qreal actualCoverage =
-            renderRailCoverage(orientation, crossAxisExtent, devicePixelRatio, logicalLineWidth);
-        if (!referenceCoverage.has_value()) {
-          referenceCoverage = actualCoverage;
-          continue;
+        for (const qreal crossAxisTranslation : crossAxisTranslations) {
+          const RailProfile profile =
+              renderRailProfile(orientation, crossAxisExtent, devicePixelRatio, logicalLineWidth,
+                                crossAxisTranslation);
+          if (!referenceCoverage.has_value()) {
+            referenceCoverage = profile.coverage;
+            referencePeakCoverage = profile.peakCoverage;
+          }
+          const QString context =
+              QStringLiteral(
+                  "orientation=%1, extent=%2, translation=%3, dpr=%4, coverage=%5, "
+                  "peak=%6, reference=%7")
+                  .arg(orientation == AdDivider::Orientation::Horizontal
+                           ? QStringLiteral("horizontal")
+                           : QStringLiteral("vertical"))
+                  .arg(crossAxisExtent)
+                  .arg(crossAxisTranslation)
+                  .arg(devicePixelRatio)
+                  .arg(profile.coverage, 0, 'f', 3)
+                  .arg(profile.peakCoverage, 0, 'f', 3)
+                  .arg(referenceCoverage.value(), 0, 'f', 3);
+          QVERIFY2(qAbs(profile.coverage - referenceCoverage.value()) <= 0.05, qPrintable(context));
+          QVERIFY2(qAbs(profile.peakCoverage - referencePeakCoverage.value()) <= 0.05,
+                   qPrintable(context));
         }
-        const QString failure =
-            QStringLiteral("orientation=%1, extent=%2, dpr=%3, actual=%4, reference=%5")
-                .arg(orientation == AdDivider::Orientation::Horizontal
-                         ? QStringLiteral("horizontal")
-                         : QStringLiteral("vertical"))
-                .arg(crossAxisExtent)
-                .arg(devicePixelRatio)
-                .arg(actualCoverage, 0, 'f', 3)
-                .arg(referenceCoverage.value(), 0, 'f', 3);
-        QVERIFY2(qAbs(actualCoverage - referenceCoverage.value()) <= 0.05, qPrintable(failure));
       }
     }
   }

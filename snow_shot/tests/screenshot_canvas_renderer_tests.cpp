@@ -2890,6 +2890,31 @@ void overlayCanvasesAreDisabledUntilCanvasInteractionIsEnabled() {
             "activating a non-drawing tool must disable every reusable overlay canvas");
 }
 
+void overlayPresenterRespectsSelectionHandleVisibility() {
+    NoopOverlayEventSink eventSink;
+    auto* canvas = new SnowCanvasWidget;
+    ScreenshotOverlayWindow overlay(eventSink, canvas);
+
+    CapturedDisplayModel display;
+    display.canvasRect = QRect(0, 0, 100, 100);
+    display.active = true;
+    ScreenshotDisplaySession displays;
+    displays.appendDisplay(display, &overlay);
+
+    ScreenshotOverlayCanvasPresenter presenter({});
+    const QRectF selection(10.0, 10.0, 60.0, 40.0);
+    presenter.updateOverlayState(displays, selection, 0, 0, QColor(0x33, 0x33, 0x33),
+                                 false, false, false, false, false);
+    require(overlay.hasScreenshotSelection() && !overlay.screenshotSelectionHandlesVisible() &&
+                overlay.screenshotSelectionBorderVisible(),
+            "hidden selection control points must retain the recognition selection border");
+
+    presenter.updateOverlayState(displays, selection, 0, 0, QColor(0x33, 0x33, 0x33),
+                                 false, true, false, false, false);
+    require(overlay.screenshotSelectionHandlesVisible(),
+            "the overlay presenter must restore explicitly visible selection control points");
+}
+
 void resettingDisplaySessionEditingStateResetsEveryCanvas() {
     NoopOverlayEventSink eventSink;
     auto* activeCanvas = new SnowCanvasWidget;
@@ -3019,6 +3044,7 @@ int main(int argc, char** argv) {
     canvasWheelZoomCanBeDisabled();
     disabledCanvasBlocksWidgetLevelToolInput();
     overlayCanvasesAreDisabledUntilCanvasInteractionIsEnabled();
+    overlayPresenterRespectsSelectionHandleVisibility();
     resettingDisplaySessionEditingStateResetsEveryCanvas();
     screenshotUiPreferencesNormalizeAndApplyPickerVisibilityPolicies();
     shortcutHintStagesUseTheExactRequiredLines();

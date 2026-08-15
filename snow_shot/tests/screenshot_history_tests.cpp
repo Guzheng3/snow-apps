@@ -1132,6 +1132,8 @@ void recognitionAndScrollingToolsResizeSelectionBorder() {
         ScreenshotIntelligentSelectionModel intelligent;
         ScreenshotInteractionState interaction;
         interaction.setCanvasTool(tool);
+        require(!interaction.selectionHandlesVisible(),
+                "recognition tools must hide selection control points");
         ScreenshotOverlayInputActions actions;
         ScreenshotOverlayInputHandler handler({
             captureState,
@@ -1149,11 +1151,15 @@ void recognitionAndScrollingToolsResizeSelectionBorder() {
         require(handler.beginSelectionResizeAtCanvasPosition(QPointF(30, 20)) &&
                     interaction.moveToolActive() && interaction.modifyingSelection(),
                 "recognition border press must enter the shared Move resize transaction");
+        require(!interaction.selectionHandlesVisible(),
+                "recognition selection resize must keep control points hidden");
         handler.updateSelectionResizeAtCanvasPosition(QPointF(40, 20));
         handler.finishSelectionResizeAtCanvasPosition(QPointF(40, 20));
         require(selection.normalizedSelection() == QRectF(10, 10, 30, 20) &&
                     interaction.activeTool() == tool && interaction.editing(),
                 "recognition border resize must restore the active recognition tool");
+        require(!interaction.selectionHandlesVisible(),
+                "restored recognition tools must keep selection control points hidden");
     }
 
     ScreenshotCaptureState captureState;
@@ -1746,12 +1752,16 @@ void canvasColorSamplingConsumesOneCanvasClick() {
 
     int sampleCount = 0;
     int cancelCount = 0;
+    int previewCount = 0;
     ScreenshotOverlayInputActions actions;
     actions.sampleCanvasColor = [&sampleCount](ScreenshotOverlayWindow*, const QPointF&) {
         ++sampleCount;
         return true;
     };
     actions.cancelCanvasColorSampling = [&cancelCount]() { ++cancelCount; };
+    actions.previewCanvasColor = [&previewCount](ScreenshotOverlayWindow*, const QPointF&) {
+        ++previewCount;
+    };
     ScreenshotOverlayInputHandler handler({
         captureState,
         interaction,
@@ -1765,12 +1775,15 @@ void canvasColorSamplingConsumesOneCanvasClick() {
     handler.armCanvasColorSampling();
     require(handler.shouldHandleMouseEvent(nullptr, QPointF(12, 16), false),
             "an armed canvas sampler must handle the next canvas click");
+    handler.handleMouseMove(nullptr, QPointF(12, 16));
+    require(previewCount == 1,
+            "an armed canvas sampler must preview the color under the cursor");
     handler.handleMousePress(nullptr, QPointF(12, 16));
     require(sampleCount == 1 && !interaction.dragging(),
             "canvas sampling must consume its click before selection or drawing begins");
 
     handler.handleMousePress(nullptr, QPointF(12, 16));
-    require(interaction.dragging(),
+    require(interaction.dragging() && previewCount == 1,
             "normal canvas input must resume after the one-shot sampler completes");
     handler.resetTransientShortcuts();
 

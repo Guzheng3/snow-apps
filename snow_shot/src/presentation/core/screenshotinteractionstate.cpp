@@ -1,10 +1,18 @@
 #include "snow_shot/presentation/screenshotinteractionstate.h"
 
+namespace {
+bool recognitionTool(ScreenshotActiveTool tool) {
+    return tool == ScreenshotActiveTool::Ocr || tool == ScreenshotActiveTool::Table ||
+           tool == ScreenshotActiveTool::Qr;
+}
+} // namespace
+
 void ScreenshotInteractionState::reset() {
     m_activeTool = ScreenshotActiveTool::Move;
     m_mode = ScreenshotCaptureMode::Inactive;
     m_dragMode = ScreenshotSelectionDragMode::None;
     m_dragging = false;
+    m_recognitionSelectionActive = false;
 }
 
 void ScreenshotInteractionState::beginCapture() {
@@ -12,6 +20,7 @@ void ScreenshotInteractionState::beginCapture() {
     m_mode = ScreenshotCaptureMode::ManualSelecting;
     m_dragMode = ScreenshotSelectionDragMode::None;
     m_dragging = false;
+    m_recognitionSelectionActive = false;
 }
 
 void ScreenshotInteractionState::enterOverlayVisible(bool selectorReady) {
@@ -20,12 +29,14 @@ void ScreenshotInteractionState::enterOverlayVisible(bool selectorReady) {
                            : ScreenshotCaptureMode::ManualSelecting;
     m_dragMode = ScreenshotSelectionDragMode::None;
     m_dragging = false;
+    m_recognitionSelectionActive = false;
 }
 
 void ScreenshotInteractionState::setMoveTool(bool hasSelection, bool selectorReady) {
     m_activeTool = ScreenshotActiveTool::Move;
     m_dragMode = ScreenshotSelectionDragMode::None;
     m_dragging = false;
+    m_recognitionSelectionActive = false;
     if (hasSelection) {
         m_mode = ScreenshotCaptureMode::MovingSelection;
         return;
@@ -34,11 +45,19 @@ void ScreenshotInteractionState::setMoveTool(bool hasSelection, bool selectorRea
                            : ScreenshotCaptureMode::ManualSelecting;
 }
 
+void ScreenshotInteractionState::setTransientMoveTool() {
+    m_activeTool = ScreenshotActiveTool::Move;
+    m_mode = ScreenshotCaptureMode::MovingSelection;
+    m_dragMode = ScreenshotSelectionDragMode::None;
+    m_dragging = false;
+}
+
 void ScreenshotInteractionState::setCanvasTool(ScreenshotActiveTool tool) {
     m_activeTool = tool;
     m_mode = ScreenshotCaptureMode::Editing;
     m_dragMode = ScreenshotSelectionDragMode::None;
     m_dragging = false;
+    m_recognitionSelectionActive = recognitionTool(tool);
 }
 
 void ScreenshotInteractionState::setOcrTool() {
@@ -71,6 +90,7 @@ void ScreenshotInteractionState::enterScrollingCapture() {
     m_mode = ScreenshotCaptureMode::ScrollingCapture;
     m_dragMode = ScreenshotSelectionDragMode::None;
     m_dragging = false;
+    m_recognitionSelectionActive = false;
 }
 
 void ScreenshotInteractionState::returnToSelectionMode(bool selectorReady) {
@@ -79,6 +99,7 @@ void ScreenshotInteractionState::returnToSelectionMode(bool selectorReady) {
                            : ScreenshotCaptureMode::ManualSelecting;
     m_dragMode = ScreenshotSelectionDragMode::None;
     m_dragging = false;
+    m_recognitionSelectionActive = false;
 }
 
 bool ScreenshotInteractionState::enterSelectionDrag(ScreenshotSelectionDragMode dragMode) {
@@ -166,4 +187,8 @@ bool ScreenshotInteractionState::selectionToolbarMode() const {
 
 bool ScreenshotInteractionState::canResizeSelection() const {
     return movingSelection() || editing();
+}
+
+bool ScreenshotInteractionState::selectionHandlesVisible() const {
+    return !m_recognitionSelectionActive;
 }

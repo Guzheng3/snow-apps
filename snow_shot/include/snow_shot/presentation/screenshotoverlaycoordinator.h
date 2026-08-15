@@ -56,8 +56,8 @@ class ScreenshotOverlayCoordinator final : public ScreenshotOverlayExclusionPort
     void hideOverlayWindows(const ScreenshotDisplaySession& displaySession);
     void updateOverlayState(const ScreenshotDisplaySession& displaySession, const QRectF& selection,
                             int cornerRadius, int shadowWidth, const QColor& shadowColor,
-                            bool selectionToolbarHovered, bool intelligentSelecting,
-                            bool manualSelecting, bool dragging);
+                            bool selectionToolbarHovered, bool selectionHandlesVisible,
+                            bool intelligentSelecting, bool manualSelecting, bool dragging);
     void setScrollingCaptureMode(const ScreenshotDisplaySession& displaySession,
                                  const QRectF& selection, bool enabled);
     void updateOverlayCursors(const ScreenshotDisplaySession& displaySession, bool selecting,

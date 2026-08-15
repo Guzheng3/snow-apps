@@ -3939,12 +3939,11 @@ void configurationDrivenStyleEditorsShareStructuralContracts() {
         auto* sampler = dynamic_cast<ColorPickerSamplerButton*>(picker->previewContent());
         require(sampler != nullptr && sampler->focusPolicy() == Qt::NoFocus &&
                     sampler->sizeClass() == adqt::widgets::AdButton::SizeClass::Small &&
-                    sampler->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Text &&
+                    sampler->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Outline &&
                     sampler->accentRole() == adqt::widgets::AdButton::AccentRole::Neutral &&
-                    !sampler->icon().isNull() && sampler->iconSize() == QSize(14, 14) &&
                     sampler->toolTip() == QStringLiteral("Pick color from canvas") &&
                     sampler->accessibleName() == sampler->toolTip(),
-                "canvas-color samplers should match the neighboring neutral icon-button style");
+                "canvas-color samplers should use the fill-color trigger's outlined style");
     }
     require(dynamic_cast<ColorSwatchButton*>(colorPicker->triggerContent()) != nullptr &&
                 dynamic_cast<FillStylePreviewTrigger*>(fillPicker->triggerContent()) != nullptr &&
@@ -3955,6 +3954,13 @@ void configurationDrivenStyleEditorsShareStructuralContracts() {
                 !colorPicker->alphaChannelEnabled() && fillPicker->alphaChannelEnabled() &&
                 !strokePicker->alphaChannelEnabled() && !widthColorPicker->alphaChannelEnabled(),
             "picker configuration should preserve trigger and alpha differences");
+    auto* fillTrigger = dynamic_cast<FillStylePreviewTrigger*>(fillPicker->triggerContent());
+    auto* fillSampler = dynamic_cast<ColorPickerSamplerButton*>(fillPicker->previewContent());
+    require(fillTrigger != nullptr && fillSampler != nullptr &&
+                fillSampler->sizeClass() == fillTrigger->sizeClass() &&
+                fillSampler->buttonStyle() == fillTrigger->buttonStyle() &&
+                fillSampler->accentRole() == fillTrigger->accentRole(),
+            "canvas sampler button chrome should match the fill-color picker trigger");
 
     auto* sampler = dynamic_cast<ColorPickerSamplerButton*>(colorPicker->previewContent());
     adqt::widgets::AdColorPicker* samplingTarget = nullptr;
@@ -4027,12 +4033,17 @@ void canvasColorSamplerButtonRequestsAndCommits() {
                         : dynamic_cast<ColorPickerSamplerButton*>(picker->previewContent());
     require(picker != nullptr && sampler != nullptr && sampler->focusPolicy() == Qt::NoFocus &&
                 sampler->sizeClass() == adqt::widgets::AdButton::SizeClass::Small &&
-                sampler->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Text &&
+                sampler->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Outline &&
                 sampler->accentRole() == adqt::widgets::AdButton::AccentRole::Neutral &&
-                !sampler->icon().isNull() && sampler->iconSize() == QSize(14, 14) &&
                 sampler->toolTip() == QStringLiteral("Pick color from canvas") &&
                 sampler->accessibleName() == sampler->toolTip(),
-            "drawing color picker should expose a neutral icon-style canvas sampler button");
+            "drawing color picker should expose an outlined canvas sampler button");
+
+    const QImage initialSamplerImage = renderButton(*sampler);
+    picker->setValue(adqt::widgets::AdColorValue::solid(QColor(QStringLiteral("#12ab34"))));
+    QCoreApplication::processEvents();
+    require(renderButton(*sampler) != initialSamplerImage,
+            "canvas sampler should repaint to display the current picker color");
 
     adqt::widgets::AdColorPicker* samplingTarget = nullptr;
     QObject::connect(&palette, &ScreenshotToolPalette::canvasColorSamplingRequested, &palette,

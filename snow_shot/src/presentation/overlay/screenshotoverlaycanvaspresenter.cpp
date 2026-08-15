@@ -257,8 +257,8 @@ namespace {
 void updateOverlayStateForDisplaySession(const ScreenshotDisplaySession& displaySession,
                                          const QRectF& selection, int cornerRadius, int shadowWidth,
                                          const QColor& shadowColor, bool selectionToolbarHovered,
-                                         bool intelligentSelecting, bool manualSelecting,
-                                         bool dragging) {
+                                         bool selectionHandlesVisible, bool intelligentSelecting,
+                                         bool manualSelecting, bool dragging) {
     const bool hasSelection = selection.isValid() && !selection.isEmpty();
     const ScreenshotHalfOpenRect selectionRect =
         hasSelection ? ScreenshotHalfOpenRect::fromRectF(selection) : ScreenshotHalfOpenRect();
@@ -274,7 +274,7 @@ void updateOverlayStateForDisplaySession(const ScreenshotDisplaySession& display
             hasSelection && selectionRect.intersects(displayRect);
         overlay->setScreenshotMaskVisible(true);
         if (selectionIntersectsDisplay) {
-            overlay->setScreenshotSelection(selection, !intelligentSelecting, cornerRadius,
+            overlay->setScreenshotSelection(selection, selectionHandlesVisible, cornerRadius,
                                             shadowWidth, shadowColor, selectionToolbarHovered);
         } else {
             overlay->clearScreenshotSelection();
@@ -288,9 +288,11 @@ void updateOverlayStateForDisplaySession(const ScreenshotDisplaySession& display
 void ScreenshotOverlayCanvasPresenter::updateOverlayState(
     const ScreenshotDisplaySession& displaySession, const QRectF& selection, int cornerRadius,
     int shadowWidth, const QColor& shadowColor, bool selectionToolbarHovered,
-    bool intelligentSelecting, bool manualSelecting, bool dragging) const {
+    bool selectionHandlesVisible, bool intelligentSelecting, bool manualSelecting,
+    bool dragging) const {
     updateOverlayStateForDisplaySession(displaySession, selection, cornerRadius, shadowWidth,
-                                        shadowColor, selectionToolbarHovered, intelligentSelecting,
+                                        shadowColor, selectionToolbarHovered,
+                                        selectionHandlesVisible, intelligentSelecting,
                                         manualSelecting, dragging);
 }
 

@@ -28,8 +28,8 @@ class ScreenshotOverlayCanvasPresenter final {
                             ScreenshotOverlayShowMode mode) const;
     void updateOverlayState(const ScreenshotDisplaySession& displaySession, const QRectF& selection,
                             int cornerRadius, int shadowWidth, const QColor& shadowColor,
-                            bool selectionToolbarHovered, bool intelligentSelecting,
-                            bool manualSelecting, bool dragging) const;
+                            bool selectionToolbarHovered, bool selectionHandlesVisible,
+                            bool intelligentSelecting, bool manualSelecting, bool dragging) const;
     void updateOverlayCursors(const ScreenshotDisplaySession& displaySession, bool selecting,
                               bool dragging) const;
     void updateGuideLines(const ScreenshotDisplaySession& displaySession,

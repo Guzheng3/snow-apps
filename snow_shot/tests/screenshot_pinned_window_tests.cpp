@@ -11,8 +11,10 @@
 #include "snow_draw_engine_qt/snow_canvas_widget.h"
 #include "theme/theme_manager.h"
 #include "widgets/button.h"
+#include "widgets/color_picker.h"
 #include "widgets/context_menu.h"
 
+#include <QAbstractButton>
 #include <QActionGroup>
 #include <QApplication>
 #include <QClipboard>
@@ -2312,7 +2314,7 @@ void pinnedFollowsPerMonitorDpiScaling(SnowCanvasRuntime& sourceRuntime) {
 #endif
 }
 
-void spotlightWheelAdjustsMaskOpacity(SnowCanvasRuntime& sourceRuntime) {
+void pinnedDrawingToolbarMatchesCaptureInteractions(SnowCanvasRuntime& sourceRuntime) {
     QScreen* screen = QGuiApplication::primaryScreen();
     require(screen != nullptr, "a primary screen is required");
 
@@ -2342,16 +2344,74 @@ void spotlightWheelAdjustsMaskOpacity(SnowCanvasRuntime& sourceRuntime) {
 
     SnowCanvasWidget* canvas = pinnedWindow->findChild<SnowCanvasWidget*>();
     require(canvas != nullptr, "pinned screenshot canvas was not found");
+
+    auto* controller = pinnedWindow->findChild<ScreenshotPinnedEditController*>();
+    ScreenshotToolPalette* toolbar =
+        controller != nullptr && controller->toolbarWindow() != nullptr
+            ? controller->toolbarWindow()->palette()
+            : nullptr;
+    require(toolbar != nullptr, "pinned drawing toolbar was not found");
+
+    const QPoint localPosition = canvas->rect().center();
+    const auto sendWheel = [canvas, localPosition](int angleDelta) {
+        QWheelEvent wheel(QPointF(localPosition), QPointF(canvas->mapToGlobal(localPosition)),
+                          QPoint(), QPoint(0, angleDelta), Qt::NoButton, Qt::NoModifier,
+                          Qt::NoScrollPhase, false);
+        QCoreApplication::sendEvent(canvas, &wheel);
+        return wheel.isAccepted();
+    };
+
+    require(canvas->setCanvasTool(SnowCanvasTool::Shape), "Shape tool could not be activated");
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    const double shapeStrokeWidth = canvas->canvasStyleToolbarState().shapeStyle.strokeWidth;
+    require(sendWheel(120) &&
+                canvas->canvasStyleToolbarState().shapeStyle.strokeWidth == shapeStrokeWidth + 1.0,
+            "Shape wheel input should increase pinned stroke width by one pixel");
+
+    require(canvas->setCanvasTool(SnowCanvasTool::Text), "Text tool could not be activated");
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    const double textFontSize = canvas->canvasStyleToolbarState().textStyle.fontSize;
+    require(sendWheel(120) &&
+                canvas->canvasStyleToolbarState().textStyle.fontSize > textFontSize,
+            "Text wheel input should increase pinned font size");
+
+    require(canvas->setCanvasTool(SnowCanvasTool::Shape), "Shape tool could not be restored");
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    adqt::widgets::AdColorPicker* strokeColorPicker = nullptr;
+    for (adqt::widgets::AdColorPicker* picker :
+         toolbar->findChildren<adqt::widgets::AdColorPicker*>()) {
+        if (picker != nullptr && picker->accessibleName() == QStringLiteral("Stroke color")) {
+            strokeColorPicker = picker;
+            break;
+        }
+    }
+    auto* sampler = strokeColorPicker != nullptr
+                        ? qobject_cast<QAbstractButton*>(strokeColorPicker->previewContent())
+                        : nullptr;
+    require(strokeColorPicker != nullptr && sampler != nullptr,
+            "pinned stroke color picker should expose canvas sampling");
+    sampler->click();
+
+    const QPointF globalPosition(canvas->mapToGlobal(localPosition));
+    QMouseEvent samplingMove(QEvent::MouseMove, QPointF(localPosition), globalPosition,
+                             Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+    QCoreApplication::sendEvent(canvas, &samplingMove);
+    QMouseEvent samplingPress(QEvent::MouseButtonPress, QPointF(localPosition), globalPosition,
+                              Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+    QCoreApplication::sendEvent(canvas, &samplingPress);
+    require(samplingMove.isAccepted() && samplingPress.isAccepted() &&
+                strokeColorPicker->value().isSolid() &&
+                strokeColorPicker->value().solidColor.toRgb() == background.pixelColor(
+                                                                  background.rect().center())
+                                                                  .toRgb(),
+            "pinned canvas sampling should commit the color beneath the cursor");
+
     require(canvas->setCanvasTool(SnowCanvasTool::Spotlight),
             "Spotlight tool could not be activated");
     QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
 
-    const QPoint localPosition = canvas->rect().center();
     const QRect geometryBeforeWheel = pinnedWindow->currentNativeGeometry();
-    QWheelEvent wheel(QPointF(localPosition), QPointF(canvas->mapToGlobal(localPosition)), QPoint(),
-                      QPoint(0, 120), Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
-    QCoreApplication::sendEvent(canvas, &wheel);
-    require(wheel.isAccepted() &&
+    require(sendWheel(120) &&
                 qFuzzyCompare(canvas->canvasSpotlightConfig().opacity + 1.0, 1.69) &&
                 pinnedWindow->currentNativeGeometry() == geometryBeforeWheel,
             "Spotlight wheel input should increase pinned mask opacity by five percent");
@@ -2571,6 +2631,10 @@ int main(int argc, char* argv[]) {
             pinnedControlsMatchReferenceStyle(sourceRuntime);
             return 0;
         }
+        if (app.arguments().contains(QStringLiteral("--toolbar-parity-only"))) {
+            pinnedDrawingToolbarMatchesCaptureInteractions(sourceRuntime);
+            return 0;
+        }
         pinnedContextMenuPreservesNativeGeometry(sourceRuntime);
         pinnedPhysicalPixelsFillClientArea(sourceRuntime);
         pinnedScalingAndAspectLockedResizing(sourceRuntime);
@@ -2589,7 +2653,7 @@ int main(int argc, char* argv[]) {
         pinnedLargeImageRemainsOpenWhenEnteringDrawingMode(sourceRuntime);
         pinnedWatermarkEditorAcceptsKeyboardInput(sourceRuntime);
         pinnedEditToolbarControlsCanvasHistory(sourceRuntime);
-        spotlightWheelAdjustsMaskOpacity(sourceRuntime);
+        pinnedDrawingToolbarMatchesCaptureInteractions(sourceRuntime);
 
         for (int iteration = 0; iteration < 8; ++iteration) {
             closePinnedWindow(sourceRuntime, false, false, iteration);

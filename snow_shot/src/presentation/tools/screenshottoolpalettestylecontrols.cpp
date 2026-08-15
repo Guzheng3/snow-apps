@@ -594,11 +594,17 @@ adqt::widgets::AdColorPicker* ScreenshotToolPaletteStyleControls::createColorPic
     picker->setPopupLayerMode(adqt::widgets::AdColorPicker::PopupLayerMode::QtTool);
     picker->setPopupContentPlacement(adqt::widgets::AdColorPicker::PopupContentPlacement::Top);
     picker->setValue(adqt::widgets::AdColorValue::solid(initialColor));
-    auto* sampler = createScreenshotToolPaletteColorPickerSamplerButton(picker);
+    auto* sampler = createScreenshotToolPaletteColorPickerSamplerButton(picker, initialColor);
     sampler->setObjectName(QStringLiteral("screenshot-color-picker-sampler"));
     configureScreenshotToolPaletteTooltip(
         sampler, ScreenshotToolPaletteTranslationText("Pick color from canvas"));
     picker->setPreviewContent(sampler);
+    QObject::connect(picker, &adqt::widgets::AdColorPicker::valueChanged, sampler,
+                     [sampler](const adqt::widgets::AdColorValue& value) {
+                         if (value.isSolid() && value.solidColor.isValid()) {
+                             sampler->setSwatchColor(value.solidColor);
+                         }
+                     });
     QObject::connect(sampler, &QAbstractButton::clicked, picker, [this, picker]() {
         picker->setPopupVisible(false);
         if (m_callbacks.canvasColorSamplingRequested) {

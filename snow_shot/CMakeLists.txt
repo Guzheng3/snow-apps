@@ -572,6 +572,7 @@ set(PROJECT_HEADERS
     include/snow_shot/presentation/screenshotcaptureruntimeadapter.h
     include/snow_shot/presentation/screenshotcapturestate.h
     include/snow_shot/presentation/screenshotcaptureworkflow.h
+    include/snow_shot/presentation/screenshotcanvascolorsamplerwindow.h
     include/snow_shot/presentation/screenshotcaptureworkflowports.h
     include/snow_shot/presentation/screenshotcanvasrenderer.h
     include/snow_shot/presentation/screenshotclipboardcontent.h
@@ -683,6 +684,7 @@ set(PROJECT_CXX_SOURCES
     src/presentation/capture/latestbridgemailbox.h
     src/presentation/capture/screenshotscrollingcapturecontroller.cpp
     src/presentation/capture/screenshotscrollingthumbnailwidget.cpp
+    src/presentation/services/screenshotcanvascolorsamplerwindow.cpp
     src/presentation/services/screenshotcolorpickercontroller.cpp
     src/presentation/services/screenshotclipboardcontent.cpp
     src/presentation/services/screenshotclipboardservice.cpp
@@ -1425,9 +1427,14 @@ if(SNOW_SHOT_BUILD_TESTS)
         NAME snow-shot-screenshot-shortcut-priority-tests
         COMMAND snow-shot-screenshot-history-tests --shortcut-input-only
     )
+    add_test(
+        NAME snow-shot-canvas-color-sampling-tests
+        COMMAND snow-shot-screenshot-history-tests --canvas-color-sampling-only
+    )
     set_tests_properties(
         snow-shot-screenshot-history-tests
         snow-shot-screenshot-shortcut-priority-tests
+        snow-shot-canvas-color-sampling-tests
         PROPERTIES
         ENVIRONMENT
             "QT_QPA_PLATFORM=$<IF:$<BOOL:${WIN32}>,windows,offscreen>"
@@ -1585,6 +1592,7 @@ if(SNOW_SHOT_BUILD_TESTS)
     add_executable(snow-shot-pinned-window-tests
         tests/screenshot_pinned_window_tests.cpp
         include/snow_shot/presentation/screenshotfloatingtoolpalettewindow.h
+        include/snow_shot/presentation/screenshotcanvascolorsamplerwindow.h
         include/snow_shot/presentation/languagemanager.h
         include/snow_shot/presentation/screenshotpinnededitcontroller.h
         include/snow_shot/presentation/screenshotpinnedcopyservice.h
@@ -1611,6 +1619,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         src/presentation/ocr/screenshottableeditor.cpp
         src/presentation/overlay/screenshotcanvasrenderer.cpp
         src/presentation/overlay/screenshotselectionshadowrenderer.cpp
+        src/presentation/services/screenshotcanvascolorsamplerwindow.cpp
         src/presentation/services/screenshotclipboardservice.cpp
         src/presentation/services/screenshotmessageservice.cpp
         src/presentation/selection/screenshotselectiongeometry.cpp
@@ -1665,6 +1674,10 @@ if(SNOW_SHOT_BUILD_TESTS)
     add_test(
         NAME snow-shot-pinned-recognition-provider-loss-tests
         COMMAND snow-shot-pinned-window-tests --recognition-provider-loss-only
+    )
+    add_test(
+        NAME snow-shot-pinned-toolbar-parity-tests
+        COMMAND snow-shot-pinned-window-tests --toolbar-parity-only
     )
 
     add_executable(snow-shot-screenshot-image-file-service-tests
@@ -1722,6 +1735,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         snow-shot-pinned-recognition-provider-loss-tests
         snow-shot-pinned-recognition-priority-tests
         snow-shot-pinned-clipboard-content-tests
+        snow-shot-pinned-toolbar-parity-tests
         PROPERTIES
         RUN_SERIAL TRUE
         TIMEOUT 90
@@ -1880,6 +1894,40 @@ if(SNOW_SHOT_BUILD_TESTS)
         ENVIRONMENT_MODIFICATION
             "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
+
+    add_executable(snow-shot-screenshot-selection-toolbar-hover-tests
+        tests/screenshot_selection_toolbar_hover_tests.cpp
+        src/presentation/selection/screenshotselectiontoolbarwidgets.h
+        src/presentation/selection/screenshotselectiontoolbarwidgets.cpp
+    )
+    target_include_directories(snow-shot-screenshot-selection-toolbar-hover-tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/presentation/selection"
+    )
+    target_link_libraries(snow-shot-screenshot-selection-toolbar-hover-tests PRIVATE
+        adqt_icon_core
+        ant_design_icons_qt
+        Qt6::Widgets
+    )
+    add_test(
+        NAME snow-shot-screenshot-selection-toolbar-hover-tests
+        COMMAND snow-shot-screenshot-selection-toolbar-hover-tests
+    )
+    set_tests_properties(snow-shot-screenshot-selection-toolbar-hover-tests PROPERTIES
+        ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+    if(WIN32)
+        set_tests_properties(snow-shot-screenshot-selection-toolbar-hover-tests PROPERTIES
+            ENVIRONMENT
+                "QT_QPA_PLATFORM=windows;QT_QPA_PLATFORM_PLUGIN_PATH=$<TARGET_FILE_DIR:Qt6::QWindowsIntegrationPlugin>"
+        )
+    else()
+        set_tests_properties(snow-shot-screenshot-selection-toolbar-hover-tests PROPERTIES
+            ENVIRONMENT
+                "QT_QPA_PLATFORM=offscreen;QT_QPA_PLATFORM_PLUGIN_PATH=$<TARGET_FILE_DIR:Qt6::QOffscreenIntegrationPlugin>"
+        )
+    endif()
 
     if(WIN32)
         add_executable(snow-shot-screenshot-toolbar-fill-color-hover-tests

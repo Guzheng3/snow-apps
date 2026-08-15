@@ -4,6 +4,7 @@
 #include "snow_shot/presentation/screenshotcaptureruntimeadapter.h"
 #include "snow_shot/presentation/screenshotcapturestate.h"
 #include "snow_shot/presentation/screenshotcaptureworkflow.h"
+#include "snow_shot/presentation/screenshotcanvascolorsamplerwindow.h"
 #include "snow_shot/presentation/screenshotclipboardservice.h"
 #include "snow_shot/presentation/screenshotclipboardcontent.h"
 #include "snow_shot/presentation/screenshotcolorpickercontroller.h"
@@ -193,6 +194,11 @@ struct ScreenshotController::Impl final : public ScreenshotToolbarCommandSink,
     void restoreToolUiAfterScrollingCapture(bool scrollingCaptureStopped);
     [[nodiscard]] bool resetCanvasEditingState();
     [[nodiscard]] bool prepareHistoryCandidate(std::optional<ScreenshotHistoryEntry>* candidate);
+    [[nodiscard]] QImage canvasColorPreviewAt(ScreenshotOverlayWindow* overlay,
+                                              const QPointF& localPosition) const;
+    void updateCanvasColorSamplingPreview(ScreenshotOverlayWindow* overlay,
+                                          const QPointF& localPosition);
+    void setCanvasColorSamplingCursor(bool enabled);
     void clearCanvasColorSampling();
 
     void undoCanvasEdit() override;
@@ -293,6 +299,7 @@ struct ScreenshotController::Impl final : public ScreenshotToolbarCommandSink,
     std::unique_ptr<ScreenshotSelectionExportWorkflow> m_selectionExportWorkflow;
     std::unique_ptr<ScreenshotSelectionEditWorkflow> m_selectionEditWorkflow;
     std::unique_ptr<ScreenshotColorPickerController> m_colorPickerController;
+    std::unique_ptr<ScreenshotCanvasColorSamplerWindow> m_canvasColorSamplerWindow;
     std::unique_ptr<ScreenshotToolbarPresenter> m_toolbarPresenter;
     std::unique_ptr<ScreenshotToolCommandWorkflow> m_toolCommandWorkflow;
     std::unique_ptr<ScreenshotOcrRecognitionService> m_ocrRecognition;
@@ -308,6 +315,7 @@ struct ScreenshotController::Impl final : public ScreenshotToolbarCommandSink,
     QPointer<ScreenshotOverlayWindow> m_historyLoadingMessageOwner;
     QPointer<adqt::widgets::AdColorPicker> m_canvasColorSamplingTarget;
     QMetaObject::Connection m_canvasColorSamplingDestroyedConnection;
+    bool m_canvasColorSamplingCursorOverridden = false;
     QString m_pendingHistoryEditRecordId;
     quint64 m_imageExportGeneration = 0;
     bool m_imageExportInFlight = false;
@@ -534,6 +542,7 @@ void ScreenshotController::Impl::createPresentationInfrastructure() {
         });
     m_colorPickerController = std::make_unique<ScreenshotColorPickerController>(
         *m_overlayCoordinator, m_geometry, m_displaySession);
+    m_canvasColorSamplerWindow = std::make_unique<ScreenshotCanvasColorSamplerWindow>();
     m_toolbarPresenter = std::make_unique<ScreenshotToolbarPresenter>(*m_overlayCoordinator,
                                                                       m_geometry, m_displaySession);
     m_scrollingCaptureController = std::make_unique<ScreenshotScrollingCaptureController>(
@@ -967,29 +976,28 @@ void ScreenshotController::Impl::createOverlayInputPipeline() {
             m_canvasColorSamplingTarget.clear();
             disconnect(m_canvasColorSamplingDestroyedConnection);
             m_canvasColorSamplingDestroyedConnection = {};
+            if (m_canvasColorSamplerWindow != nullptr) {
+                m_canvasColorSamplerWindow->endSampling();
+            }
+            setCanvasColorSamplingCursor(false);
         },
         [this](ScreenshotOverlayWindow* overlay, const QPointF& localPosition) {
             QPointer<adqt::widgets::AdColorPicker> picker = m_canvasColorSamplingTarget;
             m_canvasColorSamplingTarget.clear();
             disconnect(m_canvasColorSamplingDestroyedConnection);
             m_canvasColorSamplingDestroyedConnection = {};
-            if (picker.isNull() || overlay == nullptr || overlay->canvas() == nullptr) {
+            if (m_canvasColorSamplerWindow != nullptr) {
+                m_canvasColorSamplerWindow->endSampling();
+            }
+            setCanvasColorSamplingCursor(false);
+            if (picker.isNull()) {
                 return false;
             }
-
-            SnowCanvasWidget* canvas = overlay->canvas();
-            const QImage image = canvas->grab().toImage();
-            if (image.isNull()) {
-                return false;
-            }
-            const QPoint canvasPoint = canvas->mapFrom(overlay, localPosition.toPoint());
-            const qreal devicePixelRatio = image.devicePixelRatio();
-            const QPoint pixelPoint(qRound(canvasPoint.x() * devicePixelRatio),
-                                    qRound(canvasPoint.y() * devicePixelRatio));
-            if (!image.rect().contains(pixelPoint)) {
-                return false;
-            }
-            const QColor sampled = image.pixelColor(pixelPoint);
+            const QImage preview = canvasColorPreviewAt(overlay, localPosition);
+            const QColor sampled = preview.isNull()
+                                       ? QColor()
+                                       : preview.pixelColor(preview.width() / 2,
+                                                            preview.height() / 2);
             if (!sampled.isValid()) {
                 return false;
             }
@@ -1002,6 +1010,9 @@ void ScreenshotController::Impl::createOverlayInputPipeline() {
             const ScreenshotToolbarWindow* toolbar =
                 m_overlayCoordinator != nullptr ? m_overlayCoordinator->toolbar() : nullptr;
             return toolbar != nullptr && toolbar->isVisible();
+        },
+        [this](ScreenshotOverlayWindow* overlay, const QPointF& localPosition) {
+            updateCanvasColorSamplingPreview(overlay, localPosition);
         },
     };
     m_overlayInputHandler =
@@ -2636,6 +2647,73 @@ void ScreenshotController::Impl::hideColorPickersForScreenshotUi() {
     m_selectionEditWorkflow->hideColorPickersForScreenshotUi();
 }
 
+QImage ScreenshotController::Impl::canvasColorPreviewAt(ScreenshotOverlayWindow* overlay,
+                                                        const QPointF& localPosition) const {
+    if (overlay == nullptr || overlay->canvas() == nullptr) {
+        return {};
+    }
+
+    SnowCanvasWidget* canvas = overlay->canvas();
+    const QPoint canvasPoint = canvas->mapFrom(overlay, localPosition.toPoint());
+    if (!canvas->rect().contains(canvasPoint)) {
+        return {};
+    }
+
+    constexpr int previewSize = 7;
+    constexpr int previewRadius = previewSize / 2;
+    const QRect grabRect =
+        QRect(canvasPoint - QPoint(previewRadius, previewRadius), QSize(previewSize, previewSize))
+            .intersected(canvas->rect());
+    const QImage grabbedImage = canvas->grab(grabRect).toImage();
+    if (grabbedImage.isNull()) {
+        return {};
+    }
+
+    const qreal devicePixelRatio = std::max<qreal>(1.0, grabbedImage.devicePixelRatio());
+    const QPoint localCenter = canvasPoint - grabRect.topLeft();
+    const QPoint imageCenter(qRound(localCenter.x() * devicePixelRatio),
+                             qRound(localCenter.y() * devicePixelRatio));
+    QImage preview(previewSize, previewSize, QImage::Format_ARGB32_Premultiplied);
+    for (int y = 0; y < previewSize; ++y) {
+        for (int x = 0; x < previewSize; ++x) {
+            const int sourceX = std::clamp(imageCenter.x() + x - previewRadius, 0,
+                                           grabbedImage.width() - 1);
+            const int sourceY = std::clamp(imageCenter.y() + y - previewRadius, 0,
+                                           grabbedImage.height() - 1);
+            preview.setPixelColor(x, y, grabbedImage.pixelColor(sourceX, sourceY));
+        }
+    }
+    return preview;
+}
+
+void ScreenshotController::Impl::updateCanvasColorSamplingPreview(
+    ScreenshotOverlayWindow* overlay, const QPointF& localPosition) {
+    if (m_canvasColorSamplerWindow == nullptr || m_canvasColorSamplingTarget.isNull()) {
+        return;
+    }
+    const QImage preview = canvasColorPreviewAt(overlay, localPosition);
+    if (preview.isNull()) {
+        return;
+    }
+    m_canvasColorSamplerWindow->updateSample(preview,
+                                             overlay->mapToGlobal(localPosition.toPoint()));
+}
+
+void ScreenshotController::Impl::setCanvasColorSamplingCursor(bool enabled) {
+    if (enabled && !m_canvasColorSamplingCursorOverridden) {
+        QApplication::setOverrideCursor(ScreenshotCanvasColorSamplerWindow::samplingCursor());
+        m_canvasColorSamplingCursorOverridden = true;
+        return;
+    }
+    if (!enabled && m_canvasColorSamplingCursorOverridden) {
+        QApplication::restoreOverrideCursor();
+        m_canvasColorSamplingCursorOverridden = false;
+    }
+    if (!enabled && m_presentationServices != nullptr) {
+        m_presentationServices->updateOverlayCursors();
+    }
+}
+
 void ScreenshotController::Impl::clearCanvasColorSampling() {
     m_canvasColorSamplingTarget.clear();
     disconnect(m_canvasColorSamplingDestroyedConnection);
@@ -2643,6 +2721,10 @@ void ScreenshotController::Impl::clearCanvasColorSampling() {
     if (m_overlayInputHandler != nullptr) {
         m_overlayInputHandler->cancelCanvasColorSampling();
     }
+    if (m_canvasColorSamplerWindow != nullptr) {
+        m_canvasColorSamplerWindow->endSampling();
+    }
+    setCanvasColorSamplingCursor(false);
 }
 
 void ScreenshotController::Impl::beginCanvasColorSampling(
@@ -2655,7 +2737,14 @@ void ScreenshotController::Impl::beginCanvasColorSampling(
     m_canvasColorSamplingTarget = picker;
     m_canvasColorSamplingDestroyedConnection = QObject::connect(
         picker, &QObject::destroyed, &owner, [this]() { clearCanvasColorSampling(); });
+    if (m_canvasColorSamplerWindow != nullptr) {
+        m_canvasColorSamplerWindow->beginSampling();
+    }
+    setCanvasColorSamplingCursor(true);
     m_overlayInputHandler->armCanvasColorSampling();
+    if (ScreenshotOverlayWindow* overlay = overlayUnderCursor()) {
+        updateCanvasColorSamplingPreview(overlay, overlay->mapFromGlobal(QCursor::pos()));
+    }
 }
 
 void ScreenshotController::Impl::adjustSelectionFromToolbar(int minDx, int minDy, int maxDx,

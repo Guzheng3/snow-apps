@@ -220,7 +220,7 @@ class NumericValuePreviewButton final : public StylePreviewButton {
     bool m_strokeWidthPreviewEnabled = false;
 };
 
-class ColorSwatchButton final : public adqt::widgets::AdButton {
+class ColorSwatchButton : public adqt::widgets::AdButton {
   public:
     explicit ColorSwatchButton(QWidget* parent = nullptr);
 
@@ -232,15 +232,21 @@ class ColorSwatchButton final : public adqt::widgets::AdButton {
   protected:
     void paintEvent(QPaintEvent* event) override;
 
+    [[nodiscard]] QColor swatchColor() const;
+    [[nodiscard]] qreal swatchPhysicalScale() const;
+
   private:
     QColor m_color;
     qreal m_physicalScale = 1.0;
     bool m_swatchBorderVisible = true;
 };
 
-class ColorPickerSamplerButton final : public adqt::widgets::AdButton {
+class ColorPickerSamplerButton final : public ColorSwatchButton {
   public:
     explicit ColorPickerSamplerButton(QWidget* parent = nullptr);
+
+  protected:
+    void paintEvent(QPaintEvent* event) override;
 };
 
 class IconValuePreviewTrigger final : public StylePreviewButton {
@@ -422,7 +428,8 @@ createScreenshotToolPaletteColorButton(QWidget* parent, const char* tooltip, con
                                        bool summary, bool swatchBorderVisible,
                                        const ScreenshotToolPaletteButtonMetrics& metrics);
 
-ColorPickerSamplerButton* createScreenshotToolPaletteColorPickerSamplerButton(QWidget* parent);
+ColorPickerSamplerButton* createScreenshotToolPaletteColorPickerSamplerButton(
+    QWidget* parent, const QColor& color);
 
 adqt::widgets::AdButton*
 createScreenshotToolPaletteStyleActionButton(QWidget* parent, const char* tooltip,
