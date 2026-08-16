@@ -20,6 +20,7 @@ vcpkg_from_github(
         0051-fix-msvc-undef-flags.patch
         0052-fix-disable-unstable-swscale-link.patch
         0053-compile-out-disabled-codec-references.patch
+        0054-fix-shared-libwebp-animation-link.patch
 )
 
 if(SOURCE_PATH MATCHES " ")

@@ -52,6 +52,12 @@
         "lunasvg",
         "openexr"
       ]
+    },
+    "image-viewer": {
+      "description": "Build the native dependencies required by Snow Image Viewer.",
+      "dependencies": [
+        "vulkan-headers"
+      ]
     }
   }
 }
