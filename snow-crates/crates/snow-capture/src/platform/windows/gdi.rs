@@ -15,7 +15,7 @@ use windows::Win32::Storage::Xps::{PRINT_WINDOW_FLAGS, PrintWindow};
 use windows::Win32::UI::WindowsAndMessaging::{GetWindowRect, IsIconic, IsWindow, IsWindowVisible};
 use windows::core::{PCWSTR, w};
 
-use crate::backend::{CaptureBlitRegion, CaptureMode, CaptureSampleMetadata};
+use crate::backend::{CaptureBackendKind, CaptureBlitRegion, CaptureMode, CaptureSampleMetadata};
 use crate::convert;
 use crate::error::{CaptureError, CaptureResult};
 use crate::frame::Frame;
@@ -2543,6 +2543,10 @@ impl WindowsMonitorCapturer {
 }
 
 impl crate::backend::MonitorCapturer for WindowsMonitorCapturer {
+    fn backend_kind(&self) -> CaptureBackendKind {
+        CaptureBackendKind::Gdi
+    }
+
     fn capture(&mut self, reuse: Option<Frame>) -> CaptureResult<Frame> {
         self.capture_with_history_hint(reuse, false)
     }
@@ -2735,6 +2739,10 @@ impl WindowsWindowCapturer {
 }
 
 impl MonitorCapturer for WindowsWindowCapturer {
+    fn backend_kind(&self) -> CaptureBackendKind {
+        CaptureBackendKind::Gdi
+    }
+
     fn capture(&mut self, reuse: Option<Frame>) -> CaptureResult<Frame> {
         self.capture_with_history_hint(reuse, false)
     }

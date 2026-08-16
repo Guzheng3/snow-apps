@@ -34,9 +34,9 @@ void ScreenshotCaptureRuntimeAdapter::ensureCaptureCoordinator() {
                      });
     QObject::connect(m_captureCoordinator.get(), &ScreenshotCaptureCoordinator::captureFinished,
                      m_captureCoordinator.get(),
-                     [this](quint64 requestId, const QVector<CapturedDisplayModel>& snapshots) {
+                     [this](const ScreenshotCaptureResult& result) {
                          if (m_captureEventSink != nullptr) {
-                             m_captureEventSink->handleCaptureFinished(requestId, snapshots);
+                             m_captureEventSink->handleCaptureFinished(result);
                          }
                      });
 }
@@ -63,9 +63,15 @@ void ScreenshotCaptureRuntimeAdapter::prepareAsync(quint64 requestId) {
     m_captureCoordinator->prepareAsync(requestId);
 }
 
-void ScreenshotCaptureRuntimeAdapter::captureAllAsync(quint64 requestId, bool refreshLayout) {
+void ScreenshotCaptureRuntimeAdapter::captureAsync(const ScreenshotCaptureRequest& request) {
     ensureCaptureCoordinator();
-    m_captureCoordinator->captureAllAsync(requestId, refreshLayout);
+    m_captureCoordinator->captureAsync(request);
+}
+
+void ScreenshotCaptureRuntimeAdapter::cancelActiveCapture() {
+    if (m_captureCoordinator != nullptr) {
+        m_captureCoordinator->cancelActiveCapture();
+    }
 }
 
 void ScreenshotCaptureRuntimeAdapter::releaseIdleResourcesAsync(quint64 requestId) {

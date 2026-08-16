@@ -12,6 +12,8 @@ typedef struct SnowCaptureRegionSessionImpl SnowCaptureRegionSession;
 typedef struct SnowCaptureWindowSessionImpl SnowCaptureWindowSession;
 typedef struct SnowCaptureSnapshotImpl SnowCaptureSnapshot;
 typedef struct SnowCaptureFrameLeaseImpl SnowCaptureFrameLease;
+typedef struct SnowCaptureCancellationTokenImpl SnowCaptureCancellationToken;
+typedef struct SnowCaptureScreenshotResultImpl SnowCaptureScreenshotResult;
 typedef struct SnowCaptureRecordingSessionImpl SnowCaptureRecordingSession;
 
 typedef enum SnowCaptureBackendKind {
@@ -37,7 +39,8 @@ typedef struct SnowCaptureDesktopSessionConfig {
 typedef struct SnowCaptureDesktopSessionState {
     size_t worker_count;
     uint8_t prepared;
-    uint8_t reserved0[7];
+    uint8_t reserved0[3];
+    uint32_t active_capture_access_count;
     uint64_t retained_resource_bytes;
     const char* backend_kind;
 } SnowCaptureDesktopSessionState;
@@ -50,7 +53,8 @@ typedef struct SnowCaptureFrameInfo {
     uint32_t width;
     uint32_t height;
     uint8_t is_primary;
-    uint8_t reserved0[3];
+    uint8_t backend_kind;
+    uint8_t reserved0[2];
     uint32_t stride_bytes;
     const uint8_t* rgba_bytes;
     size_t rgba_len;
@@ -84,7 +88,8 @@ typedef struct SnowCaptureWindowSessionConfig {
     intptr_t hwnd;
     size_t capture_retry_count;
     uint8_t wgc_update_mode;
-    uint8_t reserved[31];
+    uint8_t capture_backend;
+    uint8_t reserved[30];
 } SnowCaptureWindowSessionConfig;
 
 typedef struct SnowCaptureWindowFrameInfo {
@@ -96,6 +101,35 @@ typedef struct SnowCaptureWindowFrameInfo {
     const uint8_t* rgba_bytes;
     size_t rgba_len;
 } SnowCaptureWindowFrameInfo;
+
+#define SNOW_CAPTURE_WINDOW_FRAME_INFO_VERSION 1u
+
+typedef struct SnowCaptureWindowFrameInfoV1 {
+    uint32_t version;
+    uint32_t struct_size;
+    int32_t x;
+    int32_t y;
+    uint32_t width;
+    uint32_t height;
+    uint32_t stride_bytes;
+    const uint8_t* rgba_bytes;
+    size_t rgba_len;
+    uint8_t backend_kind;
+    uint8_t reserved[7];
+} SnowCaptureWindowFrameInfoV1;
+
+#define SNOW_CAPTURE_SCREENSHOT_REQUEST_VERSION 1u
+#define SNOW_CAPTURE_SCREENSHOT_REQUEST_REFRESH_LAYOUT (1u << 0)
+
+typedef struct SnowCaptureScreenshotRequestV1 {
+    uint32_t version;
+    uint32_t struct_size;
+    uint32_t flags;
+    uint32_t reserved0;
+    intptr_t focused_window;
+    const SnowCaptureCancellationToken* cancellation_token;
+    uint8_t reserved[32];
+} SnowCaptureScreenshotRequestV1;
 
 typedef struct SnowCaptureRecordingConfig {
     int32_t x;
@@ -165,6 +199,37 @@ uint8_t snow_capture_desktop_session_refresh_layout(SnowCaptureDesktopSession* s
 uint8_t snow_capture_desktop_session_release_idle_resources(SnowCaptureDesktopSession* session);
 SnowCaptureSnapshot* snow_capture_desktop_session_capture_all(
     SnowCaptureDesktopSession* session);
+/* Captures every display and, when focused_window is nonzero, the requested
+ * window as one all-or-nothing transaction. The returned result owns its
+ * frame buffers and must be destroyed by the caller. */
+SnowCaptureScreenshotResult* snow_capture_desktop_session_capture_v1(
+    SnowCaptureDesktopSession* session,
+    const SnowCaptureScreenshotRequestV1* request);
+
+/* Cancellation may be signaled from another thread. The token must remain
+ * alive until every capture call that references it has returned. */
+SnowCaptureCancellationToken* snow_capture_cancellation_token_create(void);
+void snow_capture_cancellation_token_cancel(SnowCaptureCancellationToken* token);
+void snow_capture_cancellation_token_destroy(SnowCaptureCancellationToken* token);
+
+/* Pointers returned through frame-info structures remain valid until the
+ * result is destroyed. Retaining the corresponding frame lease extends the
+ * pixel-buffer lifetime beyond result destruction. */
+size_t snow_capture_screenshot_result_display_count(
+    const SnowCaptureScreenshotResult* result);
+uint8_t snow_capture_screenshot_result_display_info(
+    const SnowCaptureScreenshotResult* result,
+    size_t index,
+    SnowCaptureFrameInfo* out_info);
+SnowCaptureFrameLease* snow_capture_screenshot_result_display_retain(
+    const SnowCaptureScreenshotResult* result,
+    size_t index);
+uint8_t snow_capture_screenshot_result_focused_window_info_v1(
+    const SnowCaptureScreenshotResult* result,
+    SnowCaptureWindowFrameInfoV1* out_info);
+SnowCaptureFrameLease* snow_capture_screenshot_result_focused_window_retain(
+    const SnowCaptureScreenshotResult* result);
+void snow_capture_screenshot_result_destroy(SnowCaptureScreenshotResult* result);
 
 SnowCaptureRegionSession* snow_capture_region_session_create(
     const SnowCaptureRegionSessionConfig* config);
@@ -182,6 +247,8 @@ uint8_t snow_capture_window_session_prepare(SnowCaptureWindowSession* session);
 uint8_t snow_capture_window_session_capture(
     SnowCaptureWindowSession* session,
     SnowCaptureWindowFrameInfo* out_info);
+SnowCaptureFrameLease* snow_capture_window_session_frame_retain(
+    const SnowCaptureWindowSession* session);
 
 size_t snow_capture_snapshot_count(const SnowCaptureSnapshot* snapshot);
 uint8_t snow_capture_snapshot_frame_info(

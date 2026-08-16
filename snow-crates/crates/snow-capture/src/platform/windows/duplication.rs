@@ -19,7 +19,7 @@ use windows::Win32::Graphics::Dxgi::{
 };
 use windows::core::Interface;
 
-use crate::backend::{CaptureBlitRegion, CaptureMode, CaptureSampleMetadata};
+use crate::backend::{CaptureBackendKind, CaptureBlitRegion, CaptureMode, CaptureSampleMetadata};
 use crate::convert::{HdrFrameContext, SurfaceConversionOptions};
 use crate::error::{CaptureError, CaptureResult};
 use crate::frame::{DirtyRect, Frame};
@@ -45,14 +45,40 @@ fn surface_options(hdr_to_sdr: Option<HdrFrameContext>) -> SurfaceConversionOpti
 }
 
 enum AcquireResult {
-    Ok(ID3D11Texture2D, DXGI_OUTDUPL_FRAME_INFO),
+    Ok(
+        ID3D11Texture2D,
+        DXGI_OUTDUPL_FRAME_INFO,
+        AcquiredDxgiFrameGuard,
+    ),
     AccessLost,
 }
 
 enum TryAcquireResult {
-    Ok(ID3D11Texture2D, DXGI_OUTDUPL_FRAME_INFO),
+    Ok(
+        ID3D11Texture2D,
+        DXGI_OUTDUPL_FRAME_INFO,
+        AcquiredDxgiFrameGuard,
+    ),
     AccessLost,
     Retry,
+}
+
+struct AcquiredDxgiFrameGuard {
+    duplication: IDXGIOutputDuplication,
+}
+
+impl AcquiredDxgiFrameGuard {
+    fn new(duplication: &IDXGIOutputDuplication) -> Self {
+        Self {
+            duplication: duplication.clone(),
+        }
+    }
+}
+
+impl Drop for AcquiredDxgiFrameGuard {
+    fn drop(&mut self) {
+        unsafe { self.duplication.ReleaseFrame() }.ok();
+    }
 }
 
 const PRESENT_ATTEMPTS: usize = 15;
@@ -60,6 +86,22 @@ const PRESENT_TIMEOUT_MS: u32 = 16;
 const FALLBACK_TIMEOUT_MS: u32 = 250;
 const STEADY_STATE_ATTEMPTS: usize = 20;
 const STEADY_STATE_TIMEOUT_MS: u32 = 100;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct AcquireRetryPolicy {
+    attempts: usize,
+    timeout_ms: u32,
+    require_present_time: bool,
+}
+
+const SNAPSHOT_ACQUISITION_POLICY: AcquireRetryPolicy = AcquireRetryPolicy {
+    attempts: 3,
+    timeout_ms: 16,
+    // The first frame after DuplicateOutput may be an initialization or
+    // pointer-only frame with an empty desktop texture. Never publish it as a
+    // screenshot; a timeout here lets the automatic backend fall back to WGC.
+    require_present_time: true,
+};
 const DXGI_DIRTY_COPY_MAX_RECTS: usize = 192;
 const DXGI_DIRTY_COPY_MAX_AREA_PERCENT: u64 = 70;
 const DXGI_DIRTY_GPU_COPY_MAX_RECTS: usize = 64;
@@ -917,13 +959,13 @@ fn try_acquire_frame(
         ));
     }
 
+    let frame_guard = AcquiredDxgiFrameGuard::new(duplication);
+
     if require_present_time && info.LastPresentTime == 0 {
-        unsafe { duplication.ReleaseFrame() }.ok();
         return Ok(TryAcquireResult::Retry);
     }
 
     let Some(resource) = resource else {
-        unsafe { duplication.ReleaseFrame() }.ok();
         return Ok(TryAcquireResult::Retry);
     };
 
@@ -931,7 +973,7 @@ fn try_acquire_frame(
         .cast()
         .context("failed to cast acquired IDXGIResource to ID3D11Texture2D")
         .map_err(CaptureError::platform)?;
-    Ok(TryAcquireResult::Ok(texture, info))
+    Ok(TryAcquireResult::Ok(texture, info, frame_guard))
 }
 
 fn acquire_with_retries(
@@ -942,8 +984,8 @@ fn acquire_with_retries(
 ) -> CaptureResult<Option<AcquireResult>> {
     for _ in 0..attempts {
         match try_acquire_frame(duplication, timeout_ms, require_present_time)? {
-            TryAcquireResult::Ok(texture, info) => {
-                return Ok(Some(AcquireResult::Ok(texture, info)));
+            TryAcquireResult::Ok(texture, info, frame_guard) => {
+                return Ok(Some(AcquireResult::Ok(texture, info, frame_guard)));
             }
             TryAcquireResult::AccessLost => return Ok(Some(AcquireResult::AccessLost)),
             TryAcquireResult::Retry => {}
@@ -964,7 +1006,9 @@ fn acquire_frame(
         }
 
         return match try_acquire_frame(duplication, FALLBACK_TIMEOUT_MS, false)? {
-            TryAcquireResult::Ok(texture, info) => Ok(AcquireResult::Ok(texture, info)),
+            TryAcquireResult::Ok(texture, info, frame_guard) => {
+                Ok(AcquireResult::Ok(texture, info, frame_guard))
+            }
             TryAcquireResult::AccessLost => Ok(AcquireResult::AccessLost),
             TryAcquireResult::Retry => Err(CaptureError::Timeout),
         };
@@ -975,6 +1019,19 @@ fn acquire_frame(
         STEADY_STATE_ATTEMPTS,
         STEADY_STATE_TIMEOUT_MS,
         false,
+    )? {
+        return Ok(result);
+    }
+    Err(CaptureError::Timeout)
+}
+
+fn acquire_snapshot_frame(duplication: &IDXGIOutputDuplication) -> CaptureResult<AcquireResult> {
+    let policy = SNAPSHOT_ACQUISITION_POLICY;
+    if let Some(result) = acquire_with_retries(
+        duplication,
+        policy.attempts,
+        policy.timeout_ms,
+        policy.require_present_time,
     )? {
         return Ok(result);
     }
@@ -1713,7 +1770,9 @@ fn dxgi_frame_has_no_metadata(info: &DXGI_OUTDUPL_FRAME_INFO) -> bool {
 struct OutputCapturer {
     device: ID3D11Device,
     context: ID3D11DeviceContext,
-    duplication: IDXGIOutputDuplication,
+    /// Active desktop-duplication access. The D3D environment stays warm,
+    /// but this interface is opened lazily and dropped after one-shot work.
+    duplication: Option<IDXGIOutputDuplication>,
     staging_ring: StagingRing,
     /// Cached descriptor of the last successfully read frame, used to
     /// read back the pipelined staging slot on the next capture call.
@@ -1778,7 +1837,6 @@ impl OutputCapturer {
     fn new(resolved: &ResolvedMonitor) -> CaptureResult<Self> {
         let (device, context) = d3d11::create_d3d11_device_for_adapter(&resolved.adapter, true)
             .map_err(CaptureError::platform)?;
-        let duplication = create_duplication(&resolved.output, &device)?;
         let output_desc = unsafe { resolved.output.GetDesc() }
             .context("IDXGIOutput::GetDesc failed")
             .map_err(CaptureError::platform)?;
@@ -1786,7 +1844,7 @@ impl OutputCapturer {
         Ok(Self {
             device,
             context,
-            duplication,
+            duplication: None,
             staging_ring: StagingRing::new(),
             pending_desc: None,
             pending_hdr: None,
@@ -1822,26 +1880,65 @@ impl OutputCapturer {
         })
     }
 
-    fn recreate_duplication(&mut self) -> CaptureResult<()> {
-        self.staging_ring.invalidate();
+    fn reset_capture_access_state(&mut self) {
         self.clear_full_frame_pipeline_state();
         self.cached_src_desc = None;
-        self.region.invalidate();
+        self.staging_ring.reset_pipeline();
+        self.region.reset();
         self.dxgi_rect_buffer.clear();
         self.dxgi_move_rect_buffer.clear();
         self.source_dirty_rects_scratch.clear();
         self.source_move_rects_scratch.clear();
         self.region_dirty_rects_scratch.clear();
         self.region_move_rects_scratch.clear();
-        self.duplication = create_duplication(&self.output, &self.device)?;
         self.needs_presented_first_frame = self.capture_mode != CaptureMode::Snapshot;
+        self.last_present_time = 0;
         self.last_pointer_position = None;
         self.cached_pointer_shape = None;
         self.pointer_shape_buffer.clear();
-        Ok(())
     }
 
-    fn update_pointer_state(&mut self, frame_info: &DXGI_OUTDUPL_FRAME_INFO) {
+    fn open_capture_access(&mut self) -> CaptureResult<IDXGIOutputDuplication> {
+        self.reset_capture_access_state();
+        let duplication = create_duplication(&self.output, &self.device)?;
+        self.duplication = Some(duplication.clone());
+        Ok(duplication)
+    }
+
+    /// Returns the active duplication interface and whether it was opened by
+    /// this call. A newly opened session has no valid temporal relationship to
+    /// caller-provided history, so snapshot paths must perform a complete read.
+    fn ensure_capture_access(&mut self) -> CaptureResult<(IDXGIOutputDuplication, bool)> {
+        if let Some(duplication) = self.duplication.as_ref() {
+            return Ok((duplication.clone(), false));
+        }
+        self.open_capture_access()
+            .map(|duplication| (duplication, true))
+    }
+
+    fn recreate_duplication(
+        &mut self,
+        stale_duplication: IDXGIOutputDuplication,
+    ) -> CaptureResult<IDXGIOutputDuplication> {
+        self.duplication = None;
+        drop(stale_duplication);
+        self.open_capture_access()
+    }
+
+    fn release_capture_access(&mut self) {
+        self.duplication = None;
+        self.reset_capture_access_state();
+    }
+
+    fn capture_access_active(&self) -> bool {
+        self.duplication.is_some()
+    }
+
+    fn update_pointer_state(
+        &mut self,
+        duplication: &IDXGIOutputDuplication,
+        frame_info: &DXGI_OUTDUPL_FRAME_INFO,
+    ) {
         self.last_pointer_position = Some(frame_info.PointerPosition);
 
         if frame_info.PointerShapeBufferSize == 0 {
@@ -1855,7 +1952,7 @@ impl OutputCapturer {
 
         let mut shape_info = DXGI_OUTDUPL_POINTER_SHAPE_INFO::default();
         let mut result = unsafe {
-            self.duplication.GetFramePointerShape(
+            duplication.GetFramePointerShape(
                 self.pointer_shape_buffer.len() as u32,
                 self.pointer_shape_buffer.as_mut_ptr().cast(),
                 &mut required,
@@ -1866,7 +1963,7 @@ impl OutputCapturer {
         if result.is_err() && required as usize > self.pointer_shape_buffer.len() {
             self.pointer_shape_buffer.resize(required as usize, 0);
             result = unsafe {
-                self.duplication.GetFramePointerShape(
+                duplication.GetFramePointerShape(
                     self.pointer_shape_buffer.len() as u32,
                     self.pointer_shape_buffer.as_mut_ptr().cast(),
                     &mut required,
@@ -2410,6 +2507,8 @@ impl OutputCapturer {
             ));
         }
 
+        let (mut duplication, opened_capture_access) = self.ensure_capture_access()?;
+
         // Region capture uses its own sub-rect staging path.
         // Reset full-frame pipeline state so monitor capture and region
         // capture don't consume stale pending slots when callers switch targets.
@@ -2424,7 +2523,7 @@ impl OutputCapturer {
         self.monitor_low_latency_dirty_gpu_desc = None;
         self.staging_ring.reset_pipeline();
 
-        let mut destination_has_history = destination_has_history;
+        let mut destination_has_history = destination_has_history && !opened_capture_access;
         if self.region.blit != Some(blit) {
             // Callers may reuse a frame across different window/region targets.
             // Even if dimensions match, the previous pixels are stale when the
@@ -2436,10 +2535,12 @@ impl OutputCapturer {
         let capture_time = Instant::now();
         let maybe_screenshot_frame =
             if should_try_zero_wait_screenshot_reuse(self.capture_mode, destination_has_history) {
-                match try_acquire_frame(&self.duplication, 0, false)? {
-                    TryAcquireResult::Ok(texture, info) => Some((texture, info)),
+                match try_acquire_frame(&duplication, 0, false)? {
+                    TryAcquireResult::Ok(texture, info, frame_guard) => {
+                        Some((texture, info, frame_guard))
+                    }
                     TryAcquireResult::AccessLost => {
-                        self.recreate_duplication()?;
+                        duplication = self.recreate_duplication(duplication)?;
                         destination_has_history = false;
                         self.region.ensure_blit(blit);
                         None
@@ -2459,28 +2560,41 @@ impl OutputCapturer {
             };
         let single_shot_screenshot =
             self.capture_mode == CaptureMode::Snapshot && !destination_has_history;
-        let (desktop_texture, frame_info) = if let Some((texture, info)) = maybe_screenshot_frame {
-            (texture, info)
-        } else {
-            match acquire_frame(
-                &self.duplication,
-                self.needs_presented_first_frame || single_shot_screenshot,
-            )? {
-                AcquireResult::Ok(texture, info) => (texture, info),
-                AcquireResult::AccessLost => {
-                    self.recreate_duplication()?;
-                    destination_has_history = false;
-                    self.region.ensure_blit(blit);
-                    match acquire_frame(
-                        &self.duplication,
+        let (desktop_texture, frame_info, _frame_guard) =
+            if let Some((texture, info, frame_guard)) = maybe_screenshot_frame {
+                (texture, info, frame_guard)
+            } else {
+                let acquired = if self.capture_mode == CaptureMode::Snapshot {
+                    acquire_snapshot_frame(&duplication)
+                } else {
+                    acquire_frame(
+                        &duplication,
                         self.needs_presented_first_frame || single_shot_screenshot,
-                    )? {
-                        AcquireResult::Ok(texture, info) => (texture, info),
-                        AcquireResult::AccessLost => return Err(CaptureError::AccessLost),
+                    )
+                }?;
+                match acquired {
+                    AcquireResult::Ok(texture, info, frame_guard) => (texture, info, frame_guard),
+                    AcquireResult::AccessLost => {
+                        duplication = self.recreate_duplication(duplication)?;
+                        destination_has_history = false;
+                        self.region.ensure_blit(blit);
+                        let retry = if self.capture_mode == CaptureMode::Snapshot {
+                            acquire_snapshot_frame(&duplication)
+                        } else {
+                            acquire_frame(
+                                &duplication,
+                                self.needs_presented_first_frame || single_shot_screenshot,
+                            )
+                        }?;
+                        match retry {
+                            AcquireResult::Ok(texture, info, frame_guard) => {
+                                (texture, info, frame_guard)
+                            }
+                            AcquireResult::AccessLost => return Err(CaptureError::AccessLost),
+                        }
                     }
                 }
-            }
-        };
+            };
 
         let source_present_time_qpc = frame_info.LastPresentTime;
         let source_is_duplicate =
@@ -2564,7 +2678,7 @@ impl OutputCapturer {
                     (true, true, false, true)
                 } else {
                     let region_dirty_available = extract_region_dirty_rects_direct(
-                        &self.duplication,
+                        &duplication,
                         &frame_info,
                         &mut self.dxgi_rect_buffer,
                         effective_desc.Width,
@@ -2574,7 +2688,7 @@ impl OutputCapturer {
                     );
                     let region_move_available = {
                         let source_move_available = extract_move_rects(
-                            &self.duplication,
+                            &duplication,
                             &frame_info,
                             &mut self.dxgi_move_rect_buffer,
                             effective_desc.Width,
@@ -2758,12 +2872,9 @@ impl OutputCapturer {
         self.region_move_rects_scratch = region_move_rects;
 
         if self.capture_mode != CaptureMode::Snapshot {
-            self.update_pointer_state(&frame_info);
+            self.update_pointer_state(&duplication, &frame_info);
         }
 
-        unsafe {
-            self.duplication.ReleaseFrame().ok();
-        }
         self.needs_presented_first_frame = false;
 
         if capture_result.is_err() {
@@ -2774,6 +2885,7 @@ impl OutputCapturer {
     }
 
     fn capture(&mut self, reuse: Option<Frame>) -> CaptureResult<Frame> {
+        let (mut duplication, opened_capture_access) = self.ensure_capture_access()?;
         // Full-frame capture and region/window capture keep independent
         // pipelines. Reset region state when callers switch back to full
         // monitor capture to avoid consuming stale region slots later.
@@ -2793,15 +2905,18 @@ impl OutputCapturer {
                 }
             })
             .unwrap_or_else(Frame::empty);
-        let has_frame_history =
-            frame.metadata.stream_timestamp.is_some() && !frame.as_rgba_bytes().is_empty();
+        let has_frame_history = !opened_capture_access
+            && frame.metadata.stream_timestamp.is_some()
+            && !frame.as_rgba_bytes().is_empty();
         let capture_time = Instant::now();
         let maybe_screenshot_frame =
             if should_try_zero_wait_screenshot_reuse(self.capture_mode, has_frame_history) {
-                match try_acquire_frame(&self.duplication, 0, false)? {
-                    TryAcquireResult::Ok(texture, info) => Some((texture, info)),
+                match try_acquire_frame(&duplication, 0, false)? {
+                    TryAcquireResult::Ok(texture, info, frame_guard) => {
+                        Some((texture, info, frame_guard))
+                    }
                     TryAcquireResult::AccessLost => {
-                        self.recreate_duplication()?;
+                        duplication = self.recreate_duplication(duplication)?;
                         None
                     }
                     TryAcquireResult::Retry => {
@@ -2828,26 +2943,39 @@ impl OutputCapturer {
             self.capture_mode == CaptureMode::Snapshot && !has_frame_history;
         frame.reset_metadata();
 
-        let (desktop_texture, frame_info) = if let Some((texture, info)) = maybe_screenshot_frame {
-            (texture, info)
-        } else {
-            match acquire_frame(
-                &self.duplication,
-                self.needs_presented_first_frame || single_shot_screenshot,
-            )? {
-                AcquireResult::Ok(texture, info) => (texture, info),
-                AcquireResult::AccessLost => {
-                    self.recreate_duplication()?;
-                    match acquire_frame(
-                        &self.duplication,
+        let (desktop_texture, frame_info, _frame_guard) =
+            if let Some((texture, info, frame_guard)) = maybe_screenshot_frame {
+                (texture, info, frame_guard)
+            } else {
+                let acquired = if self.capture_mode == CaptureMode::Snapshot {
+                    acquire_snapshot_frame(&duplication)
+                } else {
+                    acquire_frame(
+                        &duplication,
                         self.needs_presented_first_frame || single_shot_screenshot,
-                    )? {
-                        AcquireResult::Ok(texture, info) => (texture, info),
-                        AcquireResult::AccessLost => return Err(CaptureError::AccessLost),
+                    )
+                }?;
+                match acquired {
+                    AcquireResult::Ok(texture, info, frame_guard) => (texture, info, frame_guard),
+                    AcquireResult::AccessLost => {
+                        duplication = self.recreate_duplication(duplication)?;
+                        let retry = if self.capture_mode == CaptureMode::Snapshot {
+                            acquire_snapshot_frame(&duplication)
+                        } else {
+                            acquire_frame(
+                                &duplication,
+                                self.needs_presented_first_frame || single_shot_screenshot,
+                            )
+                        }?;
+                        match retry {
+                            AcquireResult::Ok(texture, info, frame_guard) => {
+                                (texture, info, frame_guard)
+                            }
+                            AcquireResult::AccessLost => return Err(CaptureError::AccessLost),
+                        }
                     }
                 }
-            }
-        };
+            };
 
         frame.metadata.set_timing(
             Some(capture_time),
@@ -2875,7 +3003,7 @@ impl OutputCapturer {
             frame.metadata.dirty_rects.clear();
             true
         } else if extract_dirty_rects(
-            &self.duplication,
+            &duplication,
             &frame_info,
             &mut self.dxgi_rect_buffer,
             &mut frame.metadata.dirty_rects,
@@ -2915,7 +3043,7 @@ impl OutputCapturer {
             && !frame.metadata.is_duplicate
         {
             continuous_move_metadata_available = extract_move_rects(
-                &self.duplication,
+                &duplication,
                 &frame_info,
                 &mut self.dxgi_move_rect_buffer,
                 effective_desc.Width,
@@ -2974,13 +3102,13 @@ impl OutputCapturer {
             frame_info.TotalMetadataBufferSize,
         ) {
             let dirty_available = extract_dirty_rects(
-                &self.duplication,
+                &duplication,
                 &frame_info,
                 &mut self.dxgi_rect_buffer,
                 &mut normalized_dirty_rects,
             );
             let move_available = extract_move_rects(
-                &self.duplication,
+                &duplication,
                 &frame_info,
                 &mut self.dxgi_move_rect_buffer,
                 effective_desc.Width,
@@ -3253,10 +3381,7 @@ impl OutputCapturer {
         source_move_rects.clear();
         self.source_move_rects_scratch = source_move_rects;
         if self.capture_mode != CaptureMode::Snapshot {
-            self.update_pointer_state(&frame_info);
-        }
-        unsafe {
-            self.duplication.ReleaseFrame().ok();
+            self.update_pointer_state(&duplication, &frame_info);
         }
         self.needs_presented_first_frame = false;
         if let Err(err) = convert_result {
@@ -3311,6 +3436,14 @@ impl WindowsMonitorCapturer {
 }
 
 impl crate::backend::MonitorCapturer for WindowsMonitorCapturer {
+    fn backend_kind(&self) -> CaptureBackendKind {
+        CaptureBackendKind::DxgiDuplication
+    }
+
+    fn prewarm_environment(&mut self) -> CaptureResult<()> {
+        Ok(())
+    }
+
     fn capture(&mut self, reuse: Option<Frame>) -> CaptureResult<Frame> {
         let result = self.output_mut().capture(reuse);
         match result {
@@ -3416,6 +3549,18 @@ impl crate::backend::MonitorCapturer for WindowsMonitorCapturer {
 
     fn sample_cursor(&mut self) -> CaptureResult<Option<CursorSnapshot>> {
         self.output_mut().sample_cursor()
+    }
+
+    fn release_capture_access(&mut self) {
+        if let Some(output) = self.output.as_mut() {
+            output.release_capture_access();
+        }
+    }
+
+    fn capture_access_active(&self) -> bool {
+        self.output
+            .as_ref()
+            .is_some_and(OutputCapturer::capture_access_active)
     }
 }
 
@@ -3531,7 +3676,7 @@ impl WindowsDxgiWindowCapturer {
         let resolved = resolver.resolve_monitor(&monitor_id)?;
         let output = OutputCapturer::new(&resolved).map_err(|e| {
             CaptureError::BackendUnavailable(format!(
-                "failed to create DXGI duplication for window's monitor: {e}"
+                "failed to prepare DXGI capture for window's monitor: {e}"
             ))
         })?;
         let current_hmon = SendHmon(hmon);
@@ -3615,6 +3760,12 @@ impl WindowsDxgiWindowCapturer {
             if SendHmon(hmon) != self.current_hmon {
                 self.reinit_for_monitor(hmon)?;
             }
+        }
+
+        if !rect_within_rect(win_rect, &self.current_monitor_rect) {
+            return Err(CaptureError::BackendUnavailable(
+                "DXGI window capture requires the window to fit within one monitor".into(),
+            ));
         }
 
         let blit = match Self::window_blit_on_monitor(&self.current_monitor_rect, win_rect) {
@@ -3713,6 +3864,14 @@ impl WindowsDxgiWindowCapturer {
 }
 
 impl crate::backend::MonitorCapturer for WindowsDxgiWindowCapturer {
+    fn backend_kind(&self) -> CaptureBackendKind {
+        CaptureBackendKind::DxgiDuplication
+    }
+
+    fn prewarm_environment(&mut self) -> CaptureResult<()> {
+        Ok(())
+    }
+
     fn capture(&mut self, reuse: Option<Frame>) -> CaptureResult<Frame> {
         self.capture_internal(reuse, None)
     }
@@ -3746,11 +3905,30 @@ impl crate::backend::MonitorCapturer for WindowsDxgiWindowCapturer {
     fn sample_cursor(&mut self) -> CaptureResult<Option<CursorSnapshot>> {
         self.output_mut().sample_cursor()
     }
+
+    fn release_capture_access(&mut self) {
+        if let Some(output) = self.output.as_mut() {
+            output.release_capture_access();
+        }
+    }
+
+    fn capture_access_active(&self) -> bool {
+        self.output
+            .as_ref()
+            .is_some_and(OutputCapturer::capture_access_active)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn snapshot_acquisition_is_bounded_and_requires_a_presented_frame() {
+        assert_eq!(SNAPSHOT_ACQUISITION_POLICY.attempts, 3);
+        assert_eq!(SNAPSHOT_ACQUISITION_POLICY.timeout_ms, 16);
+        assert!(SNAPSHOT_ACQUISITION_POLICY.require_present_time);
+    }
 
     #[test]
     fn skip_submit_copy_requires_fastpath_and_pending_state() {

@@ -30,7 +30,9 @@ use windows::Win32::System::WinRT::Direct3D11::{
 use windows::Win32::System::WinRT::Graphics::Capture::IGraphicsCaptureItemInterop;
 use windows::core::{IInspectable, Interface};
 
-use crate::backend::{CaptureBlitRegion, CaptureMode, CaptureSampleMetadata, WgcUpdateMode};
+use crate::backend::{
+    CaptureBackendKind, CaptureBlitRegion, CaptureMode, CaptureSampleMetadata, WgcUpdateMode,
+};
 use crate::convert::HdrFrameContext;
 use crate::error::{CaptureError, CaptureResult};
 use crate::frame::Frame;
@@ -54,6 +56,7 @@ const WGC_FRAME_TIMEOUT: Duration = Duration::from_millis(250);
 const WGC_SNAPSHOT_FRESH_WAIT: Duration = Duration::from_millis(2);
 const WGC_CONTINUOUS_FRESH_WAIT: Duration = Duration::from_millis(1);
 const WGC_WORKER_START_TIMEOUT: Duration = Duration::from_secs(10);
+const WGC_SNAPSHOT_WORKER_START_TIMEOUT: Duration = Duration::from_millis(250);
 const WGC_FRAME_POOL_BUFFERS: i32 = 3;
 const WGC_ORDERED_QUEUE_CAPACITY: usize = 32;
 const WGC_COMMAND_CAPACITY: usize = 8;
@@ -132,6 +135,7 @@ pub(crate) fn validate_support() -> CaptureResult<()> {
     }
 }
 
+#[derive(Clone, Copy)]
 enum WorkerTarget {
     Monitor {
         adapter_luid: u64,
@@ -180,7 +184,7 @@ struct WindowsGraphicsCaptureCapturer {
 }
 
 impl WindowsGraphicsCaptureCapturer {
-    fn spawn(target: WorkerTarget) -> CaptureResult<Self> {
+    fn spawn(target: WorkerTarget, startup_timeout: Duration) -> CaptureResult<Self> {
         let (command_tx, command_rx) = crossbeam_channel::bounded(WGC_COMMAND_CAPACITY);
         let (startup_tx, startup_rx) = crossbeam_channel::bounded(1);
         let join = thread::Builder::new()
@@ -197,7 +201,7 @@ impl WindowsGraphicsCaptureCapturer {
             .context("failed to spawn WGC worker thread")
             .map_err(CaptureError::platform)?;
 
-        match startup_rx.recv_timeout(WGC_WORKER_START_TIMEOUT) {
+        match startup_rx.recv_timeout(startup_timeout) {
             Ok(Ok(())) => Ok(Self {
                 commands: command_tx,
                 join: Some(join),
@@ -208,6 +212,10 @@ impl WindowsGraphicsCaptureCapturer {
             }
             Err(_) => {
                 drop(command_tx);
+                // A late startup may already have created a frame pool and
+                // GraphicsCaptureSession. Reap the worker synchronously so a
+                // timeout can never return while that capture access is live.
+                let _ = join.join();
                 Err(CaptureError::Timeout)
             }
         }
@@ -279,6 +287,104 @@ impl WindowsGraphicsCaptureCapturer {
             .send(command(response_tx))
             .map_err(|_| CaptureError::WorkerDead)?;
         response_rx.recv().map_err(|_| CaptureError::WorkerDead)?
+    }
+}
+
+struct PreparedWgcCapturer {
+    target: WorkerTarget,
+    active: Option<WindowsGraphicsCaptureCapturer>,
+    capture_mode: CaptureMode,
+    gpu_hdr_conversion_enabled: bool,
+    hdr_tonemap_lut_enabled: bool,
+    update_mode: WgcUpdateMode,
+}
+
+impl PreparedWgcCapturer {
+    fn new(target: WorkerTarget) -> Self {
+        Self {
+            target,
+            active: None,
+            capture_mode: CaptureMode::Snapshot,
+            gpu_hdr_conversion_enabled: true,
+            hdr_tonemap_lut_enabled: true,
+            update_mode: WgcUpdateMode::Auto,
+        }
+    }
+
+    fn ensure_active(&mut self) -> CaptureResult<&mut WindowsGraphicsCaptureCapturer> {
+        if self.active.is_none() {
+            let startup_timeout = if self.capture_mode == CaptureMode::Snapshot {
+                WGC_SNAPSHOT_WORKER_START_TIMEOUT
+            } else {
+                WGC_WORKER_START_TIMEOUT
+            };
+            let mut active = WindowsGraphicsCaptureCapturer::spawn(self.target, startup_timeout)?;
+            active.set_wgc_update_mode(self.update_mode)?;
+            active.set_gpu_hdr_conversion(self.gpu_hdr_conversion_enabled)?;
+            active.set_hdr_tonemap_lut(self.hdr_tonemap_lut_enabled)?;
+            active.set_capture_mode(self.capture_mode)?;
+            self.active = Some(active);
+        }
+        self.active.as_mut().ok_or(CaptureError::WorkerDead)
+    }
+
+    fn capture_with_history_hint(
+        &mut self,
+        reuse: Option<Frame>,
+        destination_has_history: bool,
+    ) -> CaptureResult<Frame> {
+        self.ensure_active()?
+            .capture_with_history_hint(reuse, destination_has_history)
+    }
+
+    fn capture_region_into(
+        &mut self,
+        blit: CaptureBlitRegion,
+        destination: &mut Frame,
+        destination_has_history: bool,
+    ) -> CaptureResult<CaptureSampleMetadata> {
+        self.ensure_active()?
+            .capture_region_into(blit, destination, destination_has_history)
+    }
+
+    fn set_capture_mode(&mut self, mode: CaptureMode) -> CaptureResult<()> {
+        self.capture_mode = mode;
+        if let Some(active) = self.active.as_mut() {
+            active.set_capture_mode(mode)?;
+        }
+        Ok(())
+    }
+
+    fn set_gpu_hdr_conversion(&mut self, enabled: bool) -> CaptureResult<()> {
+        self.gpu_hdr_conversion_enabled = enabled;
+        if let Some(active) = self.active.as_mut() {
+            active.set_gpu_hdr_conversion(enabled)?;
+        }
+        Ok(())
+    }
+
+    fn set_hdr_tonemap_lut(&mut self, enabled: bool) -> CaptureResult<()> {
+        self.hdr_tonemap_lut_enabled = enabled;
+        if let Some(active) = self.active.as_mut() {
+            active.set_hdr_tonemap_lut(enabled)?;
+        }
+        Ok(())
+    }
+
+    fn set_wgc_update_mode(&mut self, mode: WgcUpdateMode) -> CaptureResult<()> {
+        self.update_mode = mode;
+        if let Some(active) = self.active.as_mut() {
+            active.set_wgc_update_mode(mode)?;
+        }
+        Ok(())
+    }
+
+    fn release_capture_access(&mut self) {
+        self.active = None;
+    }
+
+    fn capture_access_active(&self) -> bool {
+        self.active.is_some()
     }
 }
 
@@ -1173,7 +1279,7 @@ fn nonzero_timestamp(value: i64) -> Option<i64> {
 }
 
 pub(crate) struct WindowsMonitorCapturer {
-    inner: WindowsGraphicsCaptureCapturer,
+    inner: PreparedWgcCapturer,
 }
 
 impl WindowsMonitorCapturer {
@@ -1184,16 +1290,24 @@ impl WindowsMonitorCapturer {
         let monitor = resolved.handle.0 as usize;
         let hdr_metadata = resolved.hdr_metadata;
         drop(resolved);
-        let inner = WindowsGraphicsCaptureCapturer::spawn(WorkerTarget::Monitor {
+        let inner = PreparedWgcCapturer::new(WorkerTarget::Monitor {
             adapter_luid,
             monitor,
             hdr_metadata,
-        })?;
+        });
         Ok(Self { inner })
     }
 }
 
 impl crate::backend::MonitorCapturer for WindowsMonitorCapturer {
+    fn backend_kind(&self) -> CaptureBackendKind {
+        CaptureBackendKind::WindowsGraphicsCapture
+    }
+
+    fn prewarm_environment(&mut self) -> CaptureResult<()> {
+        Ok(())
+    }
+
     fn capture(&mut self, reuse: Option<Frame>) -> CaptureResult<Frame> {
         self.inner.capture_with_history_hint(reuse, false)
     }
@@ -1233,10 +1347,18 @@ impl crate::backend::MonitorCapturer for WindowsMonitorCapturer {
     fn set_wgc_update_mode(&mut self, mode: WgcUpdateMode) -> CaptureResult<()> {
         self.inner.set_wgc_update_mode(mode)
     }
+
+    fn release_capture_access(&mut self) {
+        self.inner.release_capture_access();
+    }
+
+    fn capture_access_active(&self) -> bool {
+        self.inner.capture_access_active()
+    }
 }
 
 pub(crate) struct WindowsWindowCapturer {
-    inner: WindowsGraphicsCaptureCapturer,
+    inner: PreparedWgcCapturer,
 }
 
 impl WindowsWindowCapturer {
@@ -1249,14 +1371,22 @@ impl WindowsWindowCapturer {
                 window.stable_id()
             )));
         }
-        let inner = WindowsGraphicsCaptureCapturer::spawn(WorkerTarget::Window {
+        let inner = PreparedWgcCapturer::new(WorkerTarget::Window {
             hwnd: hwnd as usize,
-        })?;
+        });
         Ok(Self { inner })
     }
 }
 
 impl crate::backend::MonitorCapturer for WindowsWindowCapturer {
+    fn backend_kind(&self) -> CaptureBackendKind {
+        CaptureBackendKind::WindowsGraphicsCapture
+    }
+
+    fn prewarm_environment(&mut self) -> CaptureResult<()> {
+        Ok(())
+    }
+
     fn capture(&mut self, reuse: Option<Frame>) -> CaptureResult<Frame> {
         self.inner.capture_with_history_hint(reuse, false)
     }
@@ -1284,6 +1414,14 @@ impl crate::backend::MonitorCapturer for WindowsWindowCapturer {
 
     fn set_wgc_update_mode(&mut self, mode: WgcUpdateMode) -> CaptureResult<()> {
         self.inner.set_wgc_update_mode(mode)
+    }
+
+    fn release_capture_access(&mut self) {
+        self.inner.release_capture_access();
+    }
+
+    fn capture_access_active(&self) -> bool {
+        self.inner.capture_access_active()
     }
 }
 

@@ -1,25 +1,16 @@
 #ifndef SNOW_SHOT_PRESENTATION_SCREENSHOTWINDOWCAPTURE_H
 #define SNOW_SHOT_PRESENTATION_SCREENSHOTWINDOWCAPTURE_H
 
-#include <QImage>
-#include <QRect>
+#include "snow_shot/presentation/screenshottypes.h"
+
 #include <QString>
 #include <QtGlobal>
 
 #include <memory>
 #include <optional>
 
-struct ScreenshotWindowCaptureFrame {
-    QImage image;
-    QRect physicalRect;
-
-    [[nodiscard]] bool isValid() const {
-        return !image.isNull() && !physicalRect.isEmpty() && physicalRect.size() == image.size();
-    }
-};
-
-// Owns one native window capture session. Captured pixels are copied before
-// returning so callers do not depend on the lifetime of the Rust frame.
+// Owns one native window capture session. Returned images retain the Rust
+// frame through a QImage cleanup lease.
 class ScreenshotWindowCapture final {
   public:
     explicit ScreenshotWindowCapture(quintptr nativeWindowHandle);

@@ -43,8 +43,9 @@ pub enum WgcUpdateMode {
     OrderedIncremental,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum CaptureBackendKind {
+    #[default]
     Auto,
 
     DxgiDuplication,
@@ -137,6 +138,22 @@ impl Default for CaptureSampleMetadata {
 }
 
 pub(crate) trait MonitorCapturer: Send {
+    /// Identifies the backend that will service the next capture.
+    ///
+    /// Automatic capturers update this value after selecting a concrete
+    /// candidate, allowing callers to report the backend that actually
+    /// produced a frame rather than the configured `auto` policy.
+    fn backend_kind(&self) -> CaptureBackendKind {
+        CaptureBackendKind::Auto
+    }
+
+    /// Prepare resources that are safe to retain while no capture is active.
+    /// Implementations must not leave DXGI duplication or a WGC capture
+    /// session open when this method returns.
+    fn prewarm_environment(&mut self) -> CaptureResult<()> {
+        Ok(())
+    }
+
     fn capture(&mut self, reuse: Option<Frame>) -> CaptureResult<Frame>;
 
     /// Capture a frame with an explicit hint about whether `reuse`
@@ -217,6 +234,15 @@ pub(crate) trait MonitorCapturer: Send {
     fn set_wgc_update_mode(&mut self, _mode: WgcUpdateMode) -> CaptureResult<()> {
         Ok(())
     }
+
+    /// Close only active access to the capture source while preserving safe
+    /// prepared resources and reusable buffers. This method is idempotent.
+    fn release_capture_access(&mut self) {}
+
+    /// Whether this capturer currently owns active OS capture access.
+    fn capture_access_active(&self) -> bool {
+        false
+    }
 }
 
 pub(crate) trait CaptureBackend: Send + Sync {
@@ -227,6 +253,13 @@ pub(crate) trait CaptureBackend: Send + Sync {
         Err(CaptureError::BackendUnavailable(
             "window inspection is not supported by this backend".into(),
         ))
+    }
+    fn inspect_window_for_backend(
+        &self,
+        window: &WindowId,
+        _backend_kind: CaptureBackendKind,
+    ) -> CaptureResult<CaptureTargetInfo> {
+        self.inspect_window(window)
     }
     fn display_generation(&self) -> Option<u64> {
         None
@@ -251,6 +284,7 @@ pub(crate) trait CaptureBackend: Send + Sync {
 pub(crate) fn backend_for_kind_with_auto_policy(
     kind: CaptureBackendKind,
     auto_policy: AutoBackendPolicy,
+    auto_policy_is_explicit: bool,
 ) -> CaptureResult<Arc<dyn CaptureBackend>> {
-    crate::platform::build_backend(kind, auto_policy)
+    crate::platform::build_backend(kind, auto_policy, auto_policy_is_explicit)
 }

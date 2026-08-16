@@ -214,6 +214,7 @@ impl CaptureSessionBuilder {
             None => crate::platform::build_backend_for_mode(
                 backend::CaptureBackendKind::Auto,
                 backend::AutoBackendPolicy::default(),
+                false,
                 config.mode,
             )?,
         };
@@ -447,6 +448,19 @@ where
     fn clear(&mut self) {
         self.capturers.clear();
     }
+
+    fn release_capture_access(&mut self) {
+        for capturer in self.capturers.values_mut() {
+            capturer.release_capture_access();
+        }
+    }
+
+    fn active_capture_access_count(&self) -> usize {
+        self.capturers
+            .values()
+            .filter(|capturer| capturer.capture_access_active())
+            .count()
+    }
 }
 
 struct OutputHistoryCache<K> {
@@ -665,6 +679,22 @@ enum CaptureSessionRuntime {
 }
 
 impl CaptureSessionRuntime {
+    fn release_capture_access(&mut self) {
+        match self {
+            Self::Monitor(runtime) => runtime.capturers.release_capture_access(),
+            Self::Window(runtime) => runtime.capturers.release_capture_access(),
+            Self::Region(runtime) => runtime.capturers.release_capture_access(),
+        }
+    }
+
+    fn active_capture_access_count(&self) -> usize {
+        match self {
+            Self::Monitor(runtime) => runtime.capturers.active_capture_access_count(),
+            Self::Window(runtime) => runtime.capturers.active_capture_access_count(),
+            Self::Region(runtime) => runtime.capturers.active_capture_access_count(),
+        }
+    }
+
     fn for_target(target: &CaptureTarget) -> Self {
         match target {
             CaptureTarget::PrimaryMonitor | CaptureTarget::Monitor(_) => {
@@ -709,6 +739,24 @@ impl CaptureSession {
         crate::convert::warmup();
     }
 
+    /// Prepare resources that are safe to retain between one-shot captures.
+    /// No active backend access may remain when this method returns.
+    pub fn prewarm_environment(&mut self) -> CaptureResult<CaptureTargetInfo> {
+        let result = self.prepare_target();
+        self.release_capture_access();
+        result
+    }
+
+    /// Close active DXGI/WGC access while preserving prepared resources and
+    /// reusable frame storage.
+    pub fn release_capture_access(&mut self) {
+        self.runtime.release_capture_access();
+    }
+
+    pub fn active_capture_access_count(&self) -> usize {
+        self.runtime.active_capture_access_count()
+    }
+
     /// Drop heavyweight capture resources and frame-history caches while
     /// keeping the session reusable for a later capture.
     pub fn release_idle_resources(&mut self) {
@@ -728,16 +776,16 @@ impl CaptureSession {
                 let monitor = self.resolve_monitor_target()?;
                 let backend = Arc::clone(&self.backend);
                 let config = self.config;
-                let _ = self
-                    .monitor_runtime_mut()
-                    .get_or_create_capturer(backend, config, &monitor)?;
+                self.monitor_runtime_mut()
+                    .get_or_create_capturer(backend, config, &monitor)?
+                    .prewarm_environment()?;
             }
             CaptureTarget::Window(window) => {
                 let backend = Arc::clone(&self.backend);
                 let config = self.config;
-                let _ = self
-                    .window_runtime_mut()
-                    .get_or_create_capturer(backend, config, &window)?;
+                self.window_runtime_mut()
+                    .get_or_create_capturer(backend, config, &window)?
+                    .prewarm_environment()?;
             }
             CaptureTarget::Region(region) => {
                 let entries = {
@@ -748,11 +796,9 @@ impl CaptureSession {
                 for entry in entries.iter() {
                     let backend = Arc::clone(&self.backend);
                     let config = self.config;
-                    let _ = self.region_runtime_mut().get_or_create_capturer(
-                        backend,
-                        config,
-                        &entry.monitor,
-                    )?;
+                    self.region_runtime_mut()
+                        .get_or_create_capturer(backend, config, &entry.monitor)?
+                        .prewarm_environment()?;
                 }
             }
         }
@@ -761,6 +807,20 @@ impl CaptureSession {
 
     pub fn target_info(&self) -> CaptureResult<CaptureTargetInfo> {
         self.inspect_target(&self.target)
+    }
+
+    /// Inspect this session's target using the geometry convention of the
+    /// concrete backend that produced a frame.
+    pub fn target_info_for_backend(
+        &self,
+        backend_kind: crate::backend::CaptureBackendKind,
+    ) -> CaptureResult<CaptureTargetInfo> {
+        match &self.target {
+            CaptureTarget::Window(window) => self
+                .backend
+                .inspect_window_for_backend(window, backend_kind),
+            _ => self.target_info(),
+        }
     }
 
     pub fn capture(&mut self) -> CaptureResult<Frame> {
@@ -776,6 +836,32 @@ impl CaptureSession {
         let reused = std::mem::replace(frame, Frame::empty());
         *frame = self.capture_reuse(reused)?;
         Ok(())
+    }
+
+    /// Capture one frame and unconditionally close active backend access
+    /// before returning. Region/scrolling and recording callers that need an
+    /// operation-scoped session continue to use `capture_into`.
+    pub fn capture_once_into(&mut self, frame: &mut Frame) -> CaptureResult<()> {
+        let previous_dimensions = frame.dimensions();
+        let reused = std::mem::replace(frame, Frame::empty());
+        let result = self
+            .capture_with_cursor(Some(reused))
+            .map(|(frame, _)| frame);
+        self.release_capture_access();
+        debug_assert_eq!(self.active_capture_access_count(), 0);
+        match result {
+            Ok(captured) => {
+                *frame = captured;
+                Ok(())
+            }
+            Err(error) => {
+                if previous_dimensions.0 != 0 && previous_dimensions.1 != 0 {
+                    let _ =
+                        frame.ensure_rgba_capacity(previous_dimensions.0, previous_dimensions.1);
+                }
+                Err(error)
+            }
+        }
     }
 
     pub(crate) fn capture_with_cursor(
@@ -823,9 +909,10 @@ impl CaptureSession {
         frame: &mut Frame,
     ) -> CursorAttachStats {
         let effective_target_info = match &self.target {
-            CaptureTarget::Window(window) => {
-                self.backend.inspect_window(window).unwrap_or(*target_info)
-            }
+            CaptureTarget::Window(window) => self
+                .backend
+                .inspect_window_for_backend(window, frame.metadata.backend_kind)
+                .unwrap_or(*target_info),
             _ => *target_info,
         };
 
@@ -1014,8 +1101,15 @@ impl CaptureSession {
         };
 
         let cap_start = std::time::Instant::now();
-        let first_result =
-            get_capturer(self)?.capture_with_history_hint(reuse, destination_has_history);
+        let first_result = {
+            let capturer = get_capturer(self)?;
+            let result = capturer.capture_with_history_hint(reuse, destination_has_history);
+            let backend_kind = capturer.backend_kind();
+            result.map(|mut frame| {
+                frame.metadata.backend_kind = backend_kind;
+                frame
+            })
+        };
         let cap_dur = cap_start.elapsed();
         match first_result {
             Ok(mut frame) => {
@@ -1030,7 +1124,15 @@ impl CaptureSession {
 
         for attempt in 0..max_retries {
             let retry_start = std::time::Instant::now();
-            let result = get_capturer(self)?.capture_with_history_hint(None, false);
+            let result = {
+                let capturer = get_capturer(self)?;
+                let result = capturer.capture_with_history_hint(None, false);
+                let backend_kind = capturer.backend_kind();
+                result.map(|mut frame| {
+                    frame.metadata.backend_kind = backend_kind;
+                    frame
+                })
+            };
             let retry_dur = retry_start.elapsed();
             match result {
                 Ok(mut frame) => {
@@ -1424,6 +1526,207 @@ mod tests {
         history_hints: Arc<Mutex<Vec<bool>>>,
     }
 
+    #[derive(Default)]
+    struct LifecycleState {
+        active: bool,
+        prewarm_calls: usize,
+        capture_calls: usize,
+        release_calls: usize,
+        fail_capture: bool,
+    }
+
+    struct LifecycleBackend {
+        monitor: MonitorId,
+        state: Arc<Mutex<LifecycleState>>,
+    }
+
+    struct LifecycleCapturer {
+        state: Arc<Mutex<LifecycleState>>,
+    }
+
+    #[derive(Default)]
+    struct ResolutionRetryState {
+        create_calls: usize,
+        capture_calls: usize,
+    }
+
+    struct ResolutionRetryBackend {
+        monitor: MonitorId,
+        state: Arc<Mutex<ResolutionRetryState>>,
+    }
+
+    struct ResolutionRetryCapturer {
+        fail_with_resolution_change: bool,
+        state: Arc<Mutex<ResolutionRetryState>>,
+    }
+
+    struct WindowInspectionBackend {
+        observed_backends: Arc<Mutex<Vec<crate::backend::CaptureBackendKind>>>,
+    }
+
+    impl MonitorCapturer for LifecycleCapturer {
+        fn backend_kind(&self) -> crate::backend::CaptureBackendKind {
+            crate::backend::CaptureBackendKind::Gdi
+        }
+
+        fn prewarm_environment(&mut self) -> CaptureResult<()> {
+            let mut state = self.state.lock().unwrap();
+            assert!(!state.active);
+            state.prewarm_calls += 1;
+            Ok(())
+        }
+
+        fn capture(&mut self, reuse: Option<Frame>) -> CaptureResult<Frame> {
+            let fail_capture = {
+                let mut state = self.state.lock().unwrap();
+                state.active = true;
+                state.capture_calls += 1;
+                state.fail_capture
+            };
+            if fail_capture {
+                return Err(CaptureError::Timeout);
+            }
+            let mut frame = reuse.unwrap_or_else(Frame::empty);
+            frame.ensure_rgba_capacity(4, 4)?;
+            frame.reset_metadata();
+            Ok(frame)
+        }
+
+        fn release_capture_access(&mut self) {
+            let mut state = self.state.lock().unwrap();
+            state.active = false;
+            state.release_calls += 1;
+        }
+
+        fn capture_access_active(&self) -> bool {
+            self.state.lock().unwrap().active
+        }
+    }
+
+    impl CaptureBackend for LifecycleBackend {
+        fn enumerate_monitors(&self) -> CaptureResult<Vec<MonitorId>> {
+            Ok(vec![self.monitor.clone()])
+        }
+
+        fn monitor_layout(&self) -> CaptureResult<MonitorLayout> {
+            Ok(mock_layout(&self.monitor, 0, 0, 4, 4))
+        }
+
+        fn primary_monitor(&self) -> CaptureResult<MonitorId> {
+            Ok(self.monitor.clone())
+        }
+
+        fn create_monitor_capturer(
+            &self,
+            _monitor: &MonitorId,
+        ) -> CaptureResult<Box<dyn MonitorCapturer>> {
+            Ok(Box::new(LifecycleCapturer {
+                state: Arc::clone(&self.state),
+            }))
+        }
+    }
+
+    impl MonitorCapturer for ResolutionRetryCapturer {
+        fn backend_kind(&self) -> crate::backend::CaptureBackendKind {
+            crate::backend::CaptureBackendKind::DxgiDuplication
+        }
+
+        fn capture(&mut self, reuse: Option<Frame>) -> CaptureResult<Frame> {
+            self.state.lock().unwrap().capture_calls += 1;
+            if self.fail_with_resolution_change {
+                return Err(CaptureError::ResolutionChanged(8, 6));
+            }
+            let mut frame = reuse.unwrap_or_else(Frame::empty);
+            frame.ensure_rgba_capacity(8, 6)?;
+            frame.reset_metadata();
+            Ok(frame)
+        }
+    }
+
+    impl CaptureBackend for ResolutionRetryBackend {
+        fn enumerate_monitors(&self) -> CaptureResult<Vec<MonitorId>> {
+            Ok(vec![self.monitor.clone()])
+        }
+
+        fn monitor_layout(&self) -> CaptureResult<MonitorLayout> {
+            Ok(mock_layout(&self.monitor, 0, 0, 8, 6))
+        }
+
+        fn primary_monitor(&self) -> CaptureResult<MonitorId> {
+            Ok(self.monitor.clone())
+        }
+
+        fn create_monitor_capturer(
+            &self,
+            _monitor: &MonitorId,
+        ) -> CaptureResult<Box<dyn MonitorCapturer>> {
+            let fail_with_resolution_change = {
+                let mut state = self.state.lock().unwrap();
+                state.create_calls += 1;
+                state.create_calls == 1
+            };
+            Ok(Box::new(ResolutionRetryCapturer {
+                fail_with_resolution_change,
+                state: Arc::clone(&self.state),
+            }))
+        }
+    }
+
+    impl CaptureBackend for WindowInspectionBackend {
+        fn enumerate_monitors(&self) -> CaptureResult<Vec<MonitorId>> {
+            Ok(Vec::new())
+        }
+
+        fn monitor_layout(&self) -> CaptureResult<MonitorLayout> {
+            Err(CaptureError::NoPrimaryMonitor)
+        }
+
+        fn primary_monitor(&self) -> CaptureResult<MonitorId> {
+            Err(CaptureError::NoPrimaryMonitor)
+        }
+
+        fn inspect_window(&self, _window: &WindowId) -> CaptureResult<CaptureTargetInfo> {
+            Ok(CaptureTargetInfo {
+                origin_x: 1,
+                origin_y: 2,
+                width: 3,
+                height: 4,
+            })
+        }
+
+        fn inspect_window_for_backend(
+            &self,
+            _window: &WindowId,
+            backend_kind: crate::backend::CaptureBackendKind,
+        ) -> CaptureResult<CaptureTargetInfo> {
+            self.observed_backends.lock().unwrap().push(backend_kind);
+            Ok(CaptureTargetInfo {
+                origin_x: 11,
+                origin_y: 12,
+                width: 13,
+                height: 14,
+            })
+        }
+
+        fn create_monitor_capturer(
+            &self,
+            _monitor: &MonitorId,
+        ) -> CaptureResult<Box<dyn MonitorCapturer>> {
+            Err(CaptureError::NoPrimaryMonitor)
+        }
+    }
+
+    fn lifecycle_session(state: Arc<Mutex<LifecycleState>>) -> CaptureResult<CaptureSession> {
+        let backend: Arc<dyn CaptureBackend> = Arc::new(LifecycleBackend {
+            monitor: MonitorId::from_parts(41, 43, 0, "lifecycle-monitor", true),
+            state,
+        });
+        CaptureSession::builder()
+            .target(CaptureTarget::PrimaryMonitor)
+            .with_backend(backend)
+            .build()
+    }
+
     impl MonitorCapturer for MockMonitorCapturer {
         fn capture(&mut self, reuse: Option<Frame>) -> CaptureResult<Frame> {
             self.capture_with_history_hint(reuse, false)
@@ -1766,6 +2069,127 @@ mod tests {
             virtual_width: width,
             virtual_height: height,
         }
+    }
+
+    #[test]
+    fn environment_prewarm_does_not_leave_capture_access_active() -> CaptureResult<()> {
+        let state = Arc::new(Mutex::new(LifecycleState::default()));
+        let mut session = lifecycle_session(Arc::clone(&state))?;
+
+        let info = session.prewarm_environment()?;
+
+        assert_eq!((info.width, info.height), (4, 4));
+        assert_eq!(session.active_capture_access_count(), 0);
+        let state = state.lock().unwrap();
+        assert_eq!(state.prewarm_calls, 1);
+        assert_eq!(state.capture_calls, 0);
+        assert!(!state.active);
+        Ok(())
+    }
+
+    #[test]
+    fn one_shot_capture_releases_access_and_reports_concrete_backend() -> CaptureResult<()> {
+        let state = Arc::new(Mutex::new(LifecycleState::default()));
+        let mut session = lifecycle_session(Arc::clone(&state))?;
+        let mut frame = Frame::empty();
+
+        session.capture_once_into(&mut frame)?;
+
+        assert_eq!(session.active_capture_access_count(), 0);
+        assert_eq!(
+            frame.metadata().backend_kind(),
+            crate::backend::CaptureBackendKind::Gdi
+        );
+        let state = state.lock().unwrap();
+        assert_eq!(state.capture_calls, 1);
+        assert_eq!(state.release_calls, 1);
+        assert!(!state.active);
+        Ok(())
+    }
+
+    #[test]
+    fn failed_one_shot_capture_releases_access_before_returning() -> CaptureResult<()> {
+        let state = Arc::new(Mutex::new(LifecycleState {
+            fail_capture: true,
+            ..LifecycleState::default()
+        }));
+        let mut session = lifecycle_session(Arc::clone(&state))?;
+        let mut frame = Frame::empty();
+        frame.ensure_rgba_capacity(4, 4)?;
+
+        assert!(matches!(
+            session.capture_once_into(&mut frame),
+            Err(CaptureError::Timeout)
+        ));
+
+        assert_eq!(session.active_capture_access_count(), 0);
+        assert_eq!(frame.dimensions(), (4, 4));
+        assert_eq!(frame.as_rgba_bytes().len(), 4 * 4 * 4);
+        let state = state.lock().unwrap();
+        assert_eq!(state.capture_calls, 1);
+        assert_eq!(state.release_calls, 1);
+        assert!(!state.active);
+        Ok(())
+    }
+
+    #[test]
+    fn resolution_change_recreates_worker_and_retries_same_backend() -> CaptureResult<()> {
+        let state = Arc::new(Mutex::new(ResolutionRetryState::default()));
+        let backend: Arc<dyn CaptureBackend> = Arc::new(ResolutionRetryBackend {
+            monitor: MonitorId::from_parts(47, 53, 0, "resolution-monitor", true),
+            state: Arc::clone(&state),
+        });
+        let options = CaptureOptions {
+            capture_retry_count: 1,
+            ..CaptureOptions::default()
+        };
+        let mut session = CaptureSession::builder()
+            .target(CaptureTarget::PrimaryMonitor)
+            .with_backend(backend)
+            .with_options(options)
+            .build()?;
+
+        let frame = session.capture()?;
+
+        assert_eq!(frame.dimensions(), (8, 6));
+        assert_eq!(
+            frame.metadata().backend_kind(),
+            crate::backend::CaptureBackendKind::DxgiDuplication
+        );
+        let state = state.lock().unwrap();
+        assert_eq!(state.create_calls, 2);
+        assert_eq!(state.capture_calls, 2);
+        Ok(())
+    }
+
+    #[test]
+    fn window_target_info_for_backend_forwards_concrete_backend() -> CaptureResult<()> {
+        let observed_backends = Arc::new(Mutex::new(Vec::new()));
+        let backend: Arc<dyn CaptureBackend> = Arc::new(WindowInspectionBackend {
+            observed_backends: Arc::clone(&observed_backends),
+        });
+        let session = CaptureSession::builder()
+            .target(CaptureTarget::Window(WindowId::from_raw_handle(101)))
+            .with_backend(backend)
+            .build()?;
+
+        let info =
+            session.target_info_for_backend(crate::backend::CaptureBackendKind::DxgiDuplication)?;
+
+        assert_eq!(
+            info,
+            CaptureTargetInfo {
+                origin_x: 11,
+                origin_y: 12,
+                width: 13,
+                height: 14,
+            }
+        );
+        assert_eq!(
+            observed_backends.lock().unwrap().as_slice(),
+            &[crate::backend::CaptureBackendKind::DxgiDuplication]
+        );
+        Ok(())
     }
 
     #[test]

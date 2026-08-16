@@ -34,6 +34,8 @@ struct ScreenshotCaptureWorkflowContext {
     ScreenshotCapturePresentationCallbacks presentation;
     std::function<void()> captureTerminated = []() {};
     std::function<bool()> smartSelectionEnabled = []() { return true; };
+    std::function<void(std::optional<ScreenshotWindowCaptureFrame>)> focusedWindowCaptured =
+        [](std::optional<ScreenshotWindowCaptureFrame>) {};
 };
 
 enum class ScreenshotCapturePresentationMode {
@@ -48,7 +50,8 @@ class ScreenshotCaptureWorkflow final : private ScreenshotCaptureWorkerEventSink
 
     void prewarmResources();
     void startCapture(ScreenshotCapturePresentationMode presentationMode =
-                          ScreenshotCapturePresentationMode::Overlay);
+                          ScreenshotCapturePresentationMode::Overlay,
+                      quintptr focusedWindowHandle = 0);
     void cancelCapture();
     void handleInitialSmartSelectionResolved(quint64 sessionId);
 
@@ -67,13 +70,11 @@ class ScreenshotCaptureWorkflow final : private ScreenshotCaptureWorkerEventSink
     void beginCapturePreparation(quint64 sessionId);
     [[nodiscard]] bool beginCapturePresentation(quint64 sessionId);
     void prepareOverlayPresentation(quint64 sessionId);
-    void finishCapturePreparation(quint64 sessionId,
-                                  const QVector<CapturedDisplayModel>& snapshots);
+    void finishCapturePreparation(const ScreenshotCaptureResult& result);
     void showCapturePresentationWhenReady(quint64 sessionId);
     void enterOverlaySelectionModeAtCursor();
     void handleCapturePrepared(quint64 requestId, bool ok) override;
-    void handleCaptureFinished(quint64 sessionId,
-                               const QVector<CapturedDisplayModel>& snapshots) override;
+    void handleCaptureFinished(const ScreenshotCaptureResult& result) override;
     void prewarmOverlayPool();
     void initializeIdleResources(quint64 requestId);
     void resetCanvasRuntimeState();
@@ -88,6 +89,7 @@ class ScreenshotCaptureWorkflow final : private ScreenshotCaptureWorkerEventSink
     quint64 m_visiblePresentationSessionId = 0;
     ScreenshotCapturePresentationMode m_presentationMode =
         ScreenshotCapturePresentationMode::Overlay;
+    quintptr m_focusedWindowHandle = 0;
     bool m_captureModelsClean = false;
     bool m_canvasRuntimeClean = false;
 };

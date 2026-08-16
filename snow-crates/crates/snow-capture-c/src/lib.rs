@@ -4,7 +4,11 @@ use std::cell::RefCell;
 use std::ffi::{CStr, CString, c_char};
 use std::path::PathBuf;
 use std::ptr;
-use std::sync::{Arc, mpsc};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+    mpsc,
+};
 use std::thread::{self, JoinHandle};
 
 use snow_capture::frame::Frame;
@@ -35,8 +39,17 @@ pub struct SnowCaptureWindowSessionImpl {
     frame: Frame,
 }
 
+pub struct SnowCaptureCancellationTokenImpl {
+    canceled: Arc<AtomicBool>,
+}
+
 pub struct SnowCaptureSnapshotImpl {
     frames: Vec<SnapshotFrame>,
+}
+
+pub struct SnowCaptureScreenshotResultImpl {
+    frames: Vec<SnapshotFrame>,
+    focused_window: Option<SnapshotWindowFrame>,
 }
 
 pub struct SnowCaptureFrameLeaseImpl {
@@ -60,7 +73,8 @@ pub struct SnowCaptureDesktopSessionConfig {
 pub struct SnowCaptureDesktopSessionState {
     worker_count: usize,
     prepared: u8,
-    reserved0: [u8; 7],
+    reserved0: [u8; 3],
+    active_capture_access_count: u32,
     retained_resource_bytes: u64,
     backend_kind: *const c_char,
 }
@@ -74,7 +88,8 @@ pub struct SnowCaptureFrameInfo {
     pub width: u32,
     pub height: u32,
     pub is_primary: u8,
-    pub reserved0: [u8; 3],
+    pub backend_kind: u8,
+    pub reserved0: [u8; 2],
     pub stride_bytes: u32,
     pub rgba_bytes: *const u8,
     pub rgba_len: usize,
@@ -97,7 +112,8 @@ pub struct SnowCaptureWindowSessionConfig {
     hwnd: isize,
     capture_retry_count: usize,
     wgc_update_mode: u8,
-    reserved: [u8; 31],
+    capture_backend: u8,
+    reserved: [u8; 30],
 }
 
 #[repr(C)]
@@ -109,6 +125,40 @@ pub struct SnowCaptureWindowFrameInfo {
     stride_bytes: u32,
     rgba_bytes: *const u8,
     rgba_len: usize,
+}
+
+#[repr(C)]
+pub struct SnowCaptureWindowFrameInfoV1 {
+    version: u32,
+    struct_size: u32,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+    stride_bytes: u32,
+    rgba_bytes: *const u8,
+    rgba_len: usize,
+    backend_kind: u8,
+    reserved: [u8; 7],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct SnowCaptureScreenshotRequestV1 {
+    version: u32,
+    struct_size: u32,
+    flags: u32,
+    reserved0: u32,
+    focused_window: isize,
+    cancellation_token: *const SnowCaptureCancellationTokenImpl,
+    reserved: [u8; 32],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct SnowCaptureScreenshotRequestHeader {
+    version: u32,
+    struct_size: u32,
 }
 
 #[repr(C)]
@@ -153,6 +203,8 @@ struct MonitorEntry {
     name: CString,
     x: i32,
     y: i32,
+    expected_width: u32,
+    expected_height: u32,
     is_primary: bool,
 }
 
@@ -167,11 +219,54 @@ struct SnapshotFrame {
     frame: Arc<Frame>,
 }
 
+struct SnapshotWindowFrame {
+    x: i32,
+    y: i32,
+    frame: Arc<Frame>,
+}
+
 enum WorkerCommand {
     Prepare(mpsc::Sender<Result<(), String>>),
     Capture(mpsc::Sender<Result<Frame, String>>),
     ReleaseIdleResources(mpsc::Sender<Result<(), String>>),
+    ActiveCaptureAccessCount(mpsc::Sender<Result<usize, String>>),
     Stop,
+}
+
+const SCREENSHOT_REQUEST_VERSION: u32 = 1;
+const SCREENSHOT_REQUEST_V1_SIZE: u32 =
+    std::mem::size_of::<SnowCaptureScreenshotRequestV1>() as u32;
+const SCREENSHOT_REQUEST_REFRESH_LAYOUT: u32 = 1 << 0;
+const WINDOW_FRAME_INFO_VERSION: u32 = 1;
+const WINDOW_FRAME_INFO_V1_SIZE: u32 = std::mem::size_of::<SnowCaptureWindowFrameInfoV1>() as u32;
+
+unsafe fn read_screenshot_request(
+    request: *const SnowCaptureScreenshotRequestV1,
+) -> Result<SnowCaptureScreenshotRequestV1, String> {
+    if request.is_null() {
+        return Err("screenshot request is null".to_owned());
+    }
+    let header = unsafe { &*request.cast::<SnowCaptureScreenshotRequestHeader>() };
+    if header.version != SCREENSHOT_REQUEST_VERSION {
+        return Err(format!(
+            "unsupported screenshot request version: {}",
+            header.version
+        ));
+    }
+    if header.struct_size < SCREENSHOT_REQUEST_V1_SIZE {
+        return Err(format!(
+            "screenshot request is too small: {} < {}",
+            header.struct_size, SCREENSHOT_REQUEST_V1_SIZE
+        ));
+    }
+    let request = unsafe { *request };
+    if request.flags & !SCREENSHOT_REQUEST_REFRESH_LAYOUT != 0 {
+        return Err(format!(
+            "screenshot request contains unsupported flags: {:#x}",
+            request.flags
+        ));
+    }
+    Ok(request)
 }
 
 thread_local! {
@@ -217,6 +312,15 @@ fn parse_capture_backend(value: u8) -> Result<CaptureBackendKind, String> {
         2 => Ok(CaptureBackendKind::WindowsGraphicsCapture),
         3 => Ok(CaptureBackendKind::Gdi),
         _ => Err(format!("invalid capture backend: {value}")),
+    }
+}
+
+fn capture_backend_value(kind: CaptureBackendKind) -> u8 {
+    match kind {
+        CaptureBackendKind::Auto => 0,
+        CaptureBackendKind::DxgiDuplication => 1,
+        CaptureBackendKind::WindowsGraphicsCapture => 2,
+        CaptureBackendKind::Gdi => 3,
     }
 }
 
@@ -298,6 +402,8 @@ fn build_monitor_entries(system: &CaptureSystem) -> Result<Vec<MonitorEntry>, St
                 name: sanitize_cstring(name),
                 x: geometry.x,
                 y: geometry.y,
+                expected_width: geometry.width,
+                expected_height: geometry.height,
                 is_primary: geometry.monitor.is_primary(),
             }
         })
@@ -319,14 +425,22 @@ impl MonitorWorker {
                     .open_session(CaptureTarget::Monitor(worker_entry.id), options)
                     .map_err(|err| err.to_string());
                 let mut reusable_frame = Frame::empty();
+                if let Err(error) = reusable_frame.ensure_rgba_capacity(
+                    worker_entry.expected_width,
+                    worker_entry.expected_height,
+                ) {
+                    session = Err(error.to_string());
+                }
 
                 while let Ok(command) = rx.recv() {
                     match command {
                         WorkerCommand::Prepare(reply) => {
                             let result = match session.as_mut() {
                                 Ok(capture_session) => capture_session
-                                    .prepare_target()
-                                    .map(|_| ())
+                                    .prewarm_environment()
+                                    .and_then(|info| {
+                                        reusable_frame.ensure_rgba_capacity(info.width, info.height)
+                                    })
                                     .map_err(|err| err.to_string()),
                                 Err(error) => Err(error.clone()),
                             };
@@ -334,10 +448,18 @@ impl MonitorWorker {
                         }
                         WorkerCommand::Capture(reply) => {
                             let result = match session.as_mut() {
-                                Ok(session) => session
-                                    .capture_into(&mut reusable_frame)
-                                    .map(|()| reusable_frame.clone())
-                                    .map_err(|err| err.to_string()),
+                                Ok(session) => {
+                                    match session.capture_once_into(&mut reusable_frame) {
+                                        Ok(()) if session.active_capture_access_count() == 0 => {
+                                            Ok(reusable_frame.clone())
+                                        }
+                                        Ok(()) => Err(
+                                            "capture access remained active after one-shot monitor capture"
+                                                .to_owned(),
+                                        ),
+                                        Err(error) => Err(error.to_string()),
+                                    }
+                                }
                                 Err(error) => Err(error.clone()),
                             };
                             let _ = reply.send(result);
@@ -346,8 +468,16 @@ impl MonitorWorker {
                             let result = match session.as_mut() {
                                 Ok(capture_session) => {
                                     capture_session.release_idle_resources();
-                                    reusable_frame = Frame::empty();
                                     Ok(())
+                                }
+                                Err(error) => Err(error.clone()),
+                            };
+                            let _ = reply.send(result);
+                        }
+                        WorkerCommand::ActiveCaptureAccessCount(reply) => {
+                            let result = match session.as_ref() {
+                                Ok(capture_session) => {
+                                    Ok(capture_session.active_capture_access_count())
                                 }
                                 Err(error) => Err(error.clone()),
                             };
@@ -396,6 +526,16 @@ impl MonitorWorker {
             .map_err(|_| "capture worker is not running".to_owned())?;
         Ok(rx)
     }
+
+    fn request_active_capture_access_count(
+        &self,
+    ) -> Result<mpsc::Receiver<Result<usize, String>>, String> {
+        let (tx, rx) = mpsc::channel();
+        self.tx
+            .send(WorkerCommand::ActiveCaptureAccessCount(tx))
+            .map_err(|_| "capture worker is not running".to_owned())?;
+        Ok(rx)
+    }
 }
 
 impl Drop for SnowCaptureDesktopSessionImpl {
@@ -428,13 +568,10 @@ fn snapshot_ref<'a>(
     }
 }
 
-fn rebuild_workers(session: &mut SnowCaptureDesktopSessionImpl) -> Result<(), String> {
-    session
-        .system
-        .refresh_display_configuration()
-        .map_err(|err| err.to_string())?;
-
-    let entries = build_monitor_entries(&session.system)?;
+fn replace_workers(
+    session: &mut SnowCaptureDesktopSessionImpl,
+    entries: Vec<MonitorEntry>,
+) -> Result<(), String> {
     let old_workers = std::mem::take(&mut session.workers);
     let mut next_workers = Vec::with_capacity(entries.len());
 
@@ -461,14 +598,42 @@ fn rebuild_workers(session: &mut SnowCaptureDesktopSessionImpl) -> Result<(), St
     Ok(())
 }
 
+fn rebuild_workers(session: &mut SnowCaptureDesktopSessionImpl) -> Result<(), String> {
+    session
+        .system
+        .refresh_display_configuration()
+        .map_err(|err| err.to_string())?;
+    let entries = build_monitor_entries(&session.system)?;
+    replace_workers(session, entries)
+}
+
+fn same_monitor_layout(left: &[MonitorEntry], right: &[MonitorEntry]) -> bool {
+    left.len() == right.len()
+        && left.iter().all(|candidate| {
+            right.iter().any(|existing| {
+                candidate.id == existing.id
+                    && candidate.x == existing.x
+                    && candidate.y == existing.y
+                    && candidate.expected_width == existing.expected_width
+                    && candidate.expected_height == existing.expected_height
+                    && candidate.is_primary == existing.is_primary
+            })
+        })
+}
+
 fn capture_all_frames(
     session: &mut SnowCaptureDesktopSessionImpl,
 ) -> Result<Vec<SnapshotFrame>, String> {
     let mut receivers = Vec::with_capacity(session.workers.len());
+    let mut first_error = None;
     for worker in &session.workers {
         match worker.request_capture() {
             Ok(receiver) => receivers.push((worker.entry.clone(), receiver)),
-            Err(error) => return Err(error),
+            Err(error) => {
+                if first_error.is_none() {
+                    first_error = Some(error);
+                }
+            }
         }
     }
 
@@ -481,12 +646,97 @@ fn capture_all_frames(
                     frame: Arc::new(frame),
                 });
             }
-            Ok(Err(error)) => return Err(error),
-            Err(_) => return Err("capture worker stopped before capture completed".to_owned()),
+            Ok(Err(error)) => {
+                if first_error.is_none() {
+                    first_error = Some(error);
+                }
+            }
+            Err(_) => {
+                if first_error.is_none() {
+                    first_error =
+                        Some("capture worker stopped before capture completed".to_owned());
+                }
+            }
         }
     }
 
-    Ok(frames)
+    match first_error {
+        Some(error) => Err(error),
+        None => Ok(frames),
+    }
+}
+
+fn capture_all_frames_with_layout_retry(
+    session: &mut SnowCaptureDesktopSessionImpl,
+) -> Result<Vec<SnapshotFrame>, String> {
+    match capture_all_frames(session) {
+        Ok(frames) => Ok(frames),
+        Err(first_error) => {
+            if let Err(refresh_error) = session.system.refresh_display_configuration() {
+                return Err(format!(
+                    "{first_error}; layout refresh failed: {refresh_error}"
+                ));
+            }
+
+            let entries = build_monitor_entries(&session.system).map_err(|refresh_error| {
+                format!("{first_error}; layout refresh failed: {refresh_error}")
+            })?;
+            let current_entries = session
+                .workers
+                .iter()
+                .map(|worker| worker.entry.clone())
+                .collect::<Vec<_>>();
+            if same_monitor_layout(&entries, &current_entries) {
+                return Err(first_error);
+            }
+            if let Err(refresh_error) = replace_workers(session, entries) {
+                return Err(format!(
+                    "{first_error}; layout refresh failed: {refresh_error}"
+                ));
+            }
+            capture_all_frames(session).map_err(|retry_error| {
+                format!("{first_error}; retry after layout refresh failed: {retry_error}")
+            })
+        }
+    }
+}
+
+fn active_capture_access_count(session: &SnowCaptureDesktopSessionImpl) -> Result<usize, String> {
+    let mut receivers = Vec::with_capacity(session.workers.len());
+    let mut first_error = None;
+    for worker in &session.workers {
+        match worker.request_active_capture_access_count() {
+            Ok(receiver) => receivers.push(receiver),
+            Err(error) => {
+                if first_error.is_none() {
+                    first_error = Some(error);
+                }
+            }
+        }
+    }
+
+    let mut total = 0usize;
+    for receiver in receivers {
+        match receiver.recv() {
+            Ok(Ok(count)) => total = total.saturating_add(count),
+            Ok(Err(error)) => {
+                if first_error.is_none() {
+                    first_error = Some(error);
+                }
+            }
+            Err(_) => {
+                if first_error.is_none() {
+                    first_error =
+                        Some("capture worker stopped before lifecycle state completed".to_owned());
+                }
+            }
+        }
+    }
+
+    match first_error {
+        Some(error) => Err(error),
+        None => Ok(total),
+    }
 }
 
 fn backend_kind_ptr(session: &SnowCaptureDesktopSessionImpl) -> *const c_char {
@@ -497,6 +747,109 @@ fn backend_kind_ptr(session: &SnowCaptureDesktopSessionImpl) -> *const c_char {
         "gdi" => c"gdi".as_ptr(),
         _ => c"unknown".as_ptr(),
     }
+}
+
+fn capture_window_snapshot(
+    hwnd: isize,
+    options: CaptureOptions,
+) -> Result<SnapshotWindowFrame, String> {
+    let system = CaptureSystem::builder()
+        .with_backend_kind(CaptureBackendKind::Auto)
+        .build()
+        .map_err(|error| error.to_string())?;
+    let mut session = system
+        .open_session(
+            CaptureTarget::Window(WindowId::from_raw_handle(hwnd)),
+            options,
+        )
+        .map_err(|error| error.to_string())?;
+    let mut frame = Frame::empty();
+    session
+        .capture_once_into(&mut frame)
+        .map_err(|error| error.to_string())?;
+    if session.active_capture_access_count() != 0 {
+        return Err("capture access remained active after focused-window capture".to_owned());
+    }
+    let target = session
+        .target_info_for_backend(frame.metadata().backend_kind())
+        .map_err(|error| error.to_string())?;
+    Ok(SnapshotWindowFrame {
+        x: target.origin_x,
+        y: target.origin_y,
+        frame: Arc::new(frame),
+    })
+}
+
+fn write_snapshot_frame_info(
+    frame: &SnapshotFrame,
+    out_info: *mut SnowCaptureFrameInfo,
+) -> Result<(), String> {
+    let rgba = frame.frame.as_rgba_bytes();
+    let stride_bytes = frame
+        .frame
+        .width()
+        .checked_mul(4)
+        .ok_or_else(|| "frame stride overflow".to_owned())?;
+    let required_len = usize::try_from(stride_bytes)
+        .ok()
+        .and_then(|stride| stride.checked_mul(frame.frame.height() as usize))
+        .ok_or_else(|| "frame length overflow".to_owned())?;
+    if rgba.len() < required_len {
+        return Err("frame buffer is smaller than the reported dimensions".to_owned());
+    }
+
+    unsafe {
+        *out_info = SnowCaptureFrameInfo {
+            stable_id: frame.entry.stable_id.as_ptr(),
+            name: frame.entry.name.as_ptr(),
+            x: frame.entry.x,
+            y: frame.entry.y,
+            width: frame.frame.width(),
+            height: frame.frame.height(),
+            is_primary: u8::from(frame.entry.is_primary),
+            backend_kind: capture_backend_value(frame.frame.metadata().backend_kind()),
+            reserved0: [0; 2],
+            stride_bytes,
+            rgba_bytes: rgba.as_ptr(),
+            rgba_len: rgba.len(),
+        };
+    }
+    Ok(())
+}
+
+fn write_window_frame_info_v1(
+    frame: &SnapshotWindowFrame,
+    out_info: *mut SnowCaptureWindowFrameInfoV1,
+) -> Result<(), String> {
+    let rgba = frame.frame.as_rgba_bytes();
+    let stride_bytes = frame
+        .frame
+        .width()
+        .checked_mul(4)
+        .ok_or_else(|| "window frame stride overflow".to_owned())?;
+    let required_len = usize::try_from(stride_bytes)
+        .ok()
+        .and_then(|stride| stride.checked_mul(frame.frame.height() as usize))
+        .ok_or_else(|| "window frame length overflow".to_owned())?;
+    if rgba.len() < required_len {
+        return Err("window frame buffer is smaller than its dimensions".to_owned());
+    }
+    unsafe {
+        *out_info = SnowCaptureWindowFrameInfoV1 {
+            version: WINDOW_FRAME_INFO_VERSION,
+            struct_size: WINDOW_FRAME_INFO_V1_SIZE,
+            x: frame.x,
+            y: frame.y,
+            width: frame.frame.width(),
+            height: frame.frame.height(),
+            stride_bytes,
+            rgba_bytes: rgba.as_ptr(),
+            rgba_len: rgba.len(),
+            backend_kind: capture_backend_value(frame.frame.metadata().backend_kind()),
+            reserved: [0; 7],
+        };
+    }
+    Ok(())
 }
 
 #[unsafe(no_mangle)]
@@ -565,18 +918,27 @@ pub extern "C" fn snow_capture_desktop_session_prepare(
         }
     };
 
+    let mut first_error = None;
     for receiver in receivers {
         match receiver.recv() {
             Ok(Ok(())) => {}
             Ok(Err(error)) => {
-                set_last_error(error);
-                return 0;
+                if first_error.is_none() {
+                    first_error = Some(error);
+                }
             }
             Err(_) => {
-                set_last_error("capture worker stopped before prepare completed");
-                return 0;
+                if first_error.is_none() {
+                    first_error =
+                        Some("capture worker stopped before prepare completed".to_owned());
+                }
             }
         }
+    }
+
+    if let Some(error) = first_error {
+        set_last_error(error);
+        return 0;
     }
 
     clear_last_error();
@@ -597,11 +959,27 @@ pub unsafe extern "C" fn snow_capture_desktop_session_state(
         return 0;
     };
 
+    let active_count = match active_capture_access_count(session) {
+        Ok(count) => count,
+        Err(error) => {
+            set_last_error(error);
+            return 0;
+        }
+    };
+    let active_count = match u32::try_from(active_count) {
+        Ok(count) => count,
+        Err(_) => {
+            set_last_error("active capture access count overflow");
+            return 0;
+        }
+    };
+
     unsafe {
         *out_state = SnowCaptureDesktopSessionState {
             worker_count: session.workers.len(),
             prepared: u8::from(session.prepared),
-            reserved0: [0; 7],
+            reserved0: [0; 3],
+            active_capture_access_count: active_count,
             retained_resource_bytes: 0,
             backend_kind: backend_kind_ptr(session),
         };
@@ -681,30 +1059,184 @@ pub extern "C" fn snow_capture_desktop_session_capture_all(
         return ptr::null_mut();
     };
 
-    let frames = match capture_all_frames(session) {
+    let frames = match capture_all_frames_with_layout_retry(session) {
         Ok(frames) => frames,
-        Err(first_error) => {
-            if let Err(refresh_error) = rebuild_workers(session) {
-                set_last_error(format!(
-                    "{first_error}; layout refresh failed: {refresh_error}"
-                ));
-                return ptr::null_mut();
-            }
-            match capture_all_frames(session) {
-                Ok(frames) => frames,
-                Err(retry_error) => {
-                    set_last_error(format!(
-                        "{first_error}; retry after layout refresh failed: {retry_error}"
-                    ));
-                    return ptr::null_mut();
-                }
-            }
+        Err(error) => {
+            set_last_error(error);
+            return ptr::null_mut();
         }
     };
+
+    match active_capture_access_count(session) {
+        Ok(0) => {}
+        Ok(count) => {
+            set_last_error(format!(
+                "{count} capture backends remained active after desktop snapshot"
+            ));
+            return ptr::null_mut();
+        }
+        Err(error) => {
+            set_last_error(error);
+            return ptr::null_mut();
+        }
+    }
 
     session.prepared = true;
     clear_last_error();
     Box::into_raw(Box::new(SnowCaptureSnapshotImpl { frames }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn snow_capture_cancellation_token_create() -> *mut SnowCaptureCancellationTokenImpl
+{
+    clear_last_error();
+    Box::into_raw(Box::new(SnowCaptureCancellationTokenImpl {
+        canceled: Arc::new(AtomicBool::new(false)),
+    }))
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn snow_capture_cancellation_token_cancel(
+    token: *mut SnowCaptureCancellationTokenImpl,
+) {
+    if !token.is_null() {
+        unsafe { &*token }.canceled.store(true, Ordering::Release);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn snow_capture_cancellation_token_destroy(
+    token: *mut SnowCaptureCancellationTokenImpl,
+) {
+    if !token.is_null() {
+        drop(unsafe { Box::from_raw(token) });
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn snow_capture_desktop_session_capture_v1(
+    session: *mut SnowCaptureDesktopSessionImpl,
+    request: *const SnowCaptureScreenshotRequestV1,
+) -> *mut SnowCaptureScreenshotResultImpl {
+    let Some(session) = session_mut(session) else {
+        return ptr::null_mut();
+    };
+    let request = match unsafe { read_screenshot_request(request) } {
+        Ok(request) => request,
+        Err(error) => {
+            set_last_error(error);
+            return ptr::null_mut();
+        }
+    };
+
+    let canceled = if request.cancellation_token.is_null() {
+        None
+    } else {
+        Some(unsafe { &*request.cancellation_token }.canceled.clone())
+    };
+    let is_canceled = || {
+        canceled
+            .as_ref()
+            .is_some_and(|state| state.load(Ordering::Acquire))
+    };
+    if is_canceled() {
+        set_last_error("screenshot capture canceled");
+        return ptr::null_mut();
+    }
+
+    if request.flags & SCREENSHOT_REQUEST_REFRESH_LAYOUT != 0
+        && let Err(error) = rebuild_workers(session)
+    {
+        set_last_error(error);
+        return ptr::null_mut();
+    }
+
+    let focused_window_worker = if request.focused_window != 0 {
+        let hwnd = request.focused_window;
+        let options = session.options;
+        let canceled = canceled.clone();
+        match thread::Builder::new()
+            .name("snow-capture-window-once".to_owned())
+            .spawn(move || {
+                if canceled
+                    .as_ref()
+                    .is_some_and(|state| state.load(Ordering::Acquire))
+                {
+                    return Err("screenshot capture canceled".to_owned());
+                }
+                let result = capture_window_snapshot(hwnd, options);
+                if canceled
+                    .as_ref()
+                    .is_some_and(|state| state.load(Ordering::Acquire))
+                {
+                    return Err("screenshot capture canceled".to_owned());
+                }
+                result
+            }) {
+            Ok(worker) => Some(worker),
+            Err(error) => {
+                set_last_error(format!("failed to start focused-window capture: {error}"));
+                return ptr::null_mut();
+            }
+        }
+    } else {
+        None
+    };
+
+    let frames_result = capture_all_frames_with_layout_retry(session);
+    let focused_window_result = focused_window_worker.map(|worker| {
+        worker
+            .join()
+            .map_err(|_| "focused-window capture worker panicked".to_owned())
+            .and_then(|result| result)
+    });
+
+    if is_canceled() {
+        set_last_error("screenshot capture canceled");
+        return ptr::null_mut();
+    }
+    let frames = match frames_result {
+        Ok(frames) => frames,
+        Err(error) => {
+            let combined = match focused_window_result {
+                Some(Err(window_error)) => format!(
+                    "desktop capture failed: {error}; focused-window capture failed: {window_error}"
+                ),
+                _ => error,
+            };
+            set_last_error(combined);
+            return ptr::null_mut();
+        }
+    };
+    let focused_window = match focused_window_result {
+        Some(Ok(frame)) => Some(frame),
+        Some(Err(error)) => {
+            set_last_error(format!("focused-window capture failed: {error}"));
+            return ptr::null_mut();
+        }
+        None => None,
+    };
+
+    match active_capture_access_count(session) {
+        Ok(0) => {}
+        Ok(count) => {
+            set_last_error(format!(
+                "{count} capture backends remained active after screenshot request"
+            ));
+            return ptr::null_mut();
+        }
+        Err(error) => {
+            set_last_error(error);
+            return ptr::null_mut();
+        }
+    }
+
+    session.prepared = true;
+    clear_last_error();
+    Box::into_raw(Box::new(SnowCaptureScreenshotResultImpl {
+        frames,
+        focused_window,
+    }))
 }
 
 #[unsafe(no_mangle)]
@@ -852,13 +1384,16 @@ pub unsafe extern "C" fn snow_capture_window_session_create(
             return ptr::null_mut();
         }
     };
+    let capture_backend = match parse_capture_backend(config.capture_backend) {
+        Ok(backend) => backend,
+        Err(error) => {
+            set_last_error(error);
+            return ptr::null_mut();
+        }
+    };
 
-    // Window captures must use WGC directly. The desktop session's automatic
-    // policy intentionally prefers DXGI for monitor snapshots, while WGC is
-    // the backend that can capture a top-level HWND independently of desktop
-    // occlusion.
     let system = match CaptureSystem::builder()
-        .with_backend_kind(CaptureBackendKind::WindowsGraphicsCapture)
+        .with_backend_kind(capture_backend)
         .build()
     {
         Ok(system) => system,
@@ -900,7 +1435,7 @@ pub unsafe extern "C" fn snow_capture_window_session_prepare(
         return 0;
     }
     let session = unsafe { &mut *session };
-    match session.session.prepare_target() {
+    match session.session.prewarm_environment() {
         Ok(_) => {
             clear_last_error();
             1
@@ -926,8 +1461,12 @@ pub unsafe extern "C" fn snow_capture_window_session_capture(
         return 0;
     }
     let session = unsafe { &mut *session };
-    if let Err(error) = session.session.capture_into(&mut session.frame) {
+    if let Err(error) = session.session.capture_once_into(&mut session.frame) {
         set_last_error(error);
+        return 0;
+    }
+    if session.session.active_capture_access_count() != 0 {
+        set_last_error("capture access remained active after one-shot window capture");
         return 0;
     }
 
@@ -939,7 +1478,10 @@ pub unsafe extern "C" fn snow_capture_window_session_capture(
         }
     };
     let rgba = session.frame.as_rgba_bytes();
-    let target_info = match session.session.target_info() {
+    let target_info = match session
+        .session
+        .target_info_for_backend(session.frame.metadata().backend_kind())
+    {
         Ok(info) => info,
         Err(error) => {
             set_last_error(error);
@@ -959,6 +1501,25 @@ pub unsafe extern "C" fn snow_capture_window_session_capture(
     }
     clear_last_error();
     1
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn snow_capture_window_session_frame_retain(
+    session: *const SnowCaptureWindowSessionImpl,
+) -> *mut SnowCaptureFrameLeaseImpl {
+    if session.is_null() {
+        set_last_error("window session is null");
+        return ptr::null_mut();
+    }
+    let session = unsafe { &*session };
+    if session.frame.as_rgba_bytes().is_empty() {
+        set_last_error("window session has no captured frame");
+        return ptr::null_mut();
+    }
+    clear_last_error();
+    Box::into_raw(Box::new(SnowCaptureFrameLeaseImpl {
+        _frame: Arc::new(session.frame.clone()),
+    }))
 }
 
 #[unsafe(no_mangle)]
@@ -984,43 +1545,9 @@ pub unsafe extern "C" fn snow_capture_snapshot_frame_info(
         return 0;
     };
 
-    let rgba = frame.frame.as_rgba_bytes();
-    let stride_bytes = match frame.frame.width().checked_mul(4) {
-        Some(stride) => stride,
-        None => {
-            set_last_error("frame stride overflow");
-            return 0;
-        }
-    };
-    let required_len = match usize::try_from(stride_bytes)
-        .ok()
-        .and_then(|stride| stride.checked_mul(frame.frame.height() as usize))
-    {
-        Some(len) => len,
-        None => {
-            set_last_error("frame length overflow");
-            return 0;
-        }
-    };
-    if rgba.len() < required_len {
-        set_last_error("frame buffer is smaller than the reported dimensions");
+    if let Err(error) = write_snapshot_frame_info(frame, out_info) {
+        set_last_error(error);
         return 0;
-    }
-
-    unsafe {
-        *out_info = SnowCaptureFrameInfo {
-            stable_id: frame.entry.stable_id.as_ptr(),
-            name: frame.entry.name.as_ptr(),
-            x: frame.entry.x,
-            y: frame.entry.y,
-            width: frame.frame.width(),
-            height: frame.frame.height(),
-            is_primary: u8::from(frame.entry.is_primary),
-            reserved0: [0; 3],
-            stride_bytes,
-            rgba_bytes: rgba.as_ptr(),
-            rgba_len: rgba.len(),
-        };
     }
     clear_last_error();
     1
@@ -1043,6 +1570,115 @@ pub extern "C" fn snow_capture_snapshot_frame_retain(
     Box::into_raw(Box::new(SnowCaptureFrameLeaseImpl {
         _frame: Arc::clone(&frame.frame),
     }))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn snow_capture_screenshot_result_display_count(
+    result: *const SnowCaptureScreenshotResultImpl,
+) -> usize {
+    if result.is_null() {
+        set_last_error("screenshot result is null");
+        return 0;
+    }
+    unsafe { &*result }.frames.len()
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn snow_capture_screenshot_result_display_info(
+    result: *const SnowCaptureScreenshotResultImpl,
+    index: usize,
+    out_info: *mut SnowCaptureFrameInfo,
+) -> u8 {
+    if result.is_null() {
+        set_last_error("screenshot result is null");
+        return 0;
+    }
+    if out_info.is_null() {
+        set_last_error("display frame out_info is null");
+        return 0;
+    }
+    let result = unsafe { &*result };
+    let Some(frame) = result.frames.get(index) else {
+        set_last_error("screenshot display index is out of range");
+        return 0;
+    };
+    if let Err(error) = write_snapshot_frame_info(frame, out_info) {
+        set_last_error(error);
+        return 0;
+    }
+    clear_last_error();
+    1
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn snow_capture_screenshot_result_display_retain(
+    result: *const SnowCaptureScreenshotResultImpl,
+    index: usize,
+) -> *mut SnowCaptureFrameLeaseImpl {
+    if result.is_null() {
+        set_last_error("screenshot result is null");
+        return ptr::null_mut();
+    }
+    let Some(frame) = (unsafe { &*result }).frames.get(index) else {
+        set_last_error("screenshot display index is out of range");
+        return ptr::null_mut();
+    };
+    clear_last_error();
+    Box::into_raw(Box::new(SnowCaptureFrameLeaseImpl {
+        _frame: Arc::clone(&frame.frame),
+    }))
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn snow_capture_screenshot_result_focused_window_info_v1(
+    result: *const SnowCaptureScreenshotResultImpl,
+    out_info: *mut SnowCaptureWindowFrameInfoV1,
+) -> u8 {
+    if result.is_null() {
+        set_last_error("screenshot result is null");
+        return 0;
+    }
+    if out_info.is_null() {
+        set_last_error("focused-window out_info is null");
+        return 0;
+    }
+    let Some(frame) = (unsafe { &*result }).focused_window.as_ref() else {
+        set_last_error("screenshot result has no focused-window frame");
+        return 0;
+    };
+    if let Err(error) = write_window_frame_info_v1(frame, out_info) {
+        set_last_error(error);
+        return 0;
+    }
+    clear_last_error();
+    1
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn snow_capture_screenshot_result_focused_window_retain(
+    result: *const SnowCaptureScreenshotResultImpl,
+) -> *mut SnowCaptureFrameLeaseImpl {
+    if result.is_null() {
+        set_last_error("screenshot result is null");
+        return ptr::null_mut();
+    }
+    let Some(frame) = (unsafe { &*result }).focused_window.as_ref() else {
+        set_last_error("screenshot result has no focused-window frame");
+        return ptr::null_mut();
+    };
+    clear_last_error();
+    Box::into_raw(Box::new(SnowCaptureFrameLeaseImpl {
+        _frame: Arc::clone(&frame.frame),
+    }))
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn snow_capture_screenshot_result_destroy(
+    result: *mut SnowCaptureScreenshotResultImpl,
+) {
+    if !result.is_null() {
+        drop(unsafe { Box::from_raw(result) });
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -1521,6 +2157,8 @@ mod tests {
             name: sanitize_cstring("unit-monitor"),
             x: -10,
             y: 20,
+            expected_width: 2,
+            expected_height: 2,
             is_primary: true,
         }
     }
@@ -1637,7 +2275,8 @@ mod tests {
             width: 0,
             height: 0,
             is_primary: 0,
-            reserved0: [0; 3],
+            backend_kind: 0,
+            reserved0: [0; 2],
             stride_bytes: 0,
             rgba_bytes: ptr::null(),
             rgba_len: 0,
@@ -1659,7 +2298,8 @@ mod tests {
             width: 0,
             height: 0,
             is_primary: 0,
-            reserved0: [0; 3],
+            backend_kind: 0,
+            reserved0: [0; 2],
             stride_bytes: 0,
             rgba_bytes: ptr::null(),
             rgba_len: 0,
@@ -1752,7 +2392,8 @@ mod tests {
             hwnd: 0,
             capture_retry_count: 1,
             wgc_update_mode: 0,
-            reserved: [0; 31],
+            capture_backend: 0,
+            reserved: [0; 30],
         };
         assert!(unsafe { snow_capture_window_session_create(&config) }.is_null());
     }
@@ -1833,7 +2474,8 @@ mod tests {
         let mut state = SnowCaptureDesktopSessionState {
             worker_count: usize::MAX,
             prepared: 0,
-            reserved0: [1; 7],
+            reserved0: [1; 3],
+            active_capture_access_count: u32::MAX,
             retained_resource_bytes: 99,
             backend_kind: ptr::null(),
         };
@@ -1842,6 +2484,7 @@ mod tests {
         assert_eq!(ok, 1);
         assert_eq!(state.worker_count, 0);
         assert_eq!(state.prepared, 1);
+        assert_eq!(state.active_capture_access_count, 0);
         assert_eq!(state.retained_resource_bytes, 0);
         assert!(!state.backend_kind.is_null());
     }
@@ -1903,5 +2546,119 @@ mod tests {
             std::mem::size_of::<SnowCaptureRecordingConfig>(),
             56 + pointer_sized_prefix
         );
+        assert_eq!(
+            std::mem::size_of::<SnowCaptureDesktopSessionState>(),
+            pointer_sized_prefix * 2 + 16
+        );
+        assert_eq!(
+            std::mem::size_of::<SnowCaptureFrameInfo>(),
+            40 + pointer_sized_prefix * 2
+        );
+        assert_eq!(
+            std::mem::offset_of!(SnowCaptureDesktopSessionState, active_capture_access_count),
+            pointer_sized_prefix + 4
+        );
+        assert_eq!(
+            std::mem::offset_of!(SnowCaptureFrameInfo, backend_kind),
+            pointer_sized_prefix * 2 + 16 + 1
+        );
+    }
+
+    #[test]
+    fn versioned_screenshot_abi_has_expected_layout() {
+        assert_eq!(
+            SCREENSHOT_REQUEST_V1_SIZE as usize,
+            std::mem::size_of::<SnowCaptureScreenshotRequestV1>()
+        );
+        assert_eq!(
+            WINDOW_FRAME_INFO_V1_SIZE as usize,
+            std::mem::size_of::<SnowCaptureWindowFrameInfoV1>()
+        );
+        assert_eq!(std::mem::size_of::<SnowCaptureScreenshotRequestV1>(), 64);
+        assert_eq!(std::mem::size_of::<SnowCaptureWindowFrameInfoV1>(), 56);
+        assert_eq!(
+            std::mem::offset_of!(SnowCaptureScreenshotRequestV1, cancellation_token),
+            24
+        );
+        assert_eq!(
+            std::mem::offset_of!(SnowCaptureWindowFrameInfoV1, backend_kind),
+            48
+        );
+    }
+
+    #[test]
+    fn versioned_screenshot_request_reads_only_header_before_size_validation() {
+        let short = SnowCaptureScreenshotRequestHeader {
+            version: SCREENSHOT_REQUEST_VERSION,
+            struct_size: std::mem::size_of::<SnowCaptureScreenshotRequestHeader>() as u32,
+        };
+        let request = (&raw const short).cast::<SnowCaptureScreenshotRequestV1>();
+
+        assert!(unsafe { read_screenshot_request(request) }.is_err());
+
+        let unknown = SnowCaptureScreenshotRequestHeader {
+            version: SCREENSHOT_REQUEST_VERSION + 1,
+            struct_size: SCREENSHOT_REQUEST_V1_SIZE,
+        };
+        let request = (&raw const unknown).cast::<SnowCaptureScreenshotRequestV1>();
+        assert!(unsafe { read_screenshot_request(request) }.is_err());
+    }
+
+    #[test]
+    fn versioned_screenshot_request_rejects_unsupported_flags() {
+        let request = SnowCaptureScreenshotRequestV1 {
+            version: SCREENSHOT_REQUEST_VERSION,
+            struct_size: SCREENSHOT_REQUEST_V1_SIZE,
+            flags: SCREENSHOT_REQUEST_REFRESH_LAYOUT | (1 << 31),
+            reserved0: 0,
+            focused_window: 0,
+            cancellation_token: ptr::null(),
+            reserved: [0; 32],
+        };
+
+        let error = match unsafe { read_screenshot_request(&request) } {
+            Ok(_) => panic!("unsupported screenshot request flags must fail"),
+            Err(error) => error,
+        };
+        assert!(error.contains("unsupported flags"));
+    }
+
+    #[test]
+    fn cancellation_token_is_thread_safe_and_sticky() {
+        let token = snow_capture_cancellation_token_create();
+        assert!(!token.is_null());
+        let state = unsafe { &*token }.canceled.clone();
+        let token_address = token as usize;
+        let cancel = std::thread::spawn(move || unsafe {
+            snow_capture_cancellation_token_cancel(
+                token_address as *mut SnowCaptureCancellationTokenImpl,
+            );
+        });
+        cancel.join().expect("cancel thread should complete");
+        assert!(state.load(Ordering::Acquire));
+        unsafe { snow_capture_cancellation_token_destroy(token) };
+    }
+
+    #[test]
+    fn monitor_layout_comparison_is_order_independent_and_geometry_sensitive() {
+        let first = test_entry();
+        let mut second = first.clone();
+        second.id = MonitorId::from_parts(5, 7, 9, "second-monitor", false);
+        second.stable_id = sanitize_cstring("stable-second-monitor");
+        second.name = sanitize_cstring("second-monitor");
+        second.x = 100;
+        second.is_primary = false;
+
+        assert!(same_monitor_layout(
+            &[first.clone(), second.clone()],
+            &[second.clone(), first.clone()]
+        ));
+
+        let original_second = second.clone();
+        second.expected_width += 1;
+        assert!(!same_monitor_layout(
+            &[first.clone(), original_second],
+            &[first, second]
+        ));
     }
 }

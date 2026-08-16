@@ -21,31 +21,77 @@ bool validFrameInfo(const SnowCaptureFrameInfo& info) {
         return false;
     }
 
+    if (info.width > static_cast<std::uint32_t>(std::numeric_limits<int>::max()) ||
+        info.height > static_cast<std::uint32_t>(std::numeric_limits<int>::max())) {
+        return false;
+    }
+
     const quint64 expectedStride = static_cast<quint64>(info.width) * 4ULL;
+    if (expectedStride > std::numeric_limits<std::uint32_t>::max() ||
+        expectedStride > static_cast<quint64>(std::numeric_limits<int>::max()) ||
+        static_cast<quint64>(info.height) >
+            std::numeric_limits<quint64>::max() / expectedStride) {
+        return false;
+    }
     const quint64 expectedLen = expectedStride * static_cast<quint64>(info.height);
-    return expectedStride <= std::numeric_limits<std::uint32_t>::max() &&
-           info.stride_bytes == static_cast<std::uint32_t>(expectedStride) &&
+    return info.stride_bytes == static_cast<std::uint32_t>(expectedStride) &&
            info.rgba_len >= expectedLen;
 }
 
-QImage imageFromSnapshotFrame(SnowCaptureSnapshot* snapshot, size_t index,
-                              const SnowCaptureFrameInfo& info) {
-    if (snapshot == nullptr || !validFrameInfo(info)) {
+QImage imageFromFrameLease(SnowCaptureFrameLease* lease, const std::uint8_t* rgbaBytes,
+                           std::size_t rgbaLen, std::uint32_t width, std::uint32_t height,
+                           std::uint32_t strideBytes) {
+    if (lease == nullptr || rgbaBytes == nullptr || rgbaLen == 0 || width == 0 || height == 0) {
+        if (lease != nullptr) {
+            snow_capture_frame_lease_release(lease);
+        }
         return {};
     }
 
-    SnowCaptureFrameLease* lease = snow_capture_snapshot_frame_retain(snapshot, index);
-    if (lease == nullptr) {
+    if (width > static_cast<std::uint32_t>(std::numeric_limits<int>::max()) ||
+        height > static_cast<std::uint32_t>(std::numeric_limits<int>::max()) ||
+        static_cast<quint64>(width) * 4ULL >
+            static_cast<quint64>(std::numeric_limits<int>::max())) {
+        snow_capture_frame_lease_release(lease);
         return {};
     }
 
-    QImage image(info.rgba_bytes, static_cast<int>(info.width), static_cast<int>(info.height),
-                 static_cast<int>(info.stride_bytes), QImage::Format_RGBA8888, &releaseFrameLease,
-                 lease);
+    const quint64 expectedStride = static_cast<quint64>(width) * 4ULL;
+    if (static_cast<quint64>(height) >
+        std::numeric_limits<quint64>::max() / expectedStride) {
+        snow_capture_frame_lease_release(lease);
+        return {};
+    }
+    const quint64 expectedLen = expectedStride * static_cast<quint64>(height);
+    if (strideBytes != static_cast<std::uint32_t>(expectedStride) || rgbaLen < expectedLen) {
+        snow_capture_frame_lease_release(lease);
+        return {};
+    }
+
+    QImage image(rgbaBytes, static_cast<int>(width), static_cast<int>(height),
+                 static_cast<int>(strideBytes), QImage::Format_RGBA8888, &releaseFrameLease, lease);
     if (image.isNull()) {
         snow_capture_frame_lease_release(lease);
     }
     return image;
+}
+
+ScreenshotCaptureBackend backendFromNative(std::uint8_t backend) {
+    switch (backend) {
+    case SNOW_CAPTURE_BACKEND_DXGI:
+        return ScreenshotCaptureBackend::Dxgi;
+    case SNOW_CAPTURE_BACKEND_WGC:
+        return ScreenshotCaptureBackend::WindowsGraphicsCapture;
+    case SNOW_CAPTURE_BACKEND_GDI:
+        return ScreenshotCaptureBackend::Gdi;
+    default:
+        return ScreenshotCaptureBackend::Auto;
+    }
+}
+
+QString nativeCaptureError(const char* fallback) {
+    const char* message = snow_capture_last_error_message();
+    return QString::fromUtf8(message != nullptr && *message != '\0' ? message : fallback);
 }
 } // namespace
 
@@ -78,43 +124,51 @@ void ScreenshotCaptureWorker::releaseIdleResources(quint64 requestId) {
     }
 }
 
-void ScreenshotCaptureWorker::captureAll(quint64 requestId,
-                                         const QPointer<ScreenshotCaptureCoordinator>& coordinator,
-                                         bool refreshLayout) {
-    QVector<CapturedDisplayModel> displays;
+void ScreenshotCaptureWorker::capture(
+    const ScreenshotCaptureRequest& request,
+    const QPointer<ScreenshotCaptureCoordinator>& coordinator,
+    SnowCaptureCancellationToken* cancellationToken) {
+    ScreenshotCaptureResult captureResult;
+    captureResult.requestId = request.requestId;
     if (!ensureSession()) {
-        postCaptureResult(requestId, coordinator, std::move(displays));
+        captureResult.errorMessage = nativeCaptureError("Failed to create desktop capture session");
+        postCaptureResult(coordinator, std::move(captureResult));
         return;
     }
 
-    if (refreshLayout) {
-        if (snow_capture_desktop_session_refresh_layout(m_session) == 0) {
-            qWarning("Failed to refresh desktop capture layout: %s",
-                     snow_capture_last_error_message());
-            postCaptureResult(requestId, coordinator, std::move(displays));
-            return;
-        }
-    }
+    SnowCaptureScreenshotRequestV1 nativeRequest{};
+    nativeRequest.version = SNOW_CAPTURE_SCREENSHOT_REQUEST_VERSION;
+    nativeRequest.struct_size = sizeof(nativeRequest);
+    nativeRequest.flags = request.refreshLayout ? SNOW_CAPTURE_SCREENSHOT_REQUEST_REFRESH_LAYOUT : 0;
+    nativeRequest.focused_window = static_cast<intptr_t>(request.focusedWindowHandle);
+    nativeRequest.cancellation_token = cancellationToken;
 
-    SnowCaptureSnapshot* captureSnapshot = nullptr;
-    captureSnapshot = snow_capture_desktop_session_capture_all(m_session);
-    if (captureSnapshot == nullptr) {
-        postCaptureResult(requestId, coordinator, std::move(displays));
+    SnowCaptureScreenshotResult* nativeResult =
+        snow_capture_desktop_session_capture_v1(m_session, &nativeRequest);
+    if (nativeResult == nullptr) {
+        captureResult.errorMessage = nativeCaptureError("Screenshot capture failed");
+        postCaptureResult(coordinator, std::move(captureResult));
         return;
     }
 
-    const size_t count = snow_capture_snapshot_count(captureSnapshot);
-    displays.reserve(static_cast<int>(count));
+    const size_t count = snow_capture_screenshot_result_display_count(nativeResult);
+    captureResult.displays.reserve(static_cast<int>(count));
+    bool valid = count != 0;
     for (size_t index = 0; index < count; ++index) {
         SnowCaptureFrameInfo info{};
-        if (snow_capture_snapshot_frame_info(captureSnapshot, index, &info) == 0) {
-            continue;
+        if (snow_capture_screenshot_result_display_info(nativeResult, index, &info) == 0 ||
+            !validFrameInfo(info)) {
+            valid = false;
+            break;
         }
 
-        QImage image;
-        image = imageFromSnapshotFrame(captureSnapshot, index, info);
+        SnowCaptureFrameLease* lease =
+            snow_capture_screenshot_result_display_retain(nativeResult, index);
+        QImage image = imageFromFrameLease(lease, info.rgba_bytes, info.rgba_len, info.width,
+                                           info.height, info.stride_bytes);
         if (image.isNull()) {
-            continue;
+            valid = false;
+            break;
         }
 
         CapturedDisplayModel display;
@@ -125,12 +179,52 @@ void ScreenshotCaptureWorker::captureAll(quint64 requestId,
         display.canvasRect = display.physicalRect;
         display.image = std::move(image);
         display.active = true;
-        displays.push_back(std::move(display));
+        display.backend = backendFromNative(info.backend_kind);
+        captureResult.displays.push_back(std::move(display));
     }
 
-    snow_capture_snapshot_destroy(captureSnapshot);
+    if (valid && request.focusedWindowHandle != 0) {
+        SnowCaptureWindowFrameInfoV1 info{};
+        info.version = SNOW_CAPTURE_WINDOW_FRAME_INFO_VERSION;
+        info.struct_size = sizeof(info);
+        if (snow_capture_screenshot_result_focused_window_info_v1(nativeResult, &info) == 0) {
+            valid = false;
+        } else {
+            SnowCaptureFrameLease* lease =
+                snow_capture_screenshot_result_focused_window_retain(nativeResult);
+            QImage image = imageFromFrameLease(lease, info.rgba_bytes, info.rgba_len, info.width,
+                                               info.height, info.stride_bytes);
+            ScreenshotWindowCaptureFrame focused;
+            focused.image = std::move(image);
+            focused.physicalRect = QRect(info.x, info.y, static_cast<int>(info.width),
+                                         static_cast<int>(info.height));
+            focused.backend = backendFromNative(info.backend_kind);
+            if (!focused.isValid()) {
+                valid = false;
+            } else {
+                captureResult.focusedWindow = std::move(focused);
+            }
+        }
+    }
 
-    postCaptureResult(requestId, coordinator, std::move(displays));
+    SnowCaptureDesktopSessionState state{};
+    if (snow_capture_desktop_session_state(m_session, &state) == 0 ||
+        state.active_capture_access_count != 0) {
+        valid = false;
+        captureResult.errorMessage =
+            QStringLiteral("Native capture access remained active after screenshot acquisition");
+    }
+
+    if (!valid && captureResult.errorMessage.isEmpty()) {
+        captureResult.errorMessage = nativeCaptureError("Screenshot capture returned invalid data");
+    }
+    if (!valid) {
+        captureResult.displays.clear();
+        captureResult.focusedWindow.reset();
+    }
+    captureResult.succeeded = valid;
+    snow_capture_screenshot_result_destroy(nativeResult);
+    postCaptureResult(coordinator, std::move(captureResult));
 }
 
 bool ScreenshotCaptureWorker::ensureSession() {
@@ -187,17 +281,16 @@ void ScreenshotCaptureWorker::postPrepared(
 }
 
 void ScreenshotCaptureWorker::postCaptureResult(
-    quint64 requestId, const QPointer<ScreenshotCaptureCoordinator>& coordinator,
-    QVector<CapturedDisplayModel> displays) {
+    const QPointer<ScreenshotCaptureCoordinator>& coordinator, ScreenshotCaptureResult result) {
     if (coordinator.isNull()) {
         return;
     }
 
     QMetaObject::invokeMethod(
         coordinator,
-        [coordinator, requestId, displays = std::move(displays)]() mutable {
+        [coordinator, result = std::move(result)]() mutable {
             if (!coordinator.isNull()) {
-                emit coordinator->captureFinished(requestId, std::move(displays));
+                emit coordinator->captureFinished(std::move(result));
             }
         },
         Qt::QueuedConnection);

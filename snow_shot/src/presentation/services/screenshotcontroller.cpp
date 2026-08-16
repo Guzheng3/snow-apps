@@ -44,7 +44,6 @@
 #include "snow_shot/presentation/screenshottoolbarpresenter.h"
 #include "snow_shot/presentation/screenshottoolbarwindow.h"
 #include "snow_shot/presentation/screenshottoolcommandworkflow.h"
-#include "snow_shot/presentation/screenshotwindowcapture.h"
 #include "snow_shot/presentation/screenrecordingcontroller.h"
 #include "snow_shot/presentation/windowshortcutmanager.h"
 #include "../pinned/screenshotpintoperfinstrumentation.h"
@@ -234,8 +233,9 @@ struct ScreenshotController::Impl final : public ScreenshotToolbarCommandSink,
     beginCapture(PendingSelectionAction action = PendingSelectionAction::None,
                  snow_shot::storage::CaptureHistorySource historySource =
                      snow_shot::storage::CaptureHistorySource::CopiedToClipboard,
-                 AutomaticSelectionMode automaticMode = AutomaticSelectionMode::None,
-                 const QPoint& automaticPhysicalPoint = QPoint());
+                  AutomaticSelectionMode automaticMode = AutomaticSelectionMode::None,
+                  const QPoint& automaticPhysicalPoint = QPoint(),
+                  quintptr focusedWindowHandle = 0);
     void handleSelectionConfirmed();
     [[nodiscard]] bool selectPreviousSelection();
     void handleAutomaticTextRecognitionAction(bool available);
@@ -924,6 +924,9 @@ void ScreenshotController::Impl::createCaptureWorkflow() {
             []() {
                 return snow_shot::storage::ApplicationStorage::instance()
                     .smartSelectionEnabled();
+            },
+            [this](std::optional<ScreenshotWindowCaptureFrame> frame) {
+                m_focusedWindowCapture = std::move(frame);
             },
         });
 }
@@ -3053,7 +3056,8 @@ bool ScreenshotController::Impl::canBeginCapture() const {
 
 bool ScreenshotController::Impl::beginCapture(
     PendingSelectionAction action, snow_shot::storage::CaptureHistorySource historySource,
-    AutomaticSelectionMode automaticMode, const QPoint& automaticPhysicalPoint) {
+    AutomaticSelectionMode automaticMode, const QPoint& automaticPhysicalPoint,
+    quintptr focusedWindowHandle) {
     if (!canBeginCapture()) {
         return false;
     }
@@ -3091,7 +3095,8 @@ bool ScreenshotController::Impl::beginCapture(
     m_captureWorkflow->startCapture(
         automaticMode == AutomaticSelectionMode::None
             ? ScreenshotCapturePresentationMode::Overlay
-            : ScreenshotCapturePresentationMode::Silent);
+            : ScreenshotCapturePresentationMode::Silent,
+        focusedWindowHandle);
     return true;
 }
 
@@ -3354,28 +3359,12 @@ void ScreenshotController::captureFocusedWindow() {
     const HWND root = GetAncestor(foreground, GA_ROOT);
     const HWND target = root != nullptr ? root : foreground;
 
-    ScreenshotWindowCapture capture(reinterpret_cast<quintptr>(target));
-    if (!capture.isValid()) {
-        qWarning("Focused window capture failed: %s", qPrintable(capture.errorMessage()));
-        return;
-    }
-
     m_impl->m_focusedWindowCapture.reset();
-    if (!m_impl->beginCapture(Impl::PendingSelectionAction::Copy,
-                              snow_shot::storage::CaptureHistorySource::FocusedWindow,
-                              Impl::AutomaticSelectionMode::FocusedWindow)) {
-        return;
-    }
-
-    // Display completion is queued back to this UI thread, so the WGC acquisition overlaps the
-    // display worker and finishes before the completion callback can consume this frame.
-    auto frame = capture.capture();
-    if (!frame.has_value() || !frame->isValid()) {
-        qWarning("Focused window capture failed: %s", qPrintable(capture.errorMessage()));
-        m_impl->cancelCapture();
-        return;
-    }
-    m_impl->m_focusedWindowCapture = std::move(*frame);
+    static_cast<void>(m_impl->beginCapture(
+        Impl::PendingSelectionAction::Copy,
+        snow_shot::storage::CaptureHistorySource::FocusedWindow,
+        Impl::AutomaticSelectionMode::FocusedWindow, QPoint(),
+        reinterpret_cast<quintptr>(target)));
 #else
     Q_UNUSED(this);
 #endif

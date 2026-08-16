@@ -1,6 +1,8 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use crate::backend::CaptureBackendKind;
+
 use crossbeam_channel as mpsc;
 
 use crate::error::{CaptureError, CaptureResult};
@@ -66,9 +68,16 @@ pub struct FrameMetadata {
     pub(crate) stream_timestamp: Option<StreamTimestamp>,
     /// Cursor state sampled for this frame on the capture thread.
     pub(crate) cursor: Option<AttachedCursorSample>,
+    /// Concrete backend that produced this frame. `Auto` means the producer
+    /// did not report a concrete backend.
+    pub(crate) backend_kind: CaptureBackendKind,
 }
 
 impl FrameMetadata {
+    pub fn backend_kind(&self) -> CaptureBackendKind {
+        self.backend_kind
+    }
+
     pub fn capture_duration(&self) -> Option<Duration> {
         self.capture_duration
     }
@@ -405,7 +414,13 @@ impl Frame {
         self.data.as_mut_ptr()
     }
 
-    pub(crate) fn ensure_rgba_capacity(&mut self, width: u32, height: u32) -> CaptureResult<()> {
+    /// Resize this frame's RGBA storage for `width` by `height` pixels while
+    /// retaining an existing allocation when it is large enough.
+    ///
+    /// This is useful for preparing a reusable destination before a latency-
+    /// sensitive capture. Existing pixel contents are unspecified when the
+    /// dimensions change; capture code is expected to overwrite them.
+    pub fn ensure_rgba_capacity(&mut self, width: u32, height: u32) -> CaptureResult<()> {
         let len = rgba_len(width, height)?;
         self.data.ensure_len(len);
         self.width = width;
@@ -432,6 +447,7 @@ impl Frame {
         self.metadata.dirty_rects.clear();
         self.metadata.color_space = ColorSpace::default();
         self.metadata.cursor = None;
+        self.metadata.backend_kind = CaptureBackendKind::Auto;
         // sequence is set by the session, not reset here
     }
 }

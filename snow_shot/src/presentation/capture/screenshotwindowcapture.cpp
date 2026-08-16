@@ -18,6 +18,10 @@ QString nativeCaptureError(const char* fallback) {
     }
     return QString::fromUtf8(fallback);
 }
+
+void releaseFrameLease(void* lease) {
+    snow_capture_frame_lease_release(static_cast<SnowCaptureFrameLease*>(lease));
+}
 #endif
 
 } // namespace
@@ -34,6 +38,7 @@ struct ScreenshotWindowCapture::Impl final {
         config.hwnd = static_cast<intptr_t>(nativeWindowHandle);
         config.capture_retry_count = 1;
         config.wgc_update_mode = SNOW_CAPTURE_WGC_UPDATE_MODE_COMPLETE_ONLY;
+        config.capture_backend = SNOW_CAPTURE_BACKEND_AUTO;
         session = snow_capture_window_session_create(&config);
         if (session == nullptr) {
             error = nativeCaptureError("Failed to create window capture session");
@@ -113,11 +118,17 @@ struct ScreenshotWindowCapture::Impl final {
 
         const int imageWidth = static_cast<int>(width);
         const int imageHeight = static_cast<int>(height);
-        QImage view(info.rgba_bytes, imageWidth, imageHeight, static_cast<int>(info.stride_bytes),
-                    QImage::Format_RGBA8888);
-        QImage image = view.copy();
+        SnowCaptureFrameLease* lease = snow_capture_window_session_frame_retain(session);
+        if (lease == nullptr) {
+            error = nativeCaptureError("Failed to retain window capture frame");
+            return std::nullopt;
+        }
+        QImage image(info.rgba_bytes, imageWidth, imageHeight,
+                     static_cast<int>(info.stride_bytes), QImage::Format_RGBA8888,
+                     &releaseFrameLease, lease);
         if (image.isNull()) {
-            error = QStringLiteral("Failed to copy window capture frame");
+            snow_capture_frame_lease_release(lease);
+            error = QStringLiteral("Failed to lease window capture frame");
             return std::nullopt;
         }
 

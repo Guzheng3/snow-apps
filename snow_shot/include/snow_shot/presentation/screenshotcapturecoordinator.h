@@ -4,7 +4,8 @@
 #include "snow_shot/presentation/screenshottypes.h"
 
 #include <QObject>
-#include <QVector>
+
+#include <memory>
 
 class QThread;
 class ScreenshotCaptureWorker;
@@ -20,19 +21,23 @@ class ScreenshotCaptureCoordinator final : public QObject {
     void ensureWorker();
     void prepareAsync(quint64 requestId);
     void refreshLayoutAsync(quint64 requestId);
-    void captureAllAsync(quint64 requestId, bool refreshLayout);
+    void captureAsync(const ScreenshotCaptureRequest& request);
+    void cancelActiveCapture();
     void releaseIdleResourcesAsync(quint64 requestId);
     void shutdown();
 
   signals:
     void prepared(quint64 requestId, bool ok);
-    void captureFinished(quint64 requestId, QVector<CapturedDisplayModel> displays);
+    void captureFinished(ScreenshotCaptureResult result);
 
   private:
     template <typename Task> bool postWorkerTask(Task&& task);
 
+    struct CancellationState;
+
     QThread* m_thread = nullptr;
     ScreenshotCaptureWorker* m_worker = nullptr;
+    std::shared_ptr<CancellationState> m_activeCancellation;
 };
 
 #endif // SNOW_SHOT_PRESENTATION_SCREENSHOTCAPTURECOORDINATOR_H
