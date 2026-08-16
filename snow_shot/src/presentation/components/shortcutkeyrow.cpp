@@ -1354,9 +1354,7 @@ ShortcutKeyRow::ShortcutKeyRow(
     setShape(adqt::widgets::AdButton::Shape::Rounded);
     setFixedHeight(m_compactPresentation ? metric.controlHeight
                                          : metric.controlHeightLG + metric.paddingXXS);
-    setCursor(m_compactPresentation
-                  ? Qt::ArrowCursor
-                  : (m_adjustableDelay ? Qt::SplitVCursor : Qt::PointingHandCursor));
+    setCursor(m_compactPresentation ? Qt::ArrowCursor : Qt::PointingHandCursor);
     if (m_adjustableDelay) {
         setToolTip(tr("Delay: %1 seconds").arg(m_delaySeconds));
     }
@@ -1538,10 +1536,6 @@ void ShortcutKeyRow::paintEvent(QPaintEvent* event) {
 }
 
 bool ShortcutKeyRow::event(QEvent* event) {
-    if (m_adjustableDelay && event->type() == QEvent::Wheel && adjustDelayFromWheel(event)) {
-        return true;
-    }
-
     const bool handled = adqt::widgets::AdButton::event(event);
 
     const QEvent::Type type = event->type();

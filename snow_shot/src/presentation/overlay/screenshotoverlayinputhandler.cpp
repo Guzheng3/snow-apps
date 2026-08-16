@@ -759,6 +759,10 @@ void ScreenshotOverlayInputHandler::resetTransientShortcuts() {
     finishTransientDrag();
 }
 
+bool ScreenshotOverlayInputHandler::canvasColorSamplingActive() const {
+    return m_canvasColorSamplingArmed;
+}
+
 void ScreenshotOverlayInputHandler::armCanvasColorSampling() {
     m_canvasColorSamplingArmed = true;
 }

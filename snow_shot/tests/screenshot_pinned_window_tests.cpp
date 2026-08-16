@@ -2690,6 +2690,16 @@ void pinnedDrawingToolbarMatchesCaptureInteractions(SnowCanvasRuntime& sourceRun
             "pinned stroke color picker should expose canvas sampling");
     sampler->click();
 
+    {
+        const CursorPositionRestorer restoreCursor;
+        const QPoint start = config.nativeGeometry.center();
+        setSystemCursorPosition(start);
+        sendShortcut(*controller->toolbarWindow(), Qt::Key_W);
+        require(systemCursorPosition() == start + QPoint(0, -1),
+                "pinned canvas color sampling must route keyboard cursor movement from its "
+                "floating toolbar");
+    }
+
     const QPointF globalPosition(canvas->mapToGlobal(localPosition));
     QMouseEvent samplingMove(QEvent::MouseMove, QPointF(localPosition), globalPosition,
                              Qt::NoButton, Qt::NoButton, Qt::NoModifier);
@@ -2703,6 +2713,15 @@ void pinnedDrawingToolbarMatchesCaptureInteractions(SnowCanvasRuntime& sourceRun
                                                                   background.rect().center())
                                                                   .toRgb(),
             "pinned canvas sampling should commit the color beneath the cursor");
+
+    {
+        const CursorPositionRestorer restoreCursor;
+        const QPoint start = config.nativeGeometry.center();
+        setSystemCursorPosition(start);
+        sendShortcut(*controller->toolbarWindow(), Qt::Key_W);
+        require(systemCursorPosition() == start,
+                "the floating toolbar must leave cursor-shortcut scope after canvas sampling");
+    }
 
     require(canvas->setCanvasTool(SnowCanvasTool::Spotlight),
             "Spotlight tool could not be activated");

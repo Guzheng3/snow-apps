@@ -477,11 +477,16 @@ void AdScrollArea::syncContentSize() {
   }
 
   int targetHeight = hint.height();
-  if (!fitToWidth_) {
+  if (fitToWidth_ && contentWidget_->hasHeightForWidth()) {
+    const int fittedHeight = contentWidget_->heightForWidth(targetWidth);
+    if (fittedHeight >= 0) {
+      targetHeight = fittedHeight;
+    }
+  } else if (!fitToWidth_) {
     targetHeight = std::max(targetHeight, contentWidget_->minimumSizeHint().height());
   }
-  // minimumSizeHint() is a size pair: its height may describe the content at its
-  // narrow minimum width, so it is not a valid height floor after fitting another width.
+  // Paired size-hint heights may describe a different width. When fitting the content,
+  // heightForWidth() is the authoritative natural height at the viewport width.
   targetHeight = std::max(targetHeight, contentWidget_->minimumHeight());
   targetWidth = std::max(0, targetWidth);
   targetHeight = std::max(0, targetHeight);

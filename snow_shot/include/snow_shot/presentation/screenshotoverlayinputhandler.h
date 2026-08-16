@@ -58,7 +58,7 @@ struct ScreenshotOverlayInputActions {
         [](const QPointF&) {};
     std::function<bool()> copyColorPickerColorToClipboard = []() { return false; };
     std::function<bool()> cycleColorPickerFormat = []() { return false; };
-    std::function<bool(int dx, int dy)> moveColorPickerCursor = [](int, int) { return false; };
+    std::function<bool(const QPoint& delta)> moveCursorBy = [](const QPoint&) { return false; };
 
     // Called after a valid selection transitions the interaction into editing.
     // This is intentionally separate from showToolbar so callers can schedule
@@ -144,6 +144,7 @@ class ScreenshotOverlayInputHandler final {
     bool releaseKeepSelectionAspectRatioShortcut();
     [[nodiscard]] bool toggleIntelligentSelectionTargetShortcut();
     void resetTransientShortcuts();
+    [[nodiscard]] bool canvasColorSamplingActive() const;
     void armCanvasColorSampling();
     void cancelCanvasColorSampling();
 

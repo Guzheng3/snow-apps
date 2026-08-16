@@ -183,8 +183,21 @@ void configuredShortcutRowsUseActualValues() {
                 rows.at(8).shortcut == QStringLiteral("Shift"),
             "the fixed color-format shortcut must remain visible");
     require(rows.at(9).label == QStringLiteral("Switch Screenshot History") &&
-                rows.at(9).shortcut == QStringLiteral("PgUp / [ / PgDown / ]"),
-            "history hint must combine the actual previous and next shortcuts");
+                rows.at(9).shortcut == QStringLiteral("PgUp / [ / PgDown / ]") &&
+                rows.at(9).shortcutChips == QStringList{QStringLiteral("PgUp / ["),
+                                                       QStringLiteral("PgDown / ]")},
+            "history hint must split the previous and next shortcuts into separate chips");
+}
+
+void defaultHistoryShortcutUsesSeparateChips() {
+    const QVector<ScreenshotShortcutHintRow> rows =
+        screenshotShortcutHintRows(ScreenshotShortcutHintMode::Selection);
+    const ScreenshotShortcutHintRow& historyRow = rows.constLast();
+    require(historyRow.label == QStringLiteral("Switch Screenshot History") &&
+                historyRow.shortcut == QStringLiteral(", / .") &&
+                historyRow.shortcutChips ==
+                    QStringList{QStringLiteral(","), QStringLiteral(".")},
+            "default history keys must render as separate comma and period chips");
 }
 
 void unassignedConfiguredShortcutIsNotHinted() {
@@ -310,6 +323,7 @@ int main(int argc, char** argv) {
     QCoreApplication app(argc, argv);
     toolMatrixMatchesRequestedVisibility();
     configuredShortcutRowsUseActualValues();
+    defaultHistoryShortcutUsesSeparateChips();
     unassignedConfiguredShortcutIsNotHinted();
     scrollingHintsUseMouseWheelLabels();
     selectionStageContextsRetainShortcutHints();

@@ -33,6 +33,7 @@ struct ScreenshotShortcutHintRow {
     QString label;
     QString shortcut;
     ScreenshotShortcutHintInput input = ScreenshotShortcutHintInput::Keyboard;
+    QStringList shortcutChips;
 };
 
 // These strings are translated through runtime-selected source text below, so
@@ -55,7 +56,7 @@ struct ScreenshotShortcutHintRow {
 [[nodiscard]] inline bool operator==(const ScreenshotShortcutHintRow& left,
                                      const ScreenshotShortcutHintRow& right) {
     return left.label == right.label && left.shortcut == right.shortcut &&
-           left.input == right.input;
+           left.input == right.input && left.shortcutChips == right.shortcutChips;
 }
 
 [[nodiscard]] inline bool operator!=(const ScreenshotShortcutHintRow& left,
@@ -213,16 +214,23 @@ inline void appendScreenshotCursorMovementShortcutHintRows(
                                               {QStringLiteral("C")});
     rows.push_back(screenshotFixedShortcutHintRow("Switch Color Format: Shift"));
 
-    QStringList historyShortcuts = screenshotConfiguredShortcutHintKeys(
-        configuredShortcuts, QStringLiteral("previous_screenshot_history"),
-        {QStringLiteral(",")});
-    historyShortcuts.append(screenshotConfiguredShortcutHintKeys(
-        configuredShortcuts, QStringLiteral("next_screenshot_history"),
-        {QStringLiteral(".")}));
+    const QStringList previousHistoryShortcuts = screenshotConfiguredShortcutHintKeys(
+        configuredShortcuts, QStringLiteral("previous_screenshot_history"), {QStringLiteral(",")});
+    const QStringList nextHistoryShortcuts = screenshotConfiguredShortcutHintKeys(
+        configuredShortcuts, QStringLiteral("next_screenshot_history"), {QStringLiteral(".")});
+    QStringList historyShortcuts = previousHistoryShortcuts;
+    historyShortcuts.append(nextHistoryShortcuts);
     if (!historyShortcuts.isEmpty()) {
+        QStringList historyShortcutChips;
+        if (!previousHistoryShortcuts.isEmpty()) {
+            historyShortcutChips.push_back(previousHistoryShortcuts.join(QStringLiteral(" / ")));
+        }
+        if (!nextHistoryShortcuts.isEmpty()) {
+            historyShortcutChips.push_back(nextHistoryShortcuts.join(QStringLiteral(" / ")));
+        }
         rows.push_back({screenshotShortcutHintText("Switch Screenshot History"),
                         historyShortcuts.join(QStringLiteral(" / ")),
-                        ScreenshotShortcutHintInput::Keyboard});
+                        ScreenshotShortcutHintInput::Keyboard, std::move(historyShortcutChips)});
     }
     return rows;
 }

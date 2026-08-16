@@ -42,6 +42,7 @@ constexpr int kShortcutHintsColonMarginRight = 8;
 constexpr int kShortcutHintsChipHorizontalPadding = 16;
 constexpr int kShortcutHintsChipVerticalPadding = 2;
 constexpr int kShortcutHintsChipRadius = 6;
+constexpr int kShortcutHintsChipSpacing = 8;
 constexpr int kShortcutHintsIconSize = 14;
 constexpr int kShortcutHintsIconTextGap = 8;
 constexpr int kShortcutHintsChipTrailingSpace = 8;
@@ -158,18 +159,7 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
             painter.drawText(QRect(colonLeft, rowTop, colonWidth,
                                    kShortcutHintsLineHeight),
                              Qt::AlignLeft | Qt::AlignVCenter, QStringLiteral(":"));
-            const int chipLeft = colonLeft + colonWidth + kShortcutHintsColonMarginRight;
-            const int chipWidth = shortcutChipWidth(row.shortcut, metrics);
-            const QRectF chipRect(chipLeft, rowTop - kShortcutHintsChipVerticalPadding,
-                                  chipWidth, shortcutChipHeight());
-            painter.setRenderHint(QPainter::Antialiasing, true);
-            painter.setPen(QPen(contentColor, 1.0));
-            painter.setBrush(Qt::NoBrush);
-            painter.drawRoundedRect(chipRect.adjusted(0.5, 0.5, -0.5, -0.5),
-                                    kShortcutHintsChipRadius, kShortcutHintsChipRadius);
-
-            const int iconLeft = chipLeft + kShortcutHintsChipHorizontalPadding;
-            const int iconTop = rowTop + (kShortcutHintsLineHeight - kShortcutHintsIconSize) / 2;
+            int chipLeft = colonLeft + colonWidth + kShortcutHintsColonMarginRight;
             const auto icon = row.input == ScreenshotShortcutHintInput::Mouse
                                   ? custom_outlined_icons::WheelMouse()
                                   : custom_outlined_icons::Keyboard();
@@ -177,18 +167,34 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
                 snow_shot::presentation::icons::renderTintedIconPixmap(
                     icon, QSize(kShortcutHintsIconSize, kShortcutHintsIconSize),
                     devicePixelRatioF(), contentColor);
-            if (!iconPixmap.isNull()) {
-                painter.drawPixmap(iconLeft, iconTop, iconPixmap);
-            }
+            const QStringList chipLabels =
+                row.shortcutChips.isEmpty() ? QStringList{row.shortcut} : row.shortcutChips;
+            for (const QString& chipLabel : chipLabels) {
+                const int chipWidth = shortcutChipWidth(chipLabel, metrics);
+                const QRectF chipRect(chipLeft, rowTop - kShortcutHintsChipVerticalPadding,
+                                      chipWidth, shortcutChipHeight());
+                painter.setRenderHint(QPainter::Antialiasing, true);
+                painter.setPen(QPen(contentColor, 1.0));
+                painter.setBrush(Qt::NoBrush);
+                painter.drawRoundedRect(chipRect.adjusted(0.5, 0.5, -0.5, -0.5),
+                                        kShortcutHintsChipRadius, kShortcutHintsChipRadius);
 
-            const int textLeft = iconLeft + kShortcutHintsIconSize +
-                                 kShortcutHintsIconTextGap;
-            const int textWidth = metrics.horizontalAdvance(row.shortcut);
-            painter.setRenderHint(QPainter::Antialiasing, false);
-            painter.setPen(contentColor);
-            painter.drawText(QRect(textLeft, rowTop, textWidth,
-                                   kShortcutHintsLineHeight),
-                              Qt::AlignLeft | Qt::AlignVCenter, row.shortcut);
+                const int iconLeft = chipLeft + kShortcutHintsChipHorizontalPadding;
+                const int iconTop =
+                    rowTop + (kShortcutHintsLineHeight - kShortcutHintsIconSize) / 2;
+                if (!iconPixmap.isNull()) {
+                    painter.drawPixmap(iconLeft, iconTop, iconPixmap);
+                }
+
+                const int textLeft = iconLeft + kShortcutHintsIconSize +
+                                     kShortcutHintsIconTextGap;
+                const int textWidth = metrics.horizontalAdvance(chipLabel);
+                painter.setRenderHint(QPainter::Antialiasing, false);
+                painter.setPen(contentColor);
+                painter.drawText(QRect(textLeft, rowTop, textWidth, kShortcutHintsLineHeight),
+                                 Qt::AlignLeft | Qt::AlignVCenter, chipLabel);
+                chipLeft += chipWidth + kShortcutHintsChipSpacing;
+            }
             rowTop += kShortcutHintsLineHeight + kShortcutHintsRowSpacing;
         }
     }
@@ -202,6 +208,18 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
                                                const QFontMetrics& metrics) {
         return kShortcutHintsChipHorizontalPadding * 2 + kShortcutHintsIconSize +
                kShortcutHintsIconTextGap + metrics.horizontalAdvance(shortcut);
+    }
+
+    [[nodiscard]] static int shortcutChipsWidth(const ScreenshotShortcutHintRow& row,
+                                                const QFontMetrics& metrics) {
+        if (row.shortcutChips.isEmpty()) {
+            return shortcutChipWidth(row.shortcut, metrics);
+        }
+        int width = kShortcutHintsChipSpacing * (static_cast<int>(row.shortcutChips.size()) - 1);
+        for (const QString& chipLabel : row.shortcutChips) {
+            width += shortcutChipWidth(chipLabel, metrics);
+        }
+        return width;
     }
 
     void updateTranslatedLines() {
@@ -224,8 +242,7 @@ class ScreenshotShortcutHintsWidget final : public QWidget {
             rowWidth += kShortcutHintsColonMarginLeft +
                         metrics.horizontalAdvance(QLatin1Char(':')) +
                         kShortcutHintsColonMarginRight;
-            rowWidth += shortcutChipWidth(row.shortcut, metrics) +
-                        kShortcutHintsChipTrailingSpace;
+            rowWidth += shortcutChipsWidth(row, metrics) + kShortcutHintsChipTrailingSpace;
             width = std::max(width, rowWidth);
         }
         const int rowCount = static_cast<int>(m_rows.size());

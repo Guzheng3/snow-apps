@@ -67,6 +67,7 @@ class ScreenshotInteractionState final {
     [[nodiscard]] bool editing() const;
     [[nodiscard]] bool scrollingCapture() const;
     [[nodiscard]] bool selecting() const;
+    [[nodiscard]] bool cursorMovementEnabled() const;
     [[nodiscard]] bool selectionToolbarMode() const;
     [[nodiscard]] bool canResizeSelection() const;
     [[nodiscard]] bool selectionHandlesVisible() const;

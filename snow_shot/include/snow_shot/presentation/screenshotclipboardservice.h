@@ -53,6 +53,11 @@ class QClipboard;
 class QObject;
 struct ScreenshotClipboardPayloadTestAccess;
 
+enum class ScreenshotClipboardFormatMode {
+    CompatibleDib,
+    DibV5,
+};
+
 class ScreenshotClipboardPayload final {
   public:
     ScreenshotClipboardPayload() = default;
@@ -73,6 +78,7 @@ class ScreenshotClipboardPayload final {
 
 #if defined(Q_OS_WIN) || defined(_WIN32)
     void* m_nativeHandle = nullptr;
+    ScreenshotClipboardFormatMode m_formatMode = ScreenshotClipboardFormatMode::DibV5;
 #else
     QImage m_image;
 #endif
@@ -117,15 +123,27 @@ class ScreenshotClipboardService final {
   public:
     using CommitCompletion = std::function<void(ScreenshotClipboardCommitResult)>;
 
-    [[nodiscard]] static ScreenshotClipboardPayload prepare(ScreenshotClipboardPixelSource source);
-    [[nodiscard]] static ScreenshotClipboardPayload prepare(const ScreenshotImageRowSource& source);
-    [[nodiscard]] static ScreenshotClipboardPayload prepareImage(const QImage& image);
+    [[nodiscard]] static ScreenshotClipboardPayload prepare(
+        ScreenshotClipboardPixelSource source,
+        ScreenshotClipboardFormatMode formatMode =
+            ScreenshotClipboardFormatMode::DibV5);
+    [[nodiscard]] static ScreenshotClipboardPayload prepare(
+        const ScreenshotImageRowSource& source,
+        ScreenshotClipboardFormatMode formatMode =
+            ScreenshotClipboardFormatMode::DibV5);
+    [[nodiscard]] static ScreenshotClipboardPayload prepareImage(
+        const QImage& image,
+        ScreenshotClipboardFormatMode formatMode =
+            ScreenshotClipboardFormatMode::DibV5);
     [[nodiscard]] static ScreenshotClipboardCommitHandle commit(QClipboard* clipboard,
                                                                 QObject* receiver,
                                                                 ScreenshotClipboardPayload payload,
                                                                 CommitCompletion completion);
     [[nodiscard]] static bool publish(QClipboard* clipboard, ScreenshotClipboardPayload payload);
-    [[nodiscard]] static bool publishImage(QClipboard* clipboard, const QImage& image);
+    [[nodiscard]] static bool publishImage(
+        QClipboard* clipboard, const QImage& image,
+        ScreenshotClipboardFormatMode formatMode =
+            ScreenshotClipboardFormatMode::DibV5);
 };
 
 #endif // SNOW_SHOT_PRESENTATION_SCREENSHOTCLIPBOARDSERVICE_H

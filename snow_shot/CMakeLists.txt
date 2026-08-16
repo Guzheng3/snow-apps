@@ -628,6 +628,7 @@ set(PROJECT_HEADERS
     include/snow_shot/presentation/screenshotselectionshadowrenderer.h
     include/snow_shot/presentation/screenshotcolorpickercontroller.h
     include/snow_shot/presentation/screenshotcolorpickerwidget.h
+    include/snow_shot/presentation/screenshotcursornavigator.h
     include/snow_shot/presentation/screenshotcontroller.h
     include/snow_shot/presentation/screenshotdefaultstyles.h
     include/snow_shot/presentation/screenshotdisplayconfigurationobserver.h
@@ -746,6 +747,7 @@ set(PROJECT_CXX_SOURCES
     src/presentation/services/screenshotimagefileservice.cpp
     src/presentation/tools/screenshotfloatingtoolpalettenative.cpp
     src/presentation/tools/screenshotfloatingtoolpalettewindow.cpp
+    src/presentation/core/screenshotcursornavigator.cpp
     src/presentation/core/screenshotgeometry.cpp
     src/presentation/core/screenshotintelligentselectionmodel.cpp
     src/presentation/core/screenshotinteractionstate.cpp
@@ -1017,6 +1019,9 @@ if(SNOW_SHOT_BUILD_TESTS)
 
     add_executable(snow-shot-screenshot-result-geometry-tests
         tests/screenshot_result_geometry_tests.cpp
+        include/snow_shot/presentation/screenshotcursornavigator.h
+        include/snow_shot/presentation/screenshotdisplaysession.h
+        src/presentation/core/screenshotcursornavigator.cpp
         src/presentation/core/screenshotgeometry.cpp
     )
     target_include_directories(snow-shot-screenshot-result-geometry-tests PRIVATE

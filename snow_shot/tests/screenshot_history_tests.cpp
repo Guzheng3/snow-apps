@@ -1614,6 +1614,7 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
     ScreenshotInteractionState interaction;
     interaction.confirmSelection();
     QWidget shortcutWindow;
+    QWidget samplingToolbar;
     snow_shot::presentation::WindowShortcutManager shortcutManager;
     shortcutManager.addScopeWindow(&shortcutWindow);
 
@@ -1657,18 +1658,22 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
     int undoActivations = 0;
     int redoActivations = 0;
     bool cursorMoveHandles = true;
-    QVector<QPoint> colorPickerMoves;
+    bool localShortcutInputAllowed = true;
+    QVector<QPoint> cursorMoves;
     ScreenshotOverlayInputActions actions;
+    actions.localShortcutInputAllowed = [&localShortcutInputAllowed]() {
+        return localShortcutInputAllowed;
+    };
     actions.activateMoveTool = [&interaction, &moveToolActivations]() {
         ++moveToolActivations;
         interaction.setMoveTool(true, false);
         return true;
     };
-    actions.moveColorPickerCursor = [&colorPickerMoves, &cursorMoveHandles](int dx, int dy) {
+    actions.moveCursorBy = [&cursorMoves, &cursorMoveHandles](const QPoint& delta) {
         if (!cursorMoveHandles) {
             return false;
         }
-        colorPickerMoves.push_back(QPoint(dx, dy));
+        cursorMoves.push_back(delta);
         return true;
     };
     actions.activateDrawingShortcut = [&drawingToolActivations](const QString& toolId) {
@@ -1704,11 +1709,28 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
     ScreenshotOverlayShortcutController shortcutController(
         shortcutManager, handler, interaction, intelligent, actions);
 
+    interaction.setCanvasTool(ScreenshotActiveTool::Watermark);
+    localShortcutInputAllowed = false;
+    require(!dispatchShortcut(shortcutWindow, Qt::Key_W) && cursorMoves.isEmpty(),
+            "focused color-editor input must suppress ordinary cursor shortcuts");
+    handler.armCanvasColorSampling();
+    shortcutManager.addScopeWindow(&samplingToolbar);
+    require(dispatchShortcut(samplingToolbar, Qt::Key_W) &&
+                cursorMoves == QVector<QPoint>{QPoint(0, -1)},
+            "an armed canvas color sampler must route cursor movement from its floating toolbar "
+            "independently of the active drawing tool and focused color editor");
+    handler.cancelCanvasColorSampling();
+    shortcutManager.removeScopeWindow(&samplingToolbar);
+    require(!dispatchShortcut(samplingToolbar, Qt::Key_W) && cursorMoves.size() == 1,
+            "the floating toolbar must leave cursor-shortcut scope after canvas sampling");
+    cursorMoves.clear();
+    localShortcutInputAllowed = true;
+
     interaction.setCanvasTool(ScreenshotActiveTool::Shape);
     require(dispatchShortcut(shortcutWindow, Qt::Key_W),
           "cursor shortcut was not handled in the drawing tool");
   require(drawingToolActivations == 0 &&
-              colorPickerMoves == QVector<QPoint>{QPoint(0, -1)},
+              cursorMoves == QVector<QPoint>{QPoint(0, -1)},
           "drawing-tool cursor movement must use the higher-priority "
           "screenshot shortcut");
 
@@ -1729,16 +1751,16 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
     require(dispatchShortcut(shortcutWindow, Qt::Key_W) &&
                 dispatchShortcut(shortcutWindow, Qt::Key_Up),
             "default cursor-up shortcuts were not handled");
-  require(colorPickerMoves ==
+  require(cursorMoves ==
               QVector<QPoint>{QPoint(0, -1), QPoint(0, -1), QPoint(0, -1)},
-            "W and Up must move the color-picker cursor up by one pixel");
+            "W and Up must move the cursor up by one pixel");
   require(drawingToolActivations == 0,
           "higher-priority screenshot shortcut must win a cross-category "
           "collision in Move mode");
 
   cursorMoveHandles = false;
   require(dispatchShortcut(shortcutWindow, Qt::Key_W) &&
-              drawingToolActivations == 1 && colorPickerMoves.size() == 3,
+              drawingToolActivations == 1 && cursorMoves.size() == 3,
           "declining screenshot shortcut must fall through to the drawing "
           "shortcut");
     cursorMoveHandles = true;
@@ -1746,13 +1768,13 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
     require(shortcutSettings.setMoveCursorUp({QStringLiteral("Ctrl+Alt+K")}),
             "failed to customize the cursor-up shortcut");
     dispatchShortcut(shortcutWindow, Qt::Key_W);
-  require(drawingToolActivations == 2 && colorPickerMoves.size() == 3,
+  require(drawingToolActivations == 2 && cursorMoves.size() == 3,
           "removed screenshot shortcut must fall through to the colliding "
           "drawing shortcut");
   require(
       dispatchShortcut(shortcutWindow, Qt::Key_K,
                              Qt::ControlModifier | Qt::AltModifier) &&
-                colorPickerMoves.constLast() == QPoint(0, -1),
+                cursorMoves.constLast() == QPoint(0, -1),
             "customized cursor shortcut must take effect without restarting capture");
 
     require(shortcutSettings.setMoveTool({QStringLiteral("Ctrl+Alt+M")}),
@@ -1793,10 +1815,10 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
             "failed to restore screenshot shortcuts after input test");
     require(drawingShortcutSettings.setAllShortcutsAtomic(originalDrawingShortcuts),
             "failed to restore drawing shortcuts after input test");
-    colorPickerMoves.clear();
+    cursorMoves.clear();
     require(dispatchShortcut(shortcutWindow, Qt::Key_Up),
             "restored cursor shortcut was not handled");
-    require(colorPickerMoves == QVector<QPoint>{QPoint(0, -1)},
+    require(cursorMoves == QVector<QPoint>{QPoint(0, -1)},
             "restored cursor shortcut must use the persisted configuration");
 }
 
@@ -1814,8 +1836,8 @@ void intelligentSelectionSupportsCursorMovementShortcuts() {
 
     QVector<QPoint> cursorMoves;
     ScreenshotOverlayInputActions actions;
-    actions.moveColorPickerCursor = [&cursorMoves](int dx, int dy) {
-        cursorMoves.push_back(QPoint(dx, dy));
+    actions.moveCursorBy = [&cursorMoves](const QPoint& delta) {
+        cursorMoves.push_back(delta);
         return true;
     };
     ScreenshotOverlayInputHandler handler({
@@ -1846,6 +1868,35 @@ void intelligentSelectionSupportsCursorMovementShortcuts() {
                                QPoint(1, 0),  QPoint(1, 0),  QPoint(1, 0),
                            },
             "configured cursor shortcuts must move in every direction and auto-repeat");
+}
+
+void cursorMovementEligibilityFollowsInteractionState() {
+    ScreenshotInteractionState interaction;
+    require(!interaction.cursorMovementEnabled(),
+            "an inactive screenshot must not enable cursor movement");
+
+    interaction.enterOverlayVisible(true);
+    require(interaction.cursorMovementEnabled(),
+            "the Move tool must enable cursor movement during selection");
+
+    interaction.setCanvasTool(ScreenshotActiveTool::Shape);
+    require(interaction.cursorMovementEnabled(),
+            "a drawing tool must enable cursor movement while editing");
+
+    const ScreenshotActiveTool unsupportedTools[] = {
+        ScreenshotActiveTool::Eraser,    ScreenshotActiveTool::Spotlight,
+        ScreenshotActiveTool::Watermark, ScreenshotActiveTool::Ocr,
+        ScreenshotActiveTool::Table,     ScreenshotActiveTool::Qr,
+    };
+    for (ScreenshotActiveTool tool : unsupportedTools) {
+        interaction.setCanvasTool(tool);
+        require(!interaction.cursorMovementEnabled(),
+                "a cursor-ineligible tool enabled movement shortcuts");
+    }
+
+    interaction.enterScrollingCapture();
+    require(!interaction.cursorMovementEnabled(),
+            "scrolling capture must not enable cursor movement");
 }
 
 void hiddenToolbarDisablesToolSwitchShortcutsDuringSelectionResize() {
@@ -2055,6 +2106,7 @@ int main(int argc, char** argv) {
         sharedShiftShortcutChoosesResizeOrColorFormat();
         configuredSelectionShortcutsRouteTabHistoryAndColorActions();
         intelligentSelectionSupportsCursorMovementShortcuts();
+        cursorMovementEligibilityFollowsInteractionState();
         configuredScreenshotShortcutsControlMoveAndCursorNavigation();
         hiddenToolbarDisablesToolSwitchShortcutsDuringSelectionResize();
         storage::ApplicationStorage::instance().shutdown();
@@ -2096,6 +2148,7 @@ int main(int argc, char** argv) {
     sharedShiftShortcutChoosesResizeOrColorFormat();
     configuredSelectionShortcutsRouteTabHistoryAndColorActions();
     intelligentSelectionSupportsCursorMovementShortcuts();
+    cursorMovementEligibilityFollowsInteractionState();
     configuredScreenshotShortcutsControlMoveAndCursorNavigation();
     hiddenToolbarDisablesToolSwitchShortcutsDuringSelectionResize();
     canvasColorSamplingConsumesOneCanvasClick();

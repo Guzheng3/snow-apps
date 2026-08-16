@@ -21,13 +21,6 @@ bool recognitionTool(ScreenshotActiveTool tool) {
            tool == ScreenshotActiveTool::Qr;
 }
 
-bool drawingToolSupportsCursorMovement(ScreenshotActiveTool tool) {
-  return tool != ScreenshotActiveTool::Move &&
-         tool != ScreenshotActiveTool::Eraser &&
-         tool != ScreenshotActiveTool::Spotlight &&
-         tool != ScreenshotActiveTool::Watermark && !recognitionTool(tool);
-}
-
 QList<QKeyCombination> anyModifierCombinations(Qt::Key key) {
     QList<QKeyCombination> combinations;
     constexpr Qt::KeyboardModifier modifiers[] = {
@@ -112,9 +105,10 @@ struct ScreenshotOverlayShortcutController::Impl {
     }
 
     [[nodiscard]] bool cursorMovementShortcutState() const {
-        return (interaction.selecting() || interaction.movingSelection() ||
-                interaction.editing()) &&
-               actions.localShortcutInputAllowed();
+        if (inputHandler.canvasColorSamplingActive()) {
+            return true;
+        }
+        return interaction.cursorMovementEnabled() && actions.localShortcutInputAllowed();
     }
 
     bool navigateHistory(bool previous) {
@@ -248,10 +242,7 @@ struct ScreenshotOverlayShortcutController::Impl {
                     return actions.mainToolbarVisible() && screenshotShortcutState();
                 }
                 if (actionId.startsWith(QStringLiteral("move_cursor_"))) {
-                    return cursorMovementShortcutState() &&
-                           (interaction.moveToolActive() ||
-                            (interaction.editing() &&
-                             drawingToolSupportsCursorMovement(interaction.activeTool())));
+                    return cursorMovementShortcutState();
                 }
                 return false;
             };
@@ -260,16 +251,16 @@ struct ScreenshotOverlayShortcutController::Impl {
                     return actions.activateMoveTool();
                 }
                 if (actionId == QStringLiteral("move_cursor_up")) {
-                    return actions.moveColorPickerCursor(0, -1);
+                    return actions.moveCursorBy(QPoint(0, -1));
                 }
                 if (actionId == QStringLiteral("move_cursor_down")) {
-                    return actions.moveColorPickerCursor(0, 1);
+                    return actions.moveCursorBy(QPoint(0, 1));
                 }
                 if (actionId == QStringLiteral("move_cursor_left")) {
-                    return actions.moveColorPickerCursor(-1, 0);
+                    return actions.moveCursorBy(QPoint(-1, 0));
                 }
                 if (actionId == QStringLiteral("move_cursor_right")) {
-                    return actions.moveColorPickerCursor(1, 0);
+                    return actions.moveCursorBy(QPoint(1, 0));
                 }
                 if (actionId == QStringLiteral("move_entire_selection")) {
                     return inputHandler.activateMoveEntireSelectionShortcut();

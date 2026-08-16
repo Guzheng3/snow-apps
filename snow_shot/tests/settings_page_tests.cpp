@@ -1876,6 +1876,10 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
         quick.findChild<ShortcutKeyRow*>(QStringLiteral("settings-item-quick-screenshot"));
     auto* screenshotDelay =
         quick.findChild<ShortcutKeyRow*>(QStringLiteral("settings-item-quick-screenshot-delay"));
+    auto* screenshotDelayTitle = screenshotDelay != nullptr
+                                     ? screenshotDelay->findChild<QLabel*>(
+                                           QStringLiteral("delayTitleLabel"))
+                                     : nullptr;
     auto* trayScreenshotDelay = functionPage.findChild<adqt::widgets::AdCheckbox*>(
         QStringLiteral("settings-tray-menu-option-quick.screenshot-delay"));
     auto* trayRecordingToggle = functionPage.findChild<adqt::widgets::AdCheckbox*>(
@@ -1890,8 +1894,10 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
         }
     }
     require(screenshot != nullptr && screenshotDelay != nullptr &&
+                screenshotDelayTitle != nullptr &&
                 screenshotDelay->delaySeconds() == 3 && delayTitleIsRendered &&
-                screenshotDelay->cursor().shape() == Qt::SplitVCursor &&
+                screenshotDelay->cursor().shape() == Qt::PointingHandCursor &&
+                screenshotDelayTitle->cursor().shape() == Qt::SplitVCursor &&
                 trayScreenshotDelay != nullptr &&
                 trayScreenshotDelay->text() == QStringLiteral("Delay 3s to Execute") &&
                 trayRecordingToggle != nullptr &&
@@ -1900,10 +1906,10 @@ void generatedPagesRenderEveryItemTypeAndResynchronize() {
             "shortcut and tray surfaces must render the same canonical action titles");
 
     QWheelEvent increaseDelay(
-        QPointF(screenshotDelay->rect().center()),
-        QPointF(screenshotDelay->mapToGlobal(screenshotDelay->rect().center())), QPoint(),
-        QPoint(0, 120), Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
-    QCoreApplication::sendEvent(screenshotDelay, &increaseDelay);
+        QPointF(screenshotDelayTitle->rect().center()),
+        QPointF(screenshotDelayTitle->mapToGlobal(screenshotDelayTitle->rect().center())),
+        QPoint(), QPoint(0, 120), Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+    QCoreApplication::sendEvent(screenshotDelayTitle, &increaseDelay);
     require(screenshotDelay->delaySeconds() == 4 &&
                 bindings.integerValue(settings::SettingsIntegerBinding::ScreenshotDelaySeconds) ==
                     4 &&
@@ -2285,6 +2291,58 @@ void generatedSettingsPagesHaveNoSyntheticBottomSpace() {
     }
 }
 
+void generatedSettingsRowsUseTheirWidthAwareNaturalHeight() {
+    const auto& catalog = settings::builtInSettingsCatalog();
+    const auto* definition = catalog.page(QStringLiteral("storage-and-privacy"));
+    require(definition != nullptr,
+            "width-aware row geometry test requires the Storage and Privacy page");
+
+    FakeRuntimeBindings bindings;
+    SettingsPageWidget page(catalog, definition->id, bindings);
+    page.resize(720, 260);
+    page.show();
+    flushEvents();
+    flushEvents();
+
+    auto* pageContainer = page.findChild<PageContainerWidget*>(
+        QStringLiteral("settings-container-storage-and-privacy"));
+    QWidget* content = pageContainer != nullptr ? pageContainer->contentWidget() : nullptr;
+    require(content != nullptr && content->hasHeightForWidth() &&
+                content->height() == content->heightForWidth(content->width()),
+            "fitted settings content must use its natural height at the viewport width");
+
+    for (const settings::SettingsSectionDefinition& section : definition->sections) {
+        if (section.itemLayout == settings::SettingsSectionItemLayout::TwoColumnGrid ||
+            section.items.size() < 2) {
+            continue;
+        }
+
+        auto* list = page.findChild<QWidget*>(settings::generatedObjectName(
+            QStringLiteral("settings-section-list"),
+            QStringLiteral("%1-%2").arg(definition->id, section.id)));
+        auto* layout = list != nullptr ? qobject_cast<QVBoxLayout*>(list->layout()) : nullptr;
+        require(layout != nullptr && layout->count() == section.items.size() &&
+                    list->hasHeightForWidth() &&
+                    list->height() == list->heightForWidth(list->width()),
+                "generated settings sections must use their natural height at the fitted width");
+
+        for (int itemIndex = 0; itemIndex < layout->count(); ++itemIndex) {
+            QWidget* current = layout->itemAt(itemIndex)->widget();
+            require(current != nullptr && current->hasHeightForWidth() &&
+                        current->height() == current->heightForWidth(current->width()),
+                    "generated setting rows must not retain a size hint from another width");
+            if (itemIndex == 0) {
+                continue;
+            }
+            QWidget* previous = layout->itemAt(itemIndex - 1)->widget();
+            const int effectiveGap =
+                current->geometry().top() - previous->geometry().bottom() - 1;
+            require(effectiveGap == layout->spacing(),
+                    "generated setting rows must keep the section's declared spacing");
+        }
+    }
+}
+
 void sectionTabsAndScrollingStaySynchronized() {
     const auto& catalog = settings::builtInSettingsCatalog();
     const auto* pageDefinition = catalog.page(QStringLiteral("storage-and-privacy"));
@@ -2519,6 +2577,7 @@ int main(int argc, char** argv) {
     }
     if (settingsLayoutOnly) {
         generatedSettingsPagesHaveNoSyntheticBottomSpace();
+        generatedSettingsRowsUseTheirWidthAwareNaturalHeight();
         sectionTabsAndScrollingStaySynchronized();
         snow_shot::storage::ApplicationStorage::instance().shutdown();
         return 0;
@@ -2542,6 +2601,7 @@ int main(int argc, char** argv) {
     screenshotHistoryEmptyToPopulatedGeometryIsStable();
     catalogExpansionUpdatesAllConsumers();
     generatedSettingsPagesHaveNoSyntheticBottomSpace();
+    generatedSettingsRowsUseTheirWidthAwareNaturalHeight();
     sectionTabsAndScrollingStaySynchronized();
     drawingToolbarEditorPersistsDropsAndRestoresRejectedChanges();
 

@@ -5,6 +5,12 @@ bool recognitionTool(ScreenshotActiveTool tool) {
     return tool == ScreenshotActiveTool::Ocr || tool == ScreenshotActiveTool::Table ||
            tool == ScreenshotActiveTool::Qr;
 }
+
+bool drawingToolSupportsCursorMovement(ScreenshotActiveTool tool) {
+    return tool != ScreenshotActiveTool::Move && tool != ScreenshotActiveTool::Eraser &&
+           tool != ScreenshotActiveTool::Spotlight && tool != ScreenshotActiveTool::Watermark &&
+           !recognitionTool(tool);
+}
 } // namespace
 
 void ScreenshotInteractionState::reset() {
@@ -172,6 +178,13 @@ bool ScreenshotInteractionState::scrollingCapture() const {
 
 bool ScreenshotInteractionState::selecting() const {
     return intelligentSelecting() || manualSelecting();
+}
+
+bool ScreenshotInteractionState::cursorMovementEnabled() const {
+    if (!selecting() && !movingSelection() && !editing()) {
+        return false;
+    }
+    return moveToolActive() || (editing() && drawingToolSupportsCursorMovement(m_activeTool));
 }
 
 bool ScreenshotInteractionState::selectionToolbarMode() const {

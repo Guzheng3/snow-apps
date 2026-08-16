@@ -1392,8 +1392,10 @@ struct ScreenshotScrollingCaptureController::Impl {
              callback = std::move(callback)]() mutable {
                 auto payload = std::make_shared<ScreenshotClipboardPayload>();
                 if (!target.isNull()) {
-                    *payload = ScreenshotClipboardService::prepare(ScreenshotClipboardPixelSource(
-                        target->trimmedOutput(trim.top, trim.bottom)));
+                    *payload = ScreenshotClipboardService::prepare(
+                        ScreenshotClipboardPixelSource(
+                            target->trimmedOutput(trim.top, trim.bottom)),
+                        ScreenshotClipboardFormatMode::CompatibleDib);
                 }
                 if (receiver.isNull()) {
                     return;

@@ -36,6 +36,7 @@ class ScreenshotPinnedEditController final : public QObject {
     ~ScreenshotPinnedEditController() override;
 
     bool editMode() const;
+    [[nodiscard]] bool canvasColorSamplingActive() const;
     ScreenshotFloatingToolPaletteWindow* toolbarWindow() const;
     ScreenshotToolPaletteHost* toolbarHost() const;
     void setEditMode(bool enabled);

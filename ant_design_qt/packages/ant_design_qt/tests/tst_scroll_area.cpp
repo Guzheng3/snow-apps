@@ -31,6 +31,19 @@ class TallerMinimumHintContent final : public QWidget {
   QWidget* secondRow = nullptr;
 };
 
+class WidthAwareContent final : public QWidget {
+ public:
+  WidthAwareContent() {
+    QSizePolicy policy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    policy.setHeightForWidth(true);
+    setSizePolicy(policy);
+  }
+
+  QSize sizeHint() const override { return QSize(240, 180); }
+  QSize minimumSizeHint() const override { return QSize(80, 220); }
+  int heightForWidth(int width) const override { return width >= 300 ? 80 : 140; }
+};
+
 }  // namespace
 
 class ScrollAreaTest final : public QObject {
@@ -41,6 +54,7 @@ class ScrollAreaTest final : public QObject {
   void embeddedHorizontalScrollBarKeepsAStableExtent();
   void compactScrollBarBoundsItsMinimumSliderLength();
   void fitToWidthDoesNotStretchToTheMinimumHintHeight();
+  void fitToWidthUsesTheHeightForTheFittedWidth();
 };
 
 void ScrollAreaTest::horizontalOverlayMirrorsTheNativeScrollRange() {
@@ -135,6 +149,28 @@ void ScrollAreaTest::fitToWidthDoesNotStretchToTheMinimumHintHeight() {
   area.setFitToWidth(false);
   QCoreApplication::processEvents();
   QCOMPARE(content->height(), content->minimumSizeHint().height());
+}
+
+void ScrollAreaTest::fitToWidthUsesTheHeightForTheFittedWidth() {
+  adqt::widgets::AdScrollArea area;
+  area.resize(320, 100);
+  area.setFitToWidth(true);
+
+  auto* content = new WidthAwareContent;
+  area.setContentWidget(content);
+  area.show();
+  QCoreApplication::processEvents();
+
+  QVERIFY(content->hasHeightForWidth());
+  QCOMPARE(content->width(), area.viewport()->width());
+  QCOMPARE(content->height(), content->heightForWidth(content->width()));
+  QVERIFY(content->height() < content->sizeHint().height());
+
+  area.resize(240, 100);
+  QCoreApplication::processEvents();
+  QCOMPARE(content->width(), area.viewport()->width());
+  QCOMPARE(content->height(), content->heightForWidth(content->width()));
+  QVERIFY(content->height() > 80);
 }
 
 QTEST_MAIN(ScrollAreaTest)

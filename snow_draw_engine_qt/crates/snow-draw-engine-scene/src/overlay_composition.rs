@@ -276,7 +276,7 @@ fn append_selection_overlay_items(
         selection_handle_rect(rotation_center, handle_size, 0.0, true, zoom),
     )));
 
-    if let Some(rect) = single_rect.filter(|rect| !rect.is_highlight() && !rect.is_spotlight()) {
+    if let Some(rect) = single_rect.filter(|rect| rect.supports_corner_radius()) {
         for corner in Corner::ALL {
             let center = rect_local_to_canvas(
                 rect.center,
@@ -908,6 +908,39 @@ mod tests {
             OverlayDisplayItem::Rectangle(rect)
                 if rect.kind == UiShapeKind::SelectionCornerRadiusHandle
         )));
+    }
+
+    #[test]
+    fn selected_ellipse_and_diamond_hide_corner_radius_handles() {
+        for shape in [
+            snow_draw_engine_document::HighlightShape::Ellipse,
+            snow_draw_engine_document::HighlightShape::Diamond,
+        ] {
+            let mut selected_rect = rect(100.0, 40.0);
+            selected_rect.highlight_shape = shape;
+            let presentation = EditorPresentationState {
+                selection_bounds: Some(SelectionBounds {
+                    center: selected_rect.center,
+                    width: selected_rect.width,
+                    height: selected_rect.height,
+                    rotation: selected_rect.rotation,
+                }),
+                selection_elements: vec![SelectionRectState {
+                    id: element_id(1),
+                    rect: selected_rect,
+                }],
+                selected_single_rect: Some(selected_rect),
+                ..EditorPresentationState::default()
+            };
+
+            let items = compose_overlay_items(SnapConfig::default(), &presentation, frame_view());
+
+            assert!(!items.iter().any(|item| matches!(
+                item,
+                OverlayDisplayItem::Rectangle(rect)
+                    if rect.kind == UiShapeKind::SelectionCornerRadiusHandle
+            )));
+        }
     }
 
     #[test]

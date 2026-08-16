@@ -15,6 +15,20 @@
 #include <iostream>
 #include <utility>
 
+struct ScreenshotClipboardPayloadTestAccess {
+#if defined(Q_OS_WIN) || defined(_WIN32)
+    static bool hasDib(const ScreenshotClipboardPayload& payload) {
+        return payload.m_nativeHandle != nullptr &&
+               payload.m_formatMode == ScreenshotClipboardFormatMode::CompatibleDib;
+    }
+
+    static bool hasDibV5(const ScreenshotClipboardPayload& payload) {
+        return payload.m_nativeHandle != nullptr &&
+               payload.m_formatMode == ScreenshotClipboardFormatMode::DibV5;
+    }
+#endif
+};
+
 namespace {
 void require(bool condition, const char* message) {
     if (!condition) {
@@ -141,6 +155,12 @@ void directSourceKeepsFullWgcFrameForResultAndClipboard() {
         },
         [](ScreenshotSelectionClipboardResult result) {
             require(result.isValid(), "clipboard export did not produce a valid payload");
+#if defined(Q_OS_WIN) || defined(_WIN32)
+            require(ScreenshotClipboardPayloadTestAccess::hasDib(result.payload),
+                    "plain clipboard export did not prepare CF_DIB");
+            require(!ScreenshotClipboardPayloadTestAccess::hasDibV5(result.payload),
+                    "plain clipboard export unexpectedly prepared CF_DIBV5");
+#endif
             return std::move(result.image);
         });
 
@@ -151,11 +171,41 @@ void directSourceKeepsFullWgcFrameForResultAndClipboard() {
     require(fixture.displaySnapshot() == displayBefore,
             "clipboard export modified the display snapshot retained for history");
 }
+
+void styledClipboardResultRetainsDibV5() {
+    ExportFixture fixture;
+    require(fixture.isValid(), "styled export fixture could not initialize the canvas runtime");
+
+    const QRect visibleSelection(12, 8, 37, 29);
+    const ScreenshotResultStyle style{8, 0, QColor(0, 0, 0, 180)};
+    const QImage directSource = patternedImage(QSize(64, 48), 17);
+    fixture.service().setNextSelectionSourceImage(directSource);
+
+    const QImage resultImage = waitForResult(
+        [&](QObject* receiver, auto callback) {
+            return fixture.service().requestSelectionClipboard(visibleSelection, style, receiver,
+                                                               std::move(callback));
+        },
+        [](ScreenshotSelectionClipboardResult result) {
+            require(result.isValid(), "styled clipboard export did not produce a valid payload");
+#if defined(Q_OS_WIN) || defined(_WIN32)
+            require(!ScreenshotClipboardPayloadTestAccess::hasDib(result.payload),
+                    "styled clipboard export unexpectedly prepared CF_DIB");
+            require(ScreenshotClipboardPayloadTestAccess::hasDibV5(result.payload),
+                    "styled clipboard export did not preserve CF_DIBV5");
+#endif
+            return std::move(result.image);
+        });
+    require(!resultImage.isNull(), "styled clipboard export produced no image");
+    require(resultImage.pixelColor(0, 0).alpha() == 0,
+            "styled clipboard export did not retain rounded-corner transparency");
+}
 } // namespace
 
 int main(int argc, char** argv) {
     QApplication app(argc, argv);
     directSourceKeepsFullWgcFrameForResultAndClipboard();
+    styledClipboardResultRetainsDibV5();
     std::cout << "All screenshot export service tests passed\n";
     return EXIT_SUCCESS;
 }

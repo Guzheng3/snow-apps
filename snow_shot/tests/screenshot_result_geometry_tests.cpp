@@ -1,7 +1,12 @@
+#include "snow_shot/presentation/screenshotcursornavigator.h"
+#include "snow_shot/presentation/screenshotdisplaysession.h"
 #include "snow_shot/presentation/screenshotgeometry.h"
+
+#include <QVector>
 
 #include <cstdlib>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 
 namespace {
@@ -112,6 +117,81 @@ void cursorPanelPlacementRespectsOffsetMonitorBounds() {
     require(clamped == bounds.topLeft(),
             "an oversized cursor panel should clamp to an offset monitor origin");
 }
+
+ScreenshotDisplaySession capturedDesktopWithGap() {
+    ScreenshotDisplaySession displays;
+    CapturedDisplayModel left;
+    left.physicalRect = QRect(100, 200, 100, 80);
+    left.active = true;
+    displays.appendDisplay(left);
+
+    CapturedDisplayModel right;
+    right.physicalRect = QRect(220, 200, 100, 80);
+    right.active = true;
+    displays.appendDisplay(right);
+    return displays;
+}
+
+void cursorNudgesAlwaysStartFromTheLivePosition() {
+    ScreenshotDisplaySession displays = capturedDesktopWithGap();
+    ScreenshotGeometryMapper geometry;
+
+    QPoint livePosition(140, 230);
+    int readCount = 0;
+    QVector<QPoint> writes;
+    ScreenshotCursorNavigator navigator(
+        geometry, displays,
+        [&livePosition, &readCount]() -> std::optional<QPoint> {
+            ++readCount;
+            return livePosition;
+        },
+        [&livePosition, &writes](const QPoint& position) {
+            writes.push_back(position);
+            livePosition = position;
+            return true;
+        });
+
+    require(navigator.moveBy(QPoint(1, 0)) == QPoint(141, 230),
+            "the first nudge did not start from the live cursor position");
+
+    // Simulate mouse motion handled by the drawing canvas without reporting it
+    // to the navigator. The old color-picker cache failed this exact sequence.
+    livePosition = QPoint(170, 245);
+    require(navigator.moveBy(QPoint(0, -1)) == QPoint(170, 244) && readCount == 2 &&
+                writes == QVector<QPoint>{QPoint(141, 230), QPoint(170, 244)},
+            "a nudge reused a stale position after drawing-tool mouse motion");
+}
+
+void cursorNudgesRespectMonitorGapsAndAccessFailures() {
+    ScreenshotDisplaySession displays = capturedDesktopWithGap();
+    ScreenshotGeometryMapper geometry;
+
+    QPoint livePosition(199, 230);
+    int writeCount = 0;
+    ScreenshotCursorNavigator navigator(
+        geometry, displays, [&livePosition]() { return std::optional<QPoint>(livePosition); },
+        [&writeCount](const QPoint&) {
+            ++writeCount;
+            return true;
+        });
+    require(navigator.moveBy(QPoint(1, 0)) == QPoint(199, 230) && writeCount == 0,
+            "a nudge entered the uncaptured gap to the right of a display");
+    livePosition = QPoint(220, 230);
+    require(navigator.moveBy(QPoint(-1, 0)) == QPoint(220, 230) && writeCount == 0,
+            "a nudge entered the uncaptured gap to the left of a display");
+
+    ScreenshotCursorNavigator readFailure(
+        geometry, displays, []() -> std::optional<QPoint> { return std::nullopt; },
+        [](const QPoint&) { return true; });
+    require(!readFailure.moveBy(QPoint(1, 0)).has_value(),
+            "a failed cursor read was reported as a successful nudge");
+
+    ScreenshotCursorNavigator writeFailure(
+        geometry, displays, []() { return std::optional<QPoint>(QPoint(150, 230)); },
+        [](const QPoint&) { return false; });
+    require(!writeFailure.moveBy(QPoint(1, 0)).has_value(),
+            "a failed cursor write was reported as a successful nudge");
+}
 } // namespace
 
 int main() {
@@ -122,6 +202,8 @@ int main() {
         fullResolutionPlacementCentersWithoutFitting();
         cursorPanelPlacementUsesEveryAvailableQuadrant();
         cursorPanelPlacementRespectsOffsetMonitorBounds();
+        cursorNudgesAlwaysStartFromTheLivePosition();
+        cursorNudgesRespectMonitorGapsAndAccessFailures();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return EXIT_FAILURE;

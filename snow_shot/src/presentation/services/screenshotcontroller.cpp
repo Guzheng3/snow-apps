@@ -8,6 +8,7 @@
 #include "snow_shot/presentation/screenshotclipboardservice.h"
 #include "snow_shot/presentation/screenshotclipboardcontent.h"
 #include "snow_shot/presentation/screenshotcolorpickercontroller.h"
+#include "snow_shot/presentation/screenshotcursornavigator.h"
 #include "snow_shot/presentation/screenshotdisplayconfigurationobserver.h"
 #include "snow_shot/presentation/screenshotdefaultstyles.h"
 #include "snow_shot/presentation/screenshotdisplaysession.h"
@@ -261,7 +262,9 @@ struct ScreenshotController::Impl final : public ScreenshotToolbarCommandSink,
     void updateCanvasColorSamplingPreview(ScreenshotOverlayWindow* overlay,
                                           const QPointF& localPosition);
     void setCanvasColorSamplingCursor(bool enabled);
+    void setCanvasColorSamplingShortcutScope(bool enabled);
     void clearCanvasColorSampling();
+    [[nodiscard]] bool moveCursorBy(const QPoint& delta);
 
     void undoCanvasEdit() override;
     void redoCanvasEdit() override;
@@ -313,6 +316,7 @@ struct ScreenshotController::Impl final : public ScreenshotToolbarCommandSink,
     void copySelectionToClipboard() override;
     void copySelectionToClipboardWithSource(snow_shot::storage::CaptureHistorySource historySource);
     void saveImageForCopy(QImage image, quint64 generation, bool copyFileToClipboard,
+                          ScreenshotClipboardFormatMode clipboardFormat,
                           snow_shot::storage::CaptureHistorySource historySource,
                           std::shared_ptr<std::optional<ScreenshotHistoryEntry>> historyCandidate,
                           bool scrolling);
@@ -361,6 +365,7 @@ struct ScreenshotController::Impl final : public ScreenshotToolbarCommandSink,
     std::unique_ptr<ScreenshotSelectionExportUiServices> m_selectionExportUiServices;
     std::unique_ptr<ScreenshotSelectionExportWorkflow> m_selectionExportWorkflow;
     std::unique_ptr<ScreenshotSelectionEditWorkflow> m_selectionEditWorkflow;
+    std::unique_ptr<ScreenshotCursorNavigator> m_cursorNavigator;
     std::unique_ptr<ScreenshotColorPickerController> m_colorPickerController;
     std::unique_ptr<ScreenshotCanvasColorSamplerWindow> m_canvasColorSamplerWindow;
     std::unique_ptr<ScreenshotToolbarPresenter> m_toolbarPresenter;
@@ -633,8 +638,10 @@ void ScreenshotController::Impl::createPresentationInfrastructure() {
         m_displaySession, m_geometry, m_selection, [this]() {
             return m_overlayCoordinator != nullptr ? m_overlayCoordinator->toolbar() : nullptr;
         });
+    m_cursorNavigator =
+        std::make_unique<ScreenshotCursorNavigator>(m_geometry, m_displaySession);
     m_colorPickerController = std::make_unique<ScreenshotColorPickerController>(
-        *m_overlayCoordinator, m_geometry, m_displaySession);
+        *m_overlayCoordinator, m_geometry, m_displaySession, *m_cursorNavigator);
     m_canvasColorSamplerWindow = std::make_unique<ScreenshotCanvasColorSamplerWindow>();
     m_toolbarPresenter = std::make_unique<ScreenshotToolbarPresenter>(*m_overlayCoordinator,
                                                                       m_geometry, m_displaySession);
@@ -1065,10 +1072,7 @@ void ScreenshotController::Impl::createOverlayInputPipeline() {
             return m_colorPickerController->cycleFormat(
                 m_presentationServices->colorPickerContext());
         },
-        [this](int dx, int dy) {
-            return m_colorPickerController->moveCursor(
-                dx, dy, m_presentationServices->colorPickerContext());
-        },
+        [this](const QPoint& delta) { return moveCursorBy(delta); },
         [this]() { handleSelectionConfirmed(); },
         [this]() { return selectPreviousSelection(); },
         [this](ScreenshotActiveTool tool) { return activateToolForSelectionResize(tool); },
@@ -1076,6 +1080,7 @@ void ScreenshotController::Impl::createOverlayInputPipeline() {
             m_canvasColorSamplingTarget.clear();
             disconnect(m_canvasColorSamplingDestroyedConnection);
             m_canvasColorSamplingDestroyedConnection = {};
+            setCanvasColorSamplingShortcutScope(false);
             if (m_canvasColorSamplerWindow != nullptr) {
                 m_canvasColorSamplerWindow->endSampling();
             }
@@ -1086,6 +1091,7 @@ void ScreenshotController::Impl::createOverlayInputPipeline() {
             m_canvasColorSamplingTarget.clear();
             disconnect(m_canvasColorSamplingDestroyedConnection);
             m_canvasColorSamplingDestroyedConnection = {};
+            setCanvasColorSamplingShortcutScope(false);
             if (m_canvasColorSamplerWindow != nullptr) {
                 m_canvasColorSamplerWindow->endSampling();
             }
@@ -1186,6 +1192,35 @@ void ScreenshotController::Impl::createOverlayInputPipeline() {
     m_overlayEventAdapter->setEventTargets(*m_overlayInputHandler, [this]() {
         m_presentationServices->raiseToolbarForCanvasInteraction();
     });
+}
+
+bool ScreenshotController::Impl::moveCursorBy(const QPoint& delta) {
+    const bool canvasColorSampling =
+        m_overlayInputHandler != nullptr && m_overlayInputHandler->canvasColorSamplingActive();
+    if (m_cursorNavigator == nullptr || m_colorPickerController == nullptr ||
+        m_presentationServices == nullptr ||
+        (!canvasColorSampling && !m_interaction.cursorMovementEnabled())) {
+        return false;
+    }
+
+    const ScreenshotColorPickerContext context = m_presentationServices->colorPickerContext();
+    if (!context.active) {
+        return false;
+    }
+
+    const std::optional<QPoint> position = m_cursorNavigator->moveBy(delta);
+    if (!position.has_value()) {
+        return false;
+    }
+
+    if (canvasColorSampling) {
+        if (ScreenshotOverlayWindow* overlay = overlayUnderCursor()) {
+            updateCanvasColorSamplingPreview(overlay, overlay->mapFromGlobal(QCursor::pos()));
+        }
+        return true;
+    }
+    m_colorPickerController->updateAfterCursorMove(position.value(), context);
+    return true;
 }
 
 void ScreenshotController::Impl::createToolbarCommands() {
@@ -2197,7 +2232,8 @@ void ScreenshotController::Impl::copySelectionToClipboardWithSource(
                         const ScreenshotImageRowSource source = snapshot.rowSource(
                             [&cancellation]() { return cancellation.isCancellationRequested(); });
                         auto payload = std::make_shared<ScreenshotClipboardPayload>(
-                            ScreenshotClipboardService::prepare(source));
+                            ScreenshotClipboardService::prepare(
+                                source, ScreenshotClipboardFormatMode::CompatibleDib));
                         if (!payload->isValid()) {
                             return ScreenshotExportTaskResult::failure(
                                 cancellation.isCancellationRequested()
@@ -2290,17 +2326,24 @@ void ScreenshotController::Impl::copySelectionToClipboardWithSource(
     const QPointer<ScreenshotController> receiver(&owner);
     if (materializeImage) {
         const ScreenshotResultStyle style{m_selection.cornerRadius(), m_selection.shadowWidth(),
-                                          m_selection.shadowColor()};
+                                           m_selection.shadowColor()};
+        const ScreenshotResultStyle normalizedStyle =
+            ScreenshotResultCompositor::normalizedStyle(style);
+        const ScreenshotClipboardFormatMode clipboardFormat =
+            normalizedStyle.cornerRadius == 0 && normalizedStyle.shadowWidth == 0
+                ? ScreenshotClipboardFormatMode::CompatibleDib
+                : ScreenshotClipboardFormatMode::DibV5;
         const bool scheduled = m_exportService->requestSelectionResult(
             m_selection.pixelSelection(), style, &owner,
-            [receiver, generation = *exportGeneration, copyFileToClipboard, historyCandidate,
-             historySource](QImage image) mutable {
+            [receiver, generation = *exportGeneration, copyFileToClipboard, clipboardFormat,
+             historyCandidate, historySource](QImage image) mutable {
                 if (receiver.isNull() || receiver->m_impl == nullptr ||
                     !receiver->m_impl->imageExportCurrent(generation)) {
                     return;
                 }
                 receiver->m_impl->saveImageForCopy(std::move(image), generation,
-                                                   copyFileToClipboard, historySource,
+                                                   copyFileToClipboard, clipboardFormat,
+                                                   historySource,
                                                    historyCandidate, false);
             });
         if (!scheduled) {
@@ -2362,6 +2405,7 @@ void ScreenshotController::Impl::copySelectionToClipboardWithSource(
 
 void ScreenshotController::Impl::saveImageForCopy(
     QImage image, quint64 generation, bool copyFileToClipboard,
+    ScreenshotClipboardFormatMode clipboardFormat,
     snow_shot::storage::CaptureHistorySource historySource,
     std::shared_ptr<std::optional<ScreenshotHistoryEntry>> historyCandidate, bool scrolling) {
     if (!scrolling && historyCandidate != nullptr && historyCandidate->has_value() &&
@@ -2417,7 +2461,8 @@ void ScreenshotController::Impl::saveImageForCopy(
     }
     m_exportJob = ScreenshotExportCoordinator::shared().submit(
         &owner, ScreenshotExportCoordinator::Priority::Foreground,
-        [copyFileToClipboard, outputDirectories, outputFormat, outputFilenameFormat,
+        [copyFileToClipboard, clipboardFormat, outputDirectories, outputFormat,
+         outputFilenameFormat,
          image = std::move(image)](const ScreenshotExportCancellation& cancellation) mutable {
             if (cancellation.isCancellationRequested() || image.isNull()) {
                 return ScreenshotExportTaskResult::failure(
@@ -2429,7 +2474,7 @@ void ScreenshotController::Impl::saveImageForCopy(
             }
             if (!copyFileToClipboard) {
                 auto payload = std::make_shared<ScreenshotClipboardPayload>(
-                    ScreenshotClipboardService::prepareImage(image));
+                    ScreenshotClipboardService::prepareImage(image, clipboardFormat));
                 if (!payload->isValid()) {
                     return ScreenshotExportTaskResult::failure(
                         ScreenshotExportFailureStage::Clipboard,
@@ -2606,7 +2651,8 @@ void ScreenshotController::Impl::saveScrollingSnapshotForCopy(
             }
             if (!copyFileToClipboard) {
                 auto payload = std::make_shared<ScreenshotClipboardPayload>(
-                    ScreenshotClipboardService::prepare(source));
+                    ScreenshotClipboardService::prepare(
+                        source, ScreenshotClipboardFormatMode::CompatibleDib));
                 if (!payload->isValid()) {
                     return ScreenshotExportTaskResult::failure(
                         ScreenshotExportFailureStage::Clipboard,
@@ -2980,6 +3026,21 @@ void ScreenshotController::Impl::setCanvasColorSamplingCursor(bool enabled) {
     }
 }
 
+void ScreenshotController::Impl::setCanvasColorSamplingShortcutScope(bool enabled) {
+    if (m_windowShortcutManager == nullptr || m_overlayCoordinator == nullptr) {
+        return;
+    }
+    ScreenshotToolbarWindow* toolbar = m_overlayCoordinator->toolbar();
+    if (toolbar == nullptr) {
+        return;
+    }
+    if (enabled) {
+        m_windowShortcutManager->addScopeWindow(toolbar);
+    } else {
+        m_windowShortcutManager->removeScopeWindow(toolbar);
+    }
+}
+
 void ScreenshotController::Impl::clearCanvasColorSampling() {
     m_canvasColorSamplingTarget.clear();
     disconnect(m_canvasColorSamplingDestroyedConnection);
@@ -2990,6 +3051,7 @@ void ScreenshotController::Impl::clearCanvasColorSampling() {
     if (m_canvasColorSamplerWindow != nullptr) {
         m_canvasColorSamplerWindow->endSampling();
     }
+    setCanvasColorSamplingShortcutScope(false);
     setCanvasColorSamplingCursor(false);
 }
 
@@ -3006,6 +3068,7 @@ void ScreenshotController::Impl::beginCanvasColorSampling(
     if (m_canvasColorSamplerWindow != nullptr) {
         m_canvasColorSamplerWindow->beginSampling();
     }
+    setCanvasColorSamplingShortcutScope(true);
     setCanvasColorSamplingCursor(true);
     m_overlayInputHandler->armCanvasColorSampling();
     if (ScreenshotOverlayWindow* overlay = overlayUnderCursor()) {

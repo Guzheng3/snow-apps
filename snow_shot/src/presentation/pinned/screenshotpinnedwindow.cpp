@@ -597,8 +597,10 @@ void ScreenshotPinnedWindow::registerWindowShortcuts() {
         binding.priority = ShortcutManager::StandardPriority::ScreenshotShortcut;
         binding.autoRepeat = true;
         binding.canActivate = [this, localCommandsAllowed](const auto& context) {
+            const bool canvasColorSampling =
+                m_editController != nullptr && m_editController->canvasColorSamplingActive();
             return cursorMovementEnabled() &&
-                   (m_windowDragActive || localCommandsAllowed(context));
+                   (m_windowDragActive || canvasColorSampling || localCommandsAllowed(context));
         };
         binding.activate = [this, delta = movement.delta](const auto&) {
             return moveCursorBy(delta);

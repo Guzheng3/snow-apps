@@ -234,6 +234,10 @@ bool ScreenshotPinnedEditController::editMode() const {
     return m_editMode;
 }
 
+bool ScreenshotPinnedEditController::canvasColorSamplingActive() const {
+    return !m_canvasColorSamplingTarget.isNull();
+}
+
 bool ScreenshotPinnedEditController::eventFilter(QObject* watched, QEvent* event) {
     if (watched != &m_canvas || event == nullptr || !m_editMode) {
         return QObject::eventFilter(watched, event);
@@ -677,6 +681,9 @@ void ScreenshotPinnedEditController::beginCanvasColorSampling(
     if (m_canvasColorSamplerWindow != nullptr) {
         m_canvasColorSamplerWindow->beginSampling();
     }
+    if (m_toolbarWindow != nullptr) {
+        m_shortcutManager.addScopeWindow(m_toolbarWindow);
+    }
     setCanvasColorSamplingCursor(true);
 
     const QPoint localPosition = m_canvas.mapFromGlobal(QCursor::pos());
@@ -689,6 +696,9 @@ void ScreenshotPinnedEditController::cancelCanvasColorSampling() {
     m_canvasColorSamplingTarget.clear();
     disconnect(m_canvasColorSamplingDestroyedConnection);
     m_canvasColorSamplingDestroyedConnection = {};
+    if (m_toolbarWindow != nullptr) {
+        m_shortcutManager.removeScopeWindow(m_toolbarWindow);
+    }
     if (m_canvasColorSamplerWindow != nullptr) {
         m_canvasColorSamplerWindow->endSampling();
     }

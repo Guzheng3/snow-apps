@@ -128,6 +128,80 @@ HWND clipboardOwnerWindow() {
     return owner;
 }
 
+HGLOBAL prepareDib(const ScreenshotClipboardPixelSource& source) {
+    if (!source.isValid()) {
+        SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.failure.invalid_image", 1);
+        return nullptr;
+    }
+
+    const QImage& sourceImage = source.image();
+    QImage image;
+    if (source.format() == ScreenshotClipboardPixelSource::Format::Argb32 ||
+        source.format() == ScreenshotClipboardPixelSource::Format::Rgba8888) {
+        image = sourceImage;
+    } else {
+        image = sourceImage.convertToFormat(QImage::Format_ARGB32);
+    }
+
+    const quint64 stride = static_cast<quint64>(image.width()) * 4U;
+    const quint64 pixelBytes = stride * static_cast<quint64>(image.height());
+    const quint64 totalBytes = sizeof(BITMAPINFOHEADER) + pixelBytes;
+    if (pixelBytes > std::numeric_limits<DWORD>::max() ||
+        totalBytes > std::numeric_limits<SIZE_T>::max()) {
+        qWarning("Screenshot clipboard image is too large for CF_DIB");
+        return nullptr;
+    }
+
+    HGLOBAL allocation = GlobalAlloc(GMEM_MOVEABLE, static_cast<SIZE_T>(totalBytes));
+    if (allocation == nullptr) {
+        qWarning("Failed to allocate CF_DIB clipboard image");
+        return nullptr;
+    }
+    void* memory = GlobalLock(allocation);
+    if (memory == nullptr) {
+        GlobalFree(allocation);
+        qWarning("Failed to lock CF_DIB clipboard image");
+        return nullptr;
+    }
+
+    auto* header = static_cast<BITMAPINFOHEADER*>(memory);
+    std::memset(header, 0, sizeof(*header));
+    header->biSize = sizeof(BITMAPINFOHEADER);
+    header->biWidth = image.width();
+    header->biHeight = image.height();
+    header->biPlanes = 1;
+    header->biBitCount = 32;
+    header->biCompression = BI_RGB;
+    header->biSizeImage = static_cast<DWORD>(pixelBytes);
+
+    auto* destination = reinterpret_cast<uchar*>(header + 1);
+    if (source.format() == ScreenshotClipboardPixelSource::Format::Rgba8888) {
+        const auto* sourcePixels = image.constBits();
+        for (int row = 0; row < image.height(); ++row) {
+            const auto* sourceRow = sourcePixels + static_cast<quint64>(row) * image.bytesPerLine();
+            auto* destinationRow =
+                destination + static_cast<quint64>(image.height() - 1 - row) * stride;
+            for (int column = 0; column < image.width(); ++column) {
+                const auto* pixel = sourceRow + static_cast<std::size_t>(column) * 4U;
+                auto* output = destinationRow + static_cast<std::size_t>(column) * 4U;
+                output[0] = pixel[2];
+                output[1] = pixel[1];
+                output[2] = pixel[0];
+                output[3] = pixel[3];
+            }
+        }
+    } else {
+        for (int row = 0; row < image.height(); ++row) {
+            std::memcpy(
+                destination + static_cast<quint64>(image.height() - 1 - row) * stride,
+                image.constScanLine(row), static_cast<std::size_t>(stride));
+        }
+    }
+    GlobalUnlock(allocation);
+    SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.dib_prepared", 1);
+    return allocation;
+}
+
 HGLOBAL prepareDibV5(const ScreenshotClipboardPixelSource& source) {
     SNOW_SHOT_CLIPBOARD_PERF_SCOPE("clipboard.prepare_total");
     if (!source.isValid()) {
@@ -302,14 +376,76 @@ HGLOBAL prepareDibV5(const ScreenshotImageRowSource& source) {
     return allocation;
 }
 
-ClipboardPublishAttempt publishDibV5(void** handle) {
+HGLOBAL prepareDib(const ScreenshotImageRowSource& source) {
+    SNOW_SHOT_CLIPBOARD_PERF_SCOPE("clipboard.prepare_rows_dib");
+    if (!source.isValid()) {
+        return nullptr;
+    }
+    const quint64 stride = static_cast<quint64>(source.size.width()) * 4U;
+    const quint64 pixelBytes = stride * static_cast<quint64>(source.size.height());
+    const quint64 totalBytes = sizeof(BITMAPINFOHEADER) + pixelBytes;
+    if (pixelBytes > std::numeric_limits<DWORD>::max() ||
+        totalBytes > std::numeric_limits<SIZE_T>::max() ||
+        stride > static_cast<quint64>(std::numeric_limits<qsizetype>::max()) ||
+        pixelBytes > static_cast<quint64>(std::numeric_limits<qsizetype>::max())) {
+        return nullptr;
+    }
+
+    HGLOBAL allocation = GlobalAlloc(GMEM_MOVEABLE, static_cast<SIZE_T>(totalBytes));
+    if (allocation == nullptr) {
+        return nullptr;
+    }
+    void* memory = GlobalLock(allocation);
+    if (memory == nullptr) {
+        GlobalFree(allocation);
+        return nullptr;
+    }
+
+    auto* header = static_cast<BITMAPINFOHEADER*>(memory);
+    std::memset(header, 0, sizeof(*header));
+    header->biSize = sizeof(BITMAPINFOHEADER);
+    header->biWidth = source.size.width();
+    header->biHeight = source.size.height();
+    header->biPlanes = 1;
+    header->biBitCount = 32;
+    header->biCompression = BI_RGB;
+    header->biSizeImage = static_cast<DWORD>(pixelBytes);
+
+    auto* pixels = reinterpret_cast<uchar*>(header + 1);
+    const bool read = source.readRows(0, source.size.height(), static_cast<qsizetype>(stride),
+                                      pixels, static_cast<qsizetype>(pixelBytes));
+    if (read) {
+        for (quint64 offset = 0; offset < pixelBytes; offset += 4U) {
+            std::swap(pixels[offset], pixels[offset + 2U]);
+        }
+        for (int row = 0; row < source.size.height() / 2; ++row) {
+            auto* top = pixels + static_cast<quint64>(row) * stride;
+            auto* bottom =
+                pixels + static_cast<quint64>(source.size.height() - 1 - row) * stride;
+            std::swap_ranges(top, top + stride, bottom);
+        }
+    }
+    GlobalUnlock(allocation);
+    if (!read || (source.cancellationRequested && source.cancellationRequested())) {
+        GlobalFree(allocation);
+        return nullptr;
+    }
+    SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.dib_prepared", 1);
+    return allocation;
+}
+
+ClipboardPublishAttempt publishClipboardPayload(void** nativeHandle,
+                                                ScreenshotClipboardFormatMode formatMode) {
     SNOW_SHOT_CLIPBOARD_PERF_SCOPE("clipboard.publish_total");
-    if (handle == nullptr || *handle == nullptr) {
+    if (nativeHandle == nullptr || *nativeHandle == nullptr) {
         SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.failure.invalid_payload", 1);
         return {ScreenshotClipboardCommitFailure::InvalidPayload, ERROR_INVALID_DATA};
     }
 
-    const HGLOBAL allocation = static_cast<HGLOBAL>(*handle);
+    const UINT nativeFormat = formatMode == ScreenshotClipboardFormatMode::CompatibleDib
+                                  ? CF_DIB
+                                  : CF_DIBV5;
+    const HGLOBAL allocation = static_cast<HGLOBAL>(*nativeHandle);
     HWND owner = nullptr;
     {
         SNOW_SHOT_CLIPBOARD_PERF_SCOPE("clipboard.owner_window");
@@ -342,7 +478,7 @@ ClipboardPublishAttempt publishDibV5(void** handle) {
     bool published = false;
     if (emptied) {
         SNOW_SHOT_CLIPBOARD_PERF_SCOPE("clipboard.set_data");
-        published = SetClipboardData(CF_DIBV5, allocation) != nullptr;
+        published = SetClipboardData(nativeFormat, allocation) != nullptr;
         if (!published) {
             clipboardError = GetLastError();
         }
@@ -355,13 +491,14 @@ ClipboardPublishAttempt publishDibV5(void** handle) {
         SNOW_SHOT_CLIPBOARD_PERF_COUNTER(
             emptied ? "clipboard.failure.set_data" : "clipboard.failure.empty", 1);
         SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.last_error", clipboardError);
-        qWarning("Failed to publish CF_DIBV5 clipboard image");
+        qWarning("Failed to publish %s clipboard image",
+                 nativeFormat == CF_DIB ? "CF_DIB" : "CF_DIBV5");
         return {emptied ? ScreenshotClipboardCommitFailure::PublishFailed
                         : ScreenshotClipboardCommitFailure::ClearFailed,
                 clipboardError};
     }
 
-    *handle = nullptr;
+    *nativeHandle = nullptr;
     SNOW_SHOT_CLIPBOARD_PERF_COUNTER("clipboard.success", 1);
     return {};
 }
@@ -432,6 +569,7 @@ ScreenshotClipboardPayload::ScreenshotClipboardPayload(
     ScreenshotClipboardPayload&& other) noexcept {
 #if defined(Q_OS_WIN) || defined(_WIN32)
     m_nativeHandle = other.m_nativeHandle;
+    m_formatMode = other.m_formatMode;
     other.m_nativeHandle = nullptr;
 #else
     m_image = std::move(other.m_image);
@@ -446,6 +584,7 @@ ScreenshotClipboardPayload::operator=(ScreenshotClipboardPayload&& other) noexce
     reset();
 #if defined(Q_OS_WIN) || defined(_WIN32)
     m_nativeHandle = other.m_nativeHandle;
+    m_formatMode = other.m_formatMode;
     other.m_nativeHandle = nullptr;
 #else
     m_image = std::move(other.m_image);
@@ -462,16 +601,21 @@ bool ScreenshotClipboardPayload::isValid() const {
 }
 
 ScreenshotClipboardPayload
-ScreenshotClipboardService::prepare(ScreenshotClipboardPixelSource source) {
+ScreenshotClipboardService::prepare(ScreenshotClipboardPixelSource source,
+                                    ScreenshotClipboardFormatMode formatMode) {
     if (!source.isValid()) {
         qWarning("Ignoring null screenshot clipboard image");
         return {};
     }
 #if defined(Q_OS_WIN) || defined(_WIN32)
     ScreenshotClipboardPayload payload;
-    payload.m_nativeHandle = prepareDibV5(source);
+    payload.m_formatMode = formatMode;
+    payload.m_nativeHandle = formatMode == ScreenshotClipboardFormatMode::CompatibleDib
+                                 ? prepareDib(source)
+                                 : prepareDibV5(source);
     return payload;
 #else
+    Q_UNUSED(formatMode);
     ScreenshotClipboardPayload payload;
     payload.m_image = source.image();
     return payload;
@@ -479,15 +623,20 @@ ScreenshotClipboardService::prepare(ScreenshotClipboardPixelSource source) {
 }
 
 ScreenshotClipboardPayload
-ScreenshotClipboardService::prepare(const ScreenshotImageRowSource& source) {
+ScreenshotClipboardService::prepare(const ScreenshotImageRowSource& source,
+                                    ScreenshotClipboardFormatMode formatMode) {
     if (!source.isValid()) {
         return {};
     }
 #if defined(Q_OS_WIN) || defined(_WIN32)
     ScreenshotClipboardPayload payload;
-    payload.m_nativeHandle = prepareDibV5(source);
+    payload.m_formatMode = formatMode;
+    payload.m_nativeHandle = formatMode == ScreenshotClipboardFormatMode::CompatibleDib
+                                 ? prepareDib(source)
+                                 : prepareDibV5(source);
     return payload;
 #else
+    Q_UNUSED(formatMode);
     QImage image(source.size, QImage::Format_RGBA8888);
     if (image.isNull() || !source.readRows(0, image.height(), image.bytesPerLine(), image.bits(),
                                            image.sizeInBytes())) {
@@ -499,8 +648,10 @@ ScreenshotClipboardService::prepare(const ScreenshotImageRowSource& source) {
 #endif
 }
 
-ScreenshotClipboardPayload ScreenshotClipboardService::prepareImage(const QImage& image) {
-    return prepare(ScreenshotClipboardPixelSource(image));
+ScreenshotClipboardPayload
+ScreenshotClipboardService::prepareImage(const QImage& image,
+                                         ScreenshotClipboardFormatMode formatMode) {
+    return prepare(ScreenshotClipboardPixelSource(image), formatMode);
 }
 
 ScreenshotClipboardCommitHandle
@@ -517,7 +668,10 @@ ScreenshotClipboardService::commit(QClipboard* clipboard, QObject* receiver,
     auto sharedPayload = std::make_shared<ScreenshotClipboardPayload>(std::move(payload));
 #if defined(Q_OS_WIN) || defined(_WIN32)
     Q_UNUSED(clipboard);
-    auto attempt = [sharedPayload]() { return publishDibV5(&sharedPayload->m_nativeHandle); };
+    auto attempt = [sharedPayload]() {
+        return publishClipboardPayload(&sharedPayload->m_nativeHandle,
+                                       sharedPayload->m_formatMode);
+    };
 #else
     const QPointer<QClipboard> guardedClipboard(clipboard);
     auto attempt = [guardedClipboard, sharedPayload]() {
@@ -543,7 +697,7 @@ bool ScreenshotClipboardService::publish(QClipboard* clipboard,
                                          ScreenshotClipboardPayload payload) {
 #if defined(Q_OS_WIN) || defined(_WIN32)
     Q_UNUSED(clipboard);
-    return publishDibV5(&payload.m_nativeHandle).succeeded();
+    return publishClipboardPayload(&payload.m_nativeHandle, payload.m_formatMode).succeeded();
 #else
     if (clipboard == nullptr || !payload.isValid()) {
         qWarning("Screenshot clipboard is unavailable");
@@ -554,6 +708,7 @@ bool ScreenshotClipboardService::publish(QClipboard* clipboard,
 #endif
 }
 
-bool ScreenshotClipboardService::publishImage(QClipboard* clipboard, const QImage& image) {
-    return publish(clipboard, prepareImage(image));
+bool ScreenshotClipboardService::publishImage(QClipboard* clipboard, const QImage& image,
+                                              ScreenshotClipboardFormatMode formatMode) {
+    return publish(clipboard, prepareImage(image, formatMode));
 }

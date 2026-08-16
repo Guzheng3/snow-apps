@@ -85,6 +85,13 @@ QImage composeSelectionResultFromRuntime(SnowCanvasRuntime& runtime, const QRect
     return ScreenshotResultCompositor::compose(content, style);
 }
 
+ScreenshotClipboardFormatMode clipboardFormatForStyle(const ScreenshotResultStyle& style) {
+    const ScreenshotResultStyle normalized = ScreenshotResultCompositor::normalizedStyle(style);
+    return normalized.cornerRadius == 0 && normalized.shadowWidth == 0
+               ? ScreenshotClipboardFormatMode::CompatibleDib
+               : ScreenshotClipboardFormatMode::DibV5;
+}
+
 ScreenshotPinnedSelectionRequest preparePinnedSelectionRequest(
     const ScreenshotDisplaySession& displaySession, const ScreenshotGeometryMapper& geometry,
     const QRect& selection, const ScreenshotResultStyle& style,
@@ -178,7 +185,8 @@ class ScreenshotExportWorker final : public QObject {
         ScreenshotSelectionClipboardResult result;
         result.image =
             renderSelection(documentSession, selection, style, sources, directSourceImage);
-        result.payload = ScreenshotClipboardService::prepareImage(result.image);
+        result.payload = ScreenshotClipboardService::prepareImage(
+            result.image, clipboardFormatForStyle(style));
         return result;
     }
 
