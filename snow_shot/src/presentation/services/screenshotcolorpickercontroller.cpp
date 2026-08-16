@@ -1,7 +1,7 @@
 #include "snow_shot/presentation/screenshotcolorpickercontroller.h"
 
+#include "snow_shot/platform/physicalcursor.h"
 #include "snow_shot/presentation/screenshotcolorpickerwidget.h"
-#include "snow_shot/presentation/screenshotcursornavigator.h"
 #include "snow_shot/presentation/screenshotdisplaysession.h"
 #include "snow_shot/presentation/screenshotgeometry.h"
 #include "snow_shot/presentation/screenshotselectionlimits.h"
@@ -10,6 +10,7 @@
 
 #include <QApplication>
 #include <QClipboard>
+#include <QCursor>
 
 #include <algorithm>
 #include <optional>
@@ -21,9 +22,9 @@ constexpr int kSelectionOpacityTolerance = 4;
 ScreenshotColorPickerController::ScreenshotColorPickerController(
     ScreenshotOverlayCoordinator& overlayCoordinator, const ScreenshotGeometryMapper& geometry,
     const ScreenshotDisplaySession& displaySession,
-    const ScreenshotCursorNavigator& cursorNavigator)
+    const snow_shot::platform::PhysicalCursor& physicalCursor)
     : m_overlayCoordinator(overlayCoordinator), m_geometry(geometry),
-      m_displaySession(displaySession), m_cursorNavigator(cursorNavigator) {}
+      m_displaySession(displaySession), m_physicalCursor(physicalCursor) {}
 
 void ScreenshotColorPickerController::reset() {
     m_overlay = nullptr;
@@ -103,7 +104,11 @@ void ScreenshotColorPickerController::updateAtCurrentCursor(
         return;
     }
 
-    const std::optional<QPoint> currentPosition = m_cursorNavigator.currentPhysicalPosition();
+    std::optional<QPoint> currentPosition = m_physicalCursor.position();
+    if (!currentPosition.has_value() && !m_physicalCursor.isSupported()) {
+        currentPosition =
+            m_geometry.physicalPositionForLogicalPoint(m_displaySession, QCursor::pos());
+    }
     if (!currentPosition.has_value()) {
         hide();
         return;

@@ -32,6 +32,10 @@ class AdContextMenu;
 namespace snow_shot::presentation {
 class WindowShortcutManager;
 }
+namespace snow_shot::platform {
+class PhysicalCursor;
+enum class PhysicalCursorDirection;
+} // namespace snow_shot::platform
 
 class QAction;
 class QActionGroup;
@@ -112,8 +116,9 @@ class ScreenshotPinnedWindow final : public QWidget {
     void showMainWindowRequested();
 
   private:
-    ScreenshotPinnedWindow(SnowCanvasRuntime* sourceRuntime, RuntimeMode mode,
-                           QWidget* parent);
+    friend class ScreenshotPinnedEditController;
+
+    ScreenshotPinnedWindow(SnowCanvasRuntime* sourceRuntime, RuntimeMode mode, QWidget* parent);
 
     enum class GeometryMutation {
         Scale,
@@ -204,8 +209,9 @@ class ScreenshotPinnedWindow final : public QWidget {
     void hideOtherPinnedWindows();
     void closeOtherPinnedWindows();
     void closeAllPinnedWindows();
+    [[nodiscard]] std::optional<QPoint> physicalCursorPosition() const;
     bool cursorMovementEnabled() const;
-    bool moveCursorBy(const QPoint& delta);
+    bool moveCursorOnePixel(snow_shot::platform::PhysicalCursorDirection direction);
     bool startWindowMove();
     bool updateWindowMove(const QPoint& nativeCursorPosition);
     void finishWindowMove();
@@ -222,6 +228,7 @@ class ScreenshotPinnedWindow final : public QWidget {
 
     SnowCanvasRuntime m_runtime;
     std::unique_ptr<snow_shot::presentation::WindowShortcutManager> m_shortcutManager;
+    std::unique_ptr<snow_shot::platform::PhysicalCursor> m_physicalCursor;
     QMap<QString, quint64> m_pinnedShortcutBindings;
     std::unique_ptr<ScreenshotPinnedCopyService> m_copyService;
     ScreenshotExportJobHandle m_materializationJob;

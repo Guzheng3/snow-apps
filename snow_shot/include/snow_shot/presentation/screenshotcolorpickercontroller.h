@@ -14,8 +14,11 @@ class ScreenshotDisplaySession;
 class ScreenshotGeometryMapper;
 class ScreenshotOverlayCoordinator;
 class ScreenshotOverlayWindow;
-class ScreenshotCursorNavigator;
 struct CapturedDisplayModel;
+
+namespace snow_shot::platform {
+class PhysicalCursor;
+}
 
 struct ScreenshotColorPickerContext {
     bool active = false;
@@ -34,7 +37,7 @@ class ScreenshotColorPickerController final {
     ScreenshotColorPickerController(ScreenshotOverlayCoordinator& overlayCoordinator,
                                     const ScreenshotGeometryMapper& geometry,
                                     const ScreenshotDisplaySession& displaySession,
-                                    const ScreenshotCursorNavigator& cursorNavigator);
+                                    const snow_shot::platform::PhysicalCursor& physicalCursor);
 
     void reset();
     void hide() const;
@@ -68,7 +71,7 @@ class ScreenshotColorPickerController final {
     ScreenshotOverlayCoordinator& m_overlayCoordinator;
     const ScreenshotGeometryMapper& m_geometry;
     const ScreenshotDisplaySession& m_displaySession;
-    const ScreenshotCursorNavigator& m_cursorNavigator;
+    const snow_shot::platform::PhysicalCursor& m_physicalCursor;
     QPointer<ScreenshotOverlayWindow> m_overlay;
     bool m_suppressed = false;
     ScreenshotColorPickerDisplayMode m_displayMode =

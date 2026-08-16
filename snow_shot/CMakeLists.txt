@@ -607,6 +607,7 @@ set(PROJECT_HEADERS
     include/snow_shot/platform/windows/autostartregistration.h
     include/snow_shot/platform/windows/focusedfullscreenwindow.h
     include/snow_shot/platform/windows/windowchrome.h
+    include/snow_shot/platform/physicalcursor.h
     include/snow_shot/presentation/components/contentcardwidget.h
     include/snow_shot/presentation/components/maincontentheaderwidget.h
     include/snow_shot/presentation/components/icons/snowshoticons.h
@@ -619,6 +620,7 @@ set(PROJECT_HEADERS
     include/snow_shot/presentation/screenshotcaptureruntimeadapter.h
     include/snow_shot/presentation/screenshotcapturestate.h
     include/snow_shot/presentation/screenshotcaptureworkflow.h
+    include/snow_shot/presentation/screenshotcanvascolorsampler.h
     include/snow_shot/presentation/screenshotcanvascolorsamplerwindow.h
     include/snow_shot/presentation/screenshotcaptureworkflowports.h
     include/snow_shot/presentation/screenshotcanvasrenderer.h
@@ -628,7 +630,6 @@ set(PROJECT_HEADERS
     include/snow_shot/presentation/screenshotselectionshadowrenderer.h
     include/snow_shot/presentation/screenshotcolorpickercontroller.h
     include/snow_shot/presentation/screenshotcolorpickerwidget.h
-    include/snow_shot/presentation/screenshotcursornavigator.h
     include/snow_shot/presentation/screenshotcontroller.h
     include/snow_shot/presentation/screenshotdefaultstyles.h
     include/snow_shot/presentation/screenshotdisplayconfigurationobserver.h
@@ -716,6 +717,7 @@ set(PROJECT_CXX_SOURCES
     src/app/applicationcontroller.cpp
     src/app/main.cpp
     src/app/singleinstancecoordinator.cpp
+    src/platform/physicalcursor.cpp
     src/platform/windows/windowchrome.cpp
     src/presentation/components/contentcardwidget.cpp
     src/presentation/components/maincontentheaderwidget.cpp
@@ -732,6 +734,7 @@ set(PROJECT_CXX_SOURCES
     src/presentation/capture/latestbridgemailbox.h
     src/presentation/capture/screenshotscrollingcapturecontroller.cpp
     src/presentation/capture/screenshotscrollingthumbnailwidget.cpp
+    src/presentation/services/screenshotcanvascolorsampler.cpp
     src/presentation/services/screenshotcanvascolorsamplerwindow.cpp
     src/presentation/services/screenshotcolorpickercontroller.cpp
     src/presentation/services/screenshotclipboardcontent.cpp
@@ -747,7 +750,6 @@ set(PROJECT_CXX_SOURCES
     src/presentation/services/screenshotimagefileservice.cpp
     src/presentation/tools/screenshotfloatingtoolpalettenative.cpp
     src/presentation/tools/screenshotfloatingtoolpalettewindow.cpp
-    src/presentation/core/screenshotcursornavigator.cpp
     src/presentation/core/screenshotgeometry.cpp
     src/presentation/core/screenshotintelligentselectionmodel.cpp
     src/presentation/core/screenshotinteractionstate.cpp
@@ -1019,9 +1021,6 @@ if(SNOW_SHOT_BUILD_TESTS)
 
     add_executable(snow-shot-screenshot-result-geometry-tests
         tests/screenshot_result_geometry_tests.cpp
-        include/snow_shot/presentation/screenshotcursornavigator.h
-        include/snow_shot/presentation/screenshotdisplaysession.h
-        src/presentation/core/screenshotcursornavigator.cpp
         src/presentation/core/screenshotgeometry.cpp
     )
     target_include_directories(snow-shot-screenshot-result-geometry-tests PRIVATE
@@ -1030,6 +1029,34 @@ if(SNOW_SHOT_BUILD_TESTS)
     target_link_libraries(snow-shot-screenshot-result-geometry-tests PRIVATE Qt6::Widgets)
     add_test(NAME snow-shot-screenshot-result-geometry-tests
              COMMAND snow-shot-screenshot-result-geometry-tests)
+
+    add_executable(snow-shot-physical-cursor-tests
+        tests/physical_cursor_tests.cpp
+        include/snow_shot/platform/physicalcursor.h
+        src/platform/physicalcursor.cpp
+    )
+    target_include_directories(snow-shot-physical-cursor-tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    )
+    target_link_libraries(snow-shot-physical-cursor-tests PRIVATE Qt6::Core)
+    if(WIN32)
+        target_compile_definitions(snow-shot-physical-cursor-tests PRIVATE NOMINMAX)
+        target_link_libraries(snow-shot-physical-cursor-tests PRIVATE user32)
+    endif()
+    add_test(NAME snow-shot-physical-cursor-tests
+             COMMAND snow-shot-physical-cursor-tests)
+
+    add_executable(snow-shot-canvas-color-sampler-tests
+        tests/screenshot_canvas_color_sampler_tests.cpp
+        include/snow_shot/presentation/screenshotcanvascolorsampler.h
+        src/presentation/services/screenshotcanvascolorsampler.cpp
+    )
+    target_include_directories(snow-shot-canvas-color-sampler-tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    )
+    target_link_libraries(snow-shot-canvas-color-sampler-tests PRIVATE Qt6::Widgets)
+    add_test(NAME snow-shot-canvas-color-sampler-tests
+             COMMAND snow-shot-canvas-color-sampler-tests)
 
     add_executable(snow-shot-i18n-catalog-conformance-tests
         tests/i18n_catalog_conformance_tests.cpp
@@ -1708,7 +1735,9 @@ if(SNOW_SHOT_BUILD_TESTS)
 
     add_executable(snow-shot-pinned-window-tests
         tests/screenshot_pinned_window_tests.cpp
+        src/platform/physicalcursor.cpp
         include/snow_shot/presentation/screenshotfloatingtoolpalettewindow.h
+        include/snow_shot/presentation/screenshotcanvascolorsampler.h
         include/snow_shot/presentation/screenshotcanvascolorsamplerwindow.h
         include/snow_shot/presentation/languagemanager.h
         include/snow_shot/presentation/screenshotpinnededitcontroller.h
@@ -1736,6 +1765,7 @@ if(SNOW_SHOT_BUILD_TESTS)
         src/presentation/ocr/screenshottableeditor.cpp
         src/presentation/overlay/screenshotcanvasrenderer.cpp
         src/presentation/overlay/screenshotselectionshadowrenderer.cpp
+        src/presentation/services/screenshotcanvascolorsampler.cpp
         src/presentation/services/screenshotcanvascolorsamplerwindow.cpp
         src/presentation/services/screenshotclipboardservice.cpp
         src/presentation/services/screenshotimagefileservice.cpp
@@ -1930,6 +1960,7 @@ if(SNOW_SHOT_BUILD_TESTS)
     if(WIN32)
         add_executable(snow-shot-pinned-context-menu-real-mouse-repro
             tests/screenshot_pinned_context_menu_real_mouse_repro.cpp
+            src/platform/physicalcursor.cpp
             include/snow_shot/presentation/screenshotfloatingtoolpalettewindow.h
             include/snow_shot/presentation/screenshotpinnededitcontroller.h
             include/snow_shot/presentation/screenshotpinnedcopyservice.h
@@ -1942,6 +1973,7 @@ if(SNOW_SHOT_BUILD_TESTS)
             src/presentation/ocr/screenshotocrpresentation.cpp
             src/presentation/overlay/screenshotcanvasrenderer.cpp
             src/presentation/overlay/screenshotselectionshadowrenderer.cpp
+            src/presentation/services/screenshotcanvascolorsampler.cpp
             src/presentation/services/screenshotclipboardservice.cpp
             src/presentation/services/screenshotimagefileservice.cpp
             src/presentation/pinned/screenshotpinnededitcontroller.cpp

@@ -105,6 +105,9 @@ struct ScreenshotOverlayShortcutController::Impl {
     }
 
     [[nodiscard]] bool cursorMovementShortcutState() const {
+        if (!actions.physicalCursorMovementAvailable()) {
+            return false;
+        }
         if (inputHandler.canvasColorSamplingActive()) {
             return true;
         }
@@ -246,21 +249,30 @@ struct ScreenshotOverlayShortcutController::Impl {
                 }
                 return false;
             };
+            if (actionId.startsWith(QStringLiteral("move_cursor_"))) {
+                binding.canActivateOutsideScope = [this](const auto&) {
+                    return inputHandler.canvasColorSamplingActive();
+                };
+            }
             binding.activate = [this, actionId](const auto& context) {
                 if (actionId == QStringLiteral("move_tool")) {
                     return actions.activateMoveTool();
                 }
                 if (actionId == QStringLiteral("move_cursor_up")) {
-                    return actions.moveCursorBy(QPoint(0, -1));
+                    return actions.moveCursorOnePixel(
+                        snow_shot::platform::PhysicalCursorDirection::Up);
                 }
                 if (actionId == QStringLiteral("move_cursor_down")) {
-                    return actions.moveCursorBy(QPoint(0, 1));
+                    return actions.moveCursorOnePixel(
+                        snow_shot::platform::PhysicalCursorDirection::Down);
                 }
                 if (actionId == QStringLiteral("move_cursor_left")) {
-                    return actions.moveCursorBy(QPoint(-1, 0));
+                    return actions.moveCursorOnePixel(
+                        snow_shot::platform::PhysicalCursorDirection::Left);
                 }
                 if (actionId == QStringLiteral("move_cursor_right")) {
-                    return actions.moveCursorBy(QPoint(1, 0));
+                    return actions.moveCursorOnePixel(
+                        snow_shot::platform::PhysicalCursorDirection::Right);
                 }
                 if (actionId == QStringLiteral("move_entire_selection")) {
                     return inputHandler.activateMoveEntireSelectionShortcut();

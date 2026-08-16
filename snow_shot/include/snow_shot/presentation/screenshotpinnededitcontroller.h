@@ -4,11 +4,13 @@
 #include <QObject>
 #include <QPointer>
 #include <QPoint>
+#include <QPointF>
 #include <QMap>
 #include <QRect>
 
 #include <memory>
 
+#include "snow_shot/presentation/screenshotcanvascolorsampler.h"
 #include "snow_draw_engine_qt/snow_canvas_types.h"
 
 class QScreen;
@@ -43,6 +45,7 @@ class ScreenshotPinnedEditController final : public QObject {
     void restoreDrawingToolState();
     void updatePlacement();
     void updateAfterPinnedWindowMove(const QPoint& logicalDelta);
+    void updateCanvasColorSamplingAfterCursorMove(const QPoint& physicalPosition);
     void raiseToolbar();
     void hideToolbar();
     void destroyToolbar();
@@ -72,9 +75,12 @@ class ScreenshotPinnedEditController final : public QObject {
     void markToolbarManuallyPlaced();
     void beginCanvasColorSampling(adqt::widgets::AdColorPicker* picker);
     void cancelCanvasColorSampling();
-    [[nodiscard]] QImage canvasColorPreviewAt(const QPoint& localPosition) const;
-    void updateCanvasColorSamplingPreview(const QPoint& localPosition);
-    bool commitCanvasColorSample(const QPoint& localPosition);
+    [[nodiscard]] QPoint canvasColorPhysicalPositionAt(const QPointF& localPosition) const;
+    [[nodiscard]] QPoint canvasColorGlobalPositionAt(const QPoint& physicalPosition) const;
+    [[nodiscard]] QImage canvasColorPreviewAtPhysicalPoint(const QPoint& physicalPosition);
+    void updateCanvasColorSamplingPreviewAtPhysicalPoint(const QPoint& physicalPosition,
+                                                         const QPoint& globalPosition);
+    bool commitCanvasColorSampleAtPhysicalPoint(const QPoint& physicalPosition);
     void setCanvasColorSamplingCursor(bool enabled);
 
     ScreenshotPinnedWindow& m_pinnedWindow;
@@ -84,6 +90,7 @@ class ScreenshotPinnedEditController final : public QObject {
     QMap<QString, quint64> m_recognitionShortcutBindings;
     ScreenshotFloatingToolPaletteWindow* m_toolbarWindow = nullptr;
     std::unique_ptr<ScreenshotCanvasColorSamplerWindow> m_canvasColorSamplerWindow;
+    ScreenshotCanvasColorSampler m_canvasColorSampler;
     QPointer<adqt::widgets::AdColorPicker> m_canvasColorSamplingTarget;
     QMetaObject::Connection m_canvasColorSamplingDestroyedConnection;
     QPoint m_globalContentPosition;

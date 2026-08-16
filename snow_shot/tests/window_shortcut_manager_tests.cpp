@@ -140,6 +140,47 @@ void scopeRepeatUpdatesAndLifetimeAreEnforced() {
             "destroying an owner must unregister its shortcuts");
 }
 
+void bindingsCanExplicitlyHandleTransientToolWindows() {
+    QWidget scopedWindow;
+    QWidget transientToolWindow;
+    WindowShortcutManager manager;
+    manager.addScopeWindow(&scopedWindow);
+
+    int scopedCount = 0;
+    require(manager.addBinding(&scopedWindow, binding(QStringLiteral("scoped"), Qt::Key_K, 200,
+                                                      [&scopedCount]() {
+                                                          ++scopedCount;
+                                                          return true;
+                                                      })) != 0,
+            "ordinary scoped binding registration failed");
+
+    bool modalInteractionActive = false;
+    int modalCount = 0;
+    auto modal = binding(QStringLiteral("modal"), Qt::Key_K, 100, [&modalCount]() {
+        ++modalCount;
+        return true;
+    });
+    modal.canActivateOutsideScope = [&modalInteractionActive](const auto&) {
+        return modalInteractionActive;
+    };
+    require(manager.addBinding(&scopedWindow, std::move(modal)) != 0,
+            "modal binding registration failed");
+
+    sendKey(&transientToolWindow, QEvent::KeyPress, Qt::Key_K);
+    require(scopedCount == 0 && modalCount == 0,
+            "inactive modal binding escaped normal shortcut scope");
+
+    modalInteractionActive = true;
+    require(sendKey(&transientToolWindow, QEvent::ShortcutOverride, Qt::Key_K) &&
+                sendKey(&transientToolWindow, QEvent::KeyPress, Qt::Key_K) && scopedCount == 0 &&
+                modalCount == 1,
+            "active modal binding did not handle its transient tool window");
+
+    require(sendKey(&scopedWindow, QEvent::KeyPress, Qt::Key_K) && scopedCount == 1 &&
+                modalCount == 1,
+            "out-of-scope eligibility changed normal priority dispatch");
+}
+
 void textGuardsLeaveInputUntouched() {
     QWidget window;
     QLineEdit editor(&window);
@@ -335,6 +376,7 @@ int main(int argc, char** argv) {
     QApplication application(argc, argv);
     priorityAndFallthroughAreDeterministic();
     scopeRepeatUpdatesAndLifetimeAreEnforced();
+    bindingsCanExplicitlyHandleTransientToolWindows();
     textGuardsLeaveInputUntouched();
     dispatchSurvivesBindingRemovalFromCallbacks();
     heldBindingsReleaseByTriggerKey();

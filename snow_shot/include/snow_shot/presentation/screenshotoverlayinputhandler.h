@@ -1,6 +1,7 @@
 #ifndef SNOW_SHOT_PRESENTATION_SCREENSHOTOVERLAYINPUTHANDLER_H
 #define SNOW_SHOT_PRESENTATION_SCREENSHOTOVERLAYINPUTHANDLER_H
 
+#include "snow_shot/platform/physicalcursor.h"
 #include "snow_shot/presentation/screenshotselectiongeometry.h"
 
 #include <QPoint>
@@ -58,7 +59,8 @@ struct ScreenshotOverlayInputActions {
         [](const QPointF&) {};
     std::function<bool()> copyColorPickerColorToClipboard = []() { return false; };
     std::function<bool()> cycleColorPickerFormat = []() { return false; };
-    std::function<bool(const QPoint& delta)> moveCursorBy = [](const QPoint&) { return false; };
+    std::function<bool(snow_shot::platform::PhysicalCursorDirection direction)> moveCursorOnePixel =
+        [](snow_shot::platform::PhysicalCursorDirection) { return false; };
 
     // Called after a valid selection transitions the interaction into editing.
     // This is intentionally separate from showToolbar so callers can schedule
@@ -103,6 +105,9 @@ struct ScreenshotOverlayInputActions {
     std::function<bool()> pinSelectionToScreen = []() { return false; };
     std::function<bool()> undo = []() { return false; };
     std::function<bool()> redo = []() { return false; };
+
+    // Keep new actions at the end so positional test and application initializers remain valid.
+    std::function<bool()> physicalCursorMovementAvailable = []() { return false; };
 };
 
 struct ScreenshotOverlayInputHandlerContext {

@@ -72,11 +72,9 @@ bool wheelAdjustsStrokeWidth(SnowCanvasTool tool) {
 }
 } // namespace
 
-ScreenshotPinnedEditController::ScreenshotPinnedEditController(ScreenshotPinnedWindow& pinnedWindow,
-                                                               SnowCanvasWidget& canvas,
-                                                               snow_shot::presentation::WindowShortcutManager&
-                                                                   shortcutManager,
-                                                               QObject* parent)
+ScreenshotPinnedEditController::ScreenshotPinnedEditController(
+    ScreenshotPinnedWindow& pinnedWindow, SnowCanvasWidget& canvas,
+    snow_shot::presentation::WindowShortcutManager& shortcutManager, QObject* parent)
     : QObject(parent), m_pinnedWindow(pinnedWindow), m_canvas(canvas),
       m_shortcutManager(shortcutManager) {
     m_canvas.installEventFilter(this);
@@ -212,15 +210,14 @@ ScreenshotPinnedEditController::ScreenshotPinnedEditController(ScreenshotPinnedW
     reloadRecognitionShortcuts();
     auto& storage = snow_shot::storage::ApplicationStorage::instance();
     if (storage.isInitialized()) {
-        connect(&storage.configuration(),
-                &snow_shot::storage::ConfigurationStore::valueChanged, this,
-                [this](const QString& key, const QJsonValue&) {
-                     if (key.startsWith(QStringLiteral("drawing_shortcuts/"))) {
-                         reloadDrawingShortcuts();
-                     } else if (key.startsWith(QStringLiteral("screenshot_shortcuts/"))) {
-                         reloadRecognitionShortcuts();
-                     }
-                 });
+        connect(&storage.configuration(), &snow_shot::storage::ConfigurationStore::valueChanged,
+                this, [this](const QString& key, const QJsonValue&) {
+                    if (key.startsWith(QStringLiteral("drawing_shortcuts/"))) {
+                        reloadDrawingShortcuts();
+                    } else if (key.startsWith(QStringLiteral("screenshot_shortcuts/"))) {
+                        reloadRecognitionShortcuts();
+                    }
+                });
     }
 
     updatePlacement();
@@ -238,6 +235,17 @@ bool ScreenshotPinnedEditController::canvasColorSamplingActive() const {
     return !m_canvasColorSamplingTarget.isNull();
 }
 
+void ScreenshotPinnedEditController::updateCanvasColorSamplingAfterCursorMove(
+    const QPoint& physicalPosition) {
+    if (!canvasColorSamplingActive()) {
+        return;
+    }
+    if (m_pinnedWindow.currentNativeGeometry().contains(physicalPosition)) {
+        updateCanvasColorSamplingPreviewAtPhysicalPoint(
+            physicalPosition, canvasColorGlobalPositionAt(physicalPosition));
+    }
+}
+
 bool ScreenshotPinnedEditController::eventFilter(QObject* watched, QEvent* event) {
     if (watched != &m_canvas || event == nullptr || !m_editMode) {
         return QObject::eventFilter(watched, event);
@@ -247,7 +255,9 @@ bool ScreenshotPinnedEditController::eventFilter(QObject* watched, QEvent* event
         switch (event->type()) {
         case QEvent::MouseMove: {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
-            updateCanvasColorSamplingPreview(mouseEvent->position().toPoint());
+            updateCanvasColorSamplingPreviewAtPhysicalPoint(
+                canvasColorPhysicalPositionAt(mouseEvent->position()),
+                mouseEvent->globalPosition().toPoint());
             mouseEvent->accept();
             return true;
         }
@@ -257,7 +267,8 @@ bool ScreenshotPinnedEditController::eventFilter(QObject* watched, QEvent* event
             if (mouseEvent->button() == Qt::RightButton) {
                 cancelCanvasColorSampling();
             } else if (mouseEvent->button() == Qt::LeftButton) {
-                static_cast<void>(commitCanvasColorSample(mouseEvent->position().toPoint()));
+                static_cast<void>(commitCanvasColorSampleAtPhysicalPoint(
+                    canvasColorPhysicalPositionAt(mouseEvent->position())));
             }
             mouseEvent->accept();
             return true;
@@ -329,16 +340,16 @@ void ScreenshotPinnedEditController::registerDrawingShortcuts() {
         binding.priority =
             snow_shot::presentation::WindowShortcutManager::StandardPriority::DrawingShortcut;
         binding.canActivate = [this](const auto&) {
-            return m_editMode && !m_canvas.hasActiveTextEditing() &&
-                   m_toolbarWindow != nullptr && m_toolbarWindow->palette() != nullptr;
+            return m_editMode && !m_canvas.hasActiveTextEditing() && m_toolbarWindow != nullptr &&
+                   m_toolbarWindow->palette() != nullptr;
         };
         binding.activate = [this, toolId = tool.key()](const auto&) {
             ScreenshotToolPalette* toolbar =
                 m_toolbarWindow != nullptr ? m_toolbarWindow->palette() : nullptr;
             return toolbar != nullptr && toolbar->activateDrawingShortcut(toolId);
         };
-        m_drawingShortcutBindings.insert(
-            tool.key(), m_shortcutManager.addBinding(this, std::move(binding)));
+        m_drawingShortcutBindings.insert(tool.key(),
+                                         m_shortcutManager.addBinding(this, std::move(binding)));
     }
 }
 
@@ -355,10 +366,9 @@ void ScreenshotPinnedEditController::reloadDrawingShortcuts() {
 
 void ScreenshotPinnedEditController::registerRecognitionShortcuts() {
     const auto shortcuts = snow_shot::storage::ScreenshotShortcutSettings().allShortcuts();
-    for (const QString& actionId : {QStringLiteral("table_recognition"),
-                                    QStringLiteral("qr_code_recognition"),
-                                    QStringLiteral("text_recognition"),
-                                    QStringLiteral("text_translation")}) {
+    for (const QString& actionId :
+         {QStringLiteral("table_recognition"), QStringLiteral("qr_code_recognition"),
+          QStringLiteral("text_recognition"), QStringLiteral("text_translation")}) {
         if (!shortcuts.contains(actionId)) {
             continue;
         }
@@ -367,8 +377,8 @@ void ScreenshotPinnedEditController::registerRecognitionShortcuts() {
         binding.priority =
             snow_shot::presentation::WindowShortcutManager::StandardPriority::ScreenshotShortcut;
         binding.canActivate = [this](const auto&) {
-            return m_editMode && !m_canvas.hasActiveTextEditing() &&
-                   m_toolbarWindow != nullptr && m_toolbarWindow->palette() != nullptr;
+            return m_editMode && !m_canvas.hasActiveTextEditing() && m_toolbarWindow != nullptr &&
+                   m_toolbarWindow->palette() != nullptr;
         };
         binding.activate = [this, actionId](const auto&) {
             if (actionId == QStringLiteral("table_recognition")) {
@@ -676,19 +686,27 @@ void ScreenshotPinnedEditController::beginCanvasColorSampling(
     cancelCanvasColorSampling();
     m_canvasColorSamplingTarget = picker;
     m_canvasColorSamplingDestroyedConnection =
-        connect(picker, &QObject::destroyed, this,
-                [this]() { cancelCanvasColorSampling(); });
+        connect(picker, &QObject::destroyed, this, [this]() { cancelCanvasColorSampling(); });
     if (m_canvasColorSamplerWindow != nullptr) {
         m_canvasColorSamplerWindow->beginSampling();
     }
+    m_canvasColorSampler.reset();
     if (m_toolbarWindow != nullptr) {
         m_shortcutManager.addScopeWindow(m_toolbarWindow);
     }
     setCanvasColorSamplingCursor(true);
 
-    const QPoint localPosition = m_canvas.mapFromGlobal(QCursor::pos());
-    if (m_canvas.rect().contains(localPosition)) {
-        updateCanvasColorSamplingPreview(localPosition);
+    const std::optional<QPoint> physicalPosition = m_pinnedWindow.physicalCursorPosition();
+    if (physicalPosition.has_value() &&
+        m_pinnedWindow.currentNativeGeometry().contains(*physicalPosition)) {
+        updateCanvasColorSamplingPreviewAtPhysicalPoint(
+            *physicalPosition, canvasColorGlobalPositionAt(*physicalPosition));
+        return;
+    }
+    const QPointF localPosition = m_canvas.mapFromGlobal(QCursor::pos());
+    if (m_canvas.rect().contains(localPosition.toPoint())) {
+        updateCanvasColorSamplingPreviewAtPhysicalPoint(
+            canvasColorPhysicalPositionAt(localPosition), QCursor::pos());
     }
 }
 
@@ -696,6 +714,7 @@ void ScreenshotPinnedEditController::cancelCanvasColorSampling() {
     m_canvasColorSamplingTarget.clear();
     disconnect(m_canvasColorSamplingDestroyedConnection);
     m_canvasColorSamplingDestroyedConnection = {};
+    m_canvasColorSampler.reset();
     if (m_toolbarWindow != nullptr) {
         m_shortcutManager.removeScopeWindow(m_toolbarWindow);
     }
@@ -705,52 +724,51 @@ void ScreenshotPinnedEditController::cancelCanvasColorSampling() {
     setCanvasColorSamplingCursor(false);
 }
 
-QImage ScreenshotPinnedEditController::canvasColorPreviewAt(const QPoint& localPosition) const {
-    if (!m_canvas.rect().contains(localPosition)) {
-        return {};
-    }
-
-    constexpr int previewSize = 7;
-    constexpr int previewRadius = previewSize / 2;
-    const QRect grabRect =
-        QRect(localPosition - QPoint(previewRadius, previewRadius), QSize(previewSize, previewSize))
-            .intersected(m_canvas.rect());
-    const QImage grabbedImage = m_canvas.grab(grabRect).toImage();
-    if (grabbedImage.isNull()) {
-        return {};
-    }
-
-    const qreal devicePixelRatio = std::max<qreal>(1.0, grabbedImage.devicePixelRatio());
-    const QPoint localCenter = localPosition - grabRect.topLeft();
-    const QPoint imageCenter(qRound(localCenter.x() * devicePixelRatio),
-                             qRound(localCenter.y() * devicePixelRatio));
-    QImage preview(previewSize, previewSize, QImage::Format_ARGB32_Premultiplied);
-    for (int y = 0; y < previewSize; ++y) {
-        for (int x = 0; x < previewSize; ++x) {
-            const int sourceX =
-                std::clamp(imageCenter.x() + x - previewRadius, 0, grabbedImage.width() - 1);
-            const int sourceY =
-                std::clamp(imageCenter.y() + y - previewRadius, 0, grabbedImage.height() - 1);
-            preview.setPixelColor(x, y, grabbedImage.pixelColor(sourceX, sourceY));
-        }
-    }
-    return preview;
+QPoint
+ScreenshotPinnedEditController::canvasColorPhysicalPositionAt(const QPointF& localPosition) const {
+    return ScreenshotCanvasColorSampler::physicalPointForLocalPosition(
+        localPosition, m_canvas.size(), m_pinnedWindow.currentNativeGeometry());
 }
 
-void ScreenshotPinnedEditController::updateCanvasColorSamplingPreview(
-    const QPoint& localPosition) {
+QPoint
+ScreenshotPinnedEditController::canvasColorGlobalPositionAt(const QPoint& physicalPosition) const {
+    const QRect physicalBounds = m_pinnedWindow.currentNativeGeometry();
+    if (!physicalBounds.isValid() || physicalBounds.isEmpty()) {
+        return QCursor::pos();
+    }
+    const QPoint localPosition(
+        qRound((physicalPosition.x() - physicalBounds.left()) *
+               static_cast<qreal>(m_canvas.width()) / physicalBounds.width()),
+        qRound((physicalPosition.y() - physicalBounds.top()) *
+               static_cast<qreal>(m_canvas.height()) / physicalBounds.height()));
+    return m_canvas.mapToGlobal(localPosition);
+}
+
+QImage
+ScreenshotPinnedEditController::canvasColorPreviewAtPhysicalPoint(const QPoint& physicalPosition) {
+    const QRect physicalBounds = m_pinnedWindow.currentNativeGeometry();
+    if (!physicalBounds.contains(physicalPosition) ||
+        !m_canvasColorSampler.ensureSnapshot(m_canvas, physicalBounds)) {
+        return {};
+    }
+    return m_canvasColorSampler.previewAtPhysicalPoint(physicalPosition);
+}
+
+void ScreenshotPinnedEditController::updateCanvasColorSamplingPreviewAtPhysicalPoint(
+    const QPoint& physicalPosition, const QPoint& globalPosition) {
     if (m_canvasColorSamplerWindow == nullptr || m_canvasColorSamplingTarget.isNull()) {
         return;
     }
-    const QImage preview = canvasColorPreviewAt(localPosition);
+    const QImage preview = canvasColorPreviewAtPhysicalPoint(physicalPosition);
     if (!preview.isNull()) {
-        m_canvasColorSamplerWindow->updateSample(preview, m_canvas.mapToGlobal(localPosition));
+        m_canvasColorSamplerWindow->updateSample(preview, globalPosition);
     }
 }
 
-bool ScreenshotPinnedEditController::commitCanvasColorSample(const QPoint& localPosition) {
+bool ScreenshotPinnedEditController::commitCanvasColorSampleAtPhysicalPoint(
+    const QPoint& physicalPosition) {
     QPointer<adqt::widgets::AdColorPicker> picker = m_canvasColorSamplingTarget;
-    const QImage preview = canvasColorPreviewAt(localPosition);
+    const QImage preview = canvasColorPreviewAtPhysicalPoint(physicalPosition);
     cancelCanvasColorSampling();
     if (picker.isNull() || preview.isNull()) {
         return false;

@@ -39,6 +39,8 @@
 namespace storage = snow_shot::storage;
 
 namespace {
+using snow_shot::platform::PhysicalCursorDirection;
+
 void require(bool condition, const char* message) {
     if (!condition) {
         std::cerr << message << '\n';
@@ -1614,7 +1616,7 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
     ScreenshotInteractionState interaction;
     interaction.confirmSelection();
     QWidget shortcutWindow;
-    QWidget samplingToolbar;
+    QWidget colorPickerToolWindow;
     snow_shot::presentation::WindowShortcutManager shortcutManager;
     shortcutManager.addScopeWindow(&shortcutWindow);
 
@@ -1659,8 +1661,9 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
     int redoActivations = 0;
     bool cursorMoveHandles = true;
     bool localShortcutInputAllowed = true;
-    QVector<QPoint> cursorMoves;
+    QVector<PhysicalCursorDirection> cursorMoves;
     ScreenshotOverlayInputActions actions;
+    actions.physicalCursorMovementAvailable = []() { return true; };
     actions.localShortcutInputAllowed = [&localShortcutInputAllowed]() {
         return localShortcutInputAllowed;
     };
@@ -1669,11 +1672,12 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
         interaction.setMoveTool(true, false);
         return true;
     };
-    actions.moveCursorBy = [&cursorMoves, &cursorMoveHandles](const QPoint& delta) {
+    actions.moveCursorOnePixel = [&cursorMoves,
+                                  &cursorMoveHandles](PhysicalCursorDirection direction) {
         if (!cursorMoveHandles) {
             return false;
         }
-        cursorMoves.push_back(delta);
+        cursorMoves.push_back(direction);
         return true;
     };
     actions.activateDrawingShortcut = [&drawingToolActivations](const QString& toolId) {
@@ -1714,15 +1718,13 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
     require(!dispatchShortcut(shortcutWindow, Qt::Key_W) && cursorMoves.isEmpty(),
             "focused color-editor input must suppress ordinary cursor shortcuts");
     handler.armCanvasColorSampling();
-    shortcutManager.addScopeWindow(&samplingToolbar);
-    require(dispatchShortcut(samplingToolbar, Qt::Key_W) &&
-                cursorMoves == QVector<QPoint>{QPoint(0, -1)},
-            "an armed canvas color sampler must route cursor movement from its floating toolbar "
-            "independently of the active drawing tool and focused color editor");
+    require(dispatchShortcut(colorPickerToolWindow, Qt::Key_W) &&
+                cursorMoves == QVector<PhysicalCursorDirection>{PhysicalCursorDirection::Up},
+            "an armed canvas color sampler must route cursor movement from its transient color "
+            "picker window independently of the active drawing tool and focused color editor");
     handler.cancelCanvasColorSampling();
-    shortcutManager.removeScopeWindow(&samplingToolbar);
-    require(!dispatchShortcut(samplingToolbar, Qt::Key_W) && cursorMoves.size() == 1,
-            "the floating toolbar must leave cursor-shortcut scope after canvas sampling");
+    require(!dispatchShortcut(colorPickerToolWindow, Qt::Key_W) && cursorMoves.size() == 1,
+            "the transient color picker window must lose cursor shortcuts after canvas sampling");
     cursorMoves.clear();
     localShortcutInputAllowed = true;
 
@@ -1730,7 +1732,7 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
     require(dispatchShortcut(shortcutWindow, Qt::Key_W),
           "cursor shortcut was not handled in the drawing tool");
   require(drawingToolActivations == 0 &&
-              cursorMoves == QVector<QPoint>{QPoint(0, -1)},
+              cursorMoves == QVector<PhysicalCursorDirection>{PhysicalCursorDirection::Up},
           "drawing-tool cursor movement must use the higher-priority "
           "screenshot shortcut");
 
@@ -1751,8 +1753,9 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
     require(dispatchShortcut(shortcutWindow, Qt::Key_W) &&
                 dispatchShortcut(shortcutWindow, Qt::Key_Up),
             "default cursor-up shortcuts were not handled");
-  require(cursorMoves ==
-              QVector<QPoint>{QPoint(0, -1), QPoint(0, -1), QPoint(0, -1)},
+  require(cursorMoves == QVector<PhysicalCursorDirection>{PhysicalCursorDirection::Up,
+                                                          PhysicalCursorDirection::Up,
+                                                          PhysicalCursorDirection::Up},
             "W and Up must move the cursor up by one pixel");
   require(drawingToolActivations == 0,
           "higher-priority screenshot shortcut must win a cross-category "
@@ -1774,7 +1777,7 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
   require(
       dispatchShortcut(shortcutWindow, Qt::Key_K,
                              Qt::ControlModifier | Qt::AltModifier) &&
-                cursorMoves.constLast() == QPoint(0, -1),
+                cursorMoves.constLast() == PhysicalCursorDirection::Up,
             "customized cursor shortcut must take effect without restarting capture");
 
     require(shortcutSettings.setMoveTool({QStringLiteral("Ctrl+Alt+M")}),
@@ -1818,7 +1821,7 @@ void configuredScreenshotShortcutsControlMoveAndCursorNavigation() {
     cursorMoves.clear();
     require(dispatchShortcut(shortcutWindow, Qt::Key_Up),
             "restored cursor shortcut was not handled");
-    require(cursorMoves == QVector<QPoint>{QPoint(0, -1)},
+    require(cursorMoves == QVector<PhysicalCursorDirection>{PhysicalCursorDirection::Up},
             "restored cursor shortcut must use the persisted configuration");
 }
 
@@ -1834,10 +1837,11 @@ void intelligentSelectionSupportsCursorMovementShortcuts() {
     snow_shot::presentation::WindowShortcutManager shortcutManager;
     shortcutManager.addScopeWindow(&shortcutWindow);
 
-    QVector<QPoint> cursorMoves;
+    QVector<PhysicalCursorDirection> cursorMoves;
     ScreenshotOverlayInputActions actions;
-    actions.moveCursorBy = [&cursorMoves](const QPoint& delta) {
-        cursorMoves.push_back(delta);
+    actions.physicalCursorMovementAvailable = []() { return true; };
+    actions.moveCursorOnePixel = [&cursorMoves](PhysicalCursorDirection direction) {
+        cursorMoves.push_back(direction);
         return true;
     };
     ScreenshotOverlayInputHandler handler({
@@ -1862,11 +1866,18 @@ void intelligentSelectionSupportsCursorMovementShortcuts() {
                 dispatchShortcut(shortcutWindow, Qt::Key_Right) &&
                 dispatchShortcut(shortcutWindow, Qt::Key_Right, Qt::NoModifier, true),
             "cursor movement shortcuts were not handled during intelligent selection");
-    require(cursorMoves == QVector<QPoint>{
-                               QPoint(0, -1), QPoint(0, -1), QPoint(0, 1),
-                               QPoint(0, 1),  QPoint(-1, 0), QPoint(-1, 0),
-                               QPoint(1, 0),  QPoint(1, 0),  QPoint(1, 0),
-                           },
+    require(cursorMoves ==
+                QVector<PhysicalCursorDirection>{
+                    PhysicalCursorDirection::Up,
+                    PhysicalCursorDirection::Up,
+                    PhysicalCursorDirection::Down,
+                    PhysicalCursorDirection::Down,
+                    PhysicalCursorDirection::Left,
+                    PhysicalCursorDirection::Left,
+                    PhysicalCursorDirection::Right,
+                    PhysicalCursorDirection::Right,
+                    PhysicalCursorDirection::Right,
+                },
             "configured cursor shortcuts must move in every direction and auto-repeat");
 }
 

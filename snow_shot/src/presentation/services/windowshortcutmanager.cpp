@@ -296,14 +296,26 @@ bool WindowShortcutManager::eventFilter(QObject* watched, QEvent* event) {
     const bool keyRelease = event->type() == QEvent::KeyRelease;
     const QVector<Impl::Candidate> candidates =
         keyRelease ? m_impl->releaseCandidates(*keyEvent) : m_impl->candidates(*keyEvent);
-    // Once a held binding is armed, accept its physical release even if focus
-    // moved to another top-level widget in the same process.
-    if (!m_impl->containsReceiver(watched) && (!keyRelease || candidates.isEmpty())) {
-        return QObject::eventFilter(watched, event);
-    }
+    const bool receiverInScope = m_impl->containsReceiver(watched);
     const ActivationContext context{watched, QApplication::focusWidget(), keyEvent};
+    const auto candidateAllowedForReceiver = [this, receiverInScope,
+                                              &context](BindingHandle handle) {
+        if (receiverInScope) {
+            return true;
+        }
+        Impl::RegisteredBinding* registered = m_impl->findBinding(handle);
+        if (registered == nullptr || registered->owner == nullptr) {
+            return false;
+        }
+        const auto canActivateOutsideScope = registered->binding.canActivateOutsideScope;
+        return canActivateOutsideScope && canActivateOutsideScope(context) &&
+               m_impl->findBinding(handle) != nullptr;
+    };
     if (event->type() == QEvent::ShortcutOverride) {
         for (const Impl::Candidate& candidate : candidates) {
+            if (!candidateAllowedForReceiver(candidate.handle)) {
+                continue;
+            }
             Impl::RegisteredBinding* registered = m_impl->findBinding(candidate.handle);
             if (registered == nullptr || registered->owner == nullptr) {
                 continue;
@@ -319,6 +331,8 @@ bool WindowShortcutManager::eventFilter(QObject* watched, QEvent* event) {
     }
 
     if (keyRelease) {
+        // Once a held binding is armed, accept its physical release even if
+        // focus moved to another top-level widget in the same process.
         bool handled = false;
         for (const Impl::Candidate& candidate : candidates) {
             Impl::RegisteredBinding* registered = m_impl->findBinding(candidate.handle);
@@ -355,6 +369,9 @@ bool WindowShortcutManager::eventFilter(QObject* watched, QEvent* event) {
     }
 
     for (const Impl::Candidate& candidate : candidates) {
+        if (!candidateAllowedForReceiver(candidate.handle)) {
+            continue;
+        }
         Impl::RegisteredBinding* registered = m_impl->findBinding(candidate.handle);
         if (registered == nullptr || registered->owner == nullptr) {
             continue;
