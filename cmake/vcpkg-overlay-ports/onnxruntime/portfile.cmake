@@ -100,6 +100,16 @@ set(SNOW_ORT_PLATFORM_OPTIONS)
 set(SNOW_ORT_RELEASE_OPTIONS)
 set(SNOW_ORT_DEBUG_OPTIONS)
 if(VCPKG_TARGET_IS_WINDOWS)
+    if(NOT VCPKG_TARGET_IS_MINGW AND
+       VCPKG_BUILD_TYPE STREQUAL "release" AND
+       VCPKG_LIBRARY_LINKAGE STREQUAL "static")
+        # MSVC's final LTCG intermediate has a hard 4 GiB image limit. The
+        # reduced ONNX Runtime + DirectML archives alone exceed that limit, so
+        # keep /O2, /Gw, and /Gy but emit native objects for this dependency.
+        string(APPEND VCPKG_C_FLAGS_RELEASE " /GL-")
+        string(APPEND VCPKG_CXX_FLAGS_RELEASE " /GL-")
+    endif()
+
     if(VCPKG_CRT_LINKAGE STREQUAL "static")
         set(SNOW_ORT_MSVC_RUNTIME_RELEASE "MultiThreaded")
         set(SNOW_ORT_MSVC_RUNTIME_DEBUG "MultiThreadedDebug")
@@ -182,7 +192,13 @@ endif()
 if("tensorrt" IN_LIST FEATURES)
     vcpkg_cmake_build(TARGET onnxruntime_providers_tensorrt LOGFILE_BASE build-tensorrt)
 endif()
-vcpkg_cmake_install()
+if(VCPKG_BUILD_TYPE STREQUAL "release" AND VCPKG_LIBRARY_LINKAGE STREQUAL "static")
+    # LTCG objects exhaust memory under vcpkg's default parallel build, which
+    # otherwise forces the helper to discard progress and retry serially.
+    vcpkg_cmake_install(DISABLE_PARALLEL)
+else()
+    vcpkg_cmake_install()
+endif()
 vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/onnxruntime)
 vcpkg_fixup_pkgconfig()
 
@@ -240,7 +256,9 @@ if("directml" IN_LIST FEATURES)
     endif()
 
     file(INSTALL "${DIRECTML_RUNTIME}" DESTINATION "${CURRENT_PACKAGES_DIR}/bin")
-    file(INSTALL "${DIRECTML_RUNTIME}" DESTINATION "${CURRENT_PACKAGES_DIR}/debug/bin")
+    if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "debug")
+        file(INSTALL "${DIRECTML_RUNTIME}" DESTINATION "${CURRENT_PACKAGES_DIR}/debug/bin")
+    endif()
 endif()
 
 vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

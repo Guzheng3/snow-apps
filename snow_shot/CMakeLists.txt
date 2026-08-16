@@ -16,6 +16,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(SNOW_SHOT_ENABLE_STRICT_COMPILE "Enable strict compiler warnings and treat warnings as errors." ON)
 option(SNOW_SHOT_BUILD_TESTS "Build Snow Shot test executables." OFF)
+option(SNOW_SHOT_BUILD_IMAGE_CODEC_SMOKE_TEST
+    "Build the Snow Shot image-codec smoke test without the full QtTest suite." OFF)
 option(SNOW_SHOT_BUILD_BENCHMARKS "Build opt-in native Snow Shot benchmarks." OFF)
 option(SNOW_SHOT_RELEASE_STATIC "Prefer static Snow Shot release linkage." OFF)
 option(SNOW_SHOT_QT_STATIC "Link Snow Shot against a static Qt build." OFF)
@@ -54,6 +56,23 @@ if(SNOW_SHOT_QT_STATIC)
         endif()
     endforeach()
     unset(_snow_shot_static_qt_plugin)
+
+    if(SNOW_SHOT_RELEASE_STATIC)
+        get_target_property(_snow_shot_qt_core_private_features
+            Qt6::Core QT_ENABLED_PRIVATE_FEATURES)
+        get_target_property(_snow_shot_qt_gui_private_features
+            Qt6::Gui QT_ENABLED_PRIVATE_FEATURES)
+        if(NOT "system_zlib" IN_LIST _snow_shot_qt_core_private_features OR
+           NOT "system_png" IN_LIST _snow_shot_qt_gui_private_features)
+            message(FATAL_ERROR
+                "The production static build requires Qt to use the same system "
+                "zlib and libpng packages as Snow Image. Rebuild Qt with "
+                "scripts/build-static-qt.ps1; bundled Qt codecs cannot be linked "
+                "safely into the unified executable.")
+        endif()
+        unset(_snow_shot_qt_core_private_features)
+        unset(_snow_shot_qt_gui_private_features)
+    endif()
 endif()
 
 if(NOT DEFINED SNOW_SHOT_API_BASE_URL OR SNOW_SHOT_API_BASE_URL STREQUAL "")
@@ -120,29 +139,28 @@ if(WIN32)
     endif()
 endif()
 
-snow_add_rust_static_libraries(snow_shot_rust_ffi
-    MANIFEST_DIR "${SNOW_SHOT_CAPTURE_CRATES_DIR}"
-    TARGETS
-        snow_capture_c
-        snow_ui_selector_c
-        snow_stitch_images_c
-        snow_ocr_c
-    PACKAGES
-        snow-capture-c
-        snow-ui-selector-c
-        snow-stitch-images-c
-        snow-ocr-c
-    OUTPUT_NAMES
-        snow_capture_c
-        snow_ui_selector_c
-        snow_stitch_images_c
-        snow_ocr_c
-    STRIP_MSVC_DIRECTIVES
-)
+if(NOT TARGET snow_capture_c)
+    snow_add_rust_static_libraries(snow_shot_rust_ffi
+        MANIFEST_DIR "${SNOW_SHOT_CAPTURE_CRATES_DIR}"
+        TARGETS
+            snow_capture_c
+            snow_ui_selector_c
+            snow_stitch_images_c
+            snow_ocr_c
+        PACKAGES
+            snow-capture-c
+            snow-ui-selector-c
+            snow-stitch-images-c
+            snow-ocr-c
+        OUTPUT_NAMES
+            snow_capture_c
+            snow_ui_selector_c
+            snow_stitch_images_c
+            snow_ocr_c
+        STRIP_MSVC_DIRECTIVES
+    )
+endif()
 
-# `snow-stitch-images-c` is a Rust static library that embeds the generated
-# OpenCV bridge objects. Cargo does not propagate the OpenCV import library to
-# a native CMake consumer, so make that dependency part of its link interface.
 if(DEFINED OpenCV_DIR)
     get_filename_component(_SNOW_SHOT_OPENCV_INSTALL_PREFIX
         "${OpenCV_DIR}/../.."
@@ -158,17 +176,25 @@ if(SNOW_SHOT_RELEASE_STATIC)
     # x64/<runtime>/staticlib target files instead of the shared-library set.
     set(OpenCV_STATIC ON)
 endif()
-find_package(OpenCV CONFIG REQUIRED COMPONENTS core imgproc dnn objdetect wechat_qrcode)
+find_package(OpenCV CONFIG REQUIRED COMPONENTS core imgproc objdetect)
 find_package(onnxruntime CONFIG REQUIRED)
 
 if(WIN32)
-    set(SNOW_SHOT_DIRECTML_RUNTIME_DLL_DEBUG
-        "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin/DirectML.dll")
     set(SNOW_SHOT_DIRECTML_RUNTIME_DLL_RELEASE
         "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/DirectML.dll")
-    foreach(_snow_shot_directml_runtime IN ITEMS
+    if(SNOW_SHOT_RELEASE_STATIC)
+        set(SNOW_SHOT_DIRECTML_RUNTIME_DLL_DEBUG
+            "${SNOW_SHOT_DIRECTML_RUNTIME_DLL_RELEASE}")
+        set(_snow_shot_directml_runtimes
+            "${SNOW_SHOT_DIRECTML_RUNTIME_DLL_RELEASE}")
+    else()
+        set(SNOW_SHOT_DIRECTML_RUNTIME_DLL_DEBUG
+            "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin/DirectML.dll")
+        set(_snow_shot_directml_runtimes
             "${SNOW_SHOT_DIRECTML_RUNTIME_DLL_DEBUG}"
             "${SNOW_SHOT_DIRECTML_RUNTIME_DLL_RELEASE}")
+    endif()
+    foreach(_snow_shot_directml_runtime IN LISTS _snow_shot_directml_runtimes)
         if(NOT EXISTS "${_snow_shot_directml_runtime}")
             message(FATAL_ERROR
                 "The DirectML-enabled ONNX Runtime package is incomplete: "
@@ -176,9 +202,9 @@ if(WIN32)
         endif()
     endforeach()
     unset(_snow_shot_directml_runtime)
+    unset(_snow_shot_directml_runtimes)
 endif()
 
-target_link_libraries(snow_stitch_images_c INTERFACE opencv_wechat_qrcode)
 target_link_libraries(snow_ocr_c INTERFACE onnxruntime::onnxruntime)
 
 set(SNOW_SHOT_SNOW_IMAGE_DIR
@@ -209,18 +235,34 @@ set(SNOW_SHOT_IMAGE_CODEC_BACKEND_SOURCES
     src/image/snowimagecodecbridge.h
     src/image/snowimagecodecbackend.cpp
 )
-add_library(snow_shot_image_codec_backend SHARED
+if(SNOW_SHOT_RELEASE_STATIC AND SNOW_SHOT_QT_STATIC)
+    set(SNOW_SHOT_IMAGE_CODEC_BACKEND_STATIC ON CACHE INTERNAL
+        "Link the Snow Shot image codec backend statically." FORCE)
+    set(_SNOW_SHOT_IMAGE_CODEC_BACKEND_TYPE STATIC)
+else()
+    set(SNOW_SHOT_IMAGE_CODEC_BACKEND_STATIC OFF CACHE INTERNAL
+        "Link the Snow Shot image codec backend statically." FORCE)
+    set(_SNOW_SHOT_IMAGE_CODEC_BACKEND_TYPE SHARED)
+endif()
+add_library(snow_shot_image_codec_backend ${_SNOW_SHOT_IMAGE_CODEC_BACKEND_TYPE}
     ${SNOW_SHOT_IMAGE_CODEC_BACKEND_SOURCES}
 )
+unset(_SNOW_SHOT_IMAGE_CODEC_BACKEND_TYPE)
 target_include_directories(snow_shot_image_codec_backend PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/src/image"
 )
 target_link_libraries(snow_shot_image_codec_backend PRIVATE
     snow_image::snow_image_static
 )
-target_compile_definitions(snow_shot_image_codec_backend PRIVATE
-    SNOW_SHOT_IMAGE_CODEC_BACKEND_BUILD=1
-)
+if(SNOW_SHOT_IMAGE_CODEC_BACKEND_STATIC)
+    target_compile_definitions(snow_shot_image_codec_backend PUBLIC
+        SNOW_SHOT_IMAGE_CODEC_BACKEND_STATIC=1
+    )
+else()
+    target_compile_definitions(snow_shot_image_codec_backend PRIVATE
+        SNOW_SHOT_IMAGE_CODEC_BACKEND_BUILD=1
+    )
+endif()
 target_compile_features(snow_shot_image_codec_backend PUBLIC cxx_std_20)
 set_target_properties(snow_shot_image_codec_backend PROPERTIES
     AUTOMOC OFF
@@ -248,7 +290,7 @@ target_link_libraries(snow_shot_image_codec PUBLIC
 )
 target_compile_features(snow_shot_image_codec PUBLIC cxx_std_20)
 
-if(WIN32)
+if(WIN32 AND NOT SNOW_SHOT_IMAGE_CODEC_BACKEND_STATIC)
     set(_SNOW_SHOT_IMAGE_RUNTIME_STAGING_SCRIPT
         "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/StageRuntimeDependencies.cmake"
     )
@@ -833,6 +875,27 @@ qt_add_resources(snow_shot "snow_shot_app_assets"
         "${CMAKE_CURRENT_SOURCE_DIR}/resources/snow-shot-tray-snow-dark.png"
 )
 
+function(snow_shot_add_image_codec_smoke_test)
+    add_executable(snow-shot-image-codec-backend-smoke-tests
+        tests/snowimage_codec_backend_smoke_tests.cpp
+    )
+    target_link_libraries(snow-shot-image-codec-backend-smoke-tests PRIVATE
+        snow_shot_image_codec_backend
+    )
+    set_target_properties(snow-shot-image-codec-backend-smoke-tests PROPERTIES
+        AUTOMOC OFF
+        AUTORCC OFF
+        AUTOUIC OFF
+    )
+endfunction()
+
+if(SNOW_SHOT_BUILD_IMAGE_CODEC_SMOKE_TEST AND NOT SNOW_SHOT_BUILD_TESTS)
+    snow_shot_add_image_codec_smoke_test()
+    set_target_properties(snow-shot-image-codec-backend-smoke-tests PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/verification-bin"
+    )
+endif()
+
 if(SNOW_SHOT_BUILD_TESTS)
     if(DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
         set(_SNOW_SHOT_RUNTIME_OUTPUT_DIRECTORY_WAS_DEFINED TRUE)
@@ -850,17 +913,7 @@ if(SNOW_SHOT_BUILD_TESTS)
 
     enable_testing()
 
-    add_executable(snow-shot-image-codec-backend-smoke-tests
-        tests/snowimage_codec_backend_smoke_tests.cpp
-    )
-    target_link_libraries(snow-shot-image-codec-backend-smoke-tests PRIVATE
-        snow_shot_image_codec_backend
-    )
-    set_target_properties(snow-shot-image-codec-backend-smoke-tests PROPERTIES
-        AUTOMOC OFF
-        AUTORCC OFF
-        AUTOUIC OFF
-    )
+    snow_shot_add_image_codec_smoke_test()
     add_test(NAME snow-shot-image-codec-backend-smoke-tests
              COMMAND snow-shot-image-codec-backend-smoke-tests)
 
@@ -2800,6 +2853,12 @@ endif()
 if(SNOW_SHOT_ENABLE_AGGRESSIVE_RELEASE_OPTIMIZATION OR SNOW_SHOT_RELEASE_STATIC)
     snow_apply_release_options(snow_shot)
 endif()
+if(MSVC AND SNOW_SHOT_RELEASE_STATIC)
+    target_link_options(snow_shot PRIVATE
+        $<$<CONFIG:Release>:/MAP>
+        $<$<CONFIG:Release>:/MAPINFO:EXPORTS>
+    )
+endif()
 
 if(WIN32)
     target_link_libraries(snow_shot PRIVATE
@@ -2978,7 +3037,7 @@ if(MSVC AND SNOW_SHOT_RELEASE_STATIC AND NOT SNOW_SHOT_QT_STATIC)
     target_link_options(snow_shot PRIVATE /ENTRY:mainCRTStartup)
 endif()
 
-if(WIN32)
+if(WIN32 AND NOT SNOW_SHOT_IMAGE_CODEC_BACKEND_STATIC)
     get_property(_snow_shot_directory_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
     foreach(_snow_shot_directory_target IN LISTS _snow_shot_directory_targets)
         get_target_property(_snow_shot_directory_target_type
@@ -3012,26 +3071,28 @@ if(EXISTS "${SNOW_SHOT_CAMERA_SHUTTER_AUDIO_SOURCE}")
         RENAME camera_shutter.mp3
     )
 endif()
-install(TARGETS snow_shot_image_codec_backend
-    RUNTIME_DEPENDENCY_SET snow_shot_image_runtime_dependencies
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
-if(WIN32)
-    install(RUNTIME_DEPENDENCY_SET snow_shot_image_runtime_dependencies
-        DIRECTORIES
-            "$<TARGET_FILE_DIR:snow_shot_image_codec_backend>"
-            "${_SNOW_SHOT_IMAGE_RUNTIME_SEARCH_DIRECTORY}"
-        PRE_EXCLUDE_REGEXES
-            "api-ms-.*"
-            "ext-ms-.*"
-            "msvcp.*\\.dll"
-            "ucrtbased\\.dll"
-            "vcruntime.*\\.dll"
-        POST_EXCLUDE_REGEXES
-            ".*[\\\\/][Ww][Ii][Nn][Dd][Oo][Ww][Ss][\\\\/][Ss][Yy][Ss][Tt][Ee][Mm]32[\\\\/].*"
+if(NOT SNOW_SHOT_IMAGE_CODEC_BACKEND_STATIC)
+    install(TARGETS snow_shot_image_codec_backend
+        RUNTIME_DEPENDENCY_SET snow_shot_image_runtime_dependencies
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
+    if(WIN32)
+        install(RUNTIME_DEPENDENCY_SET snow_shot_image_runtime_dependencies
+            DIRECTORIES
+                "$<TARGET_FILE_DIR:snow_shot_image_codec_backend>"
+                "${_SNOW_SHOT_IMAGE_RUNTIME_SEARCH_DIRECTORY}"
+            PRE_EXCLUDE_REGEXES
+                "api-ms-.*"
+                "ext-ms-.*"
+                "msvcp.*\\.dll"
+                "ucrtbased\\.dll"
+                "vcruntime.*\\.dll"
+            POST_EXCLUDE_REGEXES
+                ".*[\\\\/][Ww][Ii][Nn][Dd][Oo][Ww][Ss][\\\\/][Ss][Yy][Ss][Tt][Ee][Mm]32[\\\\/].*"
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        )
+    endif()
 endif()
 if(WIN32 AND NOT SNOW_SHOT_RELEASE_STATIC)
     install(FILES "$<TARGET_FILE:onnxruntime::onnxruntime>"
@@ -3175,19 +3236,45 @@ if(SNOW_SHOT_QT_STATIC)
     )
 endif()
 
-set(SNOW_SHOT_LICENSE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-foreach(_license_file IN ITEMS
-    "${SNOW_SHOT_CAPTURE_CRATES_DIR}/crates/snow-ocr-c/THIRD_PARTY_NOTICES.md"
-    "${SNOW_SHOT_CAPTURE_CRATES_DIR}/crates/snow-ocr-c/assets/onnxruntime/LICENSE.txt"
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+    "${CMAKE_CURRENT_SOURCE_DIR}/COPYRIGHT"
+    "${CMAKE_CURRENT_SOURCE_DIR}/THIRD_PARTY_NOTICES.md"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/snow-shot/licenses"
 )
-    if(EXISTS "${_license_file}")
-        list(APPEND SNOW_SHOT_LICENSE_FILES "${_license_file}")
-    endif()
-endforeach()
-if(SNOW_SHOT_LICENSE_FILES)
-    install(FILES ${SNOW_SHOT_LICENSE_FILES}
-        DESTINATION "${CMAKE_INSTALL_DATADIR}/snow-shot/licenses"
-    )
-endif()
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ant_design_qt/THIRD_PARTY_NOTICES.md"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/snow-shot/licenses/third-party/project-notices/ant-design-icons"
+)
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../snow_image/LICENSE"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../snow_image/COPYRIGHT"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/snow-shot/licenses/components/snow-image"
+)
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ant_design_qt/LICENSE"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ant_design_qt/COPYRIGHT"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/snow-shot/licenses/components/ant-design-qt"
+)
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../snow-crates/LICENSE"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../snow-crates/COPYRIGHT"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/snow-shot/licenses/components/snow-crates"
+)
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../snow_draw_engine_qt/LICENSE"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../snow_draw_engine_qt/COPYRIGHT"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/snow-shot/licenses/components/snow-draw-engine-qt"
+)
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../snow_rust_ffi/LICENSE"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../snow_rust_ffi/COPYRIGHT"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/snow-shot/licenses/components/snow-rust-ffi"
+)
+install(DIRECTORY
+    "${CMAKE_CURRENT_BINARY_DIR}/third-party-licenses/third-party/"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/snow-shot/licenses/third-party"
+    OPTIONAL
+)
 
 qt_finalize_executable(snow_shot)

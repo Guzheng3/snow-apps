@@ -9175,26 +9175,51 @@ mod tests {
     }
 
     #[test]
-    fn animated_formats_encode_multiple_frames() {
+    fn production_exporters_emit_valid_container_signatures() {
         let directory = tempdir().expect("temporary output directory should be available");
         let cancel_flag = Arc::new(AtomicBool::new(false));
         let performance = ExportPerformanceConfig {
             mode: ExportExecutionMode::SoftwareOnly,
             ..ExportPerformanceConfig::default()
         };
+        let mut muxer_names = Vec::new();
+        let mut muxer_opaque = ptr::null_mut();
+        loop {
+            let muxer = unsafe { ffmpeg::ffi::av_muxer_iterate(&mut muxer_opaque) };
+            if muxer.is_null() {
+                break;
+            }
+            let name = unsafe { std::ffi::CStr::from_ptr((*muxer).name) };
+            muxer_names.push(name.to_string_lossy().into_owned());
+        }
+        muxer_names.sort_unstable();
+        assert_eq!(
+            muxer_names,
+            ["apng", "avi", "gif", "matroska", "mov", "mp4", "webp"],
+            "FFmpeg muxer registry does not match the production profile"
+        );
 
-        for format in [ExportFormat::Apng, ExportFormat::Webp] {
+        let cases = [
+            (ExportFormat::Mp4, VideoCodec::H264, "h264", "libx264"),
+            (ExportFormat::Mp4, VideoCodec::H265, "h265", "libx265"),
+            (ExportFormat::Avi, VideoCodec::H264, "mpeg4", "mpeg4"),
+            (ExportFormat::Gif, VideoCodec::H264, "gif", "gif"),
+            (ExportFormat::Apng, VideoCodec::H264, "apng", "apng"),
+            (ExportFormat::Webp, VideoCodec::H264, "webp", "libwebp_anim"),
+        ];
+
+        for (format, codec, label, expected_encoder) in cases {
             let output_path = directory
                 .path()
-                .join(format!("animated-test.{}", format.file_extension()));
+                .join(format!("{label}-test.{}", format.file_extension()));
             let result = export_video_generated(
                 &output_path,
-                8,
-                8,
+                16,
+                16,
                 2,
                 10,
                 format,
-                VideoCodec::H264,
+                codec,
                 None,
                 8,
                 &VideoEncodeConfig::default(),
@@ -9202,51 +9227,54 @@ mod tests {
                 &cancel_flag,
                 &None,
                 |index, rgba| {
-                    rgba.fill(if index == 0 { 0x20 } else { 0xE0 });
-                    for alpha in rgba.chunks_exact_mut(4).map(|pixel| &mut pixel[3..4]) {
-                        alpha[0] = 0xFF;
+                    for (pixel_index, pixel) in rgba.chunks_exact_mut(4).enumerate() {
+                        pixel[0] = if index == 0 { 0x20 } else { 0xE0 };
+                        pixel[1] = (pixel_index % 16) as u8 * 16;
+                        pixel[2] = (pixel_index / 16) as u8 * 16;
+                        pixel[3] = 0xFF;
                     }
                     Ok(())
                 },
             )
-            .unwrap_or_else(|error| panic!("{format:?} should encode: {error}"));
+            .unwrap_or_else(|error| panic!("{label} should encode: {error}"));
 
-            assert!(output_path.is_file());
-            assert!(result.video_encoder.is_some());
+            assert_eq!(result.video_encoder.as_deref(), Some(expected_encoder));
+            let bytes = fs::read(&output_path)
+                .unwrap_or_else(|error| panic!("{label} output should be readable: {error}"));
+            assert!(
+                bytes.len() > 16,
+                "{label} output should contain encoded data"
+            );
 
-            let mut input = ffmpeg::format::input(&output_path)
-                .unwrap_or_else(|error| panic!("{format:?} output should open: {error}"));
-            let stream = input
-                .streams()
-                .best(ffmpeg::media::Type::Video)
-                .unwrap_or_else(|| panic!("{format:?} output should contain video"));
-            let stream_index = stream.index();
-            let context = ffmpeg::codec::context::Context::from_parameters(stream.parameters())
-                .unwrap_or_else(|error| panic!("{format:?} decoder context: {error}"));
-            let mut decoder = context
-                .decoder()
-                .video()
-                .unwrap_or_else(|error| panic!("{format:?} decoder: {error}"));
-            let mut decoded = ffmpeg::frame::Video::empty();
-            let mut frame_count = 0usize;
-            for (packet_stream, packet) in input.packets() {
-                if packet_stream.index() != stream_index {
-                    continue;
+            match format {
+                ExportFormat::Mp4 => assert_eq!(&bytes[4..8], b"ftyp"),
+                ExportFormat::Avi => {
+                    assert_eq!(&bytes[0..4], b"RIFF");
+                    assert_eq!(&bytes[8..12], b"AVI ");
                 }
-                decoder
-                    .send_packet(&packet)
-                    .unwrap_or_else(|error| panic!("{format:?} packet decode: {error}"));
-                while decoder.receive_frame(&mut decoded).is_ok() {
-                    frame_count += 1;
+                ExportFormat::Gif => {
+                    assert!(bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a"));
+                }
+                ExportFormat::Apng => {
+                    assert!(bytes.starts_with(b"\x89PNG\r\n\x1a\n"));
+                    assert!(
+                        bytes.windows(4).any(|window| window == b"acTL"),
+                        "APNG output should contain an animation control chunk"
+                    );
+                }
+                ExportFormat::Webp => {
+                    assert_eq!(&bytes[0..4], b"RIFF");
+                    assert_eq!(&bytes[8..12], b"WEBP");
+                    assert!(
+                        bytes.windows(4).any(|window| window == b"ANIM"),
+                        "WebP output should contain an animation header"
+                    );
+                    assert!(
+                        bytes.windows(4).any(|window| window == b"ANMF"),
+                        "WebP output should contain an animation frame"
+                    );
                 }
             }
-            decoder
-                .send_eof()
-                .unwrap_or_else(|error| panic!("{format:?} decoder flush: {error}"));
-            while decoder.receive_frame(&mut decoded).is_ok() {
-                frame_count += 1;
-            }
-            assert_eq!(frame_count, 2, "{format:?} should preserve both frames");
         }
     }
 

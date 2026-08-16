@@ -96,6 +96,62 @@ int32_t SNOW_SHOT_IMAGE_CODEC_CALL cancelled(void* rawContext) {
     const auto* context = static_cast<const StreamContext*>(rawContext);
     return context != nullptr && context->cancelled ? 1 : 0;
 }
+
+bool roundTripRequiredFormats(const std::array<uint8_t, 3U * 2U * 4U>& pixels,
+                              SnowShotImageCodecEncodeOptions options,
+                              std::array<char, 512>* error) {
+    struct FormatCase final {
+        uint32_t format;
+        const char* name;
+        bool lossless;
+    };
+    constexpr std::array formats{
+        FormatCase{SNOW_SHOT_IMAGE_CODEC_FORMAT_PNG, "PNG", true},
+        FormatCase{SNOW_SHOT_IMAGE_CODEC_FORMAT_JPEG, "JPEG", false},
+        FormatCase{SNOW_SHOT_IMAGE_CODEC_FORMAT_AVIF, "AVIF (libheif/AOM)", true},
+        FormatCase{SNOW_SHOT_IMAGE_CODEC_FORMAT_JXL, "JPEG XL", true},
+        FormatCase{SNOW_SHOT_IMAGE_CODEC_FORMAT_WEBP, "WebP", true},
+    };
+
+    for (const FormatCase& format : formats) {
+        options.format = format.format;
+        options.quality = format.lossless ? 100 : 90;
+        options.lossless = format.lossless ? 1 : 0;
+        error->fill('\0');
+
+        SnowShotImageCodecBuffer encoded{};
+        if (snow_shot_image_codec_encode_rgba8(pixels.data(), pixels.size(), 3, 2, 3U * 4U,
+                                               &options, &encoded, error->data(),
+                                               error->size()) == 0 ||
+            encoded.data == nullptr || encoded.size == 0) {
+            std::cerr << format.name << " encode failed: " << error->data() << '\n';
+            snow_shot_image_codec_release_buffer(&encoded);
+            return false;
+        }
+
+        SnowShotImageCodecImageInfo information{};
+        error->fill('\0');
+        const bool inspected =
+            snow_shot_image_codec_inspect(encoded.data, encoded.size, format.format, &information,
+                                          error->data(), error->size()) != 0 &&
+            information.width == 3 && information.height == 2;
+
+        SnowShotImageCodecBuffer decoded{};
+        error->fill('\0');
+        const bool roundTripped =
+            snow_shot_image_codec_decode_rgba8(encoded.data, encoded.size, format.format, &decoded,
+                                               error->data(), error->size()) != 0 &&
+            decoded.data != nullptr && decoded.width == 3 && decoded.height == 2 &&
+            decoded.row_stride == 3U * 4U && decoded.size == 3U * 2U * 4U;
+        snow_shot_image_codec_release_buffer(&decoded);
+        snow_shot_image_codec_release_buffer(&encoded);
+        if (!inspected || !roundTripped) {
+            std::cerr << format.name << " inspect/decode failed: " << error->data() << '\n';
+            return false;
+        }
+    }
+    return true;
+}
 } // namespace
 
 int main() {
@@ -206,10 +262,11 @@ int main() {
 
     snow_shot_image_codec_release_buffer(&output);
     snow_shot_image_codec_release_buffer(&output);
+    const bool requiredFormatsRoundTrip = roundTripRequiredFormats(pixels, options, &error);
     if (snow_shot_image_codec_abi_version() != SNOW_SHOT_IMAGE_CODEC_ABI_VERSION ||
         succeeded == 0 || !hasPngSignature || !rejectedUnsafeReuse || output.data != nullptr ||
         output.size != 0 || !streamedPng || !tallPngStreamedRows || !tallJpegStreamedRows ||
-        !propagatedCancellation) {
+        !propagatedCancellation || !requiredFormatsRoundTrip) {
         std::cerr << (error[0] == '\0' ? "The C ABI PNG smoke test failed." : error.data()) << '\n';
         return EXIT_FAILURE;
     }

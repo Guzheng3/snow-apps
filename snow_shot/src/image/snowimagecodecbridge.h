@@ -2,12 +2,15 @@
 
 #include <stdint.h>
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(SNOW_SHOT_IMAGE_CODEC_BACKEND_STATIC)
 #if defined(SNOW_SHOT_IMAGE_CODEC_BACKEND_BUILD)
 #define SNOW_SHOT_IMAGE_CODEC_API __declspec(dllexport)
 #else
 #define SNOW_SHOT_IMAGE_CODEC_API __declspec(dllimport)
 #endif
+#define SNOW_SHOT_IMAGE_CODEC_CALL __cdecl
+#elif defined(_WIN32)
+#define SNOW_SHOT_IMAGE_CODEC_API
 #define SNOW_SHOT_IMAGE_CODEC_CALL __cdecl
 #elif defined(__GNUC__) || defined(__clang__)
 #define SNOW_SHOT_IMAGE_CODEC_API __attribute__((visibility("default")))

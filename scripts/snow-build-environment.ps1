@@ -6,6 +6,21 @@ $script:SnowMsvcToolset = "14.51"
 $script:SnowRustToolchain = "1.97.1"
 $script:SnowRustTarget = "x86_64-pc-windows-msvc"
 
+function Test-SnowQtSystemCodecKit {
+    param([Parameter(Mandatory = $true)][string]$Qt6Dir)
+
+    $coreTargets = Join-Path $Qt6Dir "..\Qt6Core\Qt6CoreTargets.cmake"
+    $guiTargets = Join-Path $Qt6Dir "..\Qt6Gui\Qt6GuiTargets.cmake"
+    if (-not (Test-Path -LiteralPath $coreTargets -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $guiTargets -PathType Leaf)) {
+        return $false
+    }
+    $coreText = Get-Content -LiteralPath $coreTargets -Raw
+    $guiText = Get-Content -LiteralPath $guiTargets -Raw
+    return $coreText -match 'QT_ENABLED_PRIVATE_FEATURES "[^"]*system_zlib' -and
+        $guiText -match 'QT_ENABLED_PRIVATE_FEATURES "[^"]*system_png'
+}
+
 function Resolve-SnowQtDir {
     param(
         [string]$Qt6Dir = "",
@@ -78,6 +93,10 @@ function Resolve-SnowQtDir {
                 "..\Qt6Core\Qt6CoreTargets-{0}.cmake" -f $requiredConfiguration.ToLowerInvariant()
             )
             if (-not (Test-Path -LiteralPath $configurationTargets -PathType Leaf)) { continue }
+        }
+        if ($Preset -in @("snow-shot-msvc-release", "snow-shot-msvc-fast") -and
+            -not (Test-SnowQtSystemCodecKit -Qt6Dir $resolved)) {
+            continue
         }
         return $resolved
     }

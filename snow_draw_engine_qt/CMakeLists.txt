@@ -36,12 +36,14 @@ if(NOT TARGET adqt::icons)
                      "${CMAKE_CURRENT_BINARY_DIR}/ant_design_qt")
 endif()
 
-snow_add_rust_static_library(snow_draw_engine_c
-    PACKAGE snow-draw-engine-c
-    MANIFEST_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
-    OUTPUT_NAME snow_draw_engine_c
-    STRIP_MSVC_DIRECTIVES
-)
+if(NOT TARGET snow_draw_engine_c)
+    snow_add_rust_static_library(snow_draw_engine_c
+        PACKAGE snow-draw-engine-c
+        MANIFEST_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
+        OUTPUT_NAME snow_draw_engine_c
+        STRIP_MSVC_DIRECTIVES
+    )
+endif()
 
 qt_add_library(snow_draw_engine_qt_canvas STATIC
     ${SNOW_CANVAS_QT_SOURCES}
