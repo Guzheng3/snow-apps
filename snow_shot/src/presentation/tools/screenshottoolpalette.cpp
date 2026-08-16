@@ -4242,6 +4242,7 @@ void ScreenshotToolPalette::setActiveToolButton(adqt::widgets::AdButton* activeB
         m_textButton,
         m_serialNumberButton,
         m_ocrButton,
+        m_textTranslationButton,
         m_tableButton,
         m_scrollingScreenshotButton,
     };

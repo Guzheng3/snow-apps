@@ -27,8 +27,9 @@ inline ScreenshotSelectorLookupPolicy screenshotSelectorLookupPolicy(
 }
 
 inline SnowUiSelectorHitTestMode
-screenshotSelectorHitTestMode(ScreenshotSelectorHitTestMode requestedMode) {
-    return requestedMode == ScreenshotSelectorHitTestMode::Window
+screenshotSelectorHitTestMode(bool smartSelectionEnabled,
+                              ScreenshotSelectorHitTestMode requestedMode) {
+    return !smartSelectionEnabled || requestedMode == ScreenshotSelectorHitTestMode::Window
                ? SNOW_UI_SELECTOR_HIT_TEST_MODE_WINDOW
                : SNOW_UI_SELECTOR_HIT_TEST_MODE_UI_ELEMENT;
 }

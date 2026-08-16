@@ -91,6 +91,8 @@ class ScreenshotSettings final {
     bool setCopyImageFileToClipboard(bool enabled) const;
     [[nodiscard]] QString imageSaveDirectory() const;
     bool setImageSaveDirectory(const QString& directory) const;
+    [[nodiscard]] QString lastManualSaveDirectory() const;
+    bool setLastManualSaveDirectory(const QString& directory) const;
     [[nodiscard]] QString imageFormat() const;
     bool setImageFormat(const QString& format) const;
     [[nodiscard]] QString manualSaveFilenameFormat() const;

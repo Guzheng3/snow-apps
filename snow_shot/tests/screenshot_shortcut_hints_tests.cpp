@@ -260,6 +260,18 @@ void selectionStageContextsRetainShortcutHints() {
             "moving-selection hints must remain exclusive to the Move tool");
 }
 
+void disabledSmartSelectionHidesTheTargetSwitchHint() {
+    ScreenshotShortcutHintContext context;
+    context.activeTool = ScreenshotActiveTool::Move;
+    context.captureMode = ScreenshotCaptureMode::IntelligentSelecting;
+    context.smartSelectionEnabled = false;
+
+    const QStringList lines = screenshotShortcutHintLines(context);
+    require(lines.contains(QStringLiteral("Switch element level: mouse wheel")) &&
+                !lines.contains(QStringLiteral("Select Window/Window Sub-element: Tab")),
+            "disabled Smart Selection must hide only the Tab target-switch hint");
+}
+
 void emptyContextsUseHiddenMode() {
     ScreenshotShortcutHintContext context;
     context.activeTool = ScreenshotActiveTool::Select;
@@ -301,6 +313,7 @@ int main(int argc, char** argv) {
     unassignedConfiguredShortcutIsNotHinted();
     scrollingHintsUseMouseWheelLabels();
     selectionStageContextsRetainShortcutHints();
+    disabledSmartSelectionHidesTheTargetSwitchHint();
     emptyContextsUseHiddenMode();
     hintAreaHidesForSelectionOverlapOrCursorHover();
     return 0;

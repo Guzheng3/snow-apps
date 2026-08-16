@@ -17,35 +17,14 @@ vcpkg_from_github(
 find_program(PROTOC NAMES protoc PATHS "${CURRENT_HOST_INSTALLED_DIR}/tools/protobuf" REQUIRED NO_DEFAULT_PATH NO_CMAKE_PATH)
 find_program(FLATC NAMES flatc PATHS "${CURRENT_HOST_INSTALLED_DIR}/tools/flatbuffers" REQUIRED NO_DEFAULT_PATH NO_CMAKE_PATH)
 
-# vcpkg's generic Python helper uses the third-party ``virtualenv`` module on
-# Windows. That is only bootstrapped when Python is vcpkg-managed, while
-# ordinary installations discovered from PATH do not necessarily provide it.
-# Use Python's built-in venv instead so this port is independent of global
-# Python packages and works with both system and vcpkg-discovered interpreters.
-vcpkg_find_acquire_program(PYTHON3)
-set(_snow_onnxruntime_venv "${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-venv")
-file(REMOVE_RECURSE "${_snow_onnxruntime_venv}")
-vcpkg_execute_required_process(
-    COMMAND "${PYTHON3}" -I -m venv "${_snow_onnxruntime_venv}"
-    WORKING_DIRECTORY "${CURRENT_BUILDTREES_DIR}"
-    LOGNAME "venv-setup-${TARGET_TRIPLET}"
+# vcpkg's Windows Python tool is an embeddable distribution without the
+# standard-library venv module. The helper bootstraps virtualenv when needed,
+# creates an isolated environment, and installs the schema dependency there.
+x_vcpkg_get_python_packages(
+    PYTHON_VERSION "3"
+    PACKAGES flatbuffers
+    OUT_PYTHON_VAR PYTHON3
 )
-if(CMAKE_HOST_WIN32)
-    set(_snow_onnxruntime_python_dir "${_snow_onnxruntime_venv}/Scripts")
-else()
-    set(_snow_onnxruntime_python_dir "${_snow_onnxruntime_venv}/bin")
-endif()
-set(PYTHON3 "${_snow_onnxruntime_python_dir}/python${VCPKG_HOST_EXECUTABLE_SUFFIX}")
-if(NOT EXISTS "${PYTHON3}")
-    message(FATAL_ERROR "Python venv creation did not produce the expected interpreter: ${PYTHON3}")
-endif()
-vcpkg_execute_required_process(
-    COMMAND "${PYTHON3}" -I -m pip install --disable-pip-version-check --no-warn-script-location flatbuffers
-    WORKING_DIRECTORY "${CURRENT_BUILDTREES_DIR}"
-    LOGNAME "pip-install-flatbuffers-${TARGET_TRIPLET}"
-)
-set(ENV{VIRTUAL_ENV} "${_snow_onnxruntime_venv}")
-vcpkg_add_to_path(PREPEND "${_snow_onnxruntime_python_dir}")
 
 set(SNOW_SHOT_REQUIRED_OPERATORS "${CMAKE_CURRENT_LIST_DIR}/required_operators.config")
 if(NOT EXISTS "${SNOW_SHOT_REQUIRED_OPERATORS}")

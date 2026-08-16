@@ -227,6 +227,22 @@ void configuredAutomaticOutputUsesFormatDirectoryAndFilename() {
             "a missing configured directory must be skipped in favor of platform fallbacks");
 }
 
+void saveDialogPrefersTheLastExistingDirectory() {
+    QTemporaryDir temporary;
+    require(temporary.isValid(), "temporary Save As directory could not be created");
+    const QString configured = QDir(temporary.path()).filePath(QStringLiteral("configured"));
+    const QString remembered = QDir(temporary.path()).filePath(QStringLiteral("remembered"));
+    require(QDir().mkpath(configured) && QDir().mkpath(remembered),
+            "Save As directory fixtures could not be created");
+
+    require(ScreenshotImageFileService::saveDialogDirectory(remembered, configured) == remembered,
+            "Save As must prefer the last selected directory");
+    require(ScreenshotImageFileService::saveDialogDirectory(
+                QDir(temporary.path()).filePath(QStringLiteral("missing")), configured) ==
+                configured,
+            "Save As must fall back when the remembered directory no longer exists");
+}
+
 void retriesNextDirectoryAndPublishesFileOnlyClipboardData() {
     QTemporaryDir directory;
     require(directory.isValid(), "temporary directory could not be created");
@@ -280,6 +296,7 @@ int main(int argc, char** argv) {
         writesEveryAdvertisedFormat();
         streamsRowsToAtomicFileAndCancelsWithoutPublishing();
         configuredAutomaticOutputUsesFormatDirectoryAndFilename();
+        saveDialogPrefersTheLastExistingDirectory();
         retriesNextDirectoryAndPublishesFileOnlyClipboardData();
         codecOptionsUseFastLosslessAndMaximumJpegQuality();
     } catch (const std::exception& error) {

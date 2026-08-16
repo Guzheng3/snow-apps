@@ -12,15 +12,19 @@ enum class ScreenshotIntelligentSelectionTarget {
 
 class ScreenshotIntelligentSelectionModel final {
   public:
+    void beginCaptureSession(bool smartSelectionEnabled);
     void reset();
+    void clearTransientState();
     void clearHitPath();
     void clearPress();
+    [[nodiscard]] bool updateSmartSelectionEnabled(bool enabled);
 
     [[nodiscard]] bool applyCanvasHitPath(const QVector<QRectF>& canvasHitRects,
                                           const QRectF& selectableBounds,
                                           qreal minimumSelectionSize);
     [[nodiscard]] bool setIndex(int index);
-    void toggleSelectionTarget();
+    [[nodiscard]] bool toggleSelectionTarget();
+    [[nodiscard]] bool smartSelectionEnabled() const;
     [[nodiscard]] ScreenshotIntelligentSelectionTarget selectionTarget() const;
     [[nodiscard]] int index() const;
     [[nodiscard]] bool hasCurrentSelection() const;
@@ -38,6 +42,7 @@ class ScreenshotIntelligentSelectionModel final {
     int m_index = -1;
     ScreenshotIntelligentSelectionTarget m_selectionTarget =
         ScreenshotIntelligentSelectionTarget::Window;
+    bool m_smartSelectionEnabled = false;
     bool m_pressActive = false;
     QPointF m_pressPosition;
     QRectF m_pressSelection;

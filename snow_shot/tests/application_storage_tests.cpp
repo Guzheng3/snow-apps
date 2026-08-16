@@ -193,6 +193,7 @@ void newSettingsSchemaDefaultsAndValidationAreComplete() {
                 QDir::fromNativeSeparators(
                     defaultValue("screenshot/image_save_directory").toString())
                     .endsWith(QStringLiteral("/SnowShot")) &&
+                defaultValue("screenshot/last_manual_save_directory").toString().isEmpty() &&
                 defaultValue("screenshot/image_format").toString() == QStringLiteral("png") &&
                 defaultValue("screenshot/manual_save_filename_format").toString() ==
                     QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}") &&
@@ -643,6 +644,7 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
                     QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}") &&
                 screenshot.autoSaveFilenameFormat() ==
                     QStringLiteral("SnowShot_{YYYY-MM-DD_HH-mm-ss}") &&
+                screenshot.lastManualSaveDirectory().isEmpty() &&
                 QDir::fromNativeSeparators(screenshot.imageSaveDirectory())
                     .endsWith(QStringLiteral("/SnowShot")),
             "screenshot adapters must expose requested defaults");
@@ -653,6 +655,7 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
                 screenshot.setAutoSaveAfterCopy(true) &&
                 screenshot.setCopyImageFileToClipboard(true) &&
                 screenshot.setImageSaveDirectory(QStringLiteral("D:/Captures")) &&
+                screenshot.setLastManualSaveDirectory(QStringLiteral("D:/Exports")) &&
                 screenshot.setImageFormat(QStringLiteral("webp")) &&
                 screenshot.setManualSaveFilenameFormat(QStringLiteral("Manual_{yyyyMMdd}")) &&
                 screenshot.setAutoSaveFilenameFormat(QStringLiteral("Auto_{HHmmss}")) &&
@@ -662,6 +665,7 @@ void newSettingsAdaptersRoundTripAndRejectInvalidValues() {
                 screenshot.middleMouseButtonAction() == QStringLiteral("none") &&
                 screenshot.autoSaveAfterCopy() && screenshot.copyImageFileToClipboard() &&
                 screenshot.imageSaveDirectory() == QStringLiteral("D:/Captures") &&
+                screenshot.lastManualSaveDirectory() == QStringLiteral("D:/Exports") &&
                 screenshot.imageFormat() == QStringLiteral("webp") &&
                 screenshot.manualSaveFilenameFormat() == QStringLiteral("Manual_{yyyyMMdd}") &&
                 screenshot.autoSaveFilenameFormat() == QStringLiteral("Auto_{HHmmss}"),

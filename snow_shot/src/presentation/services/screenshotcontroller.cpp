@@ -63,7 +63,6 @@
 #include <QPointer>
 #include <QRectF>
 #include <QScreen>
-#include <QStandardPaths>
 #include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QTextEdit>
@@ -224,6 +223,7 @@ struct ScreenshotController::Impl final : public ScreenshotToolbarCommandSink,
     void connectSelectorSignals();
     void reloadUiPreferences();
     void reloadDrawingPreferences();
+    void updateSmartSelectionSettingForCurrentSession(bool enabled);
     void applyUiPreferences(const ScreenshotUiPreferences& preferences);
     void shutdown();
     void startHistoryEdit(const QString& recordId);
@@ -240,7 +240,6 @@ struct ScreenshotController::Impl final : public ScreenshotToolbarCommandSink,
     [[nodiscard]] bool selectPreviousSelection();
     void handleAutomaticTextRecognitionAction(bool available);
     void executeAutomaticSelection();
-    void applyFocusedWindowCapture();
     [[nodiscard]] bool canBeginCapture() const;
     [[nodiscard]] ScreenshotOverlayWindow* overlayUnderCursor() const;
     void setHistoryLoadingMessageVisible(bool visible);
@@ -422,8 +421,10 @@ ScreenshotController::Impl::Impl(ScreenshotController& controller)
     if (storage.isInitialized()) {
         QObject::connect(
             &storage.configuration(), &snow_shot::storage::ConfigurationStore::valueChanged, &owner,
-            [this](const QString& key, const QJsonValue&) {
-                if (key.startsWith(QStringLiteral("screenshot_ui/"))) {
+            [this](const QString& key, const QJsonValue& value) {
+                if (key == QStringLiteral("screenshot_selection/smart_selection")) {
+                    updateSmartSelectionSettingForCurrentSession(value.toBool());
+                } else if (key.startsWith(QStringLiteral("screenshot_ui/"))) {
                     reloadUiPreferences();
                 } else if (key == QStringLiteral("drawing/quick_selection_disabled_tools")) {
                     reloadDrawingPreferences();
@@ -461,6 +462,27 @@ void ScreenshotController::Impl::reloadDrawingPreferences() {
     }
     if (m_presentationServices != nullptr) {
         m_presentationServices->setQuickSelectionDisabledTools(tools);
+    }
+}
+
+void ScreenshotController::Impl::updateSmartSelectionSettingForCurrentSession(bool enabled) {
+    if (m_interaction.inactive() || !m_intelligentSelection.updateSmartSelectionEnabled(enabled)) {
+        return;
+    }
+
+    if (m_interaction.intelligentSelecting()) {
+        if (m_intelligentSelection.hasCurrentSelection()) {
+            m_selection.setSelectionRect(m_intelligentSelection.currentSelection());
+        } else {
+            m_selection.clearSelection();
+        }
+        if (m_selectorWorkflow != nullptr) {
+            static_cast<void>(m_selectorWorkflow->updateSelectionAt(
+                m_geometry.physicalPositionForLogicalPoint(m_displaySession, QCursor::pos())));
+        }
+    }
+    if (m_presentationServices != nullptr) {
+        m_presentationServices->updateOverlayState();
     }
 }
 
@@ -635,6 +657,7 @@ void ScreenshotController::Impl::createPresentationInfrastructure() {
             m_displaySession,
             m_interaction,
             m_selection,
+            m_intelligentSelection,
             m_quickSelectionDisabledTools,
         });
     auto& applicationStorage = snow_shot::storage::ApplicationStorage::instance();
@@ -897,6 +920,10 @@ void ScreenshotController::Impl::createCaptureWorkflow() {
                 if (m_ocrController != nullptr) {
                     m_ocrController->invalidateSession();
                 }
+            },
+            []() {
+                return snow_shot::storage::ApplicationStorage::instance()
+                    .smartSelectionEnabled();
             },
         });
 }
@@ -1940,13 +1967,8 @@ void ScreenshotController::Impl::saveSelectionToFile() {
     }
 
     const snow_shot::storage::ScreenshotSettings outputSettings;
-    const QStringList candidateDirectories =
-        ScreenshotImageFileService::automaticDirectories(outputSettings.imageSaveDirectory());
-    QString directory =
-        candidateDirectories.isEmpty() ? QString() : candidateDirectories.constFirst();
-    if (directory.isEmpty()) {
-        directory = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
-    }
+    const QString directory = ScreenshotImageFileService::saveDialogDirectory(
+        outputSettings.lastManualSaveDirectory(), outputSettings.imageSaveDirectory());
     static_cast<void>(QDir().mkpath(directory));
     const QString initialPath = QDir(directory).filePath(
         ScreenshotImageFileService::suggestedBaseName(outputSettings.manualSaveFilenameFormat()) +
@@ -1960,6 +1982,8 @@ void ScreenshotController::Impl::saveSelectionToFile() {
     if (selectedPath.isEmpty()) {
         return;
     }
+    static_cast<void>(
+        outputSettings.setLastManualSaveDirectory(QFileInfo(selectedPath).absolutePath()));
 
     const ScreenshotImageFileFormat format =
         ScreenshotImageFileService::formatForDialogSelection(selectedPath, selectedFilter);
@@ -3086,7 +3110,7 @@ bool ScreenshotController::Impl::selectPreviousSelection() {
         return false;
     }
 
-    m_intelligentSelection.reset();
+    m_intelligentSelection.clearTransientState();
     m_interaction.confirmSelection();
     m_captureState.sessionState = ScreenshotSessionState::Editing;
     if (m_presentationServices != nullptr) {
@@ -3105,12 +3129,19 @@ void ScreenshotController::Impl::handleSelectionConfirmed() {
         std::exchange(m_pendingSelectionAction, PendingSelectionAction::None);
     const snow_shot::storage::CaptureHistorySource source = m_pendingHistorySource;
     m_pendingHistorySource = snow_shot::storage::CaptureHistorySource::CopiedToClipboard;
+    QImage directSourceImage;
+    if (source == snow_shot::storage::CaptureHistorySource::FocusedWindow &&
+        m_focusedWindowCapture.has_value()) {
+        directSourceImage = m_focusedWindowCapture->image;
+    }
     if (action == PendingSelectionAction::None) {
         return;
     }
 
     const quint64 sessionId = m_captureState.sessionId;
-    QTimer::singleShot(0, &owner, [this, action, source, sessionId]() {
+    QTimer::singleShot(0, &owner,
+                       [this, action, source, sessionId,
+                        directSourceImage = std::move(directSourceImage)]() mutable {
         if (m_captureState.sessionId != sessionId ||
             m_captureState.sessionState != ScreenshotSessionState::Editing) {
             return;
@@ -3130,7 +3161,13 @@ void ScreenshotController::Impl::handleSelectionConfirmed() {
             setTextTranslationTool();
             break;
         case PendingSelectionAction::Copy:
+            if (!directSourceImage.isNull() && m_exportService != nullptr) {
+                m_exportService->setNextSelectionSourceImage(std::move(directSourceImage));
+            }
             copySelectionToClipboardWithSource(source);
+            if (m_exportService != nullptr) {
+                m_exportService->clearNextSelectionSourceImage();
+            }
             break;
         case PendingSelectionAction::StartVideo:
             startScreenRecording();
@@ -3141,61 +3178,11 @@ void ScreenshotController::Impl::handleSelectionConfirmed() {
     });
 }
 
-void ScreenshotController::Impl::applyFocusedWindowCapture() {
-    if (!m_focusedWindowCapture.has_value() || !m_focusedWindowCapture->isValid()) {
-        return;
-    }
-
-    const ScreenshotWindowCaptureFrame& frame = *m_focusedWindowCapture;
-    m_displaySession.forEachMutableActiveDisplay([&frame](qsizetype,
-                                                          CapturedDisplayModel& display) {
-        const QRect intersection = display.physicalRect.intersected(frame.physicalRect);
-        if (intersection.isEmpty() || display.image.isNull()) {
-            return;
-        }
-
-        const QRect displayRect = display.physicalRect;
-        const QRect frameRect = frame.physicalRect;
-        const auto mapRect = [](const QRect& sourceRect, const QRect& referenceRect,
-                                const QSize& imageSize) {
-            if (sourceRect.isEmpty() || referenceRect.isEmpty() || imageSize.isEmpty()) {
-                return QRect();
-            }
-
-            const qreal sx = static_cast<qreal>(imageSize.width()) / referenceRect.width();
-            const qreal sy = static_cast<qreal>(imageSize.height()) / referenceRect.height();
-            const qreal sourceRight = static_cast<qreal>(sourceRect.left()) + sourceRect.width();
-            const qreal sourceBottom = static_cast<qreal>(sourceRect.top()) + sourceRect.height();
-            const int left = qFloor(
-                (static_cast<qreal>(sourceRect.left()) - static_cast<qreal>(referenceRect.left())) *
-                sx);
-            const int top = qFloor(
-                (static_cast<qreal>(sourceRect.top()) - static_cast<qreal>(referenceRect.top())) *
-                sy);
-            const int right = qCeil((sourceRight - static_cast<qreal>(referenceRect.left())) * sx);
-            const int bottom = qCeil((sourceBottom - static_cast<qreal>(referenceRect.top())) * sy);
-            return QRect(left, top, std::max(0, right - left), std::max(0, bottom - top))
-                .intersected(QRect(QPoint(), imageSize));
-        };
-        const QRect source = mapRect(intersection, frameRect, frame.image.size());
-        const QRect target = mapRect(intersection, displayRect, display.image.size());
-        if (source.isEmpty() || target.isEmpty()) {
-            return;
-        }
-        QPainter painter(&display.image);
-        painter.drawImage(target, frame.image, source);
-    });
-}
-
 void ScreenshotController::Impl::executeAutomaticSelection() {
     const AutomaticSelectionMode mode =
         std::exchange(m_automaticSelectionMode, AutomaticSelectionMode::None);
     if (mode == AutomaticSelectionMode::None) {
         return;
-    }
-
-    if (mode == AutomaticSelectionMode::FocusedWindow) {
-        applyFocusedWindowCapture();
     }
 
     const CapturedDisplayModel* display = nullptr;
@@ -3218,12 +3205,12 @@ void ScreenshotController::Impl::executeAutomaticSelection() {
     }
     m_selection.setSelectionRect(selection);
     m_automaticSelectionMode = AutomaticSelectionMode::None;
-    m_focusedWindowCapture.reset();
     playCameraShutterSound();
     m_interaction.confirmSelection();
     m_captureState.sessionState = ScreenshotSessionState::Editing;
     m_intelligentSelection.clearPress();
     handleSelectionConfirmed();
+    m_focusedWindowCapture.reset();
 }
 
 void ScreenshotController::Impl::shutdown() {
@@ -3364,18 +3351,31 @@ void ScreenshotController::captureFocusedWindow() {
     if (foreground == nullptr) {
         return;
     }
-    ScreenshotWindowCapture capture(reinterpret_cast<quintptr>(foreground));
-    const auto frame = capture.capture();
-    if (!frame.has_value() || !frame->isValid()) {
+    const HWND root = GetAncestor(foreground, GA_ROOT);
+    const HWND target = root != nullptr ? root : foreground;
+
+    ScreenshotWindowCapture capture(reinterpret_cast<quintptr>(target));
+    if (!capture.isValid()) {
         qWarning("Focused window capture failed: %s", qPrintable(capture.errorMessage()));
         return;
     }
-    m_impl->m_focusedWindowCapture = *frame;
+
+    m_impl->m_focusedWindowCapture.reset();
     if (!m_impl->beginCapture(Impl::PendingSelectionAction::Copy,
                               snow_shot::storage::CaptureHistorySource::FocusedWindow,
                               Impl::AutomaticSelectionMode::FocusedWindow)) {
-        m_impl->m_focusedWindowCapture.reset();
+        return;
     }
+
+    // Display completion is queued back to this UI thread, so the WGC acquisition overlaps the
+    // display worker and finishes before the completion callback can consume this frame.
+    auto frame = capture.capture();
+    if (!frame.has_value() || !frame->isValid()) {
+        qWarning("Focused window capture failed: %s", qPrintable(capture.errorMessage()));
+        m_impl->cancelCapture();
+        return;
+    }
+    m_impl->m_focusedWindowCapture = std::move(*frame);
 #else
     Q_UNUSED(this);
 #endif

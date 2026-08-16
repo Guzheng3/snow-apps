@@ -600,11 +600,11 @@ bool ScreenshotOverlayInputHandler::releaseKeepSelectionAspectRatioShortcut() {
 }
 
 bool ScreenshotOverlayInputHandler::toggleIntelligentSelectionTargetShortcut() {
-    if (!m_context.interaction.intelligentSelecting()) {
+    if (!m_context.interaction.intelligentSelecting() ||
+        !m_context.intelligentSelection.toggleSelectionTarget()) {
         return false;
     }
 
-    m_context.intelligentSelection.toggleSelectionTarget();
     m_context.intelligentSelection.clearPress();
     if (m_context.intelligentSelection.hasCurrentSelection()) {
         m_context.selection.setSelectionRect(m_context.intelligentSelection.currentSelection());

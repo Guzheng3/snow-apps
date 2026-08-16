@@ -20,6 +20,7 @@ struct ScreenshotColorPickerContext;
 class ScreenshotDisplaySession;
 class ScreenshotGeometryMapper;
 class ScreenshotInteractionState;
+class ScreenshotIntelligentSelectionModel;
 class ScreenshotOverlayCoordinator;
 class ScreenshotSelectionModel;
 class ScreenshotToolbarPresenter;
@@ -33,6 +34,7 @@ struct ScreenshotPresentationServicesContext {
     ScreenshotDisplaySession& displaySession;
     ScreenshotInteractionState& interaction;
     ScreenshotSelectionModel& selection;
+    ScreenshotIntelligentSelectionModel& intelligentSelection;
     QSet<SnowCanvasTool> quickSelectionDisabledTools;
 };
 

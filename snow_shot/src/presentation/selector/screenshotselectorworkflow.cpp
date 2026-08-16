@@ -125,7 +125,7 @@ void ScreenshotSelectorWorkflow::setSelectionIndex(int index) {
 }
 
 void ScreenshotSelectorWorkflow::clearSelection() {
-    m_context.intelligentSelection.reset();
+    m_context.intelligentSelection.clearTransientState();
     m_context.selection.clearSelection();
 }
 

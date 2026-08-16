@@ -33,25 +33,25 @@ void invalidBackendFallsBackToMsaaWindowLookup() {
 }
 
 void windowTargetUsesWindowOnlyLookup() {
-    require(screenshotSelectorHitTestMode(ScreenshotSelectorHitTestMode::Window) ==
+    require(screenshotSelectorHitTestMode(true, ScreenshotSelectorHitTestMode::Window) ==
                 SNOW_UI_SELECTOR_HIT_TEST_MODE_WINDOW,
             "window target must not traverse window sub-elements");
 }
 
 void windowSubElementTargetUsesElementLookup() {
-    require(screenshotSelectorHitTestMode(ScreenshotSelectorHitTestMode::WindowSubElement) ==
+    require(screenshotSelectorHitTestMode(true,
+                                          ScreenshotSelectorHitTestMode::WindowSubElement) ==
                 SNOW_UI_SELECTOR_HIT_TEST_MODE_UI_ELEMENT,
             "window sub-element target must traverse the element hierarchy");
 }
 
-void subElementTargetOverridesDisabledSmartSelectionLookup() {
+void disabledSmartSelectionOverridesSubElementRequests() {
     const auto policy = screenshotSelectorLookupPolicy(false, QByteArrayLiteral("uia"));
     require(policy.mode == SNOW_UI_SELECTOR_HIT_TEST_MODE_WINDOW &&
                 screenshotSelectorHitTestMode(
-                    ScreenshotSelectorHitTestMode::WindowSubElement) ==
-                    SNOW_UI_SELECTOR_HIT_TEST_MODE_UI_ELEMENT,
-            "window sub-element target must traverse even when the global lookup defaults to a "
-            "window");
+                    false, ScreenshotSelectorHitTestMode::WindowSubElement) ==
+                    SNOW_UI_SELECTOR_HIT_TEST_MODE_WINDOW,
+            "disabled Smart Selection must reject stale window sub-element requests");
 }
 } // namespace
 
@@ -61,6 +61,6 @@ int main() {
     invalidBackendFallsBackToMsaaWindowLookup();
     windowTargetUsesWindowOnlyLookup();
     windowSubElementTargetUsesElementLookup();
-    subElementTargetOverridesDisabledSmartSelectionLookup();
+    disabledSmartSelectionOverridesSubElementRequests();
     return 0;
 }

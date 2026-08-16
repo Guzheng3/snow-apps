@@ -47,6 +47,7 @@
 #include <QEnterEvent>
 #include <QFrame>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QKeySequence>
@@ -62,7 +63,6 @@
 #include <QSignalBlocker>
 #include <QShowEvent>
 #include <QSizePolicy>
-#include <QStandardPaths>
 #include <QTimer>
 #include <QTextDocument>
 #include <QTextEdit>
@@ -3017,13 +3017,8 @@ void ScreenshotPinnedWindow::saveAsFile() {
     }
 
     const snow_shot::storage::ScreenshotSettings outputSettings;
-    const QStringList candidateDirectories =
-        ScreenshotImageFileService::automaticDirectories(outputSettings.imageSaveDirectory());
-    QString directory =
-        candidateDirectories.isEmpty() ? QString() : candidateDirectories.constFirst();
-    if (directory.isEmpty()) {
-        directory = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
-    }
+    const QString directory = ScreenshotImageFileService::saveDialogDirectory(
+        outputSettings.lastManualSaveDirectory(), outputSettings.imageSaveDirectory());
     static_cast<void>(QDir().mkpath(directory));
     const QString initialPath = QDir(directory).filePath(
         ScreenshotImageFileService::suggestedBaseName(outputSettings.manualSaveFilenameFormat()) +
@@ -3036,6 +3031,8 @@ void ScreenshotPinnedWindow::saveAsFile() {
     if (selectedPath.isEmpty()) {
         return;
     }
+    static_cast<void>(
+        outputSettings.setLastManualSaveDirectory(QFileInfo(selectedPath).absolutePath()));
 
     const ScreenshotImageFileFormat format =
         ScreenshotImageFileService::formatForDialogSelection(selectedPath, selectedFilter);

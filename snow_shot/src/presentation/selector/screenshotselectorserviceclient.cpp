@@ -44,7 +44,7 @@ SnowUiSelectorBackend selectorBackendForCurrentMode() {
 
 SnowUiSelectorHitTestMode hitTestModeForRequestedTarget(
     ScreenshotSelectorHitTestMode requestedMode) {
-    return screenshotSelectorHitTestMode(requestedMode);
+    return screenshotSelectorHitTestMode(smartSelectionEnabled(), requestedMode);
 }
 
 QVector<QRectF> rectsFromHitPath(SnowUiSelectorHitPath* path) {

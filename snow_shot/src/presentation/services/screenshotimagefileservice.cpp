@@ -133,6 +133,23 @@ QStringList ScreenshotImageFileService::automaticDirectories(const QString& conf
     return directories;
 }
 
+QString ScreenshotImageFileService::saveDialogDirectory(const QString& lastDirectory,
+                                                        const QString& configuredDirectory) {
+    const QString remembered = lastDirectory.trimmed();
+    if (!remembered.isEmpty()) {
+        const QString cleaned = QDir::cleanPath(remembered);
+        if (QFileInfo(cleaned).isDir()) {
+            return cleaned;
+        }
+    }
+
+    const QStringList candidates = automaticDirectories(configuredDirectory);
+    if (!candidates.isEmpty()) {
+        return candidates.constFirst();
+    }
+    return QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+}
+
 QString ScreenshotImageFileService::extension(ScreenshotImageFileFormat format) {
     switch (format) {
     case ScreenshotImageFileFormat::Png:

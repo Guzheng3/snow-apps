@@ -555,7 +555,7 @@ bool ScreenshotHistoryService::applyEntry(const ScreenshotHistoryEntry& entry) {
     m_context.interaction.cancelDrag();
     bool requestIntelligentSelection = false;
     if (entry.persistent) {
-        m_context.intelligentSelection.reset();
+        m_context.intelligentSelection.clearTransientState();
         m_context.interaction.returnToSelectionMode(false);
     } else if (entry.intelligentSelectionMode) {
         if (entry.liveIntelligentSelection.has_value()) {
@@ -564,7 +564,7 @@ bool ScreenshotHistoryService::applyEntry(const ScreenshotHistoryEntry& entry) {
         m_context.interaction.returnToSelectionMode(true);
         requestIntelligentSelection = true;
     } else {
-        m_context.intelligentSelection.reset();
+        m_context.intelligentSelection.clearTransientState();
         m_context.interaction.confirmSelection();
     }
     if (m_context.presentationChanged) {

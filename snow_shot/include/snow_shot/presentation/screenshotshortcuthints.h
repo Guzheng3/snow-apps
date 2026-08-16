@@ -71,6 +71,7 @@ struct ScreenshotShortcutHintContext {
     ScreenshotCaptureMode captureMode = ScreenshotCaptureMode::Inactive;
     QSet<SnowCanvasTool> quickSelectionDisabledTools;
     std::optional<QMap<QString, QStringList>> configuredShortcuts;
+    bool smartSelectionEnabled = true;
 };
 
 [[nodiscard]] inline bool screenshotShortcutHintAreaIsObscured(
@@ -169,7 +170,8 @@ inline void appendScreenshotCursorMovementShortcutHintRows(
 
 [[nodiscard]] inline QVector<ScreenshotShortcutHintRow> screenshotShortcutHintRows(
     ScreenshotShortcutHintMode mode,
-    const std::optional<QMap<QString, QStringList>>& configuredShortcuts = std::nullopt) {
+    const std::optional<QMap<QString, QStringList>>& configuredShortcuts = std::nullopt,
+    bool smartSelectionEnabled = true) {
     if (mode == ScreenshotShortcutHintMode::Hidden ||
         mode == ScreenshotShortcutHintMode::Tool) {
         return {};
@@ -188,10 +190,12 @@ inline void appendScreenshotCursorMovementShortcutHintRows(
     if (mode == ScreenshotShortcutHintMode::SmartSelection) {
         rows.push_back(screenshotFixedShortcutHintRow("Switch element level: mouse wheel",
                                                       ScreenshotShortcutHintInput::Mouse));
-        appendScreenshotConfiguredShortcutHintRow(
-            rows, configuredShortcuts,
-            QStringLiteral("switch_selection_between_window_and_window_sub_element"),
-            "Select Window/Window Sub-element", {QStringLiteral("Tab")});
+        if (smartSelectionEnabled) {
+            appendScreenshotConfiguredShortcutHintRow(
+                rows, configuredShortcuts,
+                QStringLiteral("switch_selection_between_window_and_window_sub_element"),
+                "Select Window/Window Sub-element", {QStringLiteral("Tab")});
+        }
     } else {
         appendScreenshotConfiguredShortcutHintRow(
             rows, configuredShortcuts, QStringLiteral("move_entire_selection"),
@@ -246,7 +250,8 @@ inline void appendScreenshotCursorMovementShortcutHintRows(
 screenshotShortcutHintRows(const ScreenshotShortcutHintContext& context) {
     if (context.captureMode == ScreenshotCaptureMode::ScrollingCapture) {
         return screenshotShortcutHintRows(ScreenshotShortcutHintMode::Scrolling,
-                                          context.configuredShortcuts);
+                                          context.configuredShortcuts,
+                                          context.smartSelectionEnabled);
     }
 
     // Selection-stage hints are independent of the currently selected canvas
@@ -255,7 +260,8 @@ screenshotShortcutHintRows(const ScreenshotShortcutHintContext& context) {
     const ScreenshotShortcutHintMode selectionMode =
         screenshotShortcutHintSelectionModeForContext(context);
     if (selectionMode != ScreenshotShortcutHintMode::Hidden) {
-        return screenshotShortcutHintRows(selectionMode, context.configuredShortcuts);
+        return screenshotShortcutHintRows(selectionMode, context.configuredShortcuts,
+                                          context.smartSelectionEnabled);
     }
 
     // Hints are intentionally limited to the canvas editing tools after the

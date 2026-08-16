@@ -221,6 +221,7 @@ struct ScreenshotOverlayShortcutController::Impl {
                 if (actionId == QStringLiteral(
                         "switch_selection_between_window_and_window_sub_element")) {
                     return interaction.intelligentSelecting() &&
+                           intelligentSelection.smartSelectionEnabled() &&
                            actions.localShortcutInputAllowed();
                 }
                 if (actionId == QStringLiteral("move_entire_selection")) {

@@ -33,6 +33,7 @@ struct ScreenshotCaptureWorkflowContext {
     ScreenshotIntelligentSelectionModel& intelligentSelection;
     ScreenshotCapturePresentationCallbacks presentation;
     std::function<void()> captureTerminated = []() {};
+    std::function<bool()> smartSelectionEnabled = []() { return true; };
 };
 
 enum class ScreenshotCapturePresentationMode {

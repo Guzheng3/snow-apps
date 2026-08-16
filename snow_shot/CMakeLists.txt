@@ -935,6 +935,33 @@ if(SNOW_SHOT_BUILD_TESTS)
     add_test(NAME snow-shot-screenshot-result-compositor-tests
              COMMAND snow-shot-screenshot-result-compositor-tests)
 
+    add_executable(snow-shot-screenshot-export-service-tests
+        tests/screenshot_export_service_tests.cpp
+        include/snow_shot/presentation/screenshotclipboardservice.h
+        include/snow_shot/presentation/screenshotdisplaysession.h
+        include/snow_shot/presentation/screenshotexportservice.h
+        include/snow_shot/presentation/screenshotgeometry.h
+        include/snow_shot/presentation/screenshotresultcompositor.h
+        include/snow_shot/presentation/screenshotselectionshadowrenderer.h
+        src/presentation/core/screenshotgeometry.cpp
+        src/presentation/overlay/screenshotselectionshadowrenderer.cpp
+        src/presentation/services/screenshotclipboardservice.cpp
+        src/presentation/services/screenshotexportservice.cpp
+    )
+    target_compile_definitions(snow-shot-screenshot-export-service-tests PRIVATE NOMINMAX)
+    target_include_directories(snow-shot-screenshot-export-service-tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    )
+    target_link_libraries(snow-shot-screenshot-export-service-tests PRIVATE
+        Qt6::Widgets
+        snow_draw_engine_qt_canvas
+    )
+    if(WIN32)
+        target_link_libraries(snow-shot-screenshot-export-service-tests PRIVATE user32)
+    endif()
+    add_test(NAME snow-shot-screenshot-export-service-tests
+             COMMAND snow-shot-screenshot-export-service-tests)
+
     add_executable(snow-shot-screenshot-result-geometry-tests
         tests/screenshot_result_geometry_tests.cpp
         src/presentation/core/screenshotgeometry.cpp

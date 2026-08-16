@@ -495,6 +495,8 @@ const QVector<ConfigurationSchemaEntry> kEntries = {
      ConfigurationValueKind::Boolean},
     {QStringLiteral("screenshot/image_save_directory"),
      defaultOutputDirectory(QStandardPaths::PicturesLocation), ConfigurationValueKind::String},
+    {QStringLiteral("screenshot/last_manual_save_directory"), QString(),
+     ConfigurationValueKind::String},
     {QStringLiteral("screenshot/image_format"),
      QStringLiteral("png"), ConfigurationValueKind::String, std::nullopt,
      {QStringLiteral("png"), QStringLiteral("jpeg"), QStringLiteral("webp"),

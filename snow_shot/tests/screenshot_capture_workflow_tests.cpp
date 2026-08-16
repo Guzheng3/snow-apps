@@ -126,7 +126,8 @@ ScreenshotCaptureWorkflow
 makeWorkflow(ScreenshotCaptureState& state, ScreenshotDisplaySession& displaySession,
              ScreenshotGeometryMapper& geometry, ScreenshotInteractionState& interaction,
              ScreenshotSelectionModel& selection,
-             ScreenshotIntelligentSelectionModel& intelligentSelection, CaptureRuntime& runtime) {
+             ScreenshotIntelligentSelectionModel& intelligentSelection, CaptureRuntime& runtime,
+             bool smartSelectionEnabled = true) {
     return ScreenshotCaptureWorkflow({
         state,
         runtime,
@@ -136,6 +137,8 @@ makeWorkflow(ScreenshotCaptureState& state, ScreenshotDisplaySession& displaySes
         selection,
         intelligentSelection,
         {},
+        {},
+        [smartSelectionEnabled]() { return smartSelectionEnabled; },
     });
 }
 
@@ -393,18 +396,13 @@ void intelligentSelectionTargetsPreserveElementPathBehavior() {
     const QRectF window(10, 10, 100, 80);
     const QRectF bounds(0, 0, 200, 160);
 
-    require(selection.selectionTarget() == ScreenshotIntelligentSelectionTarget::Window &&
+    selection.beginCaptureSession(true);
+    require(selection.smartSelectionEnabled() &&
+                selection.selectionTarget() ==
+                    ScreenshotIntelligentSelectionTarget::WindowSubElement &&
                 selection.applyCanvasHitPath({nestedElement, childElement, window}, bounds, 1.0) &&
-                selection.index() == 2 && selection.currentSelection() == window,
-            "window selection must use the outermost rectangle from an in-flight element path");
-    require(selection.setIndex(0) && selection.index() == 2 &&
-                selection.currentSelection() == window,
-            "window selection must remain locked to the window rectangle");
-
-    selection.toggleSelectionTarget();
-    require(selection.selectionTarget() == ScreenshotIntelligentSelectionTarget::WindowSubElement &&
                 selection.index() == 0 && selection.currentSelection() == nestedElement,
-            "element selection must start at the deepest hit just as it did before target modes");
+            "enabled Smart Selection must initially capture the deepest child element");
     require(selection.setIndex(1) && selection.currentSelection() == childElement &&
                 selection.applyCanvasHitPath({nestedElement, childElement, window}, bounds, 1.0) &&
                 selection.index() == 1,
@@ -421,6 +419,77 @@ void intelligentSelectionTargetsPreserveElementPathBehavior() {
     require(selection.applyCanvasHitPath({nextWindow}, bounds, 1.0) && selection.index() == 0 &&
                 selection.currentSelection() == nextWindow,
             "element selection must retain the original window fallback");
+
+    require(selection.toggleSelectionTarget() &&
+                selection.selectionTarget() == ScreenshotIntelligentSelectionTarget::Window &&
+                selection.currentSelection() == nextWindow && selection.setIndex(0) &&
+                selection.index() == 0,
+            "window mode must lock an element path to its outermost window");
+
+    selection.beginCaptureSession(true);
+    require(selection.selectionTarget() ==
+                ScreenshotIntelligentSelectionTarget::WindowSubElement,
+            "a new screenshot must discard the preceding screenshot's Tab target mode");
+
+    selection.beginCaptureSession(false);
+    require(!selection.smartSelectionEnabled() &&
+                selection.selectionTarget() == ScreenshotIntelligentSelectionTarget::Window &&
+                !selection.toggleSelectionTarget() &&
+                selection.applyCanvasHitPath({nestedElement, childElement, window}, bounds, 1.0) &&
+                selection.index() == 2 && selection.currentSelection() == window,
+            "disabled Smart Selection must remain locked to window capture");
+
+    require(selection.updateSmartSelectionEnabled(true) &&
+                selection.selectionTarget() ==
+                    ScreenshotIntelligentSelectionTarget::WindowSubElement &&
+                selection.index() == 0 && selection.currentSelection() == nestedElement &&
+                selection.updateSmartSelectionEnabled(false) &&
+                selection.selectionTarget() == ScreenshotIntelligentSelectionTarget::Window &&
+                selection.index() == 2 && selection.currentSelection() == window,
+            "a live Smart Selection setting change must immediately enforce its target policy");
+}
+
+void captureSessionsApplyTheCurrentSmartSelectionSetting() {
+    ScreenshotCaptureState enabledState;
+    enabledState.sessionState = ScreenshotSessionState::IdlePrepared;
+    ScreenshotDisplaySession enabledDisplays;
+    ScreenshotGeometryMapper enabledGeometry;
+    ScreenshotInteractionState enabledInteraction;
+    ScreenshotSelectionModel enabledSelection;
+    ScreenshotIntelligentSelectionModel enabledIntelligentSelection;
+    CaptureRuntime enabledRuntime;
+    auto enabledWorkflow = makeWorkflow(
+        enabledState, enabledDisplays, enabledGeometry, enabledInteraction, enabledSelection,
+        enabledIntelligentSelection, enabledRuntime, true);
+
+    enabledWorkflow.startCapture();
+    require(enabledIntelligentSelection.selectionTarget() ==
+                ScreenshotIntelligentSelectionTarget::WindowSubElement,
+            "an enabled capture session must begin in child-element mode");
+    require(enabledIntelligentSelection.toggleSelectionTarget(),
+            "enabled capture session must allow the target mode to switch");
+    enabledWorkflow.startCapture();
+    require(enabledIntelligentSelection.selectionTarget() ==
+                ScreenshotIntelligentSelectionTarget::WindowSubElement,
+            "restarting capture must restore the enabled session's initial child-element mode");
+
+    ScreenshotCaptureState disabledState;
+    disabledState.sessionState = ScreenshotSessionState::IdlePrepared;
+    ScreenshotDisplaySession disabledDisplays;
+    ScreenshotGeometryMapper disabledGeometry;
+    ScreenshotInteractionState disabledInteraction;
+    ScreenshotSelectionModel disabledSelection;
+    ScreenshotIntelligentSelectionModel disabledIntelligentSelection;
+    CaptureRuntime disabledRuntime;
+    auto disabledWorkflow = makeWorkflow(
+        disabledState, disabledDisplays, disabledGeometry, disabledInteraction, disabledSelection,
+        disabledIntelligentSelection, disabledRuntime, false);
+
+    disabledWorkflow.startCapture();
+    require(disabledIntelligentSelection.selectionTarget() ==
+                ScreenshotIntelligentSelectionTarget::Window &&
+                !disabledIntelligentSelection.toggleSelectionTarget(),
+            "a disabled capture session must stay in window mode");
 }
 } // namespace
 
@@ -433,5 +502,6 @@ int main() {
     silentCaptureNeverPreparesOrShowsOverlays();
     capturedImagePlacementFollowsNormalizedCanvasGeometry();
     intelligentSelectionTargetsPreserveElementPathBehavior();
+    captureSessionsApplyTheCurrentSmartSelectionSetting();
     return 0;
 }

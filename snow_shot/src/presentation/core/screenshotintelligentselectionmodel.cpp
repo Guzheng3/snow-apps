@@ -2,10 +2,23 @@
 
 #include <algorithm>
 
+void ScreenshotIntelligentSelectionModel::beginCaptureSession(bool smartSelectionEnabled) {
+    clearTransientState();
+    m_smartSelectionEnabled = smartSelectionEnabled;
+    m_selectionTarget = smartSelectionEnabled
+                            ? ScreenshotIntelligentSelectionTarget::WindowSubElement
+                            : ScreenshotIntelligentSelectionTarget::Window;
+}
+
 void ScreenshotIntelligentSelectionModel::reset() {
+    clearTransientState();
+    m_smartSelectionEnabled = false;
+    m_selectionTarget = ScreenshotIntelligentSelectionTarget::Window;
+}
+
+void ScreenshotIntelligentSelectionModel::clearTransientState() {
     clearHitPath();
     clearPress();
-    m_selectionTarget = ScreenshotIntelligentSelectionTarget::Window;
 }
 
 void ScreenshotIntelligentSelectionModel::clearHitPath() {
@@ -17,6 +30,22 @@ void ScreenshotIntelligentSelectionModel::clearPress() {
     m_pressActive = false;
     m_pressPosition = QPointF();
     m_pressSelection = QRectF();
+}
+
+bool ScreenshotIntelligentSelectionModel::updateSmartSelectionEnabled(bool enabled) {
+    if (m_smartSelectionEnabled == enabled) {
+        return false;
+    }
+
+    m_smartSelectionEnabled = enabled;
+    m_selectionTarget = enabled ? ScreenshotIntelligentSelectionTarget::WindowSubElement
+                                : ScreenshotIntelligentSelectionTarget::Window;
+    clearPress();
+    static_cast<void>(setIndex(m_selectionTarget ==
+                                       ScreenshotIntelligentSelectionTarget::Window
+                                   ? static_cast<int>(m_hitRects.size() - 1)
+                                   : 0));
+    return true;
 }
 
 bool ScreenshotIntelligentSelectionModel::applyCanvasHitPath(const QVector<QRectF>& canvasHitRects,
@@ -69,13 +98,22 @@ bool ScreenshotIntelligentSelectionModel::setIndex(int index) {
     return true;
 }
 
-void ScreenshotIntelligentSelectionModel::toggleSelectionTarget() {
+bool ScreenshotIntelligentSelectionModel::toggleSelectionTarget() {
+    if (!m_smartSelectionEnabled) {
+        return false;
+    }
+
     m_selectionTarget = m_selectionTarget == ScreenshotIntelligentSelectionTarget::Window
                             ? ScreenshotIntelligentSelectionTarget::WindowSubElement
                             : ScreenshotIntelligentSelectionTarget::Window;
     static_cast<void>(setIndex(m_selectionTarget == ScreenshotIntelligentSelectionTarget::Window
                                    ? static_cast<int>(m_hitRects.size() - 1)
                                    : 0));
+    return true;
+}
+
+bool ScreenshotIntelligentSelectionModel::smartSelectionEnabled() const {
+    return m_smartSelectionEnabled;
 }
 
 ScreenshotIntelligentSelectionTarget ScreenshotIntelligentSelectionModel::selectionTarget() const {

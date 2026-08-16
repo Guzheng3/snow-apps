@@ -87,7 +87,7 @@ void ScreenshotCaptureWorkflow::startCapture(
     }
     m_captureModelsClean = false;
     m_context.interaction.beginCapture();
-    m_context.intelligentSelection.clearPress();
+    m_context.intelligentSelection.beginCaptureSession(m_context.smartSelectionEnabled());
     beginCapturePreparation(sessionId);
 }
 

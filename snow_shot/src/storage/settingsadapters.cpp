@@ -406,6 +406,14 @@ bool ScreenshotSettings::setImageSaveDirectory(const QString& directory) const {
     return cache().setValue(QStringLiteral("screenshot/image_save_directory"), directory);
 }
 
+QString ScreenshotSettings::lastManualSaveDirectory() const {
+    return cache().value(QStringLiteral("screenshot/last_manual_save_directory")).toString();
+}
+
+bool ScreenshotSettings::setLastManualSaveDirectory(const QString& directory) const {
+    return cache().setValue(QStringLiteral("screenshot/last_manual_save_directory"), directory);
+}
+
 QString ScreenshotSettings::imageFormat() const {
     return cache().value(QStringLiteral("screenshot/image_format")).toString();
 }

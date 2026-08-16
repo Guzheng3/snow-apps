@@ -5,6 +5,7 @@
 #include "snow_shot/presentation/screenshotdisplaysession.h"
 #include "snow_shot/presentation/screenshotgeometry.h"
 #include "snow_shot/presentation/screenshotinteractionstate.h"
+#include "snow_shot/presentation/screenshotintelligentselectionmodel.h"
 #include "snow_shot/presentation/screenshotselectionmodel.h"
 #include "snow_shot/presentation/screenshotoverlaycoordinator.h"
 #include "snow_shot/presentation/screenshotoverlaywindow.h"
@@ -132,6 +133,7 @@ void ScreenshotPresentationServices::presentOverlayState(const QRectF& selection
         m_context.interaction.activeTool(), m_context.interaction.mode(),
         m_context.quickSelectionDisabledTools};
     hintContext.configuredShortcuts = m_configuredShortcuts;
+    hintContext.smartSelectionEnabled = m_context.intelligentSelection.smartSelectionEnabled();
     const ScreenshotShortcutHintMode hintMode =
         screenshotShortcutHintModeForContext(hintContext);
     ScreenshotOverlayWindow* hintOwner = nullptr;

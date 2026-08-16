@@ -44,6 +44,8 @@ class ScreenshotImageFileService final {
     [[nodiscard]] static QString automaticDirectory();
     [[nodiscard]] static QStringList automaticDirectories();
     [[nodiscard]] static QStringList automaticDirectories(const QString& configuredDirectory);
+    [[nodiscard]] static QString saveDialogDirectory(const QString& lastDirectory,
+                                                     const QString& configuredDirectory);
     [[nodiscard]] static QString extension(ScreenshotImageFileFormat format);
     [[nodiscard]] static ScreenshotImageFileFormat formatForKey(const QString& key);
     [[nodiscard]] static QString normalizedPath(QString path, ScreenshotImageFileFormat format);

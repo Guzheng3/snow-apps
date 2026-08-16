@@ -1392,6 +1392,11 @@ void configuredSelectionShortcutsRouteTabHistoryAndColorActions(bool targetSwitc
     ScreenshotIntelligentSelectionModel intelligent;
     ScreenshotInteractionState interaction;
     interaction.enterOverlayVisible(true);
+    intelligent.beginCaptureSession(true);
+    require(intelligent.selectionTarget() ==
+                    ScreenshotIntelligentSelectionTarget::WindowSubElement &&
+                intelligent.toggleSelectionTarget(),
+            "an enabled screenshot must initially use child-element mode");
     const QRectF windowSelection(10, 10, 40, 30);
     const QRectF childSelection(15, 15, 20, 12);
     const QRectF nestedChildSelection(17, 17, 12, 8);
@@ -1494,12 +1499,27 @@ void configuredSelectionShortcutsRouteTabHistoryAndColorActions(bool targetSwitc
             "window mode did not restore the available window selection");
     require(selectorHitTestRequests == 5,
             "switching back to window mode did not request a fresh hit test");
+
+    intelligent.beginCaptureSession(false);
+    require(intelligent.applyCanvasHitPath(
+                {nestedChildSelection, childSelection, windowSelection},
+                QRectF(0, 0, 100, 100), 1.0),
+            "failed to seed disabled intelligent-selection candidates");
+    selection.setSelectionRect(intelligent.currentSelection());
+    require(!dispatchShortcut(shortcutWindow, Qt::Key_Tab) &&
+                !intelligent.smartSelectionEnabled() &&
+                intelligent.selectionTarget() == ScreenshotIntelligentSelectionTarget::Window &&
+                intelligent.currentSelection() == windowSelection &&
+                selection.normalizedSelection() == windowSelection &&
+                selectorHitTestRequests == 5,
+            "disabled Smart Selection must reject Tab and remain in window mode");
     if (targetSwitchOnly) {
         require(shortcutSettings.setAllShortcutsAtomic(originalShortcuts),
                 "failed to restore selection shortcuts after target-switch test");
         return;
     }
 
+    intelligent.beginCaptureSession(true);
     intelligent.beginPress(QPointF(18, 18), windowSelection);
     previousSelectionAvailable = false;
     require(!dispatchShortcut(shortcutWindow, Qt::Key_R) && previousSelectionCalls == 1 &&

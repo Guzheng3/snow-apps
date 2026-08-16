@@ -21,6 +21,39 @@ use crate::monitor::MonitorId;
 use crate::region::MonitorLayout;
 use crate::window::WindowId;
 
+use windows::Win32::Foundation::{HWND, RECT};
+
+fn window_rect(hwnd: HWND, kind: CaptureBackendKind) -> CaptureResult<RECT> {
+    // WGC captures the visible DWM frame. GetWindowRect can include invisible resize borders and
+    // can be virtualized to the caller's DPI awareness, so it does not reliably locate WGC pixels.
+    if kind == CaptureBackendKind::WindowsGraphicsCapture {
+        use std::ffi::c_void;
+        use std::mem;
+        use windows::Win32::Graphics::Dwm::{DWMWA_EXTENDED_FRAME_BOUNDS, DwmGetWindowAttribute};
+
+        let mut rect = RECT::default();
+        let extended_frame = unsafe {
+            DwmGetWindowAttribute(
+                hwnd,
+                DWMWA_EXTENDED_FRAME_BOUNDS,
+                &mut rect as *mut RECT as *mut c_void,
+                mem::size_of::<RECT>() as u32,
+            )
+        };
+        if extended_frame.is_ok() && rect.right > rect.left && rect.bottom > rect.top {
+            return Ok(rect);
+        }
+    }
+
+    use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
+
+    let mut rect = RECT::default();
+    unsafe { GetWindowRect(hwnd, &mut rect) }.map_err(|error| {
+        CaptureError::InvalidTarget(format!("failed to inspect window: {error}"))
+    })?;
+    Ok(rect)
+}
+
 const AUTO_KIND_ERROR: &str = "auto backend selection is handled separately";
 
 pub(crate) struct WindowsBackend {
@@ -164,14 +197,8 @@ impl CaptureBackend for WindowsBackend {
     }
 
     fn inspect_window(&self, window: &WindowId) -> CaptureResult<CaptureTargetInfo> {
-        use windows::Win32::Foundation::{HWND, RECT};
-        use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
-
         let hwnd = HWND(window.raw_handle() as *mut std::ffi::c_void);
-        let mut rect = RECT::default();
-        unsafe { GetWindowRect(hwnd, &mut rect) }.map_err(|err| {
-            CaptureError::InvalidTarget(format!("failed to inspect window: {err}"))
-        })?;
+        let rect = window_rect(hwnd, self.kind)?;
 
         let width = (rect.right - rect.left).max(0) as u32;
         let height = (rect.bottom - rect.top).max(0) as u32;
