@@ -288,7 +288,22 @@ function Test-SnowCacheAlignment {
     if ($Preset -in @("snow-shot-msvc-release", "snow-shot-msvc-fast")) {
         $qtAligned = $qtAligned -and $cache -match "(?m)^SNOW_QT_STATIC_DIR:PATH=.+$lineEnd"
     }
-    return $qtAligned -and
+    $powerShellMatch = [regex]::Match(
+        $cache,
+        "(?m)^Z_VCPKG_POWERSHELL_PATH:INTERNAL=(.+)$lineEnd"
+    )
+    $powerShellAligned = $powerShellMatch.Success
+    if ($powerShellAligned) {
+        $cachedPowerShell = $powerShellMatch.Groups[1].Value.Trim()
+        if ([System.IO.Path]::IsPathRooted($cachedPowerShell)) {
+            $powerShellAligned = Test-Path -LiteralPath $cachedPowerShell -PathType Leaf
+        }
+        else {
+            $powerShellAligned = $null -ne (Get-Command $cachedPowerShell -ErrorAction SilentlyContinue)
+        }
+    }
+
+    return $qtAligned -and $powerShellAligned -and
         $cache -match "(?m)^VCPKG_TARGET_TRIPLET:.*=$([regex]::Escape($expectedTriplet))$lineEnd" -and
         $cache -match "(?m)^VCPKG_INSTALLED_DIR:PATH=$installedDirNeedle$lineEnd" -and
         $cache -match "(?m)^CMAKE_HOME_DIRECTORY:INTERNAL=$repoNeedle$lineEnd" -and
