@@ -64,6 +64,7 @@ struct ScreenshotRecognitionSessionActions {
     std::function<void(const QString&, bool)> showStatus;
     std::function<void(const QUrl&)> handleQrLink;
     std::function<QWidget*()> translationSettingsOwner;
+    std::function<void(const QString&, const QString&)> setTextTransformState;
 };
 
 class ScreenshotRecognitionSessionController final : public QObject {
@@ -106,9 +107,8 @@ class ScreenshotRecognitionSessionController final : public QObject {
     void endTextEditing();
     void openTranslationSettings();
     void resetTextEditing();
-    void applyRemoveLineBreaks();
-    void applyHalfWidthPunctuation();
-    void applyFullWidthPunctuation();
+    void applyTextFormatting(const QString& value);
+    void applyTextPunctuation(const QString& value);
     [[nodiscard]] bool editing() const;
     [[nodiscard]] bool translating() const;
     [[nodiscard]] bool hasTextResult() const;

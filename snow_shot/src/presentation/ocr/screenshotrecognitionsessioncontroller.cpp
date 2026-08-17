@@ -442,11 +442,17 @@ void ScreenshotRecognitionSessionController::resetTextEditing() {
         if (it != m_textCache.end() && it->translationSession != nullptr &&
             it->hasSuccessfulTranslation &&
             it->translationStatus != TextCacheEntry::TranslationStatus::Streaming) {
+            it->translationSession->clearTransforms();
             it->translationSession->replaceText(it->successfulTranslation);
         }
     } else if (m_editing) {
-        setTextDraft(originalText());
+        auto it = m_textCache.find(m_editingKey);
+        if (it != m_textCache.end() && it->editingSession != nullptr) {
+            it->editingSession->clearTransforms();
+            static_cast<void>(it->editingSession->replaceText(it->editingSession->originalText()));
+        }
     }
+    updateTextState();
 }
 
 void ScreenshotRecognitionSessionController::openTranslationSettings() {
@@ -830,24 +836,31 @@ void ScreenshotRecognitionSessionController::invalidateCurrentTranslation(bool r
     }
 }
 
-void ScreenshotRecognitionSessionController::applyRemoveLineBreaks() {
-    beginTextEditing();
-    if (m_editing) {
-        setTextDraft(snow_shot::presentation::removeOcrLineBreaks(originalText()));
+void ScreenshotRecognitionSessionController::applyTextFormatting(const QString& value) {
+    if (!m_editing && !m_translating) {
+        beginTextEditing();
+    }
+    const auto entry = m_textCache.value(m_editingKey);
+    const auto session = m_translating ? entry.translationSession : entry.editingSession;
+    const bool streaming = m_translating &&
+                           entry.translationStatus == TextCacheEntry::TranslationStatus::Streaming;
+    if (session != nullptr && !streaming) {
+        static_cast<void>(session->setFormatting(value));
+        updateTextState();
     }
 }
 
-void ScreenshotRecognitionSessionController::applyHalfWidthPunctuation() {
-    beginTextEditing();
-    if (m_editing) {
-        setTextDraft(snow_shot::presentation::convertOcrPunctuation(originalText(), false));
+void ScreenshotRecognitionSessionController::applyTextPunctuation(const QString& value) {
+    if (!m_editing && !m_translating) {
+        beginTextEditing();
     }
-}
-
-void ScreenshotRecognitionSessionController::applyFullWidthPunctuation() {
-    beginTextEditing();
-    if (m_editing) {
-        setTextDraft(snow_shot::presentation::convertOcrPunctuation(originalText(), true));
+    const auto entry = m_textCache.value(m_editingKey);
+    const auto session = m_translating ? entry.translationSession : entry.editingSession;
+    const bool streaming = m_translating &&
+                           entry.translationStatus == TextCacheEntry::TranslationStatus::Streaming;
+    if (session != nullptr && !streaming) {
+        static_cast<void>(session->setPunctuation(value));
+        updateTextState();
     }
 }
 
@@ -1225,6 +1238,13 @@ void ScreenshotRecognitionSessionController::updateTextState() const {
             m_translating && !streaming && entry.translationSession != nullptr &&
                 entry.translationSession->canRedo(),
             m_translating && !streaming && entry.hasSuccessfulTranslation);
+    }
+    if (m_actions.setTextTransformState) {
+        const auto session = m_translating ? entry.translationSession : entry.editingSession;
+        m_actions.setTextTransformState(
+            (m_editing || m_translating) && session != nullptr ? session->formatting() : QString{},
+            (m_editing || m_translating) && session != nullptr ? session->punctuation()
+                                                               : QString{});
     }
 }
 

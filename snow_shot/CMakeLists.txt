@@ -1962,20 +1962,44 @@ if(SNOW_SHOT_BUILD_TESTS)
             tests/screenshot_pinned_context_menu_real_mouse_repro.cpp
             src/platform/physicalcursor.cpp
             include/snow_shot/presentation/screenshotfloatingtoolpalettewindow.h
+            include/snow_shot/presentation/screenshotcanvascolorsampler.h
+            include/snow_shot/presentation/screenshotcanvascolorsamplerwindow.h
+            include/snow_shot/presentation/languagemanager.h
             include/snow_shot/presentation/screenshotpinnededitcontroller.h
             include/snow_shot/presentation/screenshotpinnedcopyservice.h
             include/snow_shot/presentation/screenshotpinnedwindow.h
+            include/snow_shot/presentation/screenshotrecognitionsessioncontroller.h
+            include/snow_shot/presentation/screenshotrecognitionwindow.h
+            include/snow_shot/presentation/screenshottabledocument.h
+            include/snow_shot/presentation/screenshottableeditor.h
+            include/snow_shot/presentation/screenshotmessageservice.h
+            include/snow_shot/presentation/screenshotselectiongeometry.h
+            include/snow_shot/presentation/screenshotselectionmodel.h
+            include/snow_shot/presentation/screenshotselectionparams.h
+            include/snow_shot/network/snowshotapiclient.h
             include/snow_shot/presentation/screenshottoolpalette.h
             include/snow_shot/presentation/screenshottoolpalettehost.h
             include/snow_shot/presentation/styles/thememanager.h
             src/presentation/components/icons/snowshoticons.cpp
             src/presentation/core/screenshotgeometry.cpp
             src/presentation/ocr/screenshotocrpresentation.cpp
+            src/presentation/ocr/screenshotocrtexteditingsession.cpp
+            src/presentation/ocr/screenshotocrtexttransform.cpp
+            src/presentation/ocr/screenshotrecognitionsessioncontroller.cpp
+            src/presentation/ocr/screenshotrecognitionwindow.cpp
+            src/presentation/ocr/screenshottabledocument.cpp
+            src/presentation/ocr/screenshottableeditor.cpp
             src/presentation/overlay/screenshotcanvasrenderer.cpp
             src/presentation/overlay/screenshotselectionshadowrenderer.cpp
             src/presentation/services/screenshotcanvascolorsampler.cpp
+            src/presentation/services/screenshotcanvascolorsamplerwindow.cpp
             src/presentation/services/screenshotclipboardservice.cpp
             src/presentation/services/screenshotimagefileservice.cpp
+            src/presentation/services/screenshotmessageservice.cpp
+            src/presentation/selection/screenshotselectiongeometry.cpp
+            src/presentation/selection/screenshotselectionmodel.cpp
+            src/presentation/selection/screenshotselectionparams.cpp
+            src/network/snowshotapiclient.cpp
             src/presentation/pinned/screenshotpinnededitcontroller.cpp
             src/presentation/pinned/screenshotpinnedcopyservice.cpp
             src/presentation/services/screenshotexportcoordinator.cpp
@@ -1983,6 +2007,7 @@ if(SNOW_SHOT_BUILD_TESTS)
             src/presentation/pinned/screenshotpinnedresizegeometry.cpp
             src/presentation/pinned/screenshotpinnedwindow.cpp
             src/presentation/pinned/screenshotpinnedwindownative.cpp
+            src/presentation/services/languagemanager.cpp
             src/presentation/styles/buttonborder.cpp
             src/presentation/styles/floatingcontroltoolbarstyle.cpp
             src/presentation/styles/themecolorscheme.cpp
@@ -2004,6 +2029,7 @@ if(SNOW_SHOT_BUILD_TESTS)
             ant_design_icons_qt
             ant_design_qt
             Qt6::GuiPrivate
+            Qt6::Network
             Qt6::Widgets
             snow_shot_image_codec
             snow_draw_engine_qt_canvas

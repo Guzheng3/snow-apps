@@ -1540,10 +1540,10 @@ void ScreenshotToolPalette::setTextTranslationState(bool available, bool transla
         applyMainToolbarToolActiveStyle(m_textEditButton, available && !translating && m_textEditing);
     }
     if (m_textFormattingSelect != nullptr) {
-        m_textFormattingSelect->setEnabled(available && !translating);
+        m_textFormattingSelect->setEnabled(available && !streaming);
     }
     if (m_textPunctuationSelect != nullptr) {
-        m_textPunctuationSelect->setEnabled(available && !translating);
+        m_textPunctuationSelect->setEnabled(available && !streaming);
     }
     if (m_textResetButton != nullptr) {
         m_textResetButton->setEnabled(
@@ -1561,13 +1561,22 @@ void ScreenshotToolPalette::setTextTranslationState(bool available, bool transla
     updateHistoryActionAvailability();
 }
 
-void ScreenshotToolPalette::clearTextTransformSelections() {
+void ScreenshotToolPalette::setTextTransformSelections(const QString& formatting,
+                                                        const QString& punctuation) {
     if (m_textFormattingSelect != nullptr) {
-        m_textFormattingSelect->setCurrentValue(QVariant());
+        const QSignalBlocker blocker(m_textFormattingSelect);
+        m_textFormattingSelect->setCurrentValue(formatting.isEmpty() ? QVariant{}
+                                                                     : QVariant{formatting});
     }
     if (m_textPunctuationSelect != nullptr) {
-        m_textPunctuationSelect->setCurrentValue(QVariant());
+        const QSignalBlocker blocker(m_textPunctuationSelect);
+        m_textPunctuationSelect->setCurrentValue(punctuation.isEmpty() ? QVariant{}
+                                                                       : QVariant{punctuation});
     }
+}
+
+void ScreenshotToolPalette::clearTextTransformSelections() {
+    setTextTransformSelections({}, {});
 }
 
 bool ScreenshotToolPalette::scrollingScreenshotMode() const {
@@ -3731,6 +3740,8 @@ void ScreenshotToolPalette::createRectangleStyleToolbar() {
     m_tableResetButton->setObjectName(QStringLiteral("screenshotTableResetButton"));
     m_textFormattingSelect = new adqt::widgets::AdSelect(m_selectActionPanel);
     m_textPunctuationSelect = new adqt::widgets::AdSelect(m_selectActionPanel);
+    m_textFormattingSelect->setObjectName(QStringLiteral("screenshotOcrTextFormattingSelect"));
+    m_textPunctuationSelect->setObjectName(QStringLiteral("screenshotOcrTextPunctuationSelect"));
     const auto configureTextSelect = [](adqt::widgets::AdSelect* select, const QString& placeholder,
                                         const QVector<adqt::widgets::AdSelect::Option>& options) {
         select->setPlaceholder(placeholder);
@@ -3821,14 +3832,10 @@ void ScreenshotToolPalette::createRectangleStyleToolbar() {
     connect(m_textFormattingSelect, &adqt::widgets::AdSelect::currentValueChanged, this,
             [this](const QVariant& value) {
                 emit textFormattingRequested(value.toString());
-                const QSignalBlocker blocker(m_textFormattingSelect);
-                m_textFormattingSelect->setCurrentValue(QVariant());
             });
     connect(m_textPunctuationSelect, &adqt::widgets::AdSelect::currentValueChanged, this,
             [this](const QVariant& value) {
                 emit textPunctuationRequested(value.toString());
-                const QSignalBlocker blocker(m_textPunctuationSelect);
-                m_textPunctuationSelect->setCurrentValue(QVariant());
             });
     setTextEditingState(false, false);
     setTableEditingState(false, false, false, false, false, false);

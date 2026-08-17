@@ -1590,6 +1590,14 @@ bool ScreenshotPinnedWindow::present(const Config& config) {
                 }
             },
             [this]() -> QWidget* { return this; },
+            [this](const QString& formatting, const QString& punctuation) {
+                if (m_editController != nullptr && m_editController->toolbarWindow() != nullptr) {
+                    if (ScreenshotToolPalette* toolbar =
+                            m_editController->toolbarWindow()->palette()) {
+                        toolbar->setTextTransformSelections(formatting, punctuation);
+                    }
+                }
+            },
         },
         this);
     connect(m_recognitionSession.get(), &ScreenshotRecognitionSessionController::textResultChanged,
@@ -2741,25 +2749,14 @@ void ScreenshotPinnedWindow::handleTextSettingsRequested() {
 }
 
 void ScreenshotPinnedWindow::handleTextFormattingRequested(const QString& value) {
-    if (m_recognitionSession == nullptr) {
-        return;
-    }
-    if (value == QStringLiteral("keep")) {
-        m_recognitionSession->beginTextEditing();
-        m_recognitionSession->resetTextEditing();
-    } else if (value == QStringLiteral("remove")) {
-        m_recognitionSession->applyRemoveLineBreaks();
+    if (m_recognitionSession != nullptr) {
+        m_recognitionSession->applyTextFormatting(value);
     }
 }
 
 void ScreenshotPinnedWindow::handleTextPunctuationRequested(const QString& value) {
-    if (m_recognitionSession == nullptr) {
-        return;
-    }
-    if (value == QStringLiteral("half")) {
-        m_recognitionSession->applyHalfWidthPunctuation();
-    } else if (value == QStringLiteral("full")) {
-        m_recognitionSession->applyFullWidthPunctuation();
+    if (m_recognitionSession != nullptr) {
+        m_recognitionSession->applyTextPunctuation(value);
     }
 }
 

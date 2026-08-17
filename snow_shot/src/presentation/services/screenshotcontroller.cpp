@@ -1526,26 +1526,11 @@ void ScreenshotController::Impl::openTextTranslationSettings() {
 }
 
 void ScreenshotController::Impl::applyTextFormatting(const QString& value) {
-    if (value == QStringLiteral("keep")) {
-        m_ocrController->beginTextEditing();
-        m_ocrController->resetTextEditing();
-    } else if (value == QStringLiteral("remove")) {
-        m_ocrController->applyRemoveLineBreaks();
-    }
-    if (ScreenshotToolbarWindow* toolbar = m_overlayCoordinator->toolbar()) {
-        toolbar->clearTextTransformSelections();
-    }
+    m_ocrController->applyTextFormatting(value);
 }
 
 void ScreenshotController::Impl::applyTextPunctuation(const QString& value) {
-    if (value == QStringLiteral("half")) {
-        m_ocrController->applyHalfWidthPunctuation();
-    } else if (value == QStringLiteral("full")) {
-        m_ocrController->applyFullWidthPunctuation();
-    }
-    if (ScreenshotToolbarWindow* toolbar = m_overlayCoordinator->toolbar()) {
-        toolbar->clearTextTransformSelections();
-    }
+    m_ocrController->applyTextPunctuation(value);
 }
 
 bool ScreenshotController::Impl::stopScrollingCapture(bool restoreScreenshotPresentation) {

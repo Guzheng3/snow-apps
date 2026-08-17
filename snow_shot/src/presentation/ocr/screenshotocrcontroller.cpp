@@ -171,6 +171,11 @@ ScreenshotOcrController::ScreenshotOcrController(ScreenshotOcrControllerContext 
                 }
                 return m_context.displaySession.overlayForDisplay(display);
             },
+            [this](const QString& formatting, const QString& punctuation) {
+                if (ScreenshotToolbarWindow* toolbar = m_context.overlayCoordinator.toolbar()) {
+                    toolbar->setTextTransformSelections(formatting, punctuation);
+                }
+            },
         },
         this);
     connect(m_session.get(), &ScreenshotRecognitionSessionController::textEditingChanged, this,
@@ -416,16 +421,12 @@ void ScreenshotOcrController::resetTextEditing() {
     m_session->resetTextEditing();
 }
 
-void ScreenshotOcrController::applyRemoveLineBreaks() {
-    m_session->applyRemoveLineBreaks();
+void ScreenshotOcrController::applyTextFormatting(const QString& value) {
+    m_session->applyTextFormatting(value);
 }
 
-void ScreenshotOcrController::applyHalfWidthPunctuation() {
-    m_session->applyHalfWidthPunctuation();
-}
-
-void ScreenshotOcrController::applyFullWidthPunctuation() {
-    m_session->applyFullWidthPunctuation();
+void ScreenshotOcrController::applyTextPunctuation(const QString& value) {
+    m_session->applyTextPunctuation(value);
 }
 
 bool ScreenshotOcrController::editing() const {

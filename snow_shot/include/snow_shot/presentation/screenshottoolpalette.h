@@ -194,6 +194,7 @@ class ScreenshotToolPalette final : public QWidget {
     void setTextTranslationState(bool available, bool translating, bool streaming,
                                  bool canUndo = false, bool canRedo = false,
                                  bool canReset = false);
+    void setTextTransformSelections(const QString& formatting, const QString& punctuation);
     void clearTextTransformSelections();
 
 #if defined(SNOW_SHOT_TEST_HOOKS)

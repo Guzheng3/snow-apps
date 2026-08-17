@@ -465,6 +465,13 @@ void ScreenshotToolbarWindow::setTextTranslationState(bool available, bool trans
     }
 }
 
+void ScreenshotToolbarWindow::setTextTransformSelections(const QString& formatting,
+                                                          const QString& punctuation) {
+    if (ScreenshotToolPalette* toolPalette = palette()) {
+        toolPalette->setTextTransformSelections(formatting, punctuation);
+    }
+}
+
 void ScreenshotToolbarWindow::setQrBusy(bool busy) {
     if (ScreenshotToolPalette* toolPalette = palette()) {
         toolPalette->setQrBusy(busy);
@@ -472,9 +479,7 @@ void ScreenshotToolbarWindow::setQrBusy(bool busy) {
 }
 
 void ScreenshotToolbarWindow::clearTextTransformSelections() {
-    if (ScreenshotToolPalette* toolPalette = palette()) {
-        toolPalette->clearTextTransformSelections();
-    }
+    setTextTransformSelections({}, {});
 }
 
 void ScreenshotToolbarWindow::setOcrEnabled(bool enabled) {

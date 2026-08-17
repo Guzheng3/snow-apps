@@ -1103,11 +1103,16 @@ void ocrToolReplacesSelectionActionToolbarContents() {
         palette.findChild<adqt::widgets::AdButton*>(QStringLiteral("screenshotRedoButton"));
     const auto textSelects =
         actionPanel->findChildren<adqt::widgets::AdSelect*>(QString(), Qt::FindDirectChildrenOnly);
+    auto* formattingSelect = palette.findChild<adqt::widgets::AdSelect*>(
+        QStringLiteral("screenshotOcrTextFormattingSelect"));
+    auto* punctuationSelect = palette.findChild<adqt::widgets::AdSelect*>(
+        QStringLiteral("screenshotOcrTextPunctuationSelect"));
     QWidget* opacityIcon =
         actionPanel->findChild<QWidget*>(QStringLiteral("screenshotSelectionOpacityIcon"));
     require(sendToBack != nullptr && edit != nullptr && translate != nullptr &&
                 reset != nullptr && settings != nullptr && undo != nullptr && redo != nullptr &&
-                textSelects.size() == 2,
+                textSelects.size() == 2 && formattingSelect != nullptr &&
+                punctuationSelect != nullptr,
             "the shared action panel should contain the OCR editing controls");
     require(undo->toolTip() == QStringLiteral("Undo (Ctrl+Z)") &&
                 redo->toolTip() == QStringLiteral("Redo (Ctrl+Y)"),
@@ -1146,6 +1151,15 @@ void ocrToolReplacesSelectionActionToolbarContents() {
     require(edit->isEnabled() && !reset->isEnabled() && textSelects.at(0)->isEnabled() &&
                 textSelects.at(1)->isEnabled(),
             "a text result should enable editing operations but not Reset");
+    formattingSelect->setCurrentValue(QStringLiteral("remove"));
+    punctuationSelect->setCurrentValue(QStringLiteral("full"));
+    require(formattingSelect->currentValue().toString() == QStringLiteral("remove") &&
+                punctuationSelect->currentValue().toString() == QStringLiteral("full"),
+            "active OCR transforms should remain displayed on both selects");
+    palette.setTextTransformSelections({}, {});
+    require(!formattingSelect->currentValue().isValid() &&
+                !punctuationSelect->currentValue().isValid(),
+            "published manual-edit state should clear both OCR transform selections");
     palette.setTextEditingState(true, true);
     palette.setTextTranslationState(true, false, false, false, false, false);
     require(edit->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Solid &&
@@ -1168,8 +1182,9 @@ void ocrToolReplacesSelectionActionToolbarContents() {
                 !textSelects.at(1)->isEnabled() && settings->isEnabled(),
             "streaming translation should remain dismissible while edits stay locked");
     palette.setTextTranslationState(true, true, false, true, false, true);
-    require(reset->isEnabled() && undo->isEnabled() && !redo->isEnabled(),
-            "completed translation should expose its own Reset and history state");
+    require(reset->isEnabled() && undo->isEnabled() && !redo->isEnabled() &&
+                formattingSelect->isEnabled() && punctuationSelect->isEnabled(),
+            "completed translation should expose Reset, history, and text formatting");
     palette.setTextTranslationState(true, false, false, false, false, false);
     require(edit->buttonStyle() == adqt::widgets::AdButton::ButtonStyle::Text &&
                 edit->accentRole() == adqt::widgets::AdButton::AccentRole::Neutral &&
