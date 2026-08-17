@@ -2441,6 +2441,16 @@ impl GdiResources {
         self.dirty_row_spans.clear();
         self.dirty_span_runs.clear();
     }
+
+    fn release_capture_surface(&mut self) {
+        self.release_window_dc();
+        self.release_bitmap();
+        self.bgra_history = Vec::new();
+        self.dirty_row_flags = Vec::new();
+        self.dirty_row_runs = Vec::new();
+        self.dirty_row_spans = Vec::new();
+        self.dirty_span_runs = Vec::new();
+    }
 }
 
 impl Drop for GdiResources {
@@ -2479,12 +2489,11 @@ impl WindowsMonitorCapturer {
     pub(crate) fn new(monitor: &MonitorId, resolver: Arc<MonitorResolver>) -> CaptureResult<Self> {
         let com = CoInitGuard::init_multithreaded().map_err(CaptureError::platform)?;
         let geometry = resolve_geometry(&resolver, monitor)?;
-        let (mut resources, monitor_source_dc_local) =
+        let (resources, monitor_source_dc_local) =
             match GdiResources::new_for_monitor(geometry.handle) {
                 Ok(resources) => (resources, true),
                 Err(_) => (GdiResources::new()?, false),
             };
-        resources.ensure_surface(geometry.width, geometry.height)?;
 
         let last_display_generation = resolver.display_generation();
 
@@ -2515,12 +2524,11 @@ impl WindowsMonitorCapturer {
             Err(_) => resolve_geometry(&self.resolver, &self.monitor)?,
         };
 
-        let (mut resources, monitor_source_dc_local) =
+        let (resources, monitor_source_dc_local) =
             match GdiResources::new_for_monitor(self.geometry.handle) {
                 Ok(resources) => (resources, true),
                 Err(_) => (GdiResources::new()?, false),
             };
-        resources.ensure_surface(self.geometry.width, self.geometry.height)?;
         self.resources = resources;
         self.monitor_source_dc_local = monitor_source_dc_local;
         Ok(())
@@ -2646,6 +2654,12 @@ impl crate::backend::MonitorCapturer for WindowsMonitorCapturer {
     fn set_capture_mode(&mut self, mode: CaptureMode) -> CaptureResult<()> {
         self.capture_mode = mode;
         Ok(())
+    }
+
+    fn release_capture_access(&mut self) {
+        if self.capture_mode == CaptureMode::Snapshot {
+            self.resources.release_capture_surface();
+        }
     }
 }
 
@@ -2823,6 +2837,12 @@ impl MonitorCapturer for WindowsWindowCapturer {
         }
         self.capture_mode = mode;
         Ok(())
+    }
+
+    fn release_capture_access(&mut self) {
+        if self.capture_mode == CaptureMode::Snapshot {
+            self.resources.release_capture_surface();
+        }
     }
 }
 

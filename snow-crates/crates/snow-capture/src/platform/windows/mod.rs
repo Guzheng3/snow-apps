@@ -135,10 +135,7 @@ impl AutomaticWindowsCapturer {
     fn refresh_topology_state(&mut self) {
         let generation = self.resolver.display_generation();
         if generation != self.topology_generation {
-            self.release_capture_access();
-            self.candidates
-                .iter_mut()
-                .for_each(|candidate| candidate.capturer = None);
+            self.discard_all_candidates();
             self.preferred = None;
             self.selected = None;
             self.topology_generation = generation;
@@ -196,13 +193,50 @@ impl AutomaticWindowsCapturer {
 
     fn record_success(&mut self, index: usize) {
         let kind = self.candidates[index].kind;
+        self.discard_other_candidates(index);
         self.preferred = Some(kind);
         self.selected = Some(kind);
     }
 
-    fn release_failed_candidate(&mut self, index: usize) {
+    fn record_prepared(&mut self, index: usize) {
+        let kind = self.candidates[index].kind;
+        self.discard_other_candidates(index);
+        self.preferred = Some(kind);
+        if self.selected != Some(kind) {
+            self.selected = None;
+        }
+    }
+
+    fn release_candidate_access(&mut self, index: usize) {
         if let Some(capturer) = self.candidates[index].capturer.as_mut() {
             capturer.release_capture_access();
+        }
+    }
+
+    fn discard_candidate(&mut self, index: usize) {
+        let kind = self.candidates[index].kind;
+        if let Some(mut capturer) = self.candidates[index].capturer.take() {
+            capturer.release_capture_access();
+        }
+        if self.preferred == Some(kind) {
+            self.preferred = None;
+        }
+        if self.selected == Some(kind) {
+            self.selected = None;
+        }
+    }
+
+    fn discard_other_candidates(&mut self, retained_index: usize) {
+        for index in 0..self.candidates.len() {
+            if index != retained_index {
+                self.discard_candidate(index);
+            }
+        }
+    }
+
+    fn discard_all_candidates(&mut self) {
+        for index in 0..self.candidates.len() {
+            self.discard_candidate(index);
         }
     }
 
@@ -234,14 +268,18 @@ impl AutomaticWindowsCapturer {
                     return Ok(frame);
                 }
                 Err(error) if fallback_eligible(&error) => {
-                    self.release_failed_candidate(index);
+                    self.discard_candidate(index);
                     reusable = rollback;
                     errors.push((kind, error));
                 }
-                Err(error) => return Err(error),
+                Err(error) => {
+                    self.discard_all_candidates();
+                    return Err(error);
+                }
             }
         }
 
+        self.discard_all_candidates();
         Err(all_backends_failed(&self.target, &errors))
     }
 
@@ -271,12 +309,16 @@ impl AutomaticWindowsCapturer {
                 }
                 Err(error) if fallback_eligible(&error) => {
                     *destination = rollback;
-                    self.release_failed_candidate(index);
+                    self.discard_candidate(index);
                     errors.push((kind, error));
                 }
-                Err(error) => return Err(error),
+                Err(error) => {
+                    self.discard_all_candidates();
+                    return Err(error);
+                }
             }
         }
+        self.discard_all_candidates();
         Err(all_backends_failed(&self.target, &errors))
     }
 
@@ -316,12 +358,16 @@ impl AutomaticWindowsCapturer {
                 }
                 Err(error) if fallback_eligible(&error) => {
                     *destination = rollback;
-                    self.release_failed_candidate(index);
+                    self.discard_candidate(index);
                     errors.push((kind, error));
                 }
-                Err(error) => return Err(error),
+                Err(error) => {
+                    self.discard_all_candidates();
+                    return Err(error);
+                }
             }
         }
+        self.discard_all_candidates();
         Err(all_backends_failed(&self.target, &errors))
     }
 
@@ -346,28 +392,29 @@ impl MonitorCapturer for AutomaticWindowsCapturer {
     fn prewarm_environment(&mut self) -> CaptureResult<()> {
         self.refresh_topology_state();
         let mut errors = Vec::new();
-        let mut prepared = 0usize;
-        for index in 0..self.candidates.len() {
+        for index in self.attempt_order() {
             let kind = self.candidates[index].kind;
             let result = self
                 .ensure_candidate(index)
                 .and_then(|capturer| capturer.prewarm_environment());
-            self.release_failed_candidate(index);
             match result {
                 Ok(()) => {
-                    prepared += 1;
+                    self.release_candidate_access(index);
+                    self.record_prepared(index);
+                    return Ok(());
                 }
                 Err(error) if fallback_eligible(&error) => {
-                    self.candidates[index].capturer = None;
+                    self.discard_candidate(index);
                     errors.push((kind, error));
                 }
-                Err(error) => return Err(error),
+                Err(error) => {
+                    self.discard_all_candidates();
+                    return Err(error);
+                }
             }
         }
-        if prepared == 0 {
-            return Err(all_backends_failed(&self.target, &errors));
-        }
-        Ok(())
+        self.discard_all_candidates();
+        Err(all_backends_failed(&self.target, &errors))
     }
 
     fn capture(&mut self, reuse: Option<Frame>) -> CaptureResult<Frame> {
@@ -750,6 +797,15 @@ mod tests {
         capturer
     }
 
+    fn retained_candidate_kinds(capturer: &AutomaticWindowsCapturer) -> Vec<CaptureBackendKind> {
+        capturer
+            .candidates
+            .iter()
+            .filter(|candidate| candidate.capturer.is_some())
+            .map(|candidate| candidate.kind)
+            .collect()
+    }
+
     #[test]
     fn acquisition_failure_falls_back_and_success_is_sticky() -> CaptureResult<()> {
         let dxgi = Arc::new(Mutex::new(CandidateState {
@@ -777,6 +833,10 @@ mod tests {
         assert_eq!(dxgi.lock().unwrap().releases, 1);
         assert_eq!(wgc.lock().unwrap().calls, 1);
         assert_eq!(gdi.lock().unwrap().calls, 0);
+        assert_eq!(
+            retained_candidate_kinds(&capturer),
+            vec![CaptureBackendKind::WindowsGraphicsCapture]
+        );
 
         capturer.release_capture_access();
         let _second = capturer.capture(None)?;
@@ -784,6 +844,43 @@ mod tests {
         assert_eq!(dxgi.lock().unwrap().calls, 1);
         assert_eq!(gdi.lock().unwrap().calls, 0);
         capturer.release_capture_access();
+        assert!(!capturer.capture_access_active());
+        Ok(())
+    }
+
+    #[test]
+    fn prewarm_stops_after_first_viable_backend_and_drops_the_rest() -> CaptureResult<()> {
+        let dxgi = Arc::new(Mutex::new(CandidateState {
+            prewarm_outcomes: VecDeque::from([Err(CaptureError::Timeout)]),
+            ..CandidateState::default()
+        }));
+        let wgc = Arc::new(Mutex::new(CandidateState {
+            prewarm_outcomes: VecDeque::from([Ok(())]),
+            ..CandidateState::default()
+        }));
+        let gdi = Arc::new(Mutex::new(CandidateState::default()));
+        let mut capturer = scripted_auto(&[
+            (CaptureBackendKind::DxgiDuplication, Arc::clone(&dxgi)),
+            (CaptureBackendKind::WindowsGraphicsCapture, Arc::clone(&wgc)),
+            (CaptureBackendKind::Gdi, Arc::clone(&gdi)),
+        ]);
+
+        capturer.prewarm_environment()?;
+
+        assert_eq!(dxgi.lock().unwrap().prewarm_calls, 1);
+        assert_eq!(dxgi.lock().unwrap().releases, 1);
+        assert_eq!(wgc.lock().unwrap().prewarm_calls, 1);
+        assert_eq!(wgc.lock().unwrap().releases, 1);
+        assert_eq!(gdi.lock().unwrap().prewarm_calls, 0);
+        assert_eq!(
+            retained_candidate_kinds(&capturer),
+            vec![CaptureBackendKind::WindowsGraphicsCapture]
+        );
+        assert_eq!(
+            capturer.preferred,
+            Some(CaptureBackendKind::WindowsGraphicsCapture)
+        );
+        assert_eq!(capturer.selected, None);
         assert!(!capturer.capture_access_active());
         Ok(())
     }
@@ -808,6 +905,8 @@ mod tests {
         ));
         assert_eq!(dxgi.lock().unwrap().calls, 1);
         assert_eq!(wgc.lock().unwrap().calls, 0);
+        assert_eq!(wgc.lock().unwrap().releases, 1);
+        assert!(retained_candidate_kinds(&capturer).is_empty());
     }
 
     #[test]
@@ -829,6 +928,8 @@ mod tests {
         assert_eq!(state.prewarm_calls, 1);
         assert_eq!(state.releases, 1);
         assert!(!state.active);
+        drop(state);
+        assert!(retained_candidate_kinds(&capturer).is_empty());
     }
 
     #[test]

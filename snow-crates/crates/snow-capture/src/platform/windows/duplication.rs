@@ -1928,6 +1928,9 @@ impl OutputCapturer {
     fn release_capture_access(&mut self) {
         self.duplication = None;
         self.reset_capture_access_state();
+        if self.capture_mode == CaptureMode::Snapshot {
+            self.release_snapshot_capture_surfaces();
+        }
     }
 
     fn capture_access_active(&self) -> bool {
@@ -2078,6 +2081,18 @@ impl OutputCapturer {
         self.monitor_low_latency_dirty_gpu_desc = None;
     }
 
+    fn release_snapshot_capture_surfaces(&mut self) {
+        self.staging_ring.invalidate();
+        self.region.invalidate();
+        self.spare_frame = None;
+        if let Some(tonemapper) = self.gpu_tonemapper.as_mut() {
+            tonemapper.release_capture_surfaces();
+        }
+        if let Some(converter) = self.gpu_f16_converter.as_mut() {
+            converter.release_capture_surfaces();
+        }
+    }
+
     fn set_capture_mode(&mut self, mode: CaptureMode) {
         if self.capture_mode == mode {
             return;
@@ -2088,8 +2103,7 @@ impl OutputCapturer {
         self.needs_presented_first_frame = mode != CaptureMode::Snapshot;
         if mode == CaptureMode::Snapshot {
             // Screenshot captures use single-shot paths; drop recording buffers.
-            self.staging_ring.invalidate();
-            self.region.invalidate();
+            self.release_snapshot_capture_surfaces();
             self.trim_recording_scratch_for_screenshot();
         } else {
             // Recording mode keeps runtime state warm for sustained throughput.

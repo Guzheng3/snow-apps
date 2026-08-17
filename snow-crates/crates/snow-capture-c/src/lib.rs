@@ -424,13 +424,6 @@ impl MonitorWorker {
                 let mut session = system
                     .open_session(CaptureTarget::Monitor(worker_entry.id), options)
                     .map_err(|err| err.to_string());
-                let mut reusable_frame = Frame::empty();
-                if let Err(error) = reusable_frame.ensure_rgba_capacity(
-                    worker_entry.expected_width,
-                    worker_entry.expected_height,
-                ) {
-                    session = Err(error.to_string());
-                }
 
                 while let Ok(command) = rx.recv() {
                     match command {
@@ -438,9 +431,7 @@ impl MonitorWorker {
                             let result = match session.as_mut() {
                                 Ok(capture_session) => capture_session
                                     .prewarm_environment()
-                                    .and_then(|info| {
-                                        reusable_frame.ensure_rgba_capacity(info.width, info.height)
-                                    })
+                                    .map(|_| ())
                                     .map_err(|err| err.to_string()),
                                 Err(error) => Err(error.clone()),
                             };
@@ -449,11 +440,11 @@ impl MonitorWorker {
                         WorkerCommand::Capture(reply) => {
                             let result = match session.as_mut() {
                                 Ok(session) => {
-                                    match session.capture_once_into(&mut reusable_frame) {
-                                        Ok(()) if session.active_capture_access_count() == 0 => {
-                                            Ok(reusable_frame.clone())
+                                    match session.capture_once() {
+                                        Ok(frame) if session.active_capture_access_count() == 0 => {
+                                            Ok(frame)
                                         }
-                                        Ok(()) => Err(
+                                        Ok(_) => Err(
                                             "capture access remained active after one-shot monitor capture"
                                                 .to_owned(),
                                         ),
@@ -763,10 +754,7 @@ fn capture_window_snapshot(
             options,
         )
         .map_err(|error| error.to_string())?;
-    let mut frame = Frame::empty();
-    session
-        .capture_once_into(&mut frame)
-        .map_err(|error| error.to_string())?;
+    let frame = session.capture_once().map_err(|error| error.to_string())?;
     if session.active_capture_access_count() != 0 {
         return Err("capture access remained active after focused-window capture".to_owned());
     }

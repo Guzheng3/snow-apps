@@ -747,8 +747,8 @@ impl CaptureSession {
         result
     }
 
-    /// Close active DXGI/WGC access while preserving prepared resources and
-    /// reusable frame storage.
+    /// Close active backend access and release snapshot-only capture surfaces.
+    /// Lightweight prepared state may be retained for the next request.
     pub fn release_capture_access(&mut self) {
         self.runtime.release_capture_access();
     }
@@ -836,6 +836,15 @@ impl CaptureSession {
         let reused = std::mem::replace(frame, Frame::empty());
         *frame = self.capture_reuse(reused)?;
         Ok(())
+    }
+
+    /// Capture a single snapshot with a newly owned destination frame.
+    /// Unlike `capture_once_into`, callers do not need to retain a reusable
+    /// destination buffer between requests.
+    pub fn capture_once(&mut self) -> CaptureResult<Frame> {
+        let mut frame = Frame::empty();
+        self.capture_once_into(&mut frame)?;
+        Ok(frame)
     }
 
     /// Capture one frame and unconditionally close active backend access
@@ -2088,14 +2097,14 @@ mod tests {
     }
 
     #[test]
-    fn one_shot_capture_releases_access_and_reports_concrete_backend() -> CaptureResult<()> {
+    fn owned_one_shot_capture_releases_access_and_reports_concrete_backend() -> CaptureResult<()> {
         let state = Arc::new(Mutex::new(LifecycleState::default()));
         let mut session = lifecycle_session(Arc::clone(&state))?;
-        let mut frame = Frame::empty();
 
-        session.capture_once_into(&mut frame)?;
+        let frame = session.capture_once()?;
 
         assert_eq!(session.active_capture_access_count(), 0);
+        assert!(session.monitor_output_cache_is_empty());
         assert_eq!(
             frame.metadata().backend_kind(),
             crate::backend::CaptureBackendKind::Gdi

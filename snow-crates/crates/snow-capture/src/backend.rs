@@ -235,8 +235,9 @@ pub(crate) trait MonitorCapturer: Send {
         Ok(())
     }
 
-    /// Close only active access to the capture source while preserving safe
-    /// prepared resources and reusable buffers. This method is idempotent.
+    /// Close active access to the capture source. Snapshot backends may also
+    /// discard capture-time pixel surfaces that are expensive to retain while
+    /// idle. This method is idempotent.
     fn release_capture_access(&mut self) {}
 
     /// Whether this capturer currently owns active OS capture access.
