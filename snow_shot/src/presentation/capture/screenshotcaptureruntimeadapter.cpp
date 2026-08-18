@@ -8,6 +8,8 @@
 
 #include "snow_draw_engine_qt/snow_canvas_runtime.h"
 
+#include "icon_registry.h"
+
 #include <QObject>
 
 #include <utility>
@@ -80,6 +82,9 @@ void ScreenshotCaptureRuntimeAdapter::releaseIdleResourcesAsync(quint64 requestI
     }
 
     m_captureCoordinator->releaseIdleResourcesAsync(requestId);
+    // Capture surfaces are the largest transient users of the process. Once their idle release is
+    // queued, keep only a small icon working set while the app is between captures.
+    adqt::icons::trimIconCache(512 * 1024);
 }
 
 void ScreenshotCaptureRuntimeAdapter::shutdownCaptureWorker() {
@@ -89,6 +94,7 @@ void ScreenshotCaptureRuntimeAdapter::shutdownCaptureWorker() {
 
     m_captureCoordinator->shutdown();
     m_captureCoordinator.reset();
+    adqt::icons::trimIconCache(512 * 1024);
 }
 
 bool ScreenshotCaptureRuntimeAdapter::selectorReady() const {

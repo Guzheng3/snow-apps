@@ -103,12 +103,35 @@ endif()
 if(ADQT_BUILD_TESTS)
     enable_testing()
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    add_executable(adqt-icon-cache-tests tests/icon_cache_tests.cpp)
+    target_link_libraries(adqt-icon-cache-tests PRIVATE adqt::icon_core Qt6::Widgets)
+    add_test(NAME adqt-icon-cache-tests COMMAND adqt-icon-cache-tests)
+    if(WIN32)
+        set_tests_properties(adqt-icon-cache-tests PROPERTIES
+            ENVIRONMENT
+                "QT_QPA_PLATFORM=windows;QT_QPA_PLATFORM_PLUGIN_PATH=$<TARGET_FILE_DIR:Qt6::QWindowsIntegrationPlugin>"
+            ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+        )
+    else()
+        set_tests_properties(adqt-icon-cache-tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    endif()
+
     add_executable(adqt-icon-core-v2-tests tests/icon_core_v2_tests.cpp)
     target_link_libraries(adqt-icon-core-v2-tests PRIVATE adqt::widgets Qt6::Widgets)
     add_test(NAME adqt-icon-core-v2-tests COMMAND adqt-icon-core-v2-tests)
-    set_tests_properties(adqt-icon-core-v2-tests PROPERTIES
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
-    )
+    if(WIN32)
+        set_tests_properties(adqt-icon-core-v2-tests PROPERTIES
+            ENVIRONMENT
+                "QT_QPA_PLATFORM=windows;QT_QPA_PLATFORM_PLUGIN_PATH=$<TARGET_FILE_DIR:Qt6::QWindowsIntegrationPlugin>"
+            ENVIRONMENT_MODIFICATION
+                "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+        )
+    else()
+        set_tests_properties(adqt-icon-core-v2-tests PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        )
+    endif()
     add_executable(adqt-image-tests packages/ant_design_qt/tests/tst_image.cpp)
     set_target_properties(adqt-image-tests PROPERTIES AUTOMOC ON)
     target_link_libraries(adqt-image-tests PRIVATE adqt::widgets Qt6::Test)

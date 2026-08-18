@@ -4,6 +4,7 @@
 #include <QEventLoop>
 #include <QImage>
 #include <QTimer>
+#include <QThread>
 
 #include <array>
 #include <cstdlib>
@@ -81,6 +82,8 @@ QImage largeQrFixture() {
 
 ScreenshotQrRecognitionResult recognize(ScreenshotQrRecognitionService& service,
                                         const QImage& image, const char* timeoutMessage) {
+    require(service.findChildren<QThread*>().isEmpty(),
+            "QR service should not create a worker thread before recognition is requested");
     QEventLoop loop;
     ScreenshotQrRecognitionResult output;
     bool completed = false;
@@ -96,9 +99,13 @@ ScreenshotQrRecognitionResult recognize(ScreenshotQrRecognitionService& service,
         service.recognize(image, &loop, [&](ScreenshotQrRecognitionResult result) {
             output = std::move(result);
             completed = true;
+            require(service.findChildren<QThread*>().isEmpty(),
+                    "QR worker thread should be destroyed before completion delivery");
             loop.quit();
         });
     require(token != 0, "a valid QR image should schedule recognition");
+    require(service.findChildren<QThread*>().size() == 1,
+            "QR recognition should create one worker thread on demand");
     timeout.start(10000);
     loop.exec();
 
@@ -124,6 +131,45 @@ void oversizedScreenshotIsBoundedAndStillDecoded() {
             "the QR detector should decode a QR code from an oversized screenshot");
 }
 
+void queuedRequestsReuseNoPersistentWorker() {
+    ScreenshotQrRecognitionService service;
+    QObject receiver;
+    QEventLoop loop;
+    QTimer timeout;
+    timeout.setSingleShot(true);
+    int completions = 0;
+    bool timedOut = false;
+    QObject::connect(&timeout, &QTimer::timeout, &loop, [&]() {
+        timedOut = true;
+        loop.quit();
+    });
+
+    const QImage image = qrFixture();
+    const auto completion = [&](ScreenshotQrRecognitionResult result) {
+        require(result.error.isEmpty() &&
+                    result.contents == QStringList{QString::fromLatin1(kPayload)},
+                "queued QR requests should decode successfully");
+        ++completions;
+        if (completions == 2) {
+            require(service.findChildren<QThread*>().isEmpty(),
+                    "the final queued QR request should leave no worker thread");
+            loop.quit();
+        }
+    };
+
+    const auto firstToken = service.recognize(image, &receiver, completion);
+    const auto secondToken = service.recognize(image, &receiver, completion);
+    require(firstToken != 0 && secondToken != 0,
+            "queued QR requests should both be accepted");
+    require(service.findChildren<QThread*>().size() == 1,
+            "queued QR requests should share one active worker at a time");
+
+    timeout.start(10'000);
+    loop.exec();
+    require(!timedOut && completions == 2,
+            "queued QR requests should both complete within the test timeout");
+}
+
 void destroyingReceiverCancelsQueuedCompletion() {
     ScreenshotQrRecognitionService service;
     bool completed = false;
@@ -137,6 +183,8 @@ void destroyingReceiverCancelsQueuedCompletion() {
     QTimer::singleShot(250, &loop, &QEventLoop::quit);
     loop.exec();
     require(!completed, "destroying the receiver must cancel QR result delivery");
+    require(service.findChildren<QThread*>().isEmpty(),
+            "canceled QR recognition should destroy its worker thread");
 }
 } // namespace
 
@@ -144,6 +192,7 @@ int main(int argc, char** argv) {
     QCoreApplication application(argc, argv);
     defaultDetectorDecodesTheSelectedImage();
     oversizedScreenshotIsBoundedAndStillDecoded();
+    queuedRequestsReuseNoPersistentWorker();
     destroyingReceiverCancelsQueuedCompletion();
     return 0;
 }

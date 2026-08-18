@@ -8,16 +8,20 @@
 #include <QAction>
 #include <QApplication>
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QFileInfo>
 #include <QHash>
+#include <QImage>
 #include <QIcon>
 #include <QImageReader>
 #include <QKeySequence>
 #include <QPixmap>
 #include <QSet>
 #include <QSystemTrayIcon>
+#include <QVariant>
 
 #include <algorithm>
+#include <limits>
 
 namespace snow_shot::presentation {
 namespace {
@@ -57,19 +61,134 @@ QString normalizedLeftClickAction(const QString& action) {
                : QString::fromLatin1(DEFAULT_LEFT_CLICK_ACTION);
 }
 
-QIcon loadImageIcon(const QString& path) {
-    if (path.trimmed().isEmpty()) {
-        return {};
+class TrayImageCache final {
+  public:
+    QIcon load(const QString& path) {
+        if (path.trimmed().isEmpty()) {
+            clearEntry();
+            return {};
+        }
+
+        const QFileInfo info(path);
+        const qint64 size = info.exists() ? info.size() : -1;
+        const QDateTime modified = info.exists() ? info.lastModified() : QDateTime();
+        if (hasEntry_ && path == source_ && size == sourceFileSize_ &&
+            modified == sourceModified_) {
+            ++hitCount_;
+            return icon_;
+        }
+
+        // Drop the old QIcon before decoding a replacement so a large custom image cannot remain
+        // reachable through the one-entry cache after the source changes.
+        clearEntry();
+        ++missCount_;
+        const QString suffix = info.suffix().toLower();
+        if (suffix != QStringLiteral("png") && suffix != QStringLiteral("ico")) {
+            remember(path, size, modified, {}, {}, {});
+            return {};
+        }
+
+        QImageReader reader(path);
+        reader.setAutoTransform(true);
+        if (!reader.canRead()) {
+            remember(path, size, modified, {}, {}, {});
+            return {};
+        }
+
+        int selectedFrame = -1;
+        if (suffix == QStringLiteral("ico")) {
+            QImageReader probe(path);
+            probe.setAutoTransform(true);
+            const int frameCount = probe.imageCount();
+            qint64 bestScore = std::numeric_limits<qint64>::max();
+            for (int frame = 0; frame < frameCount; ++frame) {
+                if (!probe.jumpToImage(frame)) {
+                    continue;
+                }
+                const QSize candidate = probe.size();
+                if (!candidate.isValid() || candidate.width() <= 0 || candidate.height() <= 0) {
+                    continue;
+                }
+                const qint64 score = qAbs(static_cast<qint64>(candidate.width()) - 256) +
+                                     qAbs(static_cast<qint64>(candidate.height()) - 256);
+                if (score < bestScore) {
+                    bestScore = score;
+                    selectedFrame = frame;
+                }
+            }
+            if (selectedFrame >= 0 && !reader.jumpToImage(selectedFrame)) {
+                remember(path, size, modified, {}, {}, {});
+                return {};
+            }
+        }
+
+        const QSize sourceSize = reader.size();
+        if (!sourceSize.isValid() || sourceSize.width() <= 0 || sourceSize.height() <= 0 ||
+            sourceSize.width() > 16384 || sourceSize.height() > 16384 ||
+            static_cast<qint64>(sourceSize.width()) * sourceSize.height() > 64LL * 1024 * 1024) {
+            remember(path, size, modified, {}, sourceSize, {});
+            return {};
+        }
+
+        const QSize bounded = sourceSize.scaled(QSize(256, 256), Qt::KeepAspectRatio);
+        if (sourceSize.width() > 256 || sourceSize.height() > 256) {
+            reader.setScaledSize(bounded);
+        }
+        ++decodeCount_;
+        QImage image = reader.read();
+        if (image.isNull()) {
+            remember(path, size, modified, {}, sourceSize, {});
+            return {};
+        }
+        if (image.width() > 256 || image.height() > 256) {
+            image = image.scaled(QSize(256, 256), Qt::KeepAspectRatio,
+                                 Qt::SmoothTransformation);
+        }
+        QIcon icon(QPixmap::fromImage(image));
+        remember(path, size, modified, icon, sourceSize, image.size());
+        return icon;
     }
-    const QString suffix = QFileInfo(path).suffix().toLower();
-    if (suffix != QStringLiteral("png") && suffix != QStringLiteral("ico")) {
-        return {};
+
+    quint64 hitCount() const { return hitCount_; }
+    quint64 missCount() const { return missCount_; }
+    quint64 decodeCount() const { return decodeCount_; }
+    QSize sourcePixelSize() const { return sourcePixelSize_; }
+    QSize decodedPixelSize() const { return decodedPixelSize_; }
+
+  private:
+    void clearEntry() {
+        source_.clear();
+        sourceFileSize_ = -2;
+        sourceModified_ = {};
+        sourcePixelSize_ = {};
+        decodedPixelSize_ = {};
+        icon_ = QIcon();
+        hasEntry_ = false;
     }
-    QImageReader reader(path);
-    reader.setAutoTransform(true);
-    const QImage image = reader.read();
-    return image.isNull() ? QIcon() : QIcon(QPixmap::fromImage(image));
-}
+
+    void remember(const QString& source, qint64 size, const QDateTime& modified,
+                  const QIcon& icon, const QSize& sourcePixelSize,
+                  const QSize& decodedPixelSize) {
+        source_ = source;
+        sourceFileSize_ = size;
+        sourceModified_ = modified;
+        sourcePixelSize_ = sourcePixelSize;
+        decodedPixelSize_ = decodedPixelSize;
+        icon_ = icon;
+        hasEntry_ = true;
+    }
+
+    QString source_;
+    qint64 sourceFileSize_ = -2;
+    QDateTime sourceModified_;
+    QSize sourcePixelSize_;
+    QSize decodedPixelSize_;
+    QIcon icon_;
+    quint64 hitCount_ = 0;
+    quint64 missCount_ = 0;
+    quint64 decodeCount_ = 0;
+    bool hasEntry_ = false;
+};
 
 QString nativeShortcutText(const QStringList& shortcuts) {
     QStringList nativeShortcuts;
@@ -228,11 +347,11 @@ class SystemTrayController::Impl {
     }
 
     void updateIcon() {
-        QIcon icon = loadImageIcon(customIconPath);
+        QIcon icon = iconCache.load(customIconPath);
         QString resolvedSource = customIconPath;
         if (icon.isNull()) {
             resolvedSource = bundledIconResource(iconSelection);
-            icon = loadImageIcon(resolvedSource);
+            icon = QIcon(resolvedSource);
         }
         if (icon.isNull()) {
             resolvedSource = QStringLiteral("application-window-icon");
@@ -244,6 +363,14 @@ class SystemTrayController::Impl {
         }
         trayIcon->setIcon(icon);
         trayIcon->setProperty("resolvedIconSource", resolvedSource);
+        trayIcon->setProperty("customIconCacheHits",
+                              QVariant::fromValue<qulonglong>(iconCache.hitCount()));
+        trayIcon->setProperty("customIconCacheMisses",
+                              QVariant::fromValue<qulonglong>(iconCache.missCount()));
+        trayIcon->setProperty("customIconDecodeCount",
+                              QVariant::fromValue<qulonglong>(iconCache.decodeCount()));
+        trayIcon->setProperty("customIconSourcePixelSize", iconCache.sourcePixelSize());
+        trayIcon->setProperty("customIconDecodedPixelSize", iconCache.decodedPixelSize());
     }
 
     SystemTrayController& q;
@@ -254,6 +381,7 @@ class SystemTrayController::Impl {
     QHash<QString, QAction*> actions;
     QHash<GlobalShortcutAction, QString> shortcutText;
     QVector<QAction*> separatorsBeforeGroup;
+    TrayImageCache iconCache;
     QAction* disableShortcutFunctionsAction = nullptr;
     QStringList menuOptions;
     QString iconSelection = QString::fromLatin1(DEFAULT_TRAY_ICON);

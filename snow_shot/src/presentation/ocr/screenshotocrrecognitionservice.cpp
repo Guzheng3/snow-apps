@@ -5,6 +5,7 @@
 #include "snow_ocr_c.h"
 
 #include <QCoreApplication>
+#include <QDebug>
 #include <QHash>
 #include <QMetaObject>
 #include <QPointer>
@@ -20,6 +21,7 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <system_error>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -207,13 +209,10 @@ class ScreenshotOcrRecognitionService::Impl final {
     Impl(ScreenshotOcrRecognitionService* owner, const Options& options,
          ScreenshotOcrBackendPreference preference)
         : m_owner(owner),
-          m_idleTimeout((std::max)(1, options.engineIdleTimeoutMs)),
+          m_workerIdleTimeout((std::max)(1, options.engineIdleTimeoutMs)),
+          m_workerLimit(std::clamp(options.workerCount, 1, 2)),
           m_backendPreference(preference) {
-        const int workerCount = std::clamp(options.workerCount, 1, 2);
-        m_workers.reserve(static_cast<std::size_t>(workerCount));
-        for (int index = 0; index < workerCount; ++index) {
-            m_workers.emplace_back([this]() { workerLoop(); });
-        }
+        m_workers.reserve(static_cast<std::size_t>(m_workerLimit));
     }
 
     ~Impl() {
@@ -235,6 +234,7 @@ class ScreenshotOcrRecognitionService::Impl final {
                 }
             });
 
+        bool accepted = false;
         {
             std::lock_guard lock(m_mutex);
             if (m_stopping) {
@@ -243,6 +243,16 @@ class ScreenshotOcrRecognitionService::Impl final {
             }
             m_requests.insert(token, job);
             queueFor(job->request.priority).push_back(job);
+            startWorkersForDemandLocked();
+            accepted = m_liveWorkerCount > 0;
+            if (!accepted) {
+                eraseQueuedJob(job);
+                m_requests.remove(token);
+            }
+        }
+        if (!accepted) {
+            QObject::disconnect(job->receiverDestroyed);
+            return 0;
         }
         m_workAvailable.notify_one();
         return token;
@@ -296,6 +306,11 @@ class ScreenshotOcrRecognitionService::Impl final {
         m_workAvailable.notify_all();
     }
 
+    [[nodiscard]] int liveWorkerCount() const {
+        std::lock_guard lock(m_mutex);
+        return m_liveWorkerCount;
+    }
+
   private:
     using RequestToken = ScreenshotOcrRecognitionPort::RequestToken;
     using Completion = ScreenshotOcrRecognitionPort::Completion;
@@ -309,6 +324,11 @@ class ScreenshotOcrRecognitionService::Impl final {
         QMetaObject::Connection receiverDestroyed;
         std::atomic_bool cancelled{false};
         bool running = false;
+    };
+
+    struct WorkerSlot {
+        std::thread thread;
+        bool finished = false;
     };
 
     using Queue = std::deque<std::shared_ptr<Job>>;
@@ -334,13 +354,64 @@ class ScreenshotOcrRecognitionService::Impl final {
         std::shared_ptr<Job> job = std::move(queue.front());
         queue.pop_front();
         job->running = true;
+        ++m_activeWorkerCount;
         return job;
     }
 
-    void workerLoop() {
+    [[nodiscard]] std::size_t queuedJobCountLocked() const {
+        return m_interactiveQueue.size() + m_prefetchQueue.size();
+    }
+
+    void reapFinishedWorkersLocked() {
+        auto worker = m_workers.begin();
+        while (worker != m_workers.end()) {
+            if (!(*worker)->finished) {
+                ++worker;
+                continue;
+            }
+            if ((*worker)->thread.joinable()) {
+                (*worker)->thread.join();
+            }
+            worker = m_workers.erase(worker);
+        }
+    }
+
+    [[nodiscard]] bool spawnWorkerLocked() {
+        reapFinishedWorkersLocked();
+        auto slot = std::make_unique<WorkerSlot>();
+        WorkerSlot* const worker = slot.get();
+        m_workers.push_back(std::move(slot));
+        try {
+            worker->thread = std::thread([this, worker]() { workerLoop(worker); });
+        } catch (const std::system_error& error) {
+            qWarning() << "Unable to create OCR worker thread:" << error.what();
+            m_workers.pop_back();
+            return false;
+        }
+        ++m_liveWorkerCount;
+        return true;
+    }
+
+    void startWorkersForDemandLocked() {
+        const std::size_t demand =
+            (std::min)(static_cast<std::size_t>(m_workerLimit),
+                       queuedJobCountLocked() + static_cast<std::size_t>(m_activeWorkerCount));
+        while (static_cast<std::size_t>(m_liveWorkerCount) < demand) {
+            if (!spawnWorkerLocked()) {
+                break;
+            }
+        }
+    }
+
+    void finishWorkerLocked(WorkerSlot* worker) {
+        --m_liveWorkerCount;
+        worker->finished = true;
+    }
+
+    void workerLoop(WorkerSlot* worker) {
         OcrEngineHandle engine;
         quint64 engineGeneration = 0;
-        Clock::time_point idleSince = Clock::now();
+        Clock::time_point idleDeadline = Clock::now() + m_workerIdleTimeout;
 
         while (true) {
             std::shared_ptr<Job> job;
@@ -353,18 +424,17 @@ class ScreenshotOcrRecognitionService::Impl final {
                     return m_stopping || !m_interactiveQueue.empty() || !m_prefetchQueue.empty() ||
                            m_backendGeneration != engineGeneration;
                 };
-                if (engine != nullptr) {
-                    m_workAvailable.wait_until(lock, idleSince + m_idleTimeout, ready);
-                } else {
-                    m_workAvailable.wait(lock, ready);
+                if (!m_workAvailable.wait_until(lock, idleDeadline, ready)) {
+                    engine.reset();
+                    finishWorkerLocked(worker);
+                    return;
                 }
                 if (m_stopping) {
+                    finishWorkerLocked(worker);
                     break;
                 }
                 if (m_backendGeneration != engineGeneration) {
                     engineGeneration = m_backendGeneration;
-                    retireEngine = true;
-                } else if (engine != nullptr && Clock::now() - idleSince >= m_idleTimeout) {
                     retireEngine = true;
                 }
                 job = takeNextJob();
@@ -391,7 +461,11 @@ class ScreenshotOcrRecognitionService::Impl final {
                 result =
                     runRecognition(engine, std::move(job->request.image), job->request.canvasRect);
             }
-            idleSince = Clock::now();
+            {
+                std::lock_guard lock(m_mutex);
+                --m_activeWorkerCount;
+            }
+            idleDeadline = Clock::now() + m_workerIdleTimeout;
 
             QPointer<ScreenshotOcrRecognitionService> service(m_owner);
             QMetaObject::invokeMethod(
@@ -439,22 +513,25 @@ class ScreenshotOcrRecognitionService::Impl final {
             m_requests.clear();
         }
         m_workAvailable.notify_all();
-        for (std::thread& worker : m_workers) {
-            if (worker.joinable()) {
-                worker.join();
+        for (const std::unique_ptr<WorkerSlot>& worker : m_workers) {
+            if (worker->thread.joinable()) {
+                worker->thread.join();
             }
         }
         m_workers.clear();
     }
 
     ScreenshotOcrRecognitionService* m_owner = nullptr;
-    const std::chrono::milliseconds m_idleTimeout;
-    std::mutex m_mutex;
+    const std::chrono::milliseconds m_workerIdleTimeout;
+    const int m_workerLimit;
+    mutable std::mutex m_mutex;
     std::condition_variable m_workAvailable;
     Queue m_interactiveQueue;
     Queue m_prefetchQueue;
     QHash<RequestToken, std::shared_ptr<Job>> m_requests;
-    std::vector<std::thread> m_workers;
+    std::vector<std::unique_ptr<WorkerSlot>> m_workers;
+    int m_liveWorkerCount = 0;
+    int m_activeWorkerCount = 0;
     ScreenshotOcrBackendPreference m_backendPreference = ScreenshotOcrBackendPreference::Cpu;
     quint64 m_backendGeneration = 1;
     bool m_stopping = false;
@@ -503,4 +580,8 @@ void ScreenshotOcrRecognitionService::setBackendPreference(
     if (m_impl != nullptr) {
         m_impl->setBackendPreference(preference);
     }
+}
+
+int ScreenshotOcrRecognitionService::liveWorkerCount() const {
+    return m_impl != nullptr ? m_impl->liveWorkerCount() : 0;
 }

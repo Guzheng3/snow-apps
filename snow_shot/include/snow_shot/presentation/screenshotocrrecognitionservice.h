@@ -54,7 +54,9 @@ class ScreenshotOcrRecognitionService final : public ScreenshotOcrRecognitionPor
 
   public:
     struct Options {
+        // The worker and its OCR engine are retired after this period without a request.
         int engineIdleTimeoutMs = 16'000;
+        // Maximum concurrent workers; the pool grows only while queued demand requires it.
         int workerCount = 2;
     };
 
@@ -72,6 +74,7 @@ class ScreenshotOcrRecognitionService final : public ScreenshotOcrRecognitionPor
     void cancel(RequestToken token) override;
     bool reprioritize(RequestToken token, ScreenshotOcrRequestPriority priority) override;
     void setBackendPreference(ScreenshotOcrBackendPreference preference);
+    [[nodiscard]] int liveWorkerCount() const;
 
   private:
     class Impl;

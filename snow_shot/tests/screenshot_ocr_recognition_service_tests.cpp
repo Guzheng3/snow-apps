@@ -71,6 +71,8 @@ void embeddedEngineCompletesThroughTheQtWorker(bool directMlEnabled) {
     ScreenshotOcrRecognitionService service(
         directMlEnabled ? ScreenshotOcrBackendPreference::DirectMl
                         : ScreenshotOcrBackendPreference::Cpu);
+    require(service.liveWorkerCount() == 0,
+            "OCR service construction must not create worker threads eagerly");
     QEventLoop loop;
     ScreenshotOcrRecognitionResult output;
     bool completed = false;
@@ -152,6 +154,9 @@ void concurrentRequestsCompleteExactlyOnce() {
                 "every concurrent OCR request should return a presentation");
     }
 
+    require(service.liveWorkerCount() == 2,
+            "a concurrent OCR burst should create at most two workers");
+
     SnowOcrResourceCountsV1 counts = resourceCounts();
     require(counts.engines == 2,
             "a three-request burst should initialize exactly two OCR engines");
@@ -207,12 +212,14 @@ void interactiveRequestsPrecedeQueuedPrefetch() {
             "queued interactive OCR must run before queued prefetch OCR");
 }
 
-void idleEngineRecyclesAndCanBeRecreated() {
+void idleWorkerRecyclesAndCanBeRecreated() {
     require(resourceCounts().engines == 0,
             "the previous OCR service should destroy its engines during shutdown");
     ScreenshotOcrRecognitionService::Options options;
     options.engineIdleTimeoutMs = 150;
     ScreenshotOcrRecognitionService service(options);
+    require(service.liveWorkerCount() == 0,
+            "idle-recycling OCR service construction must not create workers");
     QObject receiver;
     QEventLoop loop;
     QTimer timeout;
@@ -237,6 +244,8 @@ void idleEngineRecyclesAndCanBeRecreated() {
             "the idle-retirement OCR request should complete successfully");
     require(resourceCounts().engines == 1,
             "a completed OCR worker should retain its engine until the idle timeout");
+    require(service.liveWorkerCount() == 1,
+            "a completed OCR request should retain one worker during its idle period");
     require(resourceCounts().owned_images == 1,
             "the delivered OCR presentation should own its transferred image");
 
@@ -245,6 +254,8 @@ void idleEngineRecyclesAndCanBeRecreated() {
             "releasing the presentation should release its transferred image");
     require(waitUntil([]() { return resourceCounts().engines == 0; }, 10'000),
             "idle timeout should destroy the OCR engine");
+    require(waitUntil([&]() { return service.liveWorkerCount() == 0; }, 10'000),
+            "idle timeout should destroy the OCR worker thread");
     const SnowOcrResourceCountsV1 counts = resourceCounts();
     require(counts.results == 0 && counts.owned_images == 0,
             "idle recycling should leave no live OCR result resources");
@@ -350,7 +361,7 @@ int main(int argc, char** argv) {
         concurrentRequestsCompleteExactlyOnce();
         interactiveRequestsPrecedeQueuedPrefetch();
         queuedCancellationSkipsExecution();
-        idleEngineRecyclesAndCanBeRecreated();
+        idleWorkerRecyclesAndCanBeRecreated();
         cancellationSuppressesCompletion();
         receiverDestructionSuppressesCompletion();
         serviceDestructionJoinsWorkersAndSuppressesLateDelivery();

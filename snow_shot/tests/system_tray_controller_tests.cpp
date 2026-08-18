@@ -10,7 +10,11 @@
 #include <QAction>
 #include <QApplication>
 #include <QCoreApplication>
+#include <QDateTime>
+#include <QDir>
 #include <QFile>
+#include <QFileDevice>
+#include <QFileInfo>
 #include <QImage>
 #include <QKeySequence>
 #include <QMenu>
@@ -100,7 +104,81 @@ int main(int argc, char* argv[]) {
                 trayIcon->icon().pixmap(QSize(64, 64)).toImage().pixelColor(32, 32) ==
                     QColor(242, 17, 137),
             "a valid custom image should replace the bundled tray icon");
+    const qulonglong firstDecodeCount =
+        trayIcon->property("customIconDecodeCount").toULongLong();
+    const qulonglong firstHitCount =
+        trayIcon->property("customIconCacheHits").toULongLong();
+    controller.show();
+    controller.show();
+    require(trayIcon->property("customIconDecodeCount").toULongLong() == firstDecodeCount &&
+                trayIcon->property("customIconCacheHits").toULongLong() >= firstHitCount + 2,
+            "repeated show calls should reuse the fingerprinted custom image without decoding");
+
+    QImage replacementImage(80, 40, QImage::Format_ARGB32_Premultiplied);
+    replacementImage.fill(QColor(17, 113, 229));
+    require(replacementImage.save(customIconPath),
+            "the custom tray icon fixture should support same-path replacement");
+    QFile replacementFile(customIconPath);
+    require(replacementFile.open(QIODevice::ReadWrite) &&
+                replacementFile.setFileTime(QDateTime::currentDateTime().addSecs(5),
+                                            QFileDevice::FileModificationTime),
+            "the replacement fixture should receive a distinct source fingerprint");
+    replacementFile.close();
+    controller.show();
+    require(trayIcon->property("customIconDecodeCount").toULongLong() ==
+                    firstDecodeCount + 1 &&
+                trayIcon->property("customIconSourcePixelSize").toSize() == QSize(80, 40) &&
+                trayIcon->icon().pixmap(QSize(80, 40)).toImage().pixelColor(40, 20) ==
+                    QColor(17, 113, 229),
+            "a changed source fingerprint should replace the retained custom raster");
+
+    const QString largeIconPath = storageDirectory.filePath(QStringLiteral("large-icon.png"));
+    QImage largeImage(1024, 512, QImage::Format_ARGB32_Premultiplied);
+    largeImage.fill(QColor(31, 173, 91));
+    require(largeImage.save(largeIconPath), "the large tray icon fixture should be writable");
+    controller.setCustomIconPath(largeIconPath);
+    require(trayIcon->property("customIconSourcePixelSize").toSize() == QSize(1024, 512) &&
+                trayIcon->property("customIconDecodedPixelSize").toSize() == QSize(256, 128),
+            "a large custom image should retain no raster larger than 256 by 256");
+
+    const QString icoPath =
+        QFileInfo(QString::fromUtf8(__FILE__))
+            .dir()
+            .absoluteFilePath(QStringLiteral("../resources/app-icon.ico"));
+    controller.setCustomIconPath(icoPath);
+    require(trayIcon->property("customIconSourcePixelSize").toSize() == QSize(256, 256) &&
+                trayIcon->property("customIconDecodedPixelSize").toSize() == QSize(256, 256),
+            "ICO loading should select the available frame nearest 256 by 256");
+
     controller.setIconSelection(QStringLiteral("light"));
+    const QString oversizedIconPath =
+        storageDirectory.filePath(QStringLiteral("oversized-icon.png"));
+    QImage oversizedImage(20000, 1, QImage::Format_ARGB32_Premultiplied);
+    oversizedImage.fill(QColor(213, 71, 56));
+    require(oversizedImage.save(oversizedIconPath),
+            "the oversized tray icon fixture should be writable");
+    controller.setCustomIconPath(oversizedIconPath);
+    const qulonglong oversizedHitCount =
+        trayIcon->property("customIconCacheHits").toULongLong();
+    const qulonglong oversizedMissCount =
+        trayIcon->property("customIconCacheMisses").toULongLong();
+    const qulonglong oversizedDecodeCount =
+        trayIcon->property("customIconDecodeCount").toULongLong();
+    require(trayIcon->property("resolvedIconSource").toString() ==
+                    QStringLiteral(":/snow-shot/app-icons/snow-shot-tray-light.png") &&
+                trayIcon->property("customIconSourcePixelSize").toSize() == QSize(20000, 1) &&
+                trayIcon->property("customIconDecodedPixelSize").toSize().isEmpty(),
+            "pathological source dimensions should be rejected before pixel allocation");
+    controller.show();
+    controller.show();
+    require(trayIcon->property("customIconCacheHits").toULongLong() >=
+                    oversizedHitCount + 2 &&
+                trayIcon->property("customIconCacheMisses").toULongLong() ==
+                    oversizedMissCount &&
+                trayIcon->property("customIconDecodeCount").toULongLong() ==
+                    oversizedDecodeCount,
+            "a rejected source fingerprint should remain cached across fallback rendering");
+
     controller.setCustomIconPath(storageDirectory.filePath(QStringLiteral("missing.png")));
     require(trayIcon->property("resolvedIconSource").toString() ==
                 QStringLiteral(":/snow-shot/app-icons/snow-shot-tray-light.png"),
@@ -322,7 +400,6 @@ int main(int argc, char* argv[]) {
         snow_shot::presentation::GlobalShortcutAction::Screenshot, {});
     requireActionText(screenshotMenuAction, QStringLiteral("\u622a\u5716"),
                       "clearing a global shortcut should remove its tray menu hint");
-
     snow_shot::storage::ApplicationStorage::instance().shutdown();
     return 0;
 }
