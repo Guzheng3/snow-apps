@@ -742,7 +742,15 @@ impl CaptureSession {
     /// Prepare resources that are safe to retain between one-shot captures.
     /// No active backend access may remain when this method returns.
     pub fn prewarm_environment(&mut self) -> CaptureResult<CaptureTargetInfo> {
-        let result = self.prepare_target();
+        if self.config.mode == CaptureMode::Snapshot {
+            // Snapshot warm-up must stay allocation-light. SIMD dispatch and
+            // lookup tables are cheap to retain; the conversion worker pool
+            // is created only when a real capture needs it.
+            crate::convert::warmup_dispatch();
+        } else {
+            self.warmup_runtime();
+        }
+        let result = self.prepare_target_resources();
         self.release_capture_access();
         result
     }
@@ -770,6 +778,10 @@ impl CaptureSession {
 
     pub fn prepare_target(&mut self) -> CaptureResult<CaptureTargetInfo> {
         self.warmup_runtime();
+        self.prepare_target_resources()
+    }
+
+    fn prepare_target_resources(&mut self) -> CaptureResult<CaptureTargetInfo> {
         let target_info = self.inspect_target(&self.target)?;
         match self.target.clone() {
             CaptureTarget::PrimaryMonitor | CaptureTarget::Monitor(_) => {

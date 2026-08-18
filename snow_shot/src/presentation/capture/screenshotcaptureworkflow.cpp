@@ -183,6 +183,7 @@ void ScreenshotCaptureWorkflow::releaseIdleResources(quint64 sessionId) {
     m_context.runtime.releaseSelectorCache();
     m_context.runtime.hideOverlayWindows(m_context.displaySession);
     clearDisplays();
+    m_context.runtime.releaseIdleResourcesAsync(sessionId);
     initializeIdleResources(sessionId);
 }
 
@@ -218,6 +219,14 @@ void ScreenshotCaptureWorkflow::beginCapturePreparation(quint64 sessionId) {
     }
     const bool preCapturePrepared =
         m_context.runtime.preparePreCaptureOverlayWindows(m_context.displaySession);
+    // Once Snow Shot's windows are excluded, start native acquisition at
+    // once. The capture worker can initialize lazy GPU resources while the
+    // UI thread prepares selector and presentation state.
+    m_context.runtime.captureAsync(
+        ScreenshotCaptureRequest{sessionId, m_state.layoutDirty, m_focusedWindowHandle});
+    if (sessionId != m_state.sessionId || !m_state.captureInProgress) {
+        return;
+    }
     if (preCapturePrepared) {
         m_canvasRuntimeClean = false;
 
@@ -226,8 +235,6 @@ void ScreenshotCaptureWorkflow::beginCapturePreparation(quint64 sessionId) {
         m_context.runtime.startWorkflowRefresh();
     }
     const bool presentationBegun = preCapturePrepared && beginCapturePresentation(sessionId);
-    m_context.runtime.captureAsync(
-        ScreenshotCaptureRequest{sessionId, m_state.layoutDirty, m_focusedWindowHandle});
     if (presentationBegun) {
         prepareOverlayPresentation(sessionId);
     }

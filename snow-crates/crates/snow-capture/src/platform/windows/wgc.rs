@@ -123,6 +123,8 @@ fn create_window_capture_item(window: HWND) -> CaptureResult<GraphicsCaptureItem
 }
 
 pub(crate) fn validate_support() -> CaptureResult<()> {
+    let _com = CoInitGuard::init_multithreaded().map_err(CaptureError::platform)?;
+    super::com::ensure_process_mta_usage().map_err(CaptureError::platform)?;
     let supported = GraphicsCaptureSession::IsSupported()
         .context("GraphicsCaptureSession::IsSupported failed")
         .map_err(CaptureError::platform)?;

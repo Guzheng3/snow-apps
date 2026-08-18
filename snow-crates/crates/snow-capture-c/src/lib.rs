@@ -1055,20 +1055,6 @@ pub extern "C" fn snow_capture_desktop_session_capture_all(
         }
     };
 
-    match active_capture_access_count(session) {
-        Ok(0) => {}
-        Ok(count) => {
-            set_last_error(format!(
-                "{count} capture backends remained active after desktop snapshot"
-            ));
-            return ptr::null_mut();
-        }
-        Err(error) => {
-            set_last_error(error);
-            return ptr::null_mut();
-        }
-    }
-
     session.prepared = true;
     clear_last_error();
     Box::into_raw(Box::new(SnowCaptureSnapshotImpl { frames }))
@@ -1204,20 +1190,6 @@ pub unsafe extern "C" fn snow_capture_desktop_session_capture_v1(
         }
         None => None,
     };
-
-    match active_capture_access_count(session) {
-        Ok(0) => {}
-        Ok(count) => {
-            set_last_error(format!(
-                "{count} capture backends remained active after screenshot request"
-            ));
-            return ptr::null_mut();
-        }
-        Err(error) => {
-            set_last_error(error);
-            return ptr::null_mut();
-        }
-    }
 
     session.prepared = true;
     clear_last_error();

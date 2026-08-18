@@ -3419,27 +3419,54 @@ impl OutputCapturer {
 pub(crate) struct WindowsMonitorCapturer {
     monitor: MonitorId,
     resolver: Arc<MonitorResolver>,
-    _com: super::com::CoInitGuard,
+    /// Created on demand and retained only until explicit idle cleanup.
     output: Option<OutputCapturer>,
     capture_mode: CaptureMode,
     gpu_hdr_conversion_enabled: bool,
     hdr_tonemap_lut_enabled: bool,
+    // Keep last so all D3D/DXGI interfaces drop before CoUninitialize.
+    _com: super::com::CoInitGuard,
+}
+
+#[inline]
+fn should_defer_output_initialization(mode: CaptureMode) -> bool {
+    mode == CaptureMode::Snapshot
 }
 
 impl WindowsMonitorCapturer {
     pub(crate) fn new(monitor: &MonitorId, resolver: Arc<MonitorResolver>) -> CaptureResult<Self> {
         let com = super::com::CoInitGuard::init_multithreaded().map_err(CaptureError::platform)?;
-        let resolved = resolver.resolve_monitor(monitor)?;
-        let output = with_monitor_context(OutputCapturer::new(&resolved), monitor, "initialize")?;
+        resolver.resolve_monitor(monitor)?;
         Ok(Self {
             monitor: monitor.clone(),
             resolver,
-            _com: com,
-            output: Some(output),
+            output: None,
             capture_mode: CaptureMode::Snapshot,
             gpu_hdr_conversion_enabled: true,
             hdr_tonemap_lut_enabled: true,
+            _com: com,
         })
+    }
+
+    fn reinitialize_output(&mut self, action: &'static str) -> CaptureResult<()> {
+        if let Some(mut output) = self.output.take() {
+            output.release_capture_access();
+        }
+        let resolved = self.resolver.resolve_monitor(&self.monitor)?;
+        let mut output =
+            with_monitor_context(OutputCapturer::new(&resolved), &self.monitor, action)?;
+        output.set_capture_mode(self.capture_mode);
+        output.set_gpu_hdr_conversion(self.gpu_hdr_conversion_enabled);
+        output.set_hdr_tonemap_lut(self.hdr_tonemap_lut_enabled);
+        self.output = Some(output);
+        Ok(())
+    }
+
+    fn ensure_output(&mut self) -> CaptureResult<&mut OutputCapturer> {
+        if self.output.is_none() {
+            self.reinitialize_output("initialize")?;
+        }
+        Ok(self.output_mut())
     }
 
     fn output_mut(&mut self) -> &mut OutputCapturer {
@@ -3455,10 +3482,14 @@ impl crate::backend::MonitorCapturer for WindowsMonitorCapturer {
     }
 
     fn prewarm_environment(&mut self) -> CaptureResult<()> {
-        Ok(())
+        if should_defer_output_initialization(self.capture_mode) {
+            return Ok(());
+        }
+        self.ensure_output().map(|_| ())
     }
 
     fn capture(&mut self, reuse: Option<Frame>) -> CaptureResult<Frame> {
+        self.ensure_output()?;
         let result = self.output_mut().capture(reuse);
         match result {
             Ok(frame) => {
@@ -3478,20 +3509,7 @@ impl crate::backend::MonitorCapturer for WindowsMonitorCapturer {
                 Ok(frame)
             }
             Err(CaptureError::MonitorLost) => {
-                let resolved = self.resolver.resolve_monitor(&self.monitor)?;
-                let capture_mode = self.capture_mode;
-                let gpu_hdr_conversion_enabled = self.gpu_hdr_conversion_enabled;
-                let hdr_tonemap_lut_enabled = self.hdr_tonemap_lut_enabled;
-                self.output = Some(with_monitor_context(
-                    OutputCapturer::new(&resolved),
-                    &self.monitor,
-                    "reinitialize",
-                )?);
-                self.output_mut().set_capture_mode(capture_mode);
-                self.output_mut()
-                    .set_gpu_hdr_conversion(gpu_hdr_conversion_enabled);
-                self.output_mut()
-                    .set_hdr_tonemap_lut(hdr_tonemap_lut_enabled);
+                self.reinitialize_output("reinitialize")?;
                 self.output_mut().capture(None)
             }
             Err(e) => Err(e),
@@ -3505,6 +3523,7 @@ impl crate::backend::MonitorCapturer for WindowsMonitorCapturer {
         destination_has_history: bool,
     ) -> CaptureResult<Option<CaptureSampleMetadata>> {
         let prefer_low_latency = should_prefer_monitor_region_low_latency(self.capture_mode, blit);
+        self.ensure_output()?;
         let result = self.output_mut().capture_region_into(
             blit,
             destination,
@@ -3514,20 +3533,8 @@ impl crate::backend::MonitorCapturer for WindowsMonitorCapturer {
         match result {
             Ok(sample) => Ok(Some(sample)),
             Err(CaptureError::MonitorLost) | Err(CaptureError::AccessLost) => {
-                let resolved = self.resolver.resolve_monitor(&self.monitor)?;
                 let capture_mode = self.capture_mode;
-                let gpu_hdr_conversion_enabled = self.gpu_hdr_conversion_enabled;
-                let hdr_tonemap_lut_enabled = self.hdr_tonemap_lut_enabled;
-                self.output = Some(with_monitor_context(
-                    OutputCapturer::new(&resolved),
-                    &self.monitor,
-                    "reinitialize",
-                )?);
-                self.output_mut().set_capture_mode(capture_mode);
-                self.output_mut()
-                    .set_gpu_hdr_conversion(gpu_hdr_conversion_enabled);
-                self.output_mut()
-                    .set_hdr_tonemap_lut(hdr_tonemap_lut_enabled);
+                self.reinitialize_output("reinitialize")?;
                 let retry_prefer_low_latency =
                     should_prefer_monitor_region_low_latency(capture_mode, blit);
                 self.output_mut()
@@ -3545,24 +3552,33 @@ impl crate::backend::MonitorCapturer for WindowsMonitorCapturer {
 
     fn set_capture_mode(&mut self, mode: CaptureMode) -> CaptureResult<()> {
         self.capture_mode = mode;
-        self.output_mut().set_capture_mode(mode);
+        if let Some(output) = self.output.as_mut() {
+            output.set_capture_mode(mode);
+        }
         Ok(())
     }
 
     fn set_gpu_hdr_conversion(&mut self, enabled: bool) -> CaptureResult<()> {
         self.gpu_hdr_conversion_enabled = enabled;
-        self.output_mut().set_gpu_hdr_conversion(enabled);
+        if let Some(output) = self.output.as_mut() {
+            output.set_gpu_hdr_conversion(enabled);
+        }
         Ok(())
     }
 
     fn set_hdr_tonemap_lut(&mut self, enabled: bool) -> CaptureResult<()> {
         self.hdr_tonemap_lut_enabled = enabled;
-        self.output_mut().set_hdr_tonemap_lut(enabled);
+        if let Some(output) = self.output.as_mut() {
+            output.set_hdr_tonemap_lut(enabled);
+        }
         Ok(())
     }
 
     fn sample_cursor(&mut self) -> CaptureResult<Option<CursorSnapshot>> {
-        self.output_mut().sample_cursor()
+        match self.output.as_mut() {
+            Some(output) => output.sample_cursor(),
+            None => Ok(None),
+        }
     }
 
     fn release_capture_access(&mut self) {
@@ -3651,8 +3667,7 @@ unsafe impl Send for SendHmon {}
 pub(crate) struct WindowsDxgiWindowCapturer {
     hwnd: SendHwnd,
     resolver: Arc<MonitorResolver>,
-    _com: super::com::CoInitGuard,
-    /// The DXGI output capturer for the monitor the window is on.
+    /// Created on demand for the monitor the window is on.
     output: Option<OutputCapturer>,
     /// Cached monitor handle so we can detect when the window moves
     /// to a different monitor.
@@ -3662,6 +3677,8 @@ pub(crate) struct WindowsDxgiWindowCapturer {
     capture_mode: CaptureMode,
     gpu_hdr_conversion_enabled: bool,
     hdr_tonemap_lut_enabled: bool,
+    // Keep last so all D3D/DXGI interfaces drop before CoUninitialize.
+    _com: super::com::CoInitGuard,
 }
 
 impl WindowsDxgiWindowCapturer {
@@ -3687,26 +3704,28 @@ impl WindowsDxgiWindowCapturer {
         })?;
 
         let monitor_id = hmonitor_to_monitor_id(hmon, &resolver)?;
-        let resolved = resolver.resolve_monitor(&monitor_id)?;
-        let output = OutputCapturer::new(&resolved).map_err(|e| {
-            CaptureError::BackendUnavailable(format!(
-                "failed to prepare DXGI capture for window's monitor: {e}"
-            ))
-        })?;
+        resolver.resolve_monitor(&monitor_id)?;
         let current_hmon = SendHmon(hmon);
         let current_monitor_rect = monitor_rect(hmon)?;
 
         Ok(Self {
             hwnd: SendHwnd(hwnd),
             resolver,
-            _com: com,
-            output: Some(output),
+            output: None,
             current_hmon,
             current_monitor_rect,
             capture_mode: CaptureMode::Snapshot,
             gpu_hdr_conversion_enabled: true,
             hdr_tonemap_lut_enabled: true,
+            _com: com,
         })
+    }
+
+    fn ensure_output(&mut self) -> CaptureResult<&mut OutputCapturer> {
+        if self.output.is_none() {
+            self.reinit_for_monitor(self.current_hmon.0)?;
+        }
+        Ok(self.output_mut())
     }
 
     fn output_mut(&mut self) -> &mut OutputCapturer {
@@ -3718,12 +3737,19 @@ impl WindowsDxgiWindowCapturer {
     /// Re-create the DXGI output capturer when the window moves to a
     /// different monitor or after access-lost recovery.
     fn reinit_for_monitor(&mut self, hmon: HMONITOR) -> CaptureResult<()> {
+        if let Some(mut output) = self.output.take() {
+            output.release_capture_access();
+        }
         let monitor_id = hmonitor_to_monitor_id(hmon, &self.resolver)?;
         let resolved = self.resolver.resolve_monitor(&monitor_id)?;
         let capture_mode = self.capture_mode;
         let gpu_hdr_conversion_enabled = self.gpu_hdr_conversion_enabled;
         let hdr_tonemap_lut_enabled = self.hdr_tonemap_lut_enabled;
-        self.output = Some(OutputCapturer::new(&resolved)?);
+        self.output = Some(OutputCapturer::new(&resolved).map_err(|error| {
+            CaptureError::BackendUnavailable(format!(
+                "failed to initialize DXGI capture for window's monitor: {error}"
+            ))
+        })?);
         self.output_mut().set_capture_mode(capture_mode);
         self.output_mut()
             .set_gpu_hdr_conversion(gpu_hdr_conversion_enabled);
@@ -3827,6 +3853,7 @@ impl WindowsDxgiWindowCapturer {
         }
 
         let blit = self.resolve_window_blit(hwnd, &win_rect)?;
+        self.ensure_output()?;
 
         let mut frame = reuse.unwrap_or_else(Frame::empty);
         let has_pixels = !frame.as_rgba_bytes().is_empty();
@@ -3883,7 +3910,10 @@ impl crate::backend::MonitorCapturer for WindowsDxgiWindowCapturer {
     }
 
     fn prewarm_environment(&mut self) -> CaptureResult<()> {
-        Ok(())
+        if should_defer_output_initialization(self.capture_mode) {
+            return Ok(());
+        }
+        self.ensure_output().map(|_| ())
     }
 
     fn capture(&mut self, reuse: Option<Frame>) -> CaptureResult<Frame> {
@@ -3900,24 +3930,33 @@ impl crate::backend::MonitorCapturer for WindowsDxgiWindowCapturer {
 
     fn set_capture_mode(&mut self, mode: CaptureMode) -> CaptureResult<()> {
         self.capture_mode = mode;
-        self.output_mut().set_capture_mode(mode);
+        if let Some(output) = self.output.as_mut() {
+            output.set_capture_mode(mode);
+        }
         Ok(())
     }
 
     fn set_gpu_hdr_conversion(&mut self, enabled: bool) -> CaptureResult<()> {
         self.gpu_hdr_conversion_enabled = enabled;
-        self.output_mut().set_gpu_hdr_conversion(enabled);
+        if let Some(output) = self.output.as_mut() {
+            output.set_gpu_hdr_conversion(enabled);
+        }
         Ok(())
     }
 
     fn set_hdr_tonemap_lut(&mut self, enabled: bool) -> CaptureResult<()> {
         self.hdr_tonemap_lut_enabled = enabled;
-        self.output_mut().set_hdr_tonemap_lut(enabled);
+        if let Some(output) = self.output.as_mut() {
+            output.set_hdr_tonemap_lut(enabled);
+        }
         Ok(())
     }
 
     fn sample_cursor(&mut self) -> CaptureResult<Option<CursorSnapshot>> {
-        self.output_mut().sample_cursor()
+        match self.output.as_mut() {
+            Some(output) => output.sample_cursor(),
+            None => Ok(None),
+        }
     }
 
     fn release_capture_access(&mut self) {
@@ -3936,6 +3975,12 @@ impl crate::backend::MonitorCapturer for WindowsDxgiWindowCapturer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn snapshot_output_initialization_is_deferred_but_continuous_is_prepared() {
+        assert!(should_defer_output_initialization(CaptureMode::Snapshot));
+        assert!(!should_defer_output_initialization(CaptureMode::Continuous));
+    }
 
     #[test]
     fn snapshot_acquisition_is_bounded_and_requires_a_presented_frame() {

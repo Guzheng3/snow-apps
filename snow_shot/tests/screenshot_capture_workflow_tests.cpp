@@ -33,17 +33,25 @@ class CaptureRuntime final : public ScreenshotCaptureRuntimePort {
     void ensureCaptureWorker() override {}
     void prepareAsync(quint64) override {
         ++prepareAsyncCalls;
+        prepareAsyncOrder = ++lifecycleOperationOrder;
     }
     void captureAsync(const ScreenshotCaptureRequest& request) override {
         ++captureAllAsyncCalls;
         lastCaptureRequest = request;
-        selectorRefreshWasInFlightAtCapture = selectorRefreshActive;
+        captureWasQueuedBeforeSelectorRefresh = !selectorRefreshActive;
+        if (failCaptureSynchronously && eventSink != nullptr) {
+            ScreenshotCaptureResult result;
+            result.requestId = request.requestId;
+            result.errorMessage = QStringLiteral("Synchronous capture setup failure");
+            eventSink->handleCaptureFinished(result);
+        }
     }
     void cancelActiveCapture() override {
         ++cancelActiveCaptureCalls;
     }
     void releaseIdleResourcesAsync(quint64) override {
         ++releaseIdleResourcesCalls;
+        releaseIdleResourcesOrder = ++lifecycleOperationOrder;
     }
     void shutdownCaptureWorker() override {}
 
@@ -112,9 +120,12 @@ class CaptureRuntime final : public ScreenshotCaptureRuntimePort {
 
     ScreenshotCaptureWorkerEventSink* eventSink = nullptr;
     int prepareAsyncCalls = 0;
+    int prepareAsyncOrder = 0;
     int captureAllAsyncCalls = 0;
     int cancelActiveCaptureCalls = 0;
     int releaseIdleResourcesCalls = 0;
+    int releaseIdleResourcesOrder = 0;
+    int lifecycleOperationOrder = 0;
     int startWorkflowRefreshCalls = 0;
     int releaseSelectorCacheCalls = 0;
     mutable int clearOverlayCanvasCalls = 0;
@@ -127,7 +138,8 @@ class CaptureRuntime final : public ScreenshotCaptureRuntimePort {
     int prewarmToolbarCalls = 0;
     bool selectorIsReady = false;
     bool selectorRefreshActive = false;
-    bool selectorRefreshWasInFlightAtCapture = false;
+    bool captureWasQueuedBeforeSelectorRefresh = false;
+    bool failCaptureSynchronously = false;
     ScreenshotCaptureRequest lastCaptureRequest;
 };
 
@@ -224,15 +236,17 @@ void cancelClearsTheReusableCanvasDocument() {
             "canceling a capture must immediately release the selector cache");
     require(runtime.cancelActiveCaptureCalls == 1,
             "canceling a capture must signal the native cancellation token");
-    require(runtime.releaseIdleResourcesCalls == 0,
-            "idle cleanup must retain the prepared native capture environment");
+    require(runtime.releaseIdleResourcesCalls == 1,
+            "idle cleanup must release native capture resources before lightweight prewarm");
+    require(runtime.releaseIdleResourcesOrder < runtime.prepareAsyncOrder,
+            "idle cleanup must queue native release before lightweight prewarm");
     require(captureTerminatedCalls == 1,
             "canceling a capture must stop active capture-scoped features before cleanup");
     require(state.sessionState == ScreenshotSessionState::IdlePrepared,
             "canceling a capture must return the workflow to its prepared idle state");
 }
 
-void captureInitializesSelectorBeforeCapturing() {
+void captureOverlapsSelectorInitialization() {
     const auto runScenario = [](bool selectorReady, bool selectorRefreshActive) {
         ScreenshotCaptureState state;
         state.sessionState = ScreenshotSessionState::IdlePrepared;
@@ -252,11 +266,38 @@ void captureInitializesSelectorBeforeCapturing() {
 
         require(runtime.startWorkflowRefreshCalls == 1,
                 "capture must initialize the selector snapshot");
-        require(runtime.captureAllAsyncCalls == 1 && runtime.selectorRefreshWasInFlightAtCapture,
-                "the capture-session selector refresh must start before desktop capture");
+        require(runtime.captureAllAsyncCalls == 1 &&
+                    runtime.captureWasQueuedBeforeSelectorRefresh &&
+                    runtime.selectorRefreshActive,
+                "desktop capture must overlap selector initialization after overlay exclusion");
     };
 
     runScenario(false, false);
+}
+
+void synchronousCaptureFailureDoesNotRestartSelectorRefresh() {
+    ScreenshotCaptureState state;
+    state.sessionState = ScreenshotSessionState::IdlePrepared;
+    ScreenshotDisplaySession displaySession;
+    ScreenshotGeometryMapper geometry;
+    ScreenshotInteractionState interaction;
+    ScreenshotSelectionModel selection;
+    ScreenshotIntelligentSelectionModel intelligentSelection;
+    CaptureRuntime runtime;
+    runtime.failCaptureSynchronously = true;
+
+    auto workflow = makeWorkflow(state, displaySession, geometry, interaction, selection,
+                                 intelligentSelection, runtime);
+    workflow.startCapture();
+
+    require(!state.captureInProgress &&
+                state.sessionState == ScreenshotSessionState::IdlePrepared,
+            "synchronous capture failure must return the workflow to idle");
+    require(runtime.startWorkflowRefreshCalls == 0 && !runtime.selectorRefreshActive,
+            "synchronous capture failure must not restart selector refresh after cleanup");
+    require(runtime.releaseIdleResourcesCalls == 1 && runtime.prepareAsyncCalls == 1 &&
+                runtime.releaseIdleResourcesOrder < runtime.prepareAsyncOrder,
+            "synchronous failure cleanup must release native resources before prewarm");
 }
 
 void restartingCaptureReleasesPreviousSelectorCache() {
@@ -598,7 +639,8 @@ void captureSessionsApplyTheCurrentSmartSelectionSetting() {
 int main() {
     idlePrewarmDoesNotInitializeSelector();
     cancelClearsTheReusableCanvasDocument();
-    captureInitializesSelectorBeforeCapturing();
+    captureOverlapsSelectorInitialization();
+    synchronousCaptureFailureDoesNotRestartSelectorRefresh();
     restartingCaptureReleasesPreviousSelectorCache();
     capturePresentedRunsAfterCapturedOverlayIsShown();
     silentCaptureNeverPreparesOrShowsOverlays();

@@ -207,14 +207,6 @@ void ScreenshotCaptureWorker::capture(
         }
     }
 
-    SnowCaptureDesktopSessionState state{};
-    if (snow_capture_desktop_session_state(m_session, &state) == 0 ||
-        state.active_capture_access_count != 0) {
-        valid = false;
-        captureResult.errorMessage =
-            QStringLiteral("Native capture access remained active after screenshot acquisition");
-    }
-
     if (!valid && captureResult.errorMessage.isEmpty()) {
         captureResult.errorMessage = nativeCaptureError("Screenshot capture returned invalid data");
     }
