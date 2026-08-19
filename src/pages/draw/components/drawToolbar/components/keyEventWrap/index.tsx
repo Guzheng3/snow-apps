@@ -20,7 +20,6 @@ import type {
 	DrawToolbarKeyEventValue,
 } from "@/types/components/drawToolbar";
 import { HotkeysScope } from "@/types/core/appHotKeys";
-import { formatKey } from "@/utils/format";
 import { EnableKeyEventPublisher } from "./extra";
 
 const KeyEventHandleCore: React.FC<{
@@ -65,18 +64,11 @@ const KeyEventHandleCore: React.FC<{
 	);
 
 	const buttonTitle = useMemo(() => {
-		return intl.formatMessage(
-			{
-				id: "draw.keyEventTooltip",
-			},
-			{
-				message: intl.formatMessage({
-					id: defaultDrawToolbarKeyEventComponentConfig[componentKey].messageId,
-				}),
-				key: formatKey(keyEventValue?.hotKey),
-			},
-		);
-	}, [componentKey, intl, keyEventValue?.hotKey]);
+		// 只显示功能名，不显示快捷键（快捷键提示统一由工具栏整体提示面板展示）
+		return intl.formatMessage({
+			id: defaultDrawToolbarKeyEventComponentConfig[componentKey].messageId,
+		});
+	}, [componentKey, intl]);
 
 	return (
 		<>

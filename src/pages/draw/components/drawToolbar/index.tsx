@@ -7,7 +7,7 @@ import {
 	LockOutlined,
 } from "@ant-design/icons";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Flex, theme } from "antd";
+import { Flex, Tag, theme, Tooltip } from "antd";
 import { debounce } from "es-toolkit";
 import React, {
 	useCallback,
@@ -57,6 +57,7 @@ import {
 	CanHiddenToolSet,
 } from "@/types/appSettings";
 import { DrawToolbarKeyEventKey } from "@/types/components/drawToolbar";
+import { defaultDrawToolbarKeyEventComponentConfig } from "@/constants/drawToolbarKeyEvent";
 import { DrawState } from "@/types/draw";
 import { getExcalidrawCanvas } from "@/utils/excalidraw";
 import { appWarn } from "@/utils/log";
@@ -732,6 +733,54 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 		[],
 	);
 
+	// 工具栏整体提示：悬停任意图标时显示所有工具名（不含快捷键）
+	const [toolbarTipPlacement, setToolbarTipPlacement] = useState<
+		"top" | "bottom"
+	>("top");
+	useEffect(() => {
+		const el = drawToolbarRef.current;
+		if (el) {
+			const rect = el.getBoundingClientRect();
+			const vh = window.innerHeight;
+			setToolbarTipPlacement(rect.top < vh / 2 ? "bottom" : "top");
+		}
+	}, []);
+
+	const toolbarAllToolNames = useMemo(() => {
+		const mainToolKeys: DrawToolbarKeyEventKey[] = [
+			DrawToolbarKeyEventKey.MoveTool,
+			DrawToolbarKeyEventKey.SelectTool,
+			DrawToolbarKeyEventKey.RectTool,
+			DrawToolbarKeyEventKey.EllipseTool,
+			DrawToolbarKeyEventKey.ArrowTool,
+			DrawToolbarKeyEventKey.PenTool,
+			DrawToolbarKeyEventKey.TextTool,
+			DrawToolbarKeyEventKey.SerialNumberTool,
+			DrawToolbarKeyEventKey.BlurTool,
+			DrawToolbarKeyEventKey.EraserTool,
+			DrawToolbarKeyEventKey.UndoTool,
+			DrawToolbarKeyEventKey.RedoTool,
+			DrawToolbarKeyEventKey.FixedTool,
+			DrawToolbarKeyEventKey.CopyTool,
+			DrawToolbarKeyEventKey.OcrDetectTool,
+			DrawToolbarKeyEventKey.OcrTranslateTool,
+			DrawToolbarKeyEventKey.ScrollScreenshotTool,
+			DrawToolbarKeyEventKey.SaveTool,
+			DrawToolbarKeyEventKey.FastSaveTool,
+		];
+		return (
+			<Flex wrap gap={4} style={{ maxWidth: 380 }}>
+				{mainToolKeys.map((key) => (
+					<Tag key={key} style={{ marginInlineEnd: 0 }}>
+						{intl.formatMessage({
+							id: defaultDrawToolbarKeyEventComponentConfig[key].messageId,
+						})}
+					</Tag>
+				))}
+			</Flex>
+		);
+	}, [intl]);
+
 	return (
 		<div
 			className="draw-toolbar-container"
@@ -741,6 +790,11 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 		>
 			<DrawToolbarContext.Provider value={drawToolbarContextValue}>
 				<div ref={drawToolbarOpacityWrapRef}>
+					<Tooltip
+						placement={toolbarTipPlacement}
+						title={toolbarAllToolNames}
+						overlayClassName="draw-toolbar-all-tips"
+					>
 					<div
 						onMouseEnter={handleMouseEnter}
 						onMouseLeave={handleMouseLeave}
@@ -1052,6 +1106,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 							/>
 						</Flex>
 					</div>
+					</Tooltip>
 				</div>
 
 				<BlurTool />
