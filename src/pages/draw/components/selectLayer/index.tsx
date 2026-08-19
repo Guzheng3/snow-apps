@@ -477,6 +477,22 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 				);
 			}
 
+			// 默认只选择大一点的元素；按住 Ctrl（macOS 为 Command）才允许选择很小的元素
+			if (result && result.length > 0) {
+				const ctrlKey = getPlatformValue("Control", "Meta");
+				if (!isHotkeyPressed(ctrlKey)) {
+					const MIN_ELEMENT_AREA = 1024; // 32x32
+					const filtered = result.filter((rect) => {
+						const w = rect.max_x - rect.min_x;
+						const h = rect.max_y - rect.min_y;
+						return w * h >= MIN_ELEMENT_AREA;
+					});
+					if (filtered.length > 0) {
+						result = filtered;
+					}
+				}
+			}
+
 			return result;
 		},
 		[isEnableFindChildrenElements],
