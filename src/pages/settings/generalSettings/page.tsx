@@ -16,6 +16,7 @@ import {
 	Image,
 	Row,
 	Select,
+	Slider,
 	Space,
 	Spin,
 	theme,
@@ -62,6 +63,7 @@ export const GeneralSettingsPage = () => {
 		Form.useForm<AppSettingsData[AppSettingsGroup.CommonTrayIcon]>();
 
 	const [appSettingsLoading, setAppSettingsLoading] = useStateRef(true);
+	const [selectRectRadius, setSelectRectRadius] = useState(20);
 	useAppSettingsLoad(
 		useCallback(
 			(settings: AppSettingsData, preSettings?: AppSettingsData) => {
@@ -101,6 +103,10 @@ export const GeneralSettingsPage = () => {
 						settings[AppSettingsGroup.FixedContent],
 					);
 				}
+
+				setSelectRectRadius(
+					settings[AppSettingsGroup.Cache].selectRectRadius,
+				);
 			},
 			[
 				commonForm,
@@ -623,7 +629,33 @@ export const GeneralSettingsPage = () => {
 									0: "0%",
 									100: "100%",
 								}}
-							/>
+							/>							<ProForm.Item
+								label={
+									<IconLabel
+										label={"截图圆角（px）"}
+										tooltipTitle={"截图选区四角的圆角半径，出厂默认 20"}
+									/>
+								}
+								required={false}
+							>
+								<Slider
+									min={0}
+									max={100}
+									step={1}
+									value={selectRectRadius}
+									onChange={(v) => {
+										setSelectRectRadius(v);
+										updateAppSettings(
+											AppSettingsGroup.Cache,
+											{ selectRectRadius: v },
+											true,
+											true,
+											true,
+										);
+									}}
+								/>
+							</ProForm.Item>
+
 						</Col>
 					</Row>
 

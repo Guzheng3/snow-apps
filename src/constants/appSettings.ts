@@ -99,7 +99,7 @@ export const defaultAppSettingsData: AppSettingsData = {
 		enableMicrophone: false,
 		enableLockDrawTool: false,
 		disableArrowPicker: true,
-		selectRectRadius: 30,
+		selectRectRadius: 20,
 		selectRectShadowWidth: 0,
 		selectRectShadowColor: "#595959",
 		lastRectTool: DrawState.Rect,
