@@ -556,6 +556,14 @@ export const FunctionSettingsPage = () => {
 				}),
 				value: TranslationApiType.DeepL,
 			},
+			{
+				label: "Google 翻译（免费，无需 Key）",
+				value: TranslationApiType.Google,
+			},
+			{
+				label: "有道智云翻译（免费注册，Key 填 appKey:secretKey）",
+				value: TranslationApiType.Youdao,
+			},
 		];
 	}, [intl]);
 
@@ -1510,6 +1518,8 @@ export const FunctionSettingsPage = () => {
 											api_uri: "",
 											api_key: "",
 											api_type: TranslationApiType.DeepL,
+										enable: true,
+										priority: 1,
 										})}
 									>
 										<Row gutter={token.marginLG} style={{ width: "100%" }}>
@@ -1573,6 +1583,21 @@ export const FunctionSettingsPage = () => {
 													]}
 												/>
 											</Col>
+
+													<Col span={6}>
+														<ProFormSwitch
+															name="enable"
+															label="启用"
+														/>
+													</Col>
+													<Col span={6}>
+														<ProFormDigit
+															name="priority"
+															label="优先级（小=优先）"
+															min={1}
+															max={99}
+														/>
+													</Col>
 
 											<ProFormDependency<{ api_type: TranslationApiType }>
 												name={["api_type"]}

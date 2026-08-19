@@ -19,6 +19,8 @@ import {
 	getTranslationTypesWithCache,
 	translate,
 	translateTextDeepL,
+	translateTextGoogle,
+	translateTextYoudao,
 } from "@/services/tools/translation";
 import {
 	type AppSettingsData,
@@ -301,15 +303,16 @@ export const useTranslationRequest = (options?: {
 				};
 			}
 
-			if ("translationApiConfig" in config) {
-				if (config.type === TranslationApiType.DeepL) {
-					setStartTranslateLoading(true);
+						if ("translationApiConfig" in config) {
+				const apiConfig = config.translationApiConfig;
+				let result: string[] | undefined;
 
-					let result: DeepLTranslateResult | undefined;
-					try {
-						result = await translateTextDeepL(
-							config.translationApiConfig.api_uri,
-							config.translationApiConfig.api_key,
+				setStartTranslateLoading(true);
+				try {
+					if (config.type === TranslationApiType.DeepL) {
+						const deepLResult = await translateTextDeepL(
+							apiConfig.api_uri,
+							apiConfig.api_key,
 							params.sourceContent,
 							convertLanguageCodeToDeepLSourceLanguageCode(
 								params.sourceLanguage,
@@ -317,38 +320,46 @@ export const useTranslationRequest = (options?: {
 							convertLanguageCodeToDeepLTargetLanguageCode(
 								params.targetLanguage,
 							),
-							config.translationApiConfig.deepl_prefer_quality_optimized ??
-								false,
+							apiConfig.deepl_prefer_quality_optimized ?? false,
 						);
-					} catch (error) {
-						appError("[customTranslation] translateTextDeepL error", error);
+						result = deepLResult?.translations.map((item) => item.text);
+					} else if (config.type === TranslationApiType.Google) {
+						result = await translateTextGoogle(
+							apiConfig.api_uri,
+							params.sourceContent,
+							params.sourceLanguage,
+							params.targetLanguage,
+						);
+					} else if (config.type === TranslationApiType.Youdao) {
+						result = await translateTextYoudao(
+							apiConfig.api_uri,
+							apiConfig.api_key,
+							params.sourceContent,
+							params.sourceLanguage,
+							params.targetLanguage,
+						);
 					}
+				} catch (error) {
+					appError("[customTranslation] translation api error", error);
+				}
+				setStartTranslateLoading(false);
 
-					setStartTranslateLoading(false);
-
-					if (!result) {
-						return {
-							success: false,
-						};
-					}
-
-					options?.onComplete?.(
-						result.translations.map((item) => ({
-							content: item.text,
-						})),
-						params.requestId,
-					);
-
+				if (!result || result.length === 0) {
 					return {
-						success: true,
-						result: result.translations.map((item) => ({
-							content: item.text,
-						})),
+						success: false,
 					};
 				}
+
+				const finalResult = result.map((content) => ({ content }));
+				options?.onComplete?.(finalResult, params.requestId);
+
+				return {
+					success: true,
+					result: finalResult,
+				};
 			}
 
-			if (!("apiConfig" in config)) {
+if (!("apiConfig" in config)) {
 				return {
 					success: false,
 				};
@@ -464,6 +475,35 @@ export const useTranslationRequest = (options?: {
 				});
 				if (result.success) {
 					return;
+				}
+
+				// 按优先级尝试其他已启用的自定义翻译 API（fallback）
+				const enabledTranslationApis = supportedTranslationTypesRef.current
+					.filter(
+						(item) =>
+							"translationApiConfig" in item &&
+							item.translationApiConfig.enable !== false,
+					)
+					.sort(
+						(a, b) =>
+							(a.translationApiConfig.priority ?? 999) -
+							(b.translationApiConfig.priority ?? 999),
+					);
+				for (const cfg of enabledTranslationApis) {
+					if (cfg.type === translationType) {
+						continue;
+					}
+					const fallbackResult = await customTranslation({
+						sourceContent: sourceContent,
+						sourceLanguage: sourceLanguage,
+						targetLanguage: targetLanguage,
+						translationType: cfg.type as string,
+						translationDomain: translationDomain,
+						requestId: requestId,
+					});
+					if (fallbackResult.success) {
+						return;
+					}
 				}
 			}
 

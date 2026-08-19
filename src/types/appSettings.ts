@@ -70,12 +70,18 @@ export type ChatApiConfig = {
 
 export enum TranslationApiType {
 	DeepL = "translation_api_deepl",
+	Google = "translation_api_google",
+	Youdao = "translation_api_youdao",
 }
 
 export type TranslationApiConfig = {
 	api_type: TranslationApiType;
 	api_uri: string;
 	api_key: string;
+	/** 是否启用该翻译 API */
+	enable: boolean;
+	/** 优先级，数字越小越优先 */
+	priority: number;
 	deepl_prefer_quality_optimized?: boolean;
 };
 
