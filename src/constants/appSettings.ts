@@ -152,6 +152,11 @@ export const defaultAppSettingsData: AppSettingsData = {
 		cacheTranslationType: TranslationType.Youdao,
 	},
 	[AppSettingsGroup.FunctionOcr]: {
+		enablePaddleOcr: false,
+		paddleOcrApiUrl: "https://paddleocr.aistudio-app.com/api/v2/ocr/jobs",
+		paddleOcrToken: "",
+		paddleOcrModel: "PaddleOCR-VL-1.6",
+		ocrPriority: "local",
 		htmlVisionModel: "",
 		ocrModel: OcrModel.RapidOcrV4,
 		htmlVisionModelSystemPrompt: `You are a professional image-to-HTML conversion engine. Your sole objective is to accurately convert images into clean, semantic HTML code.

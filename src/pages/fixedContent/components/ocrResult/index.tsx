@@ -14,6 +14,8 @@ import {
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ocrDetect, ocrDetectWithSharedBuffer } from "@/commands/ocr";
+import { getPaddleOcrSettings, paddleOcrDetect, shouldUsePaddleOcr } from "@/services/tools/paddleOcr";
+
 import { createWebViewSharedBufferChannel } from "@/commands/webview";
 import { PLUGIN_ID_RAPID_OCR } from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
@@ -527,6 +529,28 @@ export const OcrResult: React.FC<{
 			scaleFactor: number,
 			detectAngle: boolean,
 		): Promise<OcrDetectResult | undefined> => {
+			// PaddleOCR 云端引擎优先（开启且优先级为云端时）
+			const appSettings = getAppSettings();
+			if (shouldUsePaddleOcr(appSettings)) {
+				const paddleSettings = getPaddleOcrSettings(appSettings);
+				if (paddleSettings) {
+					try {
+						const paddleResult = await paddleOcrDetect(
+							canvas,
+							paddleSettings,
+						);
+						if (paddleResult) {
+							return paddleResult;
+						}
+					} catch (error) {
+						appError(
+							"[ocrDetectByCanvas] PaddleOCR failed, fallback to local",
+							error,
+						);
+					}
+				}
+			}
+
 			const ocrResultWithSharedBuffer = await ocrDetectWithSharedBufferAction(
 				canvas,
 				scaleFactor,
@@ -552,7 +576,7 @@ export const OcrResult: React.FC<{
 			);
 			return ocrResult;
 		},
-		[ocrDetectWithSharedBufferAction],
+		[getAppSettings, ocrDetectWithSharedBufferAction],
 	);
 
 	/** 请求 ID，避免 OCR 检测中切换工具后仍然触发 OCR 结果 */

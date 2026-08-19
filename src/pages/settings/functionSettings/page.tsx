@@ -1373,9 +1373,56 @@ export const FunctionSettingsPage = () => {
 										</Col>
 									</>
 								)}
-							</Row>
-						</ProForm>
-					</Spin>
+														</Row>
+
+						<Divider style={{ margin: "12px 0" }} />
+						<Typography.Text strong>
+							PaddleOCR 云端识别（可选）
+						</Typography.Text>
+						<Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
+							开启后可在「文本识别」时调用 PaddleOCR 云端 API，识别效果更佳。可设置引擎优先级。
+						</Typography.Paragraph>
+						<Row gutter={token.marginLG}>
+							<Col span={12}>
+								<ProFormSwitch
+									name="enablePaddleOcr"
+									label="启用 PaddleOCR（云端）"
+								/>
+							</Col>
+							<Col span={12}>
+								<ProFormSelect
+									name="ocrPriority"
+									label="OCR 引擎优先级"
+									options={[
+										{ label: "本地 RapidOCR 优先", value: "local" },
+										{ label: "云端 PaddleOCR 优先", value: "paddle" },
+									]}
+								/>
+							</Col>
+							<Col span={12}>
+								<ProFormText
+									name="paddleOcrApiUrl"
+									label="PaddleOCR API 地址"
+									placeholder="https://paddleocr.aistudio-app.com/api/v2/ocr/jobs"
+								/>
+							</Col>
+							<Col span={12}>
+								<ProFormText.Password
+									name="paddleOcrToken"
+									label="PaddleOCR API Token"
+									placeholder="请输入 Token"
+								/>
+							</Col>
+							<Col span={12}>
+								<ProFormText
+									name="paddleOcrModel"
+									label="PaddleOCR 模型"
+									placeholder="PaddleOCR-VL-1.6"
+								/>
+							</Col>
+						</Row>
+					</ProForm>
+				</Spin>
 				</>
 			)}
 

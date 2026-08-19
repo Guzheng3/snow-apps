@@ -379,6 +379,16 @@ export type AppSettingsData = {
 	[AppSettingsGroup.FunctionOcr]: {
 		/** 文本识别模型 */
 		ocrModel: OcrModel;
+		/** 启用 PaddlePaddle OCR（云端 API） */
+		enablePaddleOcr: boolean;
+		/** PaddleOCR API 地址 */
+		paddleOcrApiUrl: string;
+		/** PaddleOCR API Token */
+		paddleOcrToken: string;
+		/** PaddleOCR 模型名 */
+		paddleOcrModel: string;
+		/** OCR 引擎优先级：local=本地优先, paddle=云端优先 */
+		ocrPriority: "local" | "paddle";
 		/** 将图片转为 HTML 的视觉理解模型 */
 		htmlVisionModel: string;
 		/** 图片转为 HTML 的 System 提示词 */
