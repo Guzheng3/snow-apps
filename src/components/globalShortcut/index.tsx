@@ -11,7 +11,7 @@ import {
 	unregister,
 	unregisterAll,
 } from "@tauri-apps/plugin-global-shortcut";
-import { Tooltip } from "antd";
+import { Modal, Tooltip } from "antd";
 import React, {
 	createContext,
 	useCallback,
@@ -362,26 +362,36 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
 								appError("[GlobalShortcut] unregister value failed", error);
 							}
 
-							await register(value, async (event) => {
-								if (event.state !== "Released") {
-									return;
+							try {
+								await register(value, async (event) => {
+									if (event.state !== "Released") {
+										return;
+									}
+
+									if (
+										getAppSettings()[AppSettingsGroup.FunctionGlobalShortcut]
+											.disableOnFocusedFullScreenWindow &&
+										(await hasFocusedFullScreenWindow())
+									) {
+										return;
+									}
+
+									if (getTrayIconState()?.disableShortcut) {
+										return;
+									}
+
+									onClick();
+								});
+							} catch (error) {
+								appError("[GlobalShortcut] register failed", error);
+								if (prevValue !== value) {
+									Modal.warning({
+										title: "快捷键冲突",
+										content: `快捷键「${value}」已被其他软件占用，请更换为其他快捷键。`,
+									});
 								}
-
-								if (
-									getAppSettings()[AppSettingsGroup.FunctionGlobalShortcut]
-										.disableOnFocusedFullScreenWindow &&
-									(await hasFocusedFullScreenWindow())
-								) {
-									return;
-								}
-
-								if (getTrayIconState()?.disableShortcut) {
-									return;
-								}
-
-								onClick();
-							});
-
+								return false;
+							}
 							return true;
 						},
 					};

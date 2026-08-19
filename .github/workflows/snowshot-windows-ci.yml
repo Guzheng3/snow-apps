@@ -4,6 +4,8 @@
 #   2. 不创建 GitHub Release / 不改 changelog，产物直接传 Artifact 下载
 #   3. 关闭 updater artifact（createUpdaterArtifacts=false）→ 不需要 TAURI_SIGNING_PRIVATE_KEY 签名
 #   4. 修掉原脚本里 cd ../snow-shot 的目录名 bug（用 $GITHUB_WORKSPACE 绕开，不依赖 fork 后仓库名）
+#   5. 上传 artifact 时带上 target/release/resources/（含 app-icons 托盘图标 png）——
+#      否则裸 exe 找不到 resourceDir()/app-icons/*.png，设置页托盘图标预览图不显示
 # 触发方式：push 任意 v* tag，或 仓库 Actions 页手动 Run workflow
 name: Snow Shot Windows CI
 
@@ -129,7 +131,8 @@ jobs:
           TAURI_CONFIG: '{"bundle":{"createUpdaterArtifacts":false},"plugins":{"updater":{"pubkey":""}}}'
         run: pnpm tauri build --target x86_64-pc-windows-msvc
 
-      # 上传产物（NSIS 安装包 + 主程序等），Actions 页面可直接下载
+      # 上传产物（NSIS 安装包 + 主程序 + resources），Actions 页面可直接下载
+      # resources/ 含 app-icons 托盘图标 png，裸 exe 依赖它显示设置页预览图，必须一起传
       - name: Upload bundle artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -137,5 +140,6 @@ jobs:
           path: |
             src-tauri/target/**/release/bundle/
             src-tauri/target/**/release/snowshot.exe
+            src-tauri/target/**/release/resources/
           if-no-files-found: warn
           retention-days: 14
