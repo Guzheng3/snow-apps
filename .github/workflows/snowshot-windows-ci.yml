@@ -131,6 +131,19 @@ jobs:
           TAURI_CONFIG: '{"bundle":{"createUpdaterArtifacts":false},"plugins":{"updater":{"pubkey":""}}}'
         run: pnpm tauri build --target x86_64-pc-windows-msvc
 
+      # 裸 exe 兼容：resourceDir() 解析到 exe 同级目录，把 app-icons 复制一份到 exe 同级
+      # （resources/app-icons 是 Tauri 标准位置，exe 同级 app-icons 是裸 exe 运行时查找的位置）
+      - name: Copy app-icons next to exe (bare-exe compatibility)
+        run: |
+          $release = Get-ChildItem -Path "src-tauri\target" -Recurse -Directory -Filter "release" | Where-Object { $_.FullName -match "x86_64-pc-windows-msvc" } | Select-Object -First 1
+          if ($release -and (Test-Path "$($release.FullName)\resources\app-icons")) {
+            Copy-Item -Path "$($release.FullName)\resources\app-icons" -Destination "$($release.FullName)\app-icons" -Recurse -Force
+            Write-Host "Copied app-icons next to exe: $($release.FullName)\app-icons"
+          } else {
+            Write-Host "app-icons not found under resources, skip"
+          }
+        shell: pwsh
+
       # 上传产物（NSIS 安装包 + 主程序 + resources），Actions 页面可直接下载
       # resources/ 含 app-icons 托盘图标 png，裸 exe 依赖它显示设置页预览图，必须一起传
       - name: Upload bundle artifacts
