@@ -78,10 +78,10 @@ jobs:
         run: |
           cd ../excalidraw
           for i in 1 2 3 4 5; do
-          yarn install --frozen-lockfile --network-timeout 600000 && break
-          echo "yarn install failed (attempt $i), retrying in 10s..."
-          sleep 10
-        done
+            yarn install --frozen-lockfile --network-timeout 600000 && break
+            echo "yarn install failed (attempt $i), retrying in 10s..."
+            sleep 10
+          done
         shell: bash
 
       # 创建 .env（联网功能开）
