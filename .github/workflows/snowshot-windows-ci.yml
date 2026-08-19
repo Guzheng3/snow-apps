@@ -135,7 +135,7 @@ jobs:
         with:
           name: snow-shot-windows-x64
           path: |
-            src-tauri/target/release/bundle/
-            src-tauri/target/release/snowshot.exe
+            src-tauri/target/**/release/bundle/
+            src-tauri/target/**/release/snowshot.exe
           if-no-files-found: warn
           retention-days: 14
