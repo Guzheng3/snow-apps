@@ -1,6 +1,6 @@
 "use client";
 
-import { Col, Divider, Form, Row, Spin, theme } from "antd";
+import { Checkbox, Col, Divider, Form, Row, Spin, theme } from "antd";
 import { useCallback, useContext, useMemo, useState } from "react";
 import { FormattedMessage } from "react-intl";
 import { GroupTitle } from "@/components/groupTitle";
@@ -48,6 +48,37 @@ export const HotKeySettingsPage = () => {
 	const [commonKeyEvent, setCommonKeyEvent] = useState<
 		AppSettingsData[AppSettingsGroup.CommonKeyEvent]
 	>(defaultCommonKeyEventSettings);
+
+	// 截图快捷键提示窗口的显示项配置
+	const [hotKeyTipHiddenKeys, setHotKeyTipHiddenKeys] = useState<string[]>([]);
+	const statusBarTipOptions = useMemo(
+		() => [
+			{ label: <FormattedMessage id="draw.colorPickerMoveUp" />, value: "colorPickerMoveUp" },
+			{ label: <FormattedMessage id="draw.colorPickerMoveDown" />, value: "colorPickerMoveDown" },
+			{ label: <FormattedMessage id="draw.colorPickerMoveLeft" />, value: "colorPickerMoveLeft" },
+			{ label: <FormattedMessage id="draw.colorPickerMoveRight" />, value: "colorPickerMoveRight" },
+			{ label: <FormattedMessage id="draw.selectWindowOrElement" />, value: "selectWindowOrElement" },
+			{ label: <FormattedMessage id="draw.changeSelectLevel" />, value: "changeSelectLevel" },
+			{ label: <FormattedMessage id="draw.selectPrevRectTool" />, value: "selectPrevRectTool" },
+			{ label: <FormattedMessage id="draw.dragSelectRect" />, value: "dragSelectRect" },
+			{ label: <FormattedMessage id="draw.lockWidthHeightPicker" />, value: "lockWidthHeightPicker" },
+			{ label: <FormattedMessage id="draw.switchCapture" />, value: "switchCapture" },
+			{ label: <FormattedMessage id="draw.colorPickerCopy" />, value: "colorPickerCopy" },
+			{ label: <FormattedMessage id="draw.switchColorFormat" />, value: "switchColorFormat" },
+			{ label: <FormattedMessage id="draw.maintainAspectRatioPicker" />, value: "maintainAspectRatioPicker" },
+			{ label: <FormattedMessage id="draw.resizeFromCenterPicker" />, value: "resizeFromCenterPicker" },
+			{ label: <FormattedMessage id="draw.autoAlignPicker" />, value: "autoAlignPicker" },
+			{ label: <FormattedMessage id="draw.rotateWithDiscreteAnglePicker" />, value: "rotateWithDiscreteAnglePicker" },
+			{ label: <FormattedMessage id="draw.serialNumberDisableArrow2" />, value: "serialNumberDisableArrow" },
+			{ label: <FormattedMessage id="draw.selectSameTypeElement" />, value: "selectSameTypeElement" },
+			{ label: <FormattedMessage id="draw.editElementStyle" />, value: "editElementStyle" },
+		],
+		[],
+	);
+	const allStatusBarTipValues = useMemo(
+		() => statusBarTipOptions.map((opt) => opt.value),
+		[statusBarTipOptions],
+	);
 	useAppSettingsLoad(
 		useCallback((settings: AppSettingsData, preSettings?: AppSettingsData) => {
 			setAppSettingsLoading(false);
@@ -67,6 +98,10 @@ export const HotKeySettingsPage = () => {
 			) {
 				setCommonKeyEvent(settings[AppSettingsGroup.CommonKeyEvent]);
 			}
+
+			setHotKeyTipHiddenKeys(
+				settings[AppSettingsGroup.Screenshot].hotKeyTipHiddenKeys ?? [],
+			);
 		}, []),
 		true,
 	);
@@ -263,6 +298,52 @@ export const HotKeySettingsPage = () => {
 						);
 					})}
 			</Form>
+
+			<Divider />
+
+			<GroupTitle
+				id="statusBarTip"
+				extra={
+					<ResetSettingsButton
+						title={
+							<FormattedMessage
+								id="settings.hotKeySettings.statusBarTip"
+								key="statusBarTip"
+							/>
+						}
+						appSettingsGroup={AppSettingsGroup.Screenshot}
+						filter={(settings) => {
+							return { hotKeyTipHiddenKeys: settings.hotKeyTipHiddenKeys };
+						}}
+					/>
+				}
+			>
+				<FormattedMessage id="settings.hotKeySettings.statusBarTip" />
+			</GroupTitle>
+
+			<Spin spinning={appSettingsLoading}>
+				<Checkbox.Group
+					options={statusBarTipOptions}
+					value={allStatusBarTipValues.filter(
+						(v) => !hotKeyTipHiddenKeys.includes(v),
+					)}
+					onChange={(checkedValues) => {
+						const hidden = allStatusBarTipValues.filter(
+							(v) => !checkedValues.includes(v),
+						);
+						setHotKeyTipHiddenKeys(hidden);
+						updateAppSettings(
+							AppSettingsGroup.Screenshot,
+							{ hotKeyTipHiddenKeys: hidden },
+							true,
+							true,
+							true,
+							true,
+							false,
+						);
+					}}
+				/>
+			</Spin>
 
 			<Divider />
 

@@ -265,6 +265,8 @@ export type AppSettingsData = {
 	[AppSettingsGroup.Screenshot]: {
 		/** 界面缩放比例 */
 		uiScale: number;
+		/** 截图快捷键提示窗口隐藏的项（key 列表） */
+		hotKeyTipHiddenKeys: string[];
 		/** 工具栏缩放比例 */
 		toolbarUiScale: number;
 		/** 选区控件样式 */

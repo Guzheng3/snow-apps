@@ -56,6 +56,7 @@ export const defaultAppSettingsData: AppSettingsData = {
 	[AppSettingsGroup.Screenshot]: {
 		uiScale: 100,
 		toolbarUiScale: 100,
+		hotKeyTipHiddenKeys: [],
 		controlNode: AppSettingsControlNode.Circle,
 		// 在 Mac 上禁用动画
 		disableAnimation: getPlatformValue(false, true),

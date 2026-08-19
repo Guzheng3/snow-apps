@@ -373,7 +373,12 @@ const StatusBar: React.FC = () => {
 			});
 		}
 
-		setDescriptionsItems(items);
+		// 过滤用户设置中隐藏的快捷键提示项
+		const hotKeyTipHiddenKeys =
+			getAppSettings()[AppSettingsGroup.Screenshot].hotKeyTipHiddenKeys ?? [];
+		setDescriptionsItems(
+			items.filter((item) => !hotKeyTipHiddenKeys.includes(item.key)),
+		);
 	}, [getAppSettings, getCaptureStep, getDrawState, getScreenshotType]);
 	const updateDescriptionsItemsDebounce = useMemo(
 		() => debounce(updateDescriptionsItems, 0),
