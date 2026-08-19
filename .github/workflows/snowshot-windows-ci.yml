@@ -122,7 +122,7 @@ jobs:
       - name: Build the app (Windows x64)
         env:
           CI: false
-          TAURI_CONFIG: '{"bundle":{"createUpdaterArtifacts":false}}'
+          TAURI_CONFIG: '{"bundle":{"createUpdaterArtifacts":false},"plugins":{"updater":{"pubkey":""}}}'
         run: pnpm tauri build --target x86_64-pc-windows-msvc
 
       # 上传产物（NSIS 安装包 + 主程序等），Actions 页面可直接下载
