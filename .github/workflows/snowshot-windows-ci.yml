@@ -94,7 +94,7 @@ jobs:
       - name: Build Excalidraw
         run: |
           cd ../excalidraw
-          rimraf ./packages/excalidraw/dist
+          rm -rf ./packages/excalidraw/dist
           yarn build:packages
           cd "$GITHUB_WORKSPACE"
           pnpm update @mg-chao/excalidraw
