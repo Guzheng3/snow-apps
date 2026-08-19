@@ -38,6 +38,7 @@ import {
 } from "../../extra";
 import { DrawContext } from "../../types";
 import OcrTool, { isOcrTool } from "../drawToolbar/components/tools/ocrTool";
+import OcrResultModal from "../ocrResultModal";
 
 export type OcrBlocksSelectedText = {
 	type: "text" | "visionModelHtml";
@@ -133,6 +134,15 @@ export const OcrBlocks: React.FC<{
 					writeTextToClipboard(covertOcrResultToText(ocrResult));
 					finishCapture?.();
 				}
+				// 默认弹窗显示识别文字（关闭窗口类操作不弹）
+				if (
+					ocrAfterAction !== OcrDetectAfterAction.CopyTextAndCloseWindow &&
+					ocrAfterAction !==
+						OcrDetectAfterAction.OcrDetectCopyTextAndCloseWindow
+				) {
+					setOcrModalResult(ocrResult);
+					setOcrModalOpen(true);
+				}
 			} else if (getDrawState() === DrawState.OcrTranslate) {
 				ocrResultActionRef.current?.startTranslate();
 			}
@@ -210,6 +220,8 @@ export const OcrBlocks: React.FC<{
 		],
 	);
 
+	const [ocrModalOpen, setOcrModalOpen] = useState(false);
+	const [ocrModalResult, setOcrModalResult] = useState<OcrDetectResult | undefined>(undefined);
 	const [currentOcrResult, setCurrentOcrResult] = useState<
 		(AppOcrResult & { ocrResultType: OcrResultType }) | undefined
 	>(undefined);
@@ -270,6 +282,12 @@ export const OcrBlocks: React.FC<{
 				onVisionModelHtmlResultChange={setVisionModelHtmlResult}
 				onVisionModelMarkdownResultChange={setVisionModelMarkdownResult}
 				onVisionModelMarkdownLoading={setVisionModelMarkdownLoading}
+			/>
+
+			<OcrResultModal
+				open={ocrModalOpen}
+				ocrResult={ocrModalResult}
+				onClose={() => setOcrModalOpen(false)}
 			/>
 		</>
 	);
