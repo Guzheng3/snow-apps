@@ -1,1 +1,138 @@
+# Snow Shot - Windows-only 构建工作流（个人 fork 专用）
+# 相比原 release.yml 的改动：
+#   1. 只构建 Windows x64（去掉 macOS 两个平台，省一半以上时间）
+#   2. 不创建 GitHub Release / 不改 changelog，产物直接传 Artifact 下载
+#   3. 关闭 updater artifact（createUpdaterArtifacts=false）→ 不需要 TAURI_SIGNING_PRIVATE_KEY 签名
+#   4. 修掉原脚本里 cd ../snow-shot 的目录名 bug（用 $GITHUB_WORKSPACE 绕开，不依赖 fork 后仓库名）
+# 触发方式：push 任意 v* tag，或 仓库 Actions 页手动 Run workflow
+name: Snow Shot Windows CI
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      # 拉代码。lfs:true 保险：若 lib/ 是 LFS 文件则拉真实内容（非 LFS 则无副作用）
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # Node + pnpm
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.8.1
+
+      # Rust（windows-latest 自带 MSVC host target，无需额外 rustup target add）
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      # Rust 缓存：第二次起只重编改动部分
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      # pnpm 缓存
+      - name: Setup pnpm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      # yarn（excalidraw 构建用）
+      - name: Install yarn
+        run: npm install -g yarn
+
+      # 克隆 excalidraw（作者 fork 的 custom/master 分支，构建本地包用）
+      - name: Clone Excalidraw
+        run: |
+          cd ..
+          git clone --depth 1 --branch custom/master https://github.com/mg-chao/excalidraw.git
+        shell: bash
+
+      # yarn 缓存
+      - name: Cache yarn dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.yarn/cache
+            ~/.cache/yarn
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      # 安装 excalidraw 依赖
+      - name: Install Excalidraw dependencies
+        run: |
+          cd ../excalidraw
+          yarn install --frozen-lockfile
+        shell: bash
+
+      # 创建 .env（联网功能开）
+      - name: Create .env file
+        run: |
+          echo "PUBLIC_ONLINE_STATUS=true" > .env
+        shell: bash
+
+      # 安装主项目前端依赖
+      - name: Install app dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 构建 excalidraw 本地包（等价原 update:excalidraw，但用 $GITHUB_WORKSPACE 回仓库根，修掉 cd ../snow-shot bug）
+      - name: Build Excalidraw
+        run: |
+          cd ../excalidraw
+          rimraf ./packages/excalidraw/dist
+          yarn build:packages
+          cd "$GITHUB_WORKSPACE"
+          pnpm update @mg-chao/excalidraw
+        shell: bash
+
+      # 下载 onnxruntime 静态库（Windows x64，覆盖仓库内可能为 LFS 指针的 lib/）
+      - name: Download and setup onnxruntime (Windows)
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/supertone-inc/onnxruntime-build/releases/download/v1.22.2/onnxruntime-win-x64-static_lib-1.22.2.zip" -OutFile "onnxruntime.zip"
+          Expand-Archive -Path "onnxruntime.zip" -DestinationPath "onnxruntime-temp" -Force
+          $libPath = Get-ChildItem -Path "onnxruntime-temp" -Recurse -Directory -Filter "lib" | Select-Object -First 1
+          if ($libPath) {
+            Copy-Item -Path $libPath.FullName -Destination "src-tauri\lib" -Recurse -Force
+            Write-Host "Successfully copied lib folder to src-tauri"
+          } else {
+            Write-Error "lib folder not found in extracted files"
+            exit 1
+          }
+          Remove-Item -Path "onnxruntime.zip" -Force
+          Remove-Item -Path "onnxruntime-temp" -Recurse -Force
+        shell: pwsh
+
+      # 构建 Tauri 应用（beforeBuildCommand=pnpm build 会自动先构建前端）
+      # TAURI_CONFIG 关闭 updater 增量包 → 不需要签名私钥
+      - name: Build the app (Windows x64)
+        env:
+          CI: false
+          TAURI_CONFIG: '{"bundle":{"createUpdaterArtifacts":false}}'
+        run: pnpm tauri build --target x86_64-pc-windows-msvc
+
+      # 上传产物（NSIS 安装包 + 主程序等），Actions 页面可直接下载
+      - name: Upload bundle artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: snow-shot-windows-x64
+          path: |
+            src-tauri/target/release/bundle/
+            src-tauri/target/release/snowshot.exe
+          if-no-files-found: warn
+          retention-days: 14
 
