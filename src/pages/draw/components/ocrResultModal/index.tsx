@@ -90,7 +90,43 @@ const semanticLayout = (result: OcrDetectResult): string => {
 		prevBottom = lineBottom;
 	}
 
-	return paragraphs.map((p) => p.join("\n")).join("\n\n");
+	// 语义合并：段落内，行尾无句末标点且下一行非段落开头 → 合并为一句（去掉换行）
+	// 中文直接拼接；相邻英文/数字用空格分隔
+	const sentenceEndPattern = /[。！？!?…；;：:""''）)】》」』]$/;
+	const paragraphStartPattern =
+		/^[（(【\[《“"「『]|^[0-9一二三四五六七八九十]+[、.．]|^[A-Za-z0-9#*•·-]/;
+
+	const mergeParagraph = (lines: string[]): string => {
+		const merged: string[] = [];
+		for (const line of lines) {
+			const trimmed = line.trim();
+			if (!trimmed) {
+				continue;
+			}
+			if (merged.length === 0) {
+				merged.push(trimmed);
+				continue;
+			}
+			const prev = merged[merged.length - 1];
+			const prevEndsSentence = sentenceEndPattern.test(prev);
+			const currStartsParagraph = paragraphStartPattern.test(trimmed);
+			if (!prevEndsSentence && !currStartsParagraph) {
+				// 合并为一句（去掉换行）
+				const prevLastChar = prev[prev.length - 1];
+				const currFirstChar = trimmed[0];
+				const needSpace =
+					/[A-Za-z0-9]/.test(prevLastChar) &&
+					/[A-Za-z0-9]/.test(currFirstChar);
+				merged[merged.length - 1] =
+					prev + (needSpace ? " " : "") + trimmed;
+			} else {
+				merged.push(trimmed);
+			}
+		}
+		return merged.join("\n");
+	};
+
+	return paragraphs.map(mergeParagraph).join("\n\n");
 };
 
 export const OcrResultModal: React.FC<{
