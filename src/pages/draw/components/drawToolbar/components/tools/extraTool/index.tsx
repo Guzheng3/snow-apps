@@ -151,7 +151,7 @@ export const ExtraTool: React.FC<{
 			/>
 			<span
 				style={{
-					fontSize: 8,
+					fontSize: 10,
 					lineHeight: 1,
 					whiteSpace: "nowrap",
 					overflow: "hidden",
@@ -189,7 +189,7 @@ export const ExtraTool: React.FC<{
 			/>
 			<span
 				style={{
-					fontSize: 8,
+					fontSize: 10,
 					lineHeight: 1,
 					whiteSpace: "nowrap",
 					overflow: "hidden",
