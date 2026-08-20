@@ -114,6 +114,7 @@ export const en = {
 	"draw.blurTool": "Blur",
 	"draw.textTool": "Text",
 	"draw.eraserTool": "Eraser",
+	"draw.clearAll": "Clear All",
 	"draw.undoTool": "Undo",
 	"draw.redoTool": "Redo",
 	"draw.redoUndoTool": "Redo/Undo",

@@ -51,6 +51,7 @@ export const draw = {
 	"draw.blurTool": "滤镜",
 	"draw.textTool": "文字",
 	"draw.eraserTool": "橡皮擦",
+	"draw.clearAll": "一键清屏",
 	"draw.undoTool": "撤销",
 	"draw.redoTool": "重做",
 	"draw.redoUndoTool": "撤销/重做",

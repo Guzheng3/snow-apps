@@ -3,11 +3,12 @@
 import {
 	CloseOutlined,
 	CopyOutlined,
+	DeleteOutlined,
 	DragOutlined,
 	LockOutlined,
 } from "@ant-design/icons";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Flex, theme } from "antd";
+import { Dropdown, Flex, theme } from "antd";
 import { debounce } from "es-toolkit";
 import React, {
 	useCallback,
@@ -159,6 +160,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 	const [enableSaveToCloud, setEnableSaveToCloud] = useState(false);
 	const [enableScrollScreenshot, setEnableScrollScreenshot] = useState(false);
 	const [shortcutCanleTip, setShortcutCanleTip] = useState(false);
+	const [eraserMenuOpen, setEraserMenuOpen] = useState(false);
 	const [customToolbarToolHiddenMap, setCustomToolbarToolHiddenMap] = useState<
 		Partial<Record<DrawState, boolean>> | undefined
 	>(undefined);
@@ -258,6 +260,14 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 	);
 
 	const { isReadyStatus, isReady } = usePluginServiceContext();
+	/** 一键清屏：清除所有标注元素并清空历史 */
+	const clearAllAnnotations = useCallback(() => {
+		drawLayerActionRef.current?.updateScene({ elements: [] });
+		drawLayerActionRef.current?.clearHistory();
+		setEraserMenuOpen(false);
+		message.success(intl.formatMessage({ id: "draw.clearAll" }));
+	}, [drawLayerActionRef, intl, message]);
+
 	const onToolClick = useCallback(
 		(drawState: DrawState) => {
 			const prev = getDrawState();
@@ -867,17 +877,45 @@ return (
 								disable={disableNormalScreenshotTool}
 							/>
 
-							{/* 橡皮擦 */}
-							<ToolButton
-								hidden={customToolbarToolHiddenMap?.[DrawState.Eraser]}
-								componentKey={DrawToolbarKeyEventKey.EraserTool}
-								icon={<EraserIcon style={{ fontSize: "0.9em" }} />}
-								drawState={DrawState.Eraser}
-								disable={disableNormalScreenshotTool}
-								onClick={() => {
-									onToolClick(DrawState.Eraser);
+							{/* 橡皮擦：点击弹出模式选择（笔画擦 / 一键清屏） */}
+							<Dropdown
+								open={eraserMenuOpen}
+								onOpenChange={setEraserMenuOpen}
+								trigger={["click"]}
+								menu={{
+									items: [
+										{
+											key: "stroke",
+											icon: <EraserIcon />,
+											label: intl.formatMessage({ id: "draw.eraserTool" }),
+										},
+										{
+											key: "clear",
+											icon: <DeleteOutlined />,
+											label: intl.formatMessage({ id: "draw.clearAll" }),
+										},
+									],
+									onClick: ({ key }) => {
+										setEraserMenuOpen(false);
+										if (key === "stroke") {
+											onToolClick(DrawState.Eraser);
+										} else if (key === "clear") {
+											clearAllAnnotations();
+										}
+									},
 								}}
-							/>
+							>
+								<ToolButton
+									hidden={customToolbarToolHiddenMap?.[DrawState.Eraser]}
+									componentKey={DrawToolbarKeyEventKey.EraserTool}
+									icon={<EraserIcon style={{ fontSize: "0.9em" }} />}
+									drawState={DrawState.Eraser}
+									disable={disableNormalScreenshotTool}
+									onClick={() => {
+										setEraserMenuOpen(true);
+									}}
+								/>
+							</Dropdown>
 
 							<DrawExtraTool
 								customToolbarToolHiddenMap={customToolbarToolHiddenMap}

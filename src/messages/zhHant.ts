@@ -109,6 +109,7 @@ export const zhHant = {
 	"draw.blurTool": "滤镜",
 	"draw.textTool": "文字",
 	"draw.eraserTool": "橡皮擦",
+	"draw.clearAll": "一鍵清屏",
 	"draw.undoTool": "撤銷",
 	"draw.redoTool": "重做",
 	"draw.cancelTool": "取消",
