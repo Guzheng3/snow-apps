@@ -135,12 +135,12 @@ jobs:
       # （resources/app-icons 是 Tauri 标准位置，exe 同级 app-icons 是裸 exe 运行时查找的位置）
       - name: Copy app-icons next to exe (bare-exe compatibility)
         run: |
-          $release = Get-ChildItem -Path "src-tauri\target" -Recurse -Directory -Filter "release" | Where-Object { $_.FullName -match "x86_64-pc-windows-msvc" } | Select-Object -First 1
-          if ($release -and (Test-Path "$($release.FullName)\resources\app-icons")) {
-            Copy-Item -Path "$($release.FullName)\resources\app-icons" -Destination "$($release.FullName)\app-icons" -Recurse -Force
-            Write-Host "Copied app-icons next to exe: $($release.FullName)\app-icons"
+          $releaseDir = "src-tauri\target\x86_64-pc-windows-msvc\release"
+          if (Test-Path "src-tauri\app-icons") {
+            Copy-Item -Path "src-tauri\app-icons" -Destination "$releaseDir\app-icons" -Recurse -Force
+            Write-Host "Copied app-icons next to exe: $releaseDir\app-icons"
           } else {
-            Write-Host "app-icons not found under resources, skip"
+            Write-Host "src-tauri/app-icons not found, skip"
           }
         shell: pwsh
 
@@ -154,5 +154,6 @@ jobs:
             src-tauri/target/**/release/bundle/
             src-tauri/target/**/release/snowshot.exe
             src-tauri/target/**/release/resources/
+            src-tauri/target/**/release/app-icons/
           if-no-files-found: warn
           retention-days: 14
