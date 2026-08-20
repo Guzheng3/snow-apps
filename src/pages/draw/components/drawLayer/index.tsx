@@ -28,6 +28,7 @@ import { DrawState } from "@/types/draw";
 import { zIndexs } from "@/utils/zIndex";
 import { DrawContext } from "../../types";
 import type { DragElementOptionalConfig } from "../drawToolbar/components/dragButton";
+import { StrokeWidthSlider } from "../drawToolbar/components/strokeWidthSlider";
 import { useMonitorRect } from "../statusBar";
 import type { DrawLayerActionType } from "./extra";
 
@@ -195,6 +196,9 @@ const DrawLayerCore: React.FC<{
 		NonNullable<ExcalidrawPropsCustomOptions>
 	>(() => {
 		return {
+			pickerRenders: {
+				ChangeStrokeWidthSlider: StrokeWidthSlider,
+			},
 			getReferenceSnapPoints: (defaultFn) => {
 				return (...params: Parameters<typeof defaultFn>) => {
 					const appState = params[2];

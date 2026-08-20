@@ -1,71 +1,44 @@
 import { Button, Flex, Slider, theme } from "antd";
-import { useCallback, useContext, useEffect, useState } from "react";
-import { DrawContext } from "@/pages/draw/types";
+import { useCallback, useEffect, useState } from "react";
 
-// 保留的预设值（原 strokeWidthList）
+// 保留的预设值（与 excalidraw STROKE_WIDTH 一致：thin/bold/extraBold）
 const STROKE_PRESETS = [1, 2, 4];
 const STROKE_WIDTH_MAX = 20;
 
 /**
- * 描边宽度滑块：支持滑块调节粗细，同时保留预设值快捷按钮
+ * 描边宽度滑块（注入 excalidraw 属性面板 pickerRenders.ChangeStrokeWidthSlider）
+ * 选中矩形/椭圆/箭头/画笔/文字/序号等元素后，属性面板里显示：
+ *   - 滑块：支持任意调节粗细（1-20）
+ *   - 预设按钮：保留原来的 1 / 2 / 4 三个预设
+ * onChange 由 excalidraw 的 updateData 处理（自动应用到选中元素或当前工具）
  */
-export const StrokeWidthSlider: React.FC = () => {
+export const StrokeWidthSlider: React.FC<{
+	value: number | null;
+	onChange: (value: number) => void;
+}> = ({ value, onChange }) => {
 	const { token } = theme.useToken();
-	const { drawLayerActionRef } = useContext(DrawContext);
-	const [width, setWidth] = useState(1);
+	const [width, setWidth] = useState(value ?? 1);
 
+	// 外部 value 变化（切换选中元素/工具）时同步滑块
 	useEffect(() => {
-		const appState = drawLayerActionRef.current?.getAppState();
-		const current = appState?.currentItemStrokeWidth ?? 1;
-		setWidth(current);
-	}, [drawLayerActionRef]);
+		if (value != null) {
+			setWidth(value);
+		}
+	}, [value]);
 
 	const applyWidth = useCallback(
-		(value: number) => {
-			const layer = drawLayerActionRef.current;
-			if (!layer) {
-				return;
-			}
-			const appState = layer.getAppState();
-			if (!appState) {
-				return;
-			}
-			const sceneElements =
-				layer.getExcalidrawAPI()?.getSceneElements() ?? [];
-			const selectedIds = appState.selectedElementIds;
-			const selectedIdsArr = Object.keys(selectedIds).filter(
-				(id) => selectedIds[id],
-			);
-			if (selectedIdsArr.length === 1) {
-				const selected = sceneElements.find(
-					(el) => el.id === selectedIdsArr[0],
-				);
-				if (selected && "strokeWidth" in selected) {
-					layer.updateScene({
-						elements: sceneElements.map((el) =>
-							el.id === selected.id
-								? { ...el, strokeWidth: value }
-								: el,
-						),
-						captureUpdate: "IMMEDIATELY",
-					});
-					setWidth(value);
-					return;
-				}
-			}
-			layer.updateScene({
-				appState: { ...appState, currentItemStrokeWidth: value },
-			});
-			setWidth(value);
+		(v: number) => {
+			setWidth(v);
+			onChange(v);
 		},
-		[drawLayerActionRef],
+		[onChange],
 	);
 
 	return (
 		<Flex
 			align="center"
 			gap={4}
-			style={{ padding: "0 6px", minWidth: 150 }}
+			style={{ padding: "0 6px", minWidth: 160 }}
 			title="描边宽度"
 		>
 			<Slider
@@ -75,7 +48,7 @@ export const StrokeWidthSlider: React.FC = () => {
 				value={width}
 				onChange={(v) => setWidth(v)}
 				onChangeComplete={(v) => applyWidth(v)}
-				style={{ width: 90, margin: 0 }}
+				style={{ width: 96, margin: 0 }}
 			/>
 			<span
 				style={{

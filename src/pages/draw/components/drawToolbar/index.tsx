@@ -83,7 +83,6 @@ import { BlurGroupTool } from "./components/tools/blurGroupTool";
 import { BlurTool } from "./components/tools/blurTool";
 import { DrawExtraTool } from "./components/tools/drawExtraTool";
 import { ExtraTool } from "./components/tools/extraTool";
-import { StrokeWidthSlider } from "./components/strokeWidthSlider";
 import { HighlightTool } from "./components/tools/highlightTool";
 import { RectTool } from "./components/tools/rectTool";
 import {
@@ -1053,9 +1052,6 @@ return (
 									onCopyToClipboard();
 								}}
 							/>
-
-							{/* 描边宽度滑块（支持调节粗细，保留预设值） */}
-							<StrokeWidthSlider />
 						</Flex>
 					</div>
 				</div>
