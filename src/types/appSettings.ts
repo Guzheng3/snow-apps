@@ -352,6 +352,8 @@ export type AppSettingsData = {
 		lockDragAspectRatio: number;
 		/** Tab 键是否启用查找子元素 */
 		enableTabFindChildrenElements: boolean;
+		/** 是否拒绝安装内置字体（portable 首次运行取消后置 true） */
+		fontInstallDeclined: boolean;
 	};
 	[AppSettingsGroup.DrawToolbarKeyEvent]: Record<
 		DrawToolbarKeyEventKey,

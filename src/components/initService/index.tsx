@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { App as AntdApp } from "antd";
 import { initUiElements } from "@/commands";
+import { installFont, isFontInstalled } from "@/commands/font";
+import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
 import {
 	autoStartDisable,
 	autoStartEnable,
@@ -20,6 +23,8 @@ import { CaptureHistory } from "@/utils/captureHistory";
 import { appWarn } from "@/utils/log";
 
 export const InitService = () => {
+	const { modal, message } = AntdApp.useApp();
+	const { updateAppSettings } = useContext(AppSettingsActionContext);
 	// 清除无效的截图历史
 	const clearCaptureHistory = useCallback(
 		async (appSettings: AppSettingsData) => {
@@ -36,6 +41,7 @@ export const InitService = () => {
 	const hasInitEnableProxy = useRef(false);
 	const hasInitRunLog = useRef(false);
 	const hasInitHotLoadPage = useRef(false);
+	const hasInitFontCheck = useRef(false);
 
 	const [appSettings, setAppSettings] = useState<AppSettingsData | undefined>(
 		undefined,
@@ -45,6 +51,51 @@ export const InitService = () => {
 	>(undefined);
 
 	const { isReadyStatus, pluginConfigRef } = usePluginServiceContext();
+
+	const checkFontInstall = useCallback(async () => {
+		if (!appSettings || hasInitFontCheck.current) {
+			return;
+		}
+		hasInitFontCheck.current = true;
+
+		if (appSettings[AppSettingsGroup.Cache].fontInstallDeclined) {
+			return;
+		}
+
+		try {
+			const installed = await isFontInstalled();
+			if (installed) {
+				return;
+			}
+
+			modal.confirm({
+				title: "安装内置字体",
+				content:
+					"检测到内置字体「Aa言念君子 温其如玉」尚未安装。是否立即安装？安装后可在文字工具中选择该字体。",
+				okText: "立即安装",
+				cancelText: "取消",
+				onOk: async () => {
+					try {
+						await installFont();
+						message.success("字体安装成功");
+					} catch (e) {
+						message.error(`字体安装失败: ${e}`);
+					}
+				},
+				onCancel: () => {
+					updateAppSettings((prev) => ({
+						...prev,
+						[AppSettingsGroup.Cache]: {
+							...prev[AppSettingsGroup.Cache],
+							fontInstallDeclined: true,
+						},
+					}));
+				},
+			});
+		} catch (e) {
+			// 检查失败静默处理
+		}
+	}, [appSettings, message, modal, updateAppSettings]);
 
 	const initServices = useCallback(async () => {
 		if (!appSettings || !isReadyStatus) {
@@ -136,6 +187,7 @@ export const InitService = () => {
 		}
 	}, [
 		appSettings,
+		checkFontInstall,
 		clearCaptureHistory,
 		pluginConfigRef,
 		isReadyStatus,
