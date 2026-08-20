@@ -372,7 +372,30 @@ export const KeyButton: React.FC<{
 					setOpen(true);
 				}}
 				title={formatKeyText}
+				style={{ position: "relative" }}
 			>
+				{keyValue ? (
+					<span
+						onClick={(e) => {
+							e.stopPropagation();
+							onKeyChange("");
+						}}
+						style={{
+							position: "absolute",
+							right: 0,
+							top: -4,
+							cursor: "pointer",
+							color: token.colorError,
+							fontSize: 12,
+							lineHeight: 1,
+							padding: "0 3px",
+							zIndex: 1,
+						}}
+						title="清除快捷键"
+					>
+						×
+					</span>
+				) : null}
 				<div
 					style={{
 						width,
