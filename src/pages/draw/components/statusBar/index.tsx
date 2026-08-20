@@ -315,37 +315,47 @@ const StatusBar: React.FC = () => {
 			drawState === DrawState.Blur ||
 			drawState === DrawState.Diamond
 		) {
-			items.push({
-				key: "maintainAspectRatioPicker",
-				label: <FormattedMessage id="draw.maintainAspectRatioPicker" />,
-				children: <KeyLabel hotKey={maintainAspectRatioPickerHotKey} />,
-			});
-			items.push({
-				key: "resizeFromCenterPicker",
-				label: <FormattedMessage id="draw.resizeFromCenterPicker" />,
-				children: <KeyLabel hotKey={resizeFromCenterPickerHotKey} />,
-			});
-			items.push({
-				key: "autoAlignPicker",
-				label: <FormattedMessage id="draw.autoAlignPicker" />,
-				children: <KeyLabel hotKey={autoAlignPickerHotKey} />,
-			});
+			if (maintainAspectRatioPickerShowInToolbar !== false) {
+				items.push({
+					key: "maintainAspectRatioPicker",
+					label: <FormattedMessage id="draw.maintainAspectRatioPicker" />,
+					children: <KeyLabel hotKey={maintainAspectRatioPickerHotKey} />,
+				});
+			}
+			if (resizeFromCenterPickerShowInToolbar !== false) {
+				items.push({
+					key: "resizeFromCenterPicker",
+					label: <FormattedMessage id="draw.resizeFromCenterPicker" />,
+					children: <KeyLabel hotKey={resizeFromCenterPickerHotKey} />,
+				});
+			}
+			if (autoAlignPickerShowInToolbar !== false) {
+				items.push({
+					key: "autoAlignPicker",
+					label: <FormattedMessage id="draw.autoAlignPicker" />,
+					children: <KeyLabel hotKey={autoAlignPickerHotKey} />,
+				});
+			}
 		}
 
 		if (drawState === DrawState.Arrow || drawState === DrawState.Line) {
-			items.push({
-				key: "rotateWithDiscreteAnglePicker",
-				label: <FormattedMessage id="draw.rotateWithDiscreteAnglePicker" />,
-				children: <KeyLabel hotKey={rotateWithDiscreteAnglePickerHotKey} />,
-			});
+			if (rotateWithDiscreteAnglePickerShowInToolbar !== false) {
+				items.push({
+					key: "rotateWithDiscreteAnglePicker",
+					label: <FormattedMessage id="draw.rotateWithDiscreteAnglePicker" />,
+					children: <KeyLabel hotKey={rotateWithDiscreteAnglePickerHotKey} />,
+				});
+			}
 		}
 
 		if (drawState === DrawState.SerialNumber) {
-			items.push({
-				key: "serialNumberDisableArrow",
-				label: <FormattedMessage id="draw.serialNumberDisableArrow2" />,
-				children: <KeyLabel hotKey={serialNumberDisableArrowHotKey} />,
-			});
+			if (serialNumberDisableArrowShowInToolbar !== false) {
+				items.push({
+					key: "serialNumberDisableArrow",
+					label: <FormattedMessage id="draw.serialNumberDisableArrow2" />,
+					children: <KeyLabel hotKey={serialNumberDisableArrowHotKey} />,
+				});
+			}
 		}
 
 		if (

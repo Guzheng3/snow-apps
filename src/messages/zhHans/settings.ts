@@ -77,6 +77,7 @@ export const settings = {
 	"settings.drawingHotKey": "截图",
 	"settings.hotKeySettings.statusBarTip": "截图快捷键提示显示项（勾选 = 截图时显示）",
 	"settings.hotKeySettings.showInToolbar": "显示在工具栏",
+	"settings.hotKeySettings.showInHotKeyTip": "截图时显示快捷键提示",
 	"settings.addKeyConfig": "添加按键配置",
 	"settings.pleasePressTheKey": "请按下按键",
 	"settings.keyConfig": "“{title}”按键配置",

@@ -193,7 +193,7 @@ export const HotKeySettingsPage = () => {
 										);
 									}}
 								>
-									<FormattedMessage id="settings.hotKeySettings.showInToolbar" />
+									<FormattedMessage id="settings.hotKeySettings.showInHotKeyTip" />
 								</Checkbox>
 							</Flex>
 						</Form.Item>

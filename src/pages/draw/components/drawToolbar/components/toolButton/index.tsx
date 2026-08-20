@@ -86,9 +86,22 @@ const ToolButtonCore: React.FC<{
 		true,
 	);
 
-	// 图标下方文字：工具名 + 快捷键（可被设置面板"是否显示在工具栏"关闭）
+	// 图标下方文字：只显示功能名（与网页 demo 一致，不显示快捷键）
 	const label = useMemo(() => {
-		if (!componentKey || keyEventValue?.showInToolbar === false) {
+		if (!componentKey) {
+			return undefined;
+		}
+		return (
+			TOOLBAR_SHORT_NAMES[componentKey] ??
+			intl.formatMessage({
+				id: defaultDrawToolbarKeyEventComponentConfig[componentKey].messageId,
+			})
+		);
+	}, [componentKey, intl]);
+
+	// hover 显示完整信息：功能名 + 快捷键（与网页 demo 一致）
+	const hoverTitle = useMemo(() => {
+		if (!componentKey) {
 			return undefined;
 		}
 		const name =
@@ -97,7 +110,7 @@ const ToolButtonCore: React.FC<{
 				id: defaultDrawToolbarKeyEventComponentConfig[componentKey].messageId,
 			});
 		const hotKey = keyEventValue?.hotKey;
-		return hotKey ? `${name} ${hotKey}` : name;
+		return hotKey ? name + " " + hotKey : name;
 	}, [componentKey, intl, keyEventValue]);
 
 	const buttonDom = (
@@ -131,11 +144,12 @@ const ToolButtonCore: React.FC<{
 	return (
 		<div
 			className="draw-toolbar-btn-wrap"
+			title={hoverTitle}
 			style={{
 				display: hidden ? "none" : "inline-flex",
 				flexDirection: "column",
 				alignItems: "center",
-				gap: 1,
+				gap: 7,
 				lineHeight: 1,
 			}}
 		>
@@ -144,8 +158,8 @@ const ToolButtonCore: React.FC<{
 				<span
 					className="draw-toolbar-btn-label"
 					style={{
-						fontSize: 8,
-						lineHeight: 1,
+						fontSize: 10,
+						lineHeight: 1.1,
 						whiteSpace: "nowrap",
 						overflow: "hidden",
 						textOverflow: "ellipsis",

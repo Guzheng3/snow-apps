@@ -21,6 +21,7 @@ export const en = {
 	"settings.drawingHotKey": "Drawing Hotkeys",
 	"settings.hotKeySettings.statusBarTip": "Screenshot shortcut tip items (checked = show when capturing)",
 	"settings.hotKeySettings.showInToolbar": "Show in toolbar",
+	"settings.hotKeySettings.showInHotKeyTip": "Show hotkey tip when capturing",
 	"settings.addKeyConfig": "Add Key Configuration",
 	"settings.pleasePressTheKey": "Please press a key",
 	"settings.keyConfig": 'Key Configuration for "{title}"',
