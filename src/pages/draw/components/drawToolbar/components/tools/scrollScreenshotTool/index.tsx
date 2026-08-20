@@ -238,36 +238,6 @@ export const ScrollScreenshot: React.FC<{
 	const [autoScrolling, setAutoScrolling, autoScrollingRef] =
 		useStateRef(false);
 
-	const startAutoScrollThrough = useCallback(() => {
-		if (autoScrollingRef.current) {
-			return;
-		}
-
-		setAutoScrolling(true);
-		autoScrollThroughIntervalRef.current = setInterval(() => {
-			// 上一轮截图还没处理完则跳过，避免滚动过快导致采样率不足
-			if (pendingCaptureImageListRef.current) {
-				return;
-			}
-
-			getCurrentWindow().setIgnoreCursorEvents(true);
-			autoScrollThrough(
-				scrollDirectionRef.current === ScrollDirection.Horizontal
-					? "horizontal"
-					: "vertical",
-				1,
-			).catch(() => {});
-			enableCursorEventsDebounce();
-			captureImageCore(ScrollImageList.Bottom);
-		}, 120);
-	}, [
-		autoScrollingRef,
-		setAutoScrolling,
-		captureImageCore,
-		enableCursorEventsDebounce,
-		scrollDirectionRef,
-	]);
-
 	const stopAutoScrollThrough = useCallback(() => {
 		if (autoScrollThroughIntervalRef.current) {
 			clearInterval(autoScrollThroughIntervalRef.current);
@@ -520,7 +490,38 @@ export const ScrollScreenshot: React.FC<{
 		);
 	}, []);
 
-	const onWheel = useCallback<WheelEventHandler<HTMLDivElement>>(
+	const startAutoScrollThrough = useCallback(() => {
+		if (autoScrollingRef.current) {
+			return;
+		}
+
+		setAutoScrolling(true);
+		autoScrollThroughIntervalRef.current = setInterval(() => {
+			// 上一轮截图还没处理完则跳过，避免滚动过快导致采样率不足
+			if (pendingCaptureImageListRef.current) {
+				return;
+			}
+
+			getCurrentWindow().setIgnoreCursorEvents(true);
+			autoScrollThrough(
+				scrollDirectionRef.current === ScrollDirection.Horizontal
+					? "horizontal"
+					: "vertical",
+				1,
+			).catch(() => {});
+			enableCursorEventsDebounce();
+			captureImageCore(ScrollImageList.Bottom);
+		}, 120);
+	}, [
+		autoScrollingRef,
+		setAutoScrolling,
+		captureImageCore,
+		enableCursorEventsDebounce,
+		scrollDirectionRef,
+	]);
+
+	
+const onWheel = useCallback<WheelEventHandler<HTMLDivElement>>(
 		(event) => {
 				if (autoScrollingRef.current) {
 				return;

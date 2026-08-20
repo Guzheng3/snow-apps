@@ -748,41 +748,47 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 	}, []);
 
 	const toolbarAllToolNames = useMemo(() => {
-		const mainToolKeys: DrawToolbarKeyEventKey[] = [
-			DrawToolbarKeyEventKey.MoveTool,
-			DrawToolbarKeyEventKey.SelectTool,
-			DrawToolbarKeyEventKey.RectTool,
-			DrawToolbarKeyEventKey.EllipseTool,
-			DrawToolbarKeyEventKey.ArrowTool,
-			DrawToolbarKeyEventKey.PenTool,
-			DrawToolbarKeyEventKey.TextTool,
-			DrawToolbarKeyEventKey.SerialNumberTool,
-			DrawToolbarKeyEventKey.BlurTool,
-			DrawToolbarKeyEventKey.EraserTool,
-			DrawToolbarKeyEventKey.UndoTool,
-			DrawToolbarKeyEventKey.RedoTool,
-			DrawToolbarKeyEventKey.FixedTool,
-			DrawToolbarKeyEventKey.CopyTool,
-			DrawToolbarKeyEventKey.OcrDetectTool,
-			DrawToolbarKeyEventKey.OcrTranslateTool,
-			DrawToolbarKeyEventKey.ScrollScreenshotTool,
-			DrawToolbarKeyEventKey.SaveTool,
-			DrawToolbarKeyEventKey.FastSaveTool,
+		// 按工具栏实际渲染顺序排列，保证与图标一一对应
+		const toolMessageIds = [
+			"draw.moveTool",
+			"draw.selectTool",
+			"draw.lockDrawTool",
+			"draw.rectTool",
+			"draw.ellipseTool",
+			"draw.arrowTool",
+			"draw.penTool",
+			"draw.textTool",
+			"draw.serialNumberTool",
+			"draw.blurTool",
+			"draw.eraserTool",
+			"draw.watermarkTool",
+			"draw.highlightTool",
+			"draw.undoTool",
+			"draw.redoTool",
+			"draw.extraTool.scanQrcode",
+			"draw.extraTool.videoRecord",
+			"draw.fixedTool",
+			"draw.ocrDetectTool",
+			"draw.ocrTranslateTool",
+			"draw.scrollScreenshotTool",
+			"draw.fastSaveTool",
+			"draw.saveToCloudTool",
+			"draw.saveTool",
+			"draw.cancelTool",
+			"draw.copyTool",
 		];
 		return (
 			<Flex wrap gap={4} style={{ maxWidth: 380 }}>
-				{mainToolKeys.map((key) => (
-					<Tag key={key} style={{ marginInlineEnd: 0 }}>
-						{intl.formatMessage({
-							id: defaultDrawToolbarKeyEventComponentConfig[key].messageId,
-						})}
+				{toolMessageIds.map((id) => (
+					<Tag key={id} style={{ marginInlineEnd: 0 }}>
+						{intl.formatMessage({ id })}
 					</Tag>
 				))}
 			</Flex>
 		);
 	}, [intl]);
 
-	return (
+return (
 		<div
 			className="draw-toolbar-container"
 			onMouseDown={handleMouseDown}
