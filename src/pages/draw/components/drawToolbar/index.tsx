@@ -10,6 +10,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Flex, Tag, theme, Tooltip } from "antd";
 import { debounce } from "es-toolkit";
 import React, {
+	useEffect,
 	useCallback,
 	useContext,
 	useImperativeHandle,
