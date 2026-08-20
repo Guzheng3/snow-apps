@@ -1,12 +1,16 @@
 "use client";
 
 import {
+	BgColorsOutlined,
+	ClearOutlined,
 	CloseOutlined,
 	CopyOutlined,
+	EditOutlined,
 	GifOutlined,
 	HolderOutlined,
 	PauseOutlined,
 } from "@ant-design/icons";
+import { emit } from "@tauri-apps/api/event";
 import { join as joinPath } from "@tauri-apps/api/path";
 import {
 	type Window as AppWindow,
@@ -206,6 +210,11 @@ export const VideoRecordToolbarPage: React.FC = () => {
 	}, [intl]);
 
 	const [enableMicrophone, setEnableMicrophone] = useState(false);
+	// 动态批注状态
+	const [annotateEnabled, setAnnotateEnabled] = useState(false);
+	const [annotateBackgroundFixed, setAnnotateBackgroundFixed] = useState(false);
+	const [annotateColor, setAnnotateColor] = useState("#f5222d");
+	const ANNOTATE_COLORS = ["#f5222d", "#fa8c16", "#52c41a", "#1677ff", "#000000", "#ffffff"];
 	// const [enableSystemAudio, setEnableSystemAudio] = useState(true);
 	const durationRef = useRef(0);
 
@@ -598,6 +607,80 @@ export const VideoRecordToolbarPage: React.FC = () => {
 							type={"text"}
 							key="microphone"
 						/>
+
+						<div className="video-record-toolbar-splitter" />
+
+						{/* 动态批注 */}
+						<Button
+							onClick={() => {
+								const next = !annotateEnabled;
+								setAnnotateEnabled(next);
+								emit("video-record-annotate-toggle", { enabled: next });
+							}}
+							icon={
+								<EditOutlined
+									style={{
+										color: getButtonIconColorByState(annotateEnabled, token),
+									}}
+								/>
+							}
+							title="动态批注"
+							type={"text"}
+							key="annotate-toggle"
+						/>
+
+						<Button
+							onClick={() => {
+								emit("video-record-annotate-clear");
+							}}
+							icon={<ClearOutlined style={{}} />}
+							title="一键清除批注"
+							type={"text"}
+							key="annotate-clear"
+						/>
+
+						<Button
+							onClick={() => {
+								const next = !annotateBackgroundFixed;
+								setAnnotateBackgroundFixed(next);
+								emit("video-record-annotate-background-fixed", { fixed: next });
+							}}
+							icon={
+								<BgColorsOutlined
+									style={{
+										color: getButtonIconColorByState(annotateBackgroundFixed, token),
+									}}
+								/>
+							}
+							title="固定背景"
+							type={"text"}
+							key="annotate-bg-fixed"
+						/>
+
+						{ANNOTATE_COLORS.map((c) => (
+							<Button
+								key={"ac-" + c}
+								onClick={() => {
+									setAnnotateColor(c);
+									emit("video-record-annotate-color", { color: c });
+								}}
+								icon={
+									<span
+										style={{
+											display: "inline-block",
+											width: 12,
+											height: 12,
+											borderRadius: 3,
+											background: c,
+											border: "1px solid " + token.colorBorder,
+										}}
+									/>
+								}
+								title={"批注颜色 " + c}
+								type={annotateColor === c ? "primary" : "text"}
+								style={{ padding: "0 4px", minWidth: 24 }}
+							/>
+						))}
 
 						{/* <Button
                         onClick={() => {

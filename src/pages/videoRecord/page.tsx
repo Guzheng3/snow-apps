@@ -1,6 +1,7 @@
 "use client";
 
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 import { theme } from "antd";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { setCurrentWindowAlwaysOnTop } from "@/commands/core";
@@ -41,6 +42,13 @@ interface KeyDisplayItem {
 export const VideoRecordPage: React.FC = () => {
 	const { token } = theme.useToken();
 	const selectCanvasRef = useRef<HTMLDivElement>(null);
+	// 动态批注层
+	const annotateCanvasRef = useRef<HTMLCanvasElement>(null);
+	const [annotateEnabled, setAnnotateEnabled] = useState(false);
+	const [annotateColor, setAnnotateColor] = useState("#f5222d");
+	const [annotateBackgroundFixed, setAnnotateBackgroundFixed] = useState(false);
+	const annotateDrawingRef = useRef(false);
+	const annotateLastPointRef = useRef<{ x: number; y: number } | null>(null);
 
 	const selectRectRef = useRef<ElementRect | undefined>(undefined);
 
@@ -442,6 +450,81 @@ export const VideoRecordPage: React.FC = () => {
 
 	const { isReadyStatus } = usePluginServiceContext();
 
+	// 批注绘制
+	const drawAnnotateLine = useCallback(
+		(x: number, y: number) => {
+			const canvas = annotateCanvasRef.current;
+			if (!canvas) {
+				return;
+			}
+			const ctx = canvas.getContext("2d");
+			if (!ctx) {
+				return;
+			}
+			const rect = canvas.getBoundingClientRect();
+			const scaleX = canvas.width / (rect.width || 1);
+			const scaleY = canvas.height / (rect.height || 1);
+			const px = x * scaleX;
+			const py = y * scaleY;
+			if (annotateLastPointRef.current) {
+				ctx.strokeStyle = annotateColor;
+				ctx.lineWidth = 3 * scaleX;
+				ctx.lineCap = "round";
+				ctx.lineJoin = "round";
+				ctx.beginPath();
+				ctx.moveTo(annotateLastPointRef.current.x, annotateLastPointRef.current.y);
+				ctx.lineTo(px, py);
+				ctx.stroke();
+			}
+			annotateLastPointRef.current = { x: px, y: py };
+		},
+		[annotateColor],
+	);
+
+	const clearAnnotations = useCallback(() => {
+		const canvas = annotateCanvasRef.current;
+		if (!canvas) {
+			return;
+		}
+		const ctx = canvas.getContext("2d");
+		if (ctx) {
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+		}
+	}, []);
+
+	const resizeAnnotateCanvas = useCallback(() => {
+		const canvas = annotateCanvasRef.current;
+		if (!canvas) {
+			return;
+		}
+		const dpr = window.devicePixelRatio || 1;
+		canvas.width = Math.round(window.innerWidth * dpr);
+		canvas.height = Math.round(window.innerHeight * dpr);
+	}, []);
+
+	// 监听批注命令（来自录屏工具栏窗口）
+	useEffect(() => {
+		const unlist: (() => void)[] = [];
+		listen<{ enabled: boolean }>("video-record-annotate-toggle", (e) => {
+			setAnnotateEnabled(e.payload.enabled);
+			if (e.payload.enabled) {
+				setTimeout(resizeAnnotateCanvas, 0);
+			}
+		}).then((fn) => unlist.push(fn));
+		listen("video-record-annotate-clear", () => {
+			clearAnnotations();
+		}).then((fn) => unlist.push(fn));
+		listen<{ fixed: boolean }>("video-record-annotate-background-fixed", (e) => {
+			setAnnotateBackgroundFixed(e.payload.fixed);
+		}).then((fn) => unlist.push(fn));
+		listen<{ color: string }>("video-record-annotate-color", (e) => {
+			setAnnotateColor(e.payload.color);
+		}).then((fn) => unlist.push(fn));
+		return () => {
+			unlist.forEach((fn) => fn());
+		};
+	}, [clearAnnotations, resizeAnnotateCanvas]);
+
 	useEffect(() => {
 		if (!isReadyStatus) {
 			return;
@@ -455,6 +538,34 @@ export const VideoRecordPage: React.FC = () => {
 	return (
 		<div className="container" onContextMenu={(e) => e.preventDefault()}>
 			<div ref={selectCanvasRef} className="select-canvas" />
+
+			{/* 动态批注层 */}
+			<canvas
+				ref={annotateCanvasRef}
+				className="annotate-canvas"
+				onMouseDown={(e) => {
+					if (!annotateEnabled) {
+						return;
+					}
+					annotateDrawingRef.current = true;
+					annotateLastPointRef.current = null;
+					drawAnnotateLine(e.clientX, e.clientY);
+				}}
+				onMouseMove={(e) => {
+					if (!annotateEnabled || !annotateDrawingRef.current) {
+						return;
+					}
+					drawAnnotateLine(e.clientX, e.clientY);
+				}}
+				onMouseUp={() => {
+					annotateDrawingRef.current = false;
+					annotateLastPointRef.current = null;
+				}}
+				onMouseLeave={() => {
+					annotateDrawingRef.current = false;
+					annotateLastPointRef.current = null;
+				}}
+			/>
 
 			{/* 按键显示区域 */}
 			<div className="key-display-container">
@@ -483,7 +594,19 @@ export const VideoRecordPage: React.FC = () => {
                     height: calc(100% - ${BORDER_WIDTH * 2}px);
                 }
 
-                .key-display-container {
+  
+
+                .annotate-canvas {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    pointer-events: ${annotateEnabled ? "auto" : "none"};
+                    cursor: crosshair;
+                    z-index: 10;
+                    background: ${annotateBackgroundFixed ? "rgba(255, 255, 255, 0.15)" : "transparent"};
+                }              .key-display-container {
                     position: fixed;
                     bottom: ${token.margin - token.paddingLG}px;
                     right: ${token.margin - token.paddingLG}px;
