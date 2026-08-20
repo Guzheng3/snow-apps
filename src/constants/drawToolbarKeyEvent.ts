@@ -179,6 +179,7 @@ export const defaultDrawToolbarKeyEventComponentConfig: Record<
 		acc[key as DrawToolbarKeyEventKey] = {
 			...defaultDrawToolbarKeyEventSettings[key as DrawToolbarKeyEventKey],
 			messageId: `draw.${key}`,
+			showInToolbar: true,
 		};
 		return acc;
 	},

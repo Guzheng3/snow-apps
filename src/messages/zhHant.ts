@@ -20,6 +20,7 @@ export const zhHant = {
 		"啟用效能優先模式後，會嘗試降低一定繪圖品質提升效能（軟體快速迭代中，請保持開啟）",
 	"settings.drawingHotKey": "繪圖熱鍵",
 	"settings.hotKeySettings.statusBarTip": "截圖快捷鍵提示顯示項（勾選 = 截圖時顯示）",
+	"settings.hotKeySettings.showInToolbar": "顯示在工具列",
 	"settings.addKeyConfig": "新增按鍵配置",
 	"settings.pleasePressTheKey": "請按按鍵",
 	"settings.keyConfig": '"{title}"按鍵配置',

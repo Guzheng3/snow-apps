@@ -129,29 +129,79 @@ export const ExtraTool: React.FC<{
 	);
 
 	const scanQrcodeButton = (
-		<Button
-			icon={<ScanOutlined />}
-			title={intl.formatMessage({ id: "draw.extraTool.scanQrcode" })}
-			type={getButtonTypeByState(activeTool === ExtraToolList.ScanQrcode)}
-			key="scanQrcode"
-			onClick={() => {
-				onToolClickAction(DrawState.ScanQrcode);
+		<div
+			className="draw-toolbar-btn-wrap"
+			style={{
+				display: "inline-flex",
+				flexDirection: "column",
+				alignItems: "center",
+				gap: 1,
+				lineHeight: 1,
 			}}
-			disabled={disable}
-		/>
+		>
+			<Button
+				icon={<ScanOutlined />}
+				title={intl.formatMessage({ id: "draw.extraTool.scanQrcode" })}
+				type={getButtonTypeByState(activeTool === ExtraToolList.ScanQrcode)}
+				key="scanQrcode"
+				onClick={() => {
+					onToolClickAction(DrawState.ScanQrcode);
+				}}
+				disabled={disable}
+			/>
+			<span
+				style={{
+					fontSize: 8,
+					lineHeight: 1,
+					whiteSpace: "nowrap",
+					overflow: "hidden",
+					textOverflow: "ellipsis",
+					maxWidth: 72,
+					color: token.colorTextSecondary,
+					pointerEvents: "none",
+				}}
+			>
+				扫码
+			</span>
+		</div>
 	);
 
 	const videoRecordButton = (
-		<Button
-			icon={<VideoRecordIcon />}
-			title={intl.formatMessage({ id: "draw.extraTool.videoRecord" })}
-			type={getButtonTypeByState(activeTool === ExtraToolList.VideoRecord)}
-			key="videoRecord"
-			onClick={() => {
-				onToolClickAction(DrawState.VideoRecord);
+		<div
+			className="draw-toolbar-btn-wrap"
+			style={{
+				display: "inline-flex",
+				flexDirection: "column",
+				alignItems: "center",
+				gap: 1,
+				lineHeight: 1,
 			}}
-			disabled={disable}
-		/>
+		>
+			<Button
+				icon={<VideoRecordIcon />}
+				title={intl.formatMessage({ id: "draw.extraTool.videoRecord" })}
+				type={getButtonTypeByState(activeTool === ExtraToolList.VideoRecord)}
+				key="videoRecord"
+				onClick={() => {
+					onToolClickAction(DrawState.VideoRecord);
+				}}
+				disabled={disable}
+			/>
+			<span
+				style={{
+					fontSize: 8,
+					lineHeight: 1,
+					whiteSpace: "nowrap",
+					overflow: "hidden",
+					textOverflow: "ellipsis",
+					maxWidth: 72,
+					color: token.colorTextSecondary,
+					pointerEvents: "none",
+				}}
+			>
+				录屏
+			</span>
+		</div>
 	);
 
 		const { isReadyStatus } = usePluginServiceContext();

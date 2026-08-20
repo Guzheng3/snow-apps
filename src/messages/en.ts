@@ -20,6 +20,7 @@ export const en = {
 		"Enabling Performance Mode will attempt to reduce rendering quality to improve performance (keep enabled during rapid software iteration)",
 	"settings.drawingHotKey": "Drawing Hotkeys",
 	"settings.hotKeySettings.statusBarTip": "Screenshot shortcut tip items (checked = show when capturing)",
+	"settings.hotKeySettings.showInToolbar": "Show in toolbar",
 	"settings.addKeyConfig": "Add Key Configuration",
 	"settings.pleasePressTheKey": "Please press a key",
 	"settings.keyConfig": 'Key Configuration for "{title}"',

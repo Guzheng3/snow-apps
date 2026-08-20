@@ -1,12 +1,29 @@
-import { Button } from "antd";
-import React, { useCallback, useState } from "react";
+import { Button, theme } from "antd";
+import React, { useCallback, useMemo, useState } from "react";
+import { useIntl } from "react-intl";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
+import { defaultDrawToolbarKeyEventComponentConfig } from "@/constants/drawToolbarKeyEvent";
+import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
-import { KeyEventWrap } from "@/pages/draw/components/drawToolbar/components/keyEventWrap";
+import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 import type { DrawToolbarKeyEventKey } from "@/types/components/drawToolbar";
 import type { HotkeysScope } from "@/types/core/appHotKeys";
 import type { DrawState } from "@/types/draw";
 import { getButtonTypeByState } from "../../extra";
+import { KeyEventWrap } from "@/pages/draw/components/drawToolbar/components/keyEventWrap";
+
+/**
+ * 工具栏图标下方文字的短名称映射（长名称在设置面板里仍显示完整翻译）
+ * 用户指定：锁定绘制工具→锁定、文本识别翻译→翻译、固定到屏幕→贴图、
+ * 滚动截图→长图、复制到剪贴板→复制
+ */
+const TOOLBAR_SHORT_NAMES: Partial<Record<DrawToolbarKeyEventKey, string>> = {
+	[DrawToolbarKeyEventKey.LockDrawTool]: "锁定",
+	[DrawToolbarKeyEventKey.OcrTranslateTool]: "翻译",
+	[DrawToolbarKeyEventKey.FixedTool]: "贴图",
+	[DrawToolbarKeyEventKey.ScrollScreenshotTool]: "长图",
+	[DrawToolbarKeyEventKey.CopyTool]: "复制",
+};
 
 const ToolButtonCore: React.FC<{
 	hidden?: boolean;
@@ -33,6 +50,8 @@ const ToolButtonCore: React.FC<{
 	hotkeyScope,
 	buttonProps,
 }) => {
+	const intl = useIntl();
+	const { token } = theme.useToken();
 	const [buttonType, setButtonType] = useState(getButtonTypeByState(false));
 	const updateButtonType = useCallback(
 		(drawState: DrawState) => {
@@ -49,6 +68,38 @@ const ToolButtonCore: React.FC<{
 
 	useStateSubscriber(DrawStatePublisher, updateButtonType);
 
+	const [keyEventValue, setKeyEventValue] = useState<
+		{ hotKey?: string; showInToolbar?: boolean } | undefined
+	>(undefined);
+	useAppSettingsLoad(
+		useCallback(
+			(settings: AppSettingsData) => {
+				if (!componentKey) {
+					return;
+				}
+				setKeyEventValue(
+					settings[AppSettingsGroup.DrawToolbarKeyEvent][componentKey],
+				);
+			},
+			[componentKey],
+		),
+		true,
+	);
+
+	// 图标下方文字：工具名 + 快捷键（可被设置面板"是否显示在工具栏"关闭）
+	const label = useMemo(() => {
+		if (!componentKey || keyEventValue?.showInToolbar === false) {
+			return undefined;
+		}
+		const name =
+			TOOLBAR_SHORT_NAMES[componentKey] ??
+			intl.formatMessage({
+				id: defaultDrawToolbarKeyEventComponentConfig[componentKey].messageId,
+			});
+		const hotKey = keyEventValue?.hotKey;
+		return hotKey ? `${name} ${hotKey}` : name;
+	}, [componentKey, intl, keyEventValue]);
+
 	const buttonDom = (
 		<Button
 			style={{
@@ -63,11 +114,7 @@ const ToolButtonCore: React.FC<{
 		/>
 	);
 
-	if (!componentKey) {
-		return buttonDom;
-	}
-
-	return (
+	const inner = componentKey ? (
 		<KeyEventWrap
 			onKeyUpEventPropName="onClick"
 			componentKey={componentKey}
@@ -77,7 +124,40 @@ const ToolButtonCore: React.FC<{
 		>
 			{buttonDom}
 		</KeyEventWrap>
+	) : (
+		buttonDom
+	);
+
+	return (
+		<div
+			className="draw-toolbar-btn-wrap"
+			style={{
+				display: hidden ? "none" : "inline-flex",
+				flexDirection: "column",
+				alignItems: "center",
+				gap: 1,
+				lineHeight: 1,
+			}}
+		>
+			{inner}
+			{label && (
+				<span
+					className="draw-toolbar-btn-label"
+					style={{
+						fontSize: 8,
+						lineHeight: 1,
+						whiteSpace: "nowrap",
+						overflow: "hidden",
+						textOverflow: "ellipsis",
+						maxWidth: 72,
+						color: token.colorTextSecondary,
+						pointerEvents: "none",
+					}}
+				>
+					{label}
+				</span>
+			)}
+		</div>
 	);
 };
-
 export const ToolButton = React.memo(ToolButtonCore);

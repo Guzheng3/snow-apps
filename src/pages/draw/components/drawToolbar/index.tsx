@@ -7,10 +7,9 @@ import {
 	LockOutlined,
 } from "@ant-design/icons";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Flex, Tag, theme, Tooltip } from "antd";
+import { Flex, theme } from "antd";
 import { debounce } from "es-toolkit";
 import React, {
-	useEffect,
 	useCallback,
 	useContext,
 	useImperativeHandle,
@@ -734,59 +733,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 		[],
 	);
 
-	// 工具栏整体提示：悬停任意图标时显示所有工具名（不含快捷键）
-	const [toolbarTipPlacement, setToolbarTipPlacement] = useState<
-		"top" | "bottom"
-	>("top");
-	useEffect(() => {
-		const el = drawToolbarRef.current;
-		if (el) {
-			const rect = el.getBoundingClientRect();
-			const vh = window.innerHeight;
-			setToolbarTipPlacement(rect.top < vh / 2 ? "bottom" : "top");
-		}
-	}, []);
-
-	const toolbarAllToolNames = useMemo(() => {
-		// 按工具栏实际渲染顺序排列，保证与图标一一对应
-		const toolMessageIds = [
-			"draw.moveTool",
-			"draw.selectTool",
-			"draw.lockDrawTool",
-			"draw.rectTool",
-			"draw.ellipseTool",
-			"draw.arrowTool",
-			"draw.penTool",
-			"draw.textTool",
-			"draw.serialNumberTool",
-			"draw.blurTool",
-			"draw.eraserTool",
-			"draw.watermarkTool",
-			"draw.highlightTool",
-			"draw.undoTool",
-			"draw.redoTool",
-			"draw.extraTool.scanQrcode",
-			"draw.extraTool.videoRecord",
-			"draw.fixedTool",
-			"draw.ocrDetectTool",
-			"draw.ocrTranslateTool",
-			"draw.scrollScreenshotTool",
-			"draw.fastSaveTool",
-			"draw.saveToCloudTool",
-			"draw.saveTool",
-			"draw.cancelTool",
-			"draw.copyTool",
-		];
-		return (
-			<Flex wrap gap={4} style={{ maxWidth: 380 }}>
-				{toolMessageIds.map((id) => (
-					<Tag key={id} style={{ marginInlineEnd: 0 }}>
-						{intl.formatMessage({ id })}
-					</Tag>
-				))}
-			</Flex>
-		);
-	}, [intl]);
 
 return (
 		<div
@@ -797,11 +743,6 @@ return (
 		>
 			<DrawToolbarContext.Provider value={drawToolbarContextValue}>
 				<div ref={drawToolbarOpacityWrapRef}>
-					<Tooltip
-						placement={toolbarTipPlacement}
-						title={toolbarAllToolNames}
-						overlayClassName="draw-toolbar-all-tips"
-					>
 					<div
 						onMouseEnter={handleMouseEnter}
 						onMouseLeave={handleMouseLeave}
@@ -1113,7 +1054,6 @@ return (
 							/>
 						</Flex>
 					</div>
-					</Tooltip>
 				</div>
 
 				<BlurTool />

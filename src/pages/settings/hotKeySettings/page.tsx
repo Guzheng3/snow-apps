@@ -1,6 +1,6 @@
 "use client";
 
-import { Checkbox, Col, Divider, Form, Row, Spin, theme } from "antd";
+import { Checkbox, Col, Divider, Flex, Form, Row, Spin, theme } from "antd";
 import { useCallback, useContext, useMemo, useState } from "react";
 import { FormattedMessage } from "react-intl";
 import { GroupTitle } from "@/components/groupTitle";
@@ -153,28 +153,49 @@ export const HotKeySettingsPage = () => {
 							label={<FormattedMessage id={componentConfig.messageId} />}
 							name={key}
 						>
-							<KeyButton
-								title={
-									<FormattedMessage key={key} id={componentConfig.messageId} />
-								}
-								keyValue={config.hotKey}
-								maxWidth={100}
-								onKeyChange={async (value) => {
-									updateAppSettings(
-										AppSettingsGroup.DrawToolbarKeyEvent,
-										{
-											[key]: {
-												...config,
-												hotKey: value,
+							<Flex align="center" gap={8}>
+								<KeyButton
+									title={
+										<FormattedMessage key={key} id={componentConfig.messageId} />
+									}
+									keyValue={config.hotKey}
+									maxWidth={100}
+									onKeyChange={async (value) => {
+										updateAppSettings(
+											AppSettingsGroup.DrawToolbarKeyEvent,
+											{
+												[key]: {
+													...config,
+													hotKey: value,
+												},
 											},
-										},
-										false,
-										true,
-										true,
-									);
-								}}
-								maxLength={2}
-							/>
+											false,
+											true,
+											true,
+										);
+									}}
+									maxLength={2}
+								/>
+								<Checkbox
+									checked={config.showInToolbar !== false}
+									onChange={(e) => {
+										updateAppSettings(
+											AppSettingsGroup.DrawToolbarKeyEvent,
+											{
+												[key]: {
+													...config,
+													showInToolbar: e.target.checked,
+												},
+											},
+											false,
+											true,
+											true,
+										);
+									}}
+								>
+									<FormattedMessage id="settings.hotKeySettings.showInToolbar" />
+								</Checkbox>
+							</Flex>
 						</Form.Item>
 					</Col>
 				);

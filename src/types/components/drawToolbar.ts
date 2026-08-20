@@ -1,6 +1,8 @@
 export type DrawToolbarKeyEventValue = {
 	hotKey: string;
 	unique?: boolean;
+	/** 是否在截图工具栏图标下方显示该工具的快捷键文字 */
+	showInToolbar?: boolean;
 };
 
 export type DrawToolbarKeyEventComponentValue = DrawToolbarKeyEventValue & {

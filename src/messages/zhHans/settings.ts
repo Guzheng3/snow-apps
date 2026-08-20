@@ -76,6 +76,7 @@ export const settings = {
 		"启用性能优先模式后，会尝试降低一定绘图质量提高性能（软件快速迭代中，请保持开启）",
 	"settings.drawingHotKey": "截图",
 	"settings.hotKeySettings.statusBarTip": "截图快捷键提示显示项（勾选 = 截图时显示）",
+	"settings.hotKeySettings.showInToolbar": "显示在工具栏",
 	"settings.addKeyConfig": "添加按键配置",
 	"settings.pleasePressTheKey": "请按下按键",
 	"settings.keyConfig": "“{title}”按键配置",
