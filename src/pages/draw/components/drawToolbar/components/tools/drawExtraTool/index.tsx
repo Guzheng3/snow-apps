@@ -10,13 +10,15 @@ import {
 	AppSettingsPublisher,
 } from "@/contexts/appSettingsActionContext";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
-import { ToolbarPopover } from "@/pages/draw/components/drawToolbar/components/toolbarPopover";
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 import { DrawState } from "@/types/draw";
 import { getButtonTypeByState } from "../../../extra";
 import { WatermarkTool } from "./components/watermarkTool";
 
-export const DrawExtraTool: React.FC<{
+/**
+ * 水印 / 高亮：两个独立按钮，图标下方显示文字描述（间距/字体与其他工具按钮一致）
+ */
+const DrawExtraToolCore: React.FC<{
 	customToolbarToolHiddenMap: Partial<Record<DrawState, boolean>> | undefined;
 	onToolClickAction: (tool: DrawState) => void;
 	disable: boolean;
@@ -58,86 +60,101 @@ export const DrawExtraTool: React.FC<{
 		[updateAppSettings],
 	);
 
+	// 与 ToolButton 一致的「图标 + 下方文字」布局（gap 7、fontSize 10）
+	const renderLabeledButton = useCallback(
+		(
+			key: string,
+			icon: React.ReactNode,
+			label: string,
+			targetState: DrawState,
+			onClick: () => void,
+		) => {
+			return (
+				<div
+					className="draw-toolbar-btn-wrap"
+					style={{
+						display: "inline-flex",
+						flexDirection: "column",
+						alignItems: "center",
+						gap: 7,
+						lineHeight: 1,
+					}}
+				>
+					<Button
+						icon={icon}
+						title={label}
+						type={getButtonTypeByState(drawState === targetState)}
+						key={key}
+						onClick={onClick}
+						disabled={disable}
+					/>
+					<span
+						style={{
+							fontSize: 10,
+							lineHeight: 1.1,
+							whiteSpace: "nowrap",
+							overflow: "hidden",
+							textOverflow: "ellipsis",
+							maxWidth: 72,
+							color: token.colorTextSecondary,
+							pointerEvents: "none",
+						}}
+					>
+						{label}
+					</span>
+				</div>
+			);
+		},
+		[disable, drawState, token.colorTextSecondary],
+	);
+
 	const watermarkButton = useMemo(() => {
-		return (
-			<Button
-				icon={<WatermarkIcon />}
-				title={intl.formatMessage({ id: "draw.watermarkTool" })}
-				type={getButtonTypeByState(drawState === DrawState.Watermark)}
-				key="watermark"
-				onClick={() => {
-					onToolClickAction(DrawState.Watermark);
-					updateLastDrawExtraTool(DrawState.Watermark);
-				}}
-				disabled={disable}
-			/>
+		return renderLabeledButton(
+			"watermark",
+			<WatermarkIcon />,
+			intl.formatMessage({ id: "draw.watermarkTool" }),
+			DrawState.Watermark,
+			() => {
+				onToolClickAction(DrawState.Watermark);
+				updateLastDrawExtraTool(DrawState.Watermark);
+			},
 		);
-	}, [disable, drawState, intl, onToolClickAction, updateLastDrawExtraTool]);
+	}, [intl, onToolClickAction, renderLabeledButton, updateLastDrawExtraTool]);
 
 	const highlightButton = useMemo(() => {
-		return (
-			<Button
-				icon={<HighlightIcon />}
-				title={intl.formatMessage({ id: "draw.highlightTool" })}
-				type={getButtonTypeByState(drawState === DrawState.Highlight)}
-				key="highlight"
-				onClick={() => {
-					onToolClickAction(DrawState.Highlight);
-					updateLastDrawExtraTool(DrawState.Highlight);
-				}}
-				disabled={disable}
-			/>
+		return renderLabeledButton(
+			"highlight",
+			<HighlightIcon />,
+			intl.formatMessage({ id: "draw.highlightTool" }),
+			DrawState.Highlight,
+			() => {
+				onToolClickAction(DrawState.Highlight);
+				updateLastDrawExtraTool(DrawState.Highlight);
+			},
 		);
-	}, [disable, drawState, intl, onToolClickAction, updateLastDrawExtraTool]);
-
-	let mainToolbarButton = customToolbarToolHiddenMap?.[DrawState.Watermark]
-		? highlightButton
-		: watermarkButton;
-	if (
-		lastDrawExtraTool === DrawState.Watermark &&
-		!customToolbarToolHiddenMap?.[DrawState.Watermark]
-	) {
-		mainToolbarButton = watermarkButton;
-	} else if (
-		lastDrawExtraTool === DrawState.Highlight &&
-		!customToolbarToolHiddenMap?.[DrawState.Highlight]
-	) {
-		mainToolbarButton = highlightButton;
-	}
+	}, [intl, onToolClickAction, renderLabeledButton, updateLastDrawExtraTool]);
 
 	if (
 		customToolbarToolHiddenMap?.[DrawState.Watermark] &&
 		customToolbarToolHiddenMap?.[DrawState.Highlight]
 	) {
-		return null;
+		return (
+			<>
+				<WatermarkTool />
+			</>
+		);
 	}
 
 	return (
 		<>
-			<ToolbarPopover
-				trigger={
-					!customToolbarToolHiddenMap?.[DrawState.Watermark] &&
-					!customToolbarToolHiddenMap?.[DrawState.Highlight]
-						? "hover"
-						: []
-				}
-				content={
-					<Flex
-						align="center"
-						gap={token.paddingXS}
-						className="popover-toolbar"
-					>
-						{!customToolbarToolHiddenMap?.[DrawState.Watermark] &&
-							watermarkButton}
-						{!customToolbarToolHiddenMap?.[DrawState.Highlight] &&
-							highlightButton}
-					</Flex>
-				}
-			>
-				<div>{mainToolbarButton}</div>
-			</ToolbarPopover>
+			<Flex align="center" gap={token.paddingXS} className="popover-toolbar">
+				{!customToolbarToolHiddenMap?.[DrawState.Watermark] && watermarkButton}
+				{!customToolbarToolHiddenMap?.[DrawState.Highlight] && highlightButton}
+			</Flex>
 
 			<WatermarkTool />
 		</>
 	);
 };
+
+export const DrawExtraTool = React.memo(DrawExtraToolCore);
