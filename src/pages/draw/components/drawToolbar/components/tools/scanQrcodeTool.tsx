@@ -191,20 +191,20 @@ const ScanQrcodeToolCore: React.FC = () => {
 				>
 					{qrCodeContent}
 				</Typography.Paragraph>
+			)}
 
-					{qrCode && (qrCode.startsWith("http") || qrCode.startsWith("https")) && (
-						<Button
-							type="primary"
-							size="small"
-							onClick={() => {
-								openUrl(qrCode);
-								finishCapture();
-							}}
-							style={{ marginTop: 8 }}
-						>
-							用默认浏览器打开
-						</Button>
-					)}
+			{qrCode && (qrCode.startsWith("http") || qrCode.startsWith("https")) && (
+				<Button
+					type="primary"
+					size="small"
+					onClick={() => {
+						openUrl(qrCode);
+						finishCapture();
+					}}
+					style={{ marginTop: 8 }}
+				>
+					用默认浏览器打开
+				</Button>
 			)}
 		</div>
 	);
