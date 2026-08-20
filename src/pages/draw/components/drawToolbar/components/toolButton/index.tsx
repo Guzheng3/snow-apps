@@ -6,7 +6,7 @@ import { defaultDrawToolbarKeyEventComponentConfig } from "@/constants/drawToolb
 import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
-import type { DrawToolbarKeyEventKey } from "@/types/components/drawToolbar";
+import { DrawToolbarKeyEventKey } from "@/types/components/drawToolbar";
 import type { HotkeysScope } from "@/types/core/appHotKeys";
 import type { DrawState } from "@/types/draw";
 import { getButtonTypeByState } from "../../extra";
