@@ -135,7 +135,7 @@ export const ExtraTool: React.FC<{
 				display: "inline-flex",
 				flexDirection: "column",
 				alignItems: "center",
-				gap: 1,
+				gap: 7,
 				lineHeight: 1,
 			}}
 		>
@@ -173,7 +173,7 @@ export const ExtraTool: React.FC<{
 				display: "inline-flex",
 				flexDirection: "column",
 				alignItems: "center",
-				gap: 1,
+				gap: 7,
 				lineHeight: 1,
 			}}
 		>
