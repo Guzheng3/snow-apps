@@ -203,14 +203,27 @@ const StatusBar: React.FC = () => {
 			colorPickerMoveDown: { hotKey: colorPickerMoveDownHotKey },
 			colorPickerMoveLeft: { hotKey: colorPickerMoveLeftHotKey },
 			colorPickerMoveRight: { hotKey: colorPickerMoveRightHotKey },
-			maintainAspectRatioPicker: { hotKey: maintainAspectRatioPickerHotKey },
+			maintainAspectRatioPicker: {
+				hotKey: maintainAspectRatioPickerHotKey,
+				showInToolbar: maintainAspectRatioPickerShowInToolbar,
+			},
 			rotateWithDiscreteAnglePicker: {
 				hotKey: rotateWithDiscreteAnglePickerHotKey,
+				showInToolbar: rotateWithDiscreteAnglePickerShowInToolbar,
 			},
-			resizeFromCenterPicker: { hotKey: resizeFromCenterPickerHotKey },
-			autoAlignPicker: { hotKey: autoAlignPickerHotKey },
+			resizeFromCenterPicker: {
+				hotKey: resizeFromCenterPickerHotKey,
+				showInToolbar: resizeFromCenterPickerShowInToolbar,
+			},
+			autoAlignPicker: {
+				hotKey: autoAlignPickerHotKey,
+				showInToolbar: autoAlignPickerShowInToolbar,
+			},
 			switchColorFormat: { hotKey: switchColorFormatHotKey },
-			serialNumberDisableArrow: { hotKey: serialNumberDisableArrowHotKey },
+			serialNumberDisableArrow: {
+				hotKey: serialNumberDisableArrowHotKey,
+				showInToolbar: serialNumberDisableArrowShowInToolbar,
+			},
 			selectPrevRectTool: { hotKey: selectPrevRectToolHotKey },
 			lockWidthHeightPicker: { hotKey: lockWidthHeightPickerHotKey },
 			dragSelectRect: { hotKey: dragSelectRectHotKey },
