@@ -15,10 +15,8 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import {
 	autoScrollThrough,
-	clickThrough,
 	scrollThrough,
 } from "@/commands/core";
-import { listenMouseStart, listenMouseStop } from "@/commands/listenKey";
 import {
 	SCROLL_SCREENSHOT_CAPTURE_RESULT_EXTRA_DATA_SIZE,
 	ScrollDirection,
@@ -233,32 +231,51 @@ export const ScrollScreenshot: React.FC<{
 
 	const lastCaptureMissHideRef = useRef<MessageType | undefined>(undefined);
 
-	const pendingEnableAutoScrollThroughClickRef = useRef<boolean>(false);
-	const setPendingEnableAutoScrollThroughClickRef = useRef<
-		NodeJS.Timeout | undefined
-	>(undefined);
 	const autoScrollThroughIntervalRef = useRef<NodeJS.Timeout | undefined>(
 		undefined,
 	);
 
-	const stopAutoScrollThrough = useCallback((clearDelay: number = 300) => {
-		if (autoScrollThroughIntervalRef.current) {
-			clearInterval(autoScrollThroughIntervalRef.current);
-			if (clearDelay > 0) {
-				autoScrollThroughIntervalRef.current = setTimeout(() => {
-					autoScrollThroughIntervalRef.current = undefined;
-					pendingEnableAutoScrollThroughClickRef.current = false;
-				}, clearDelay);
-			} else {
-				autoScrollThroughIntervalRef.current = undefined;
-				pendingEnableAutoScrollThroughClickRef.current = false;
+	const [autoScrolling, setAutoScrolling, autoScrollingRef] =
+		useStateRef(false);
+
+	const startAutoScrollThrough = useCallback(() => {
+		if (autoScrollingRef.current) {
+			return;
+		}
+
+		setAutoScrolling(true);
+		autoScrollThroughIntervalRef.current = setInterval(() => {
+			// 上一轮截图还没处理完则跳过，避免滚动过快导致采样率不足
+			if (pendingCaptureImageListRef.current) {
+				return;
 			}
 
-			listenMouseStop();
-			return true;
+			getCurrentWindow().setIgnoreCursorEvents(true);
+			autoScrollThrough(
+				scrollDirectionRef.current === ScrollDirection.Horizontal
+					? "horizontal"
+					: "vertical",
+				1,
+			).catch(() => {});
+			enableCursorEventsDebounce();
+			captureImageCore(ScrollImageList.Bottom);
+		}, 120);
+	}, [
+		autoScrollingRef,
+		setAutoScrolling,
+		captureImageCore,
+		enableCursorEventsDebounce,
+		scrollDirectionRef,
+	]);
+
+	const stopAutoScrollThrough = useCallback(() => {
+		if (autoScrollThroughIntervalRef.current) {
+			clearInterval(autoScrollThroughIntervalRef.current);
+			autoScrollThroughIntervalRef.current = undefined;
 		}
-		return false;
-	}, []);
+		setAutoScrolling(false);
+		return true;
+	}, [setAutoScrolling]);
 
 	const showCaptureMissMessage = useMemo(() => {
 		return throttle(
@@ -269,7 +286,7 @@ export const ScrollScreenshot: React.FC<{
 					} catch {}
 				}
 
-				if (autoScrollThroughIntervalRef.current) {
+					if (autoScrollingRef.current) {
 					return;
 				}
 
@@ -505,7 +522,7 @@ export const ScrollScreenshot: React.FC<{
 
 	const onWheel = useCallback<WheelEventHandler<HTMLDivElement>>(
 		(event) => {
-			if (autoScrollThroughIntervalRef.current) {
+				if (autoScrollingRef.current) {
 				return;
 			}
 
@@ -558,82 +575,29 @@ export const ScrollScreenshot: React.FC<{
 		],
 	);
 
-	const tryEnableAutoScrollThroughCore = useCallback(() => {
-		if (pendingEnableAutoScrollThroughClickRef.current) {
-			listenMouseStop();
-			pendingEnableAutoScrollThroughClickRef.current = false;
-		} else {
-			listenMouseStart();
-			if (setPendingEnableAutoScrollThroughClickRef.current) {
-				clearTimeout(setPendingEnableAutoScrollThroughClickRef.current);
-			}
-			pendingEnableAutoScrollThroughClickRef.current = true;
-			setPendingEnableAutoScrollThroughClickRef.current = setTimeout(
-				async () => {
-					if (pendingEnableAutoScrollThroughClickRef.current) {
-						if (autoScrollThroughIntervalRef.current) {
-							clearInterval(autoScrollThroughIntervalRef.current);
-						}
-						await getCurrentWindow().setIgnoreCursorEvents(true);
-						pendingEnableAutoScrollThroughClickRef.current = false;
-						autoScrollThroughIntervalRef.current = setInterval(async () => {
-							await getCurrentWindow().setIgnoreCursorEvents(true);
-							await autoScrollThrough(
-								scrollDirectionRef.current === ScrollDirection.Horizontal
-									? "horizontal"
-									: "vertical",
-								getPlatform() === "windows" ? 1 : 1,
-							);
-							enableCursorEventsDebounce();
-							captureImageCore(ScrollImageList.Bottom);
-						}, 150);
-					}
-					setPendingEnableAutoScrollThroughClickRef.current = undefined;
-				},
-				300,
-			);
-		}
-	}, [captureImageCore, enableCursorEventsDebounce, scrollDirectionRef]);
 
 	const { addListener, removeListener } = useContext(EventListenerContext);
 	useEffect(() => {
 		const listenerId = addListener(
 			LISTEN_KEY_SERVICE_MOUSE_DOWN_EMIT_KEY,
 			() => {
-				if (pendingEnableAutoScrollThroughClickRef.current) {
-					tryEnableAutoScrollThroughCore();
-				} else {
-					stopAutoScrollThrough(300);
-				}
+				stopAutoScrollThrough();
 			},
 		);
 		return () => {
 			removeListener(listenerId);
 		};
-	}, [
-		addListener,
-		removeListener,
-		stopAutoScrollThrough,
-		tryEnableAutoScrollThroughCore,
-	]);
+	}, [addListener, removeListener, stopAutoScrollThrough]);
 
-	const enableIgnoreCursorEventsRef = useRef(false);
 	const onClick = useCallback(async () => {
 		setShowTip(false);
-		if (stopAutoScrollThrough()) {
+		if (autoScrollingRef.current) {
+			stopAutoScrollThrough();
 			return;
 		}
 
-		if (enableIgnoreCursorEventsRef.current) {
-			return;
-		}
-
-		tryEnableAutoScrollThroughCore();
-
-		enableIgnoreCursorEventsRef.current = true;
-		await clickThrough();
-		enableIgnoreCursorEventsRef.current = false;
-	}, [stopAutoScrollThrough, tryEnableAutoScrollThroughCore, setShowTip]);
+		startAutoScrollThrough();
+	}, [setShowTip, autoScrollingRef, stopAutoScrollThrough, startAutoScrollThrough]);
 
 	const startCapture = useCallback(async () => {
 		enableScrollThroughRef.current = false;
@@ -660,12 +624,10 @@ export const ScrollScreenshot: React.FC<{
 	const clearContext = useCallback(() => {
 		if (autoScrollThroughIntervalRef.current) {
 			clearInterval(autoScrollThroughIntervalRef.current);
+			autoScrollThroughIntervalRef.current = undefined;
 		}
-		if (setPendingEnableAutoScrollThroughClickRef.current) {
-			clearTimeout(setPendingEnableAutoScrollThroughClickRef.current);
-		}
-		listenMouseStop();
-	}, []);
+		setAutoScrolling(false);
+	}, [setAutoScrolling]);
 
 	useStateSubscriber(
 		DrawStatePublisher,
@@ -775,7 +737,23 @@ export const ScrollScreenshot: React.FC<{
 				<div className="touch-area-tip-container" ref={touchAreaTipRef}>
 					<div className="touch-area-tip">
 						<FormattedMessage id="draw.scrollScreenshot.tip" />
+
 					</div>
+
+					{autoScrolling && (
+						<div
+							className="auto-scroll-overlay"
+							onClick={(event) => {
+								event.stopPropagation();
+								event.preventDefault();
+								stopAutoScrollThrough();
+							}}
+						>
+							<div className="auto-scroll-overlay-text">
+								<FormattedMessage id="draw.scrollScreenshot.autoScrollingStop" />
+							</div>
+						</div>
+					)}
 				</div>
 			</div>
 
@@ -1099,6 +1077,34 @@ export const ScrollScreenshot: React.FC<{
                 .touch-area-tip-container:hover .touch-area-tip {
                     box-shadow: 0 0 6px 0px ${token.colorPrimaryHover};
                 }
+
+
+					.auto-scroll-overlay {
+						position: absolute;
+						left: 0px;
+						top: 0px;
+						width: 100%;
+						height: 100%;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						background: rgba(22, 119, 255, 0.12);
+						border: 2px dashed ${token.colorPrimary};
+						border-radius: ${token.borderRadiusLG}px;
+						box-sizing: border-box;
+						pointer-events: auto;
+						cursor: pointer;
+						z-index: 10;
+					}
+
+					.auto-scroll-overlay-text {
+						color: ${token.colorWhite};
+						background: ${token.colorPrimary};
+						padding: ${token.paddingXS}px ${token.paddingMD}px;
+						border-radius: ${token.borderRadiusSM}px;
+						font-weight: 500;
+						box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+					}
             `}</style>
 		</>
 	);
