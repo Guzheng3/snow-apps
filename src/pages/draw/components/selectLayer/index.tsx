@@ -479,7 +479,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
 			// 默认只选择大一点的元素；按住 Ctrl（macOS 为 Command）才允许选择很小的元素
 			if (result && result.length > 0) {
-				const ctrlKey = getPlatformValue("Control", "Meta");
+				const ctrlKey = getPlatform() === "macos" ? "Meta" : "Control";
 				if (!isHotkeyPressed(ctrlKey)) {
 					const MIN_ELEMENT_AREA = 1024; // 32x32
 					const filtered = result.filter((rect) => {
