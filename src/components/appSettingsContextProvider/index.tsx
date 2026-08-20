@@ -492,6 +492,10 @@ const AppSettingsContextProviderCore: React.FC<{
 							? newSettings.toolbarHiddenToolList
 							: (prevSettings?.toolbarHiddenToolList ??
 								defaultAppSettingsData[group].toolbarHiddenToolList),
+					hotKeyTipHiddenKeys: Array.isArray(newSettings?.hotKeyTipHiddenKeys)
+						? newSettings.hotKeyTipHiddenKeys
+						: (prevSettings?.hotKeyTipHiddenKeys ??
+							defaultAppSettingsData[group].hotKeyTipHiddenKeys),
 				};
 			} else if (group === AppSettingsGroup.FunctionDraw) {
 				newSettings = newSettings as AppSettingsData[typeof group];
