@@ -11,11 +11,14 @@ import ProForm, {
 } from "@ant-design/pro-form";
 import {
 	Alert,
+	Button,
 	Col,
 	ColorPicker,
 	Divider,
 	Flex,
 	Form,
+	Input,
+	Modal,
 	Row,
 	Select,
 	type SelectProps,
@@ -108,6 +111,9 @@ export const FunctionSettingsPage = () => {
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionVideoRecord]>();
 	const [functionOcrForm] =
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionOcr]>();
+	const [paddlePasteOpen, setPaddlePasteOpen] = useState(false);
+	const [paddlePasteText, setPaddlePasteText] = useState("");
+	const [paddleParseTip, setPaddleParseTip] = useState<React.ReactNode>(null);
 	const [functionGlobalShortcutForm] =
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionGlobalShortcut]>();
 
@@ -1390,6 +1396,22 @@ export const FunctionSettingsPage = () => {
 						<Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
 							开启后可在「文本识别」时调用 PaddleOCR 云端 API，识别效果更佳。可设置引擎优先级。
 						</Typography.Paragraph>
+						<Flex align="center" gap={8} style={{ marginBottom: 12 }}>
+							<Button
+								onClick={() => {
+									setPaddlePasteText("");
+									setPaddleParseTip(null);
+									setPaddlePasteOpen(true);
+								}}
+							>
+								粘贴配置自动识别
+							</Button>
+							{paddleParseTip && (
+								<Typography.Text type="success" style={{ fontSize: 12 }}>
+									{paddleParseTip}
+								</Typography.Text>
+							)}
+						</Flex>
 						<Row gutter={token.marginLG}>
 							<Col span={12}>
 								<ProFormSwitch
@@ -1429,6 +1451,60 @@ export const FunctionSettingsPage = () => {
 								/>
 							</Col>
 						</Row>
+
+						<Modal
+							title="粘贴 PaddleOCR 配置自动识别"
+							open={paddlePasteOpen}
+							onOk={() => {
+								const text = paddlePasteText;
+								const url = text.match(
+									/(?:JOB_URL|API_URL|URL)\s*[:=]\s*["']?([^"'\s]+)["']?/i,
+								)?.[1];
+								const token = text.match(
+									/(?:TOKEN|API_KEY|KEY)\s*[:=]\s*["']?([^"'\s]+)["']?/i,
+								)?.[1];
+								const model = text.match(
+									/MODEL\s*[:=]\s*["']?([^"'\s]+)["']?/i,
+								)?.[1];
+								const parsed: Record<string, string> = {};
+								if (url) parsed.paddleOcrApiUrl = url;
+								if (token) parsed.paddleOcrToken = token;
+								if (model) parsed.paddleOcrModel = model;
+								if (Object.keys(parsed).length === 0) {
+									setPaddleParseTip(
+										"未识别到有效配置，请粘贴 JOB_URL / TOKEN / MODEL 三行",
+									);
+									return;
+								}
+								functionOcrForm.setFieldsValue(parsed);
+								updateAppSettings(
+									AppSettingsGroup.FunctionOcr,
+									parsed,
+									false,
+									true,
+									true,
+									true,
+									false,
+								);
+								const tipParts: string[] = [];
+								if (url) tipParts.push("API地址 ✓");
+								if (token) tipParts.push("Token ✓");
+								if (model) tipParts.push("模型 ✓");
+								setPaddleParseTip("已自动识别并填入：" + tipParts.join(" "));
+								setPaddlePasteOpen(false);
+							}}
+							onCancel={() => setPaddlePasteOpen(false)}
+						>
+							<Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
+								粘贴以下格式的内容，将自动识别并填入上方配置：
+							</Typography.Paragraph>
+							<Input.TextArea
+								value={paddlePasteText}
+								onChange={(e) => setPaddlePasteText(e.target.value)}
+								rows={6}
+								placeholder={'JOB_URL = "https://paddleocr.aistudio-app.com/api/v2/ocr/jobs"\nTOKEN = "xxx"\nMODEL = "PaddleOCR-VL-1.6"'}
+							/>
+						</Modal>
 					</ProForm>
 				</Spin>
 				</>
