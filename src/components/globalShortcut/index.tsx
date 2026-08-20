@@ -337,33 +337,44 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
 						icon: buttonIcon,
 						onClick,
 						onKeyChange: async (value: string, prevValue: string) => {
-							if (prevValue) {
-								try {
-									if (await isRegistered(prevValue)) {
-										await unregister(prevValue);
-									}
-								} catch (error) {
-									appError(
-										"[GlobalShortcut] unregister prevValue failed",
-										error,
-									);
-								}
-							}
+						const prevValues = (prevValue || "")
+							.split(",")
+							.map((item) => item.trim())
+							.filter(Boolean);
+						const values = (value || "")
+							.split(",")
+							.map((item) => item.trim())
+							.filter(Boolean);
 
-							if (!value) {
-								return false;
-							}
-
+						for (const pv of prevValues) {
 							try {
-								if (await isRegistered(value)) {
-									await unregister(value);
+								if (await isRegistered(pv)) {
+									await unregister(pv);
+								}
+							} catch (error) {
+								appError(
+									"[GlobalShortcut] unregister prevValue failed",
+									error,
+								);
+							}
+						}
+
+						if (!values.length) {
+							return false;
+						}
+
+						let allOk = true;
+						for (const v of values) {
+							try {
+								if (await isRegistered(v)) {
+									await unregister(v);
 								}
 							} catch (error) {
 								appError("[GlobalShortcut] unregister value failed", error);
 							}
 
 							try {
-								await register(value, async (event) => {
+								await register(v, async (event) => {
 									if (event.state !== "Released") {
 										return;
 									}
@@ -387,14 +398,14 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
 								if (prevValue !== value) {
 									Modal.warning({
 										title: "快捷键冲突",
-										content: `快捷键「${value}」已被其他软件占用，请更换为其他快捷键。`,
+										content: `快捷键「${v}」已被其他软件占用，请更换为其他快捷键。`,
 									});
 								}
-								return false;
+								allOk = false;
 							}
-							return true;
-						},
-					};
+						}
+						return allOk;
+					},					};
 
 					return configs;
 				},
