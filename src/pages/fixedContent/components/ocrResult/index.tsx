@@ -529,54 +529,85 @@ export const OcrResult: React.FC<{
 			scaleFactor: number,
 			detectAngle: boolean,
 		): Promise<OcrDetectResult | undefined> => {
-			// PaddleOCR 云端引擎优先（开启且优先级为云端时）
 			const appSettings = getAppSettings();
-			if (shouldUsePaddleOcr(appSettings)) {
-				const paddleSettings = getPaddleOcrSettings(appSettings);
-				if (paddleSettings) {
-					try {
-						const paddleResult = await paddleOcrDetect(
-							canvas,
-							paddleSettings,
-						);
+			const ocrSettings = appSettings[AppSettingsGroup.FunctionOcr];
+			const paddleEnabled =
+				ocrSettings?.enablePaddleOcr === true &&
+				!!ocrSettings?.paddleOcrApiUrl &&
+				!!ocrSettings?.paddleOcrToken;
+			const paddleFirst = paddleEnabled && ocrSettings?.ocrPriority === "paddle";
+
+			const runLocalOcr = async (): Promise<OcrDetectResult | undefined> => {
+				const ocrResultWithSharedBuffer = await ocrDetectWithSharedBufferAction(
+					canvas,
+					scaleFactor,
+					detectAngle,
+				);
+
+				if (ocrResultWithSharedBuffer) {
+					return ocrResultWithSharedBuffer;
+				}
+
+				const imageBlob = await new Promise<Blob | null>((resolve) => {
+					canvas.toBlob(resolve, "image/png", 1);
+				});
+
+				if (!imageBlob) {
+					return undefined;
+				}
+
+				const ocrResult = await ocrDetect(
+					await imageBlob.arrayBuffer(),
+					scaleFactor,
+					detectAngle,
+				);
+				return ocrResult;
+			};
+
+			// 云端优先：先试 PaddleOCR，失败再回退本地
+			if (paddleFirst) {
+				try {
+					const paddleSettings = getPaddleOcrSettings(appSettings);
+					if (paddleSettings) {
+						const paddleResult = await paddleOcrDetect(canvas, paddleSettings);
 						if (paddleResult) {
 							return paddleResult;
 						}
-					} catch (error) {
-						appError(
-							"[ocrDetectByCanvas] PaddleOCR failed, fallback to local",
-							error,
-						);
 					}
+				} catch (error) {
+					appError("[ocrDetectByCanvas] PaddleOCR failed, fallback to local", error);
+					message.warning("云端 OCR 失败，已回退本地识别");
 				}
 			}
 
-			const ocrResultWithSharedBuffer = await ocrDetectWithSharedBufferAction(
-				canvas,
-				scaleFactor,
-				detectAngle,
-			);
-
-			if (ocrResultWithSharedBuffer) {
-				return ocrResultWithSharedBuffer;
+			// 本地识别
+			try {
+				const localResult = await runLocalOcr();
+				if (localResult) {
+					return localResult;
+				}
+			} catch (error) {
+				appError("[ocrDetectByCanvas] local OCR failed", error);
+				// 本地失败且配置了云端（但非云端优先）→ 回退云端
+				if (paddleEnabled && !paddleFirst) {
+					try {
+						const paddleSettings = getPaddleOcrSettings(appSettings);
+						if (paddleSettings) {
+							const paddleResult = await paddleOcrDetect(canvas, paddleSettings);
+							if (paddleResult) {
+								return paddleResult;
+							}
+						}
+					} catch (paddleError) {
+						appError("[ocrDetectByCanvas] PaddleOCR fallback failed", paddleError);
+					}
+				}
+				throw error;
 			}
 
-			const imageBlob = await new Promise<Blob | null>((resolve) => {
-				canvas.toBlob(resolve, "image/png", 1);
-			});
-
-			if (!imageBlob) {
-				return undefined;
-			}
-
-			const ocrResult = await ocrDetect(
-				await imageBlob.arrayBuffer(),
-				scaleFactor,
-				detectAngle,
-			);
-			return ocrResult;
+			return undefined;
 		},
-		[getAppSettings, ocrDetectWithSharedBufferAction],
+		[getAppSettings, ocrDetectWithSharedBufferAction, message],
 	);
 
 	/** 请求 ID，避免 OCR 检测中切换工具后仍然触发 OCR 结果 */
