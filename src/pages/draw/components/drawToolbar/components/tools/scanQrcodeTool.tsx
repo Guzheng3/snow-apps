@@ -1,5 +1,5 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Spin, Typography, theme } from "antd";
+import { Button, Spin, Typography, theme } from "antd";
 import {
 	useCallback,
 	useContext,
@@ -191,6 +191,20 @@ const ScanQrcodeToolCore: React.FC = () => {
 				>
 					{qrCodeContent}
 				</Typography.Paragraph>
+
+					{qrCode && (qrCode.startsWith("http") || qrCode.startsWith("https")) && (
+						<Button
+							type="primary"
+							size="small"
+							onClick={() => {
+								openUrl(qrCode);
+								finishCapture();
+							}}
+							style={{ marginTop: 8 }}
+						>
+							用默认浏览器打开
+						</Button>
+					)}
 			)}
 		</div>
 	);
