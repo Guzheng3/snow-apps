@@ -114,13 +114,15 @@ impl TranslateService {
         let attention_mask_tensor = Tensor::from_array((enc_shape, attention_mask))
             .map_err(|e| format!("[TranslateService] attention_mask tensor error: {e}"))?;
 
-        // encoder 前向
+        // encoder 前向（DynValue 不能 clone，用 try_extract_tensor 提取数据）
         let encoder_outputs = encoder
             .run(ort::inputs![input_ids_tensor, attention_mask_tensor])
             .map_err(|e| format!("[TranslateService] encoder run error: {e}"))?;
-        let encoder_hidden = encoder_outputs
-            [0]
-            .clone();
+        let (enc_shape_ref, enc_data) = encoder_outputs[0]
+            .try_extract_tensor::<f32>()
+            .map_err(|e| format!("[TranslateService] encoder hidden extract error: {e}"))?;
+        let encoder_hidden_data: Vec<f32> = enc_data.to_vec();
+        let encoder_hidden_shape: Vec<i64> = enc_shape_ref.iter().map(|&d| d).collect();
 
         // decoder 自回归（greedy）
         let bos_id = 0i64;
@@ -132,20 +134,22 @@ impl TranslateService {
             let dec_shape = vec![1i64, generated.len() as i64];
             let decoder_input_ids = Tensor::from_array((dec_shape, generated.clone()))
                 .map_err(|e| format!("[TranslateService] decoder input tensor error: {e}"))?;
+            let encoder_hidden_tensor =
+                Tensor::from_array((encoder_hidden_shape.clone(), encoder_hidden_data.clone()))
+                    .map_err(|e| {
+                        format!("[TranslateService] encoder hidden tensor error: {e}")
+                    })?;
 
             let decoder_outputs = decoder
-                .run(ort::inputs![decoder_input_ids, encoder_hidden.clone()])
+                .run(ort::inputs![decoder_input_ids, encoder_hidden_tensor])
                 .map_err(|e| format!("[TranslateService] decoder run error: {e}"))?;
-            let logits = decoder_outputs
-                [0]
-                .clone();
-
-            // logits shape: [1, seq_len, vocab]
-            let (shape, data) = logits
+            let (logits_shape, logits_data) = decoder_outputs[0]
                 .try_extract_tensor::<f32>()
                 .map_err(|e| format!("[TranslateService] logits extract error: {e}"))?;
+
+            // logits shape: [1, seq_len, vocab]
             let seq_len = generated.len();
-            let total = shape.num_elements();
+            let total = logits_shape.num_elements();
             if seq_len == 0 || total % seq_len != 0 {
                 return Err(format!(
                     "[TranslateService] unexpected logits shape: num_elements={total}, seq_len={seq_len}"
@@ -153,13 +157,13 @@ impl TranslateService {
             }
             let vocab = total / seq_len;
             let offset = (seq_len - 1) * vocab;
-            if offset + vocab > data.len() {
+            if offset + vocab > logits_data.len() {
                 return Err(format!(
                     "[TranslateService] logits data too short: offset={offset}, vocab={vocab}, len={}",
-                    data.len()
+                    logits_data.len()
                 ));
             }
-            let last_row = &data[offset..offset + vocab];
+            let last_row = &logits_data[offset..offset + vocab];
 
             // argmax
             let mut best_id = 0usize;
@@ -182,7 +186,10 @@ impl TranslateService {
 
         // 解码（跳过 bos）
         let decoded = tokenizer_guard
-            .decode(&generated[1..].iter().map(|&x| x as u32).collect::<Vec<u32>>(), true)
+            .decode(
+                &generated[1..].iter().map(|&x| x as u32).collect::<Vec<u32>>(),
+                true,
+            )
             .map_err(|e| format!("[TranslateService] decode error: {e}"))?;
 
         Ok(decoded)
