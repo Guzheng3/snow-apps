@@ -229,8 +229,8 @@ export const RadioSelection = (
 
 	if (props.type === "button") {
 		return (
-			<Space className="picker-radio-space">
-				<Radio.Group className="picker-radio-group" value={props.value}>
+			<Space>
+				<Radio.Group value={props.value}>
 					{props.options.map((option) => (
 						<Radio.Button
 							key={option.text}
@@ -256,9 +256,8 @@ export const RadioSelection = (
 		);
 	}
 
-		return (
-			<Radio.Group className="picker-radio-group" value={props.value}>
-
+	return (
+		<Radio.Group value={props.value}>
 			{props.options.map((option) => (
 				<Radio.Button
 					name={props.group}
@@ -405,16 +404,16 @@ export const MaskShapeTypeRadioSelection = (
 		return undefined;
 	}
 
-		return (
-			<Space className="picker-radio-space">
-				<Radio.Group className="picker-radio-group" value={props.value}>
-					{options.map((option) => (
-						<Radio.Button
-							key={option.text}
-							title={option.text}
-							value={option.value}
-							checked={props.value === option.value}
-						>
+	return (
+		<Space>
+			<Radio.Group value={props.value}>
+				{options.map((option) => (
+					<Radio.Button
+						key={option.text}
+						title={option.text}
+						value={option.value}
+						checked={props.value === option.value}
+					>
 						<div
 							className="radio-button-icon"
 							onClick={(event) => {
@@ -446,16 +445,16 @@ export const MaskBorderTypeRadioSelection = (
 		return undefined;
 	}
 
-		return (
-			<Space className="picker-radio-space">
-				<Radio.Group className="picker-radio-group" value={props.value}>
-					{props.options.map((option) => (
-						<Radio.Button
-							key={option.text}
-							title={option.text}
-							value={option.value}
-							checked={option.active ?? props.value === option.value}
-						>
+	return (
+		<Space>
+			<Radio.Group value={props.value}>
+				{props.options.map((option) => (
+					<Radio.Button
+						key={option.text}
+						title={option.text}
+						value={option.value}
+						checked={option.active ?? props.value === option.value}
+					>
 						<div
 							className="radio-button-icon"
 							onClick={(event) => {
