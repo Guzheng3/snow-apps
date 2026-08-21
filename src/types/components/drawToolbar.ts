@@ -16,6 +16,7 @@ export enum DrawToolbarKeyEventKey {
 	RectTool = "rectTool",
 	EllipseTool = "ellipseTool",
 	ArrowTool = "arrowTool",
+	LineTool = "lineTool",
 	PenTool = "penTool",
 	// HighlightTool = 'highlightTool',
 	BlurTool = "blurTool",

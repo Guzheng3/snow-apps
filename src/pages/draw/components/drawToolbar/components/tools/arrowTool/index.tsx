@@ -1,6 +1,4 @@
-import { Button, Flex, theme } from "antd";
 import React, { useCallback, useContext, useMemo, useState } from "react";
-import { useIntl } from "react-intl";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { ArrowIcon, LineIcon } from "@/components/icons";
 import {
@@ -8,11 +6,9 @@ import {
 	AppSettingsPublisher,
 } from "@/contexts/appSettingsActionContext";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
-import { ToolbarPopover } from "@/pages/draw/components/drawToolbar/components/toolbarPopover";
 import { type AppSettingsData, AppSettingsGroup } from "@/types/appSettings";
 import { DrawToolbarKeyEventKey } from "@/types/components/drawToolbar";
 import { DrawState } from "@/types/draw";
-import { getButtonTypeByState } from "../../../extra";
 import { ToolButton } from "../../toolButton";
 
 const ArrowToolCore: React.FC<{
@@ -20,20 +16,8 @@ const ArrowToolCore: React.FC<{
 	onToolClickAction: (tool: DrawState) => void;
 	disable: boolean;
 }> = ({ customToolbarToolHiddenMap, onToolClickAction, disable }) => {
-	const intl = useIntl();
-	const { token } = theme.useToken();
-
 	const { updateAppSettings } = useContext(AppSettingsActionContext);
 
-	const [lastArrowTool, setLastArrowTool] = useState<DrawState>(
-		DrawState.Arrow,
-	);
-	useStateSubscriber(
-		AppSettingsPublisher,
-		useCallback((settings: AppSettingsData) => {
-			setLastArrowTool(settings[AppSettingsGroup.Cache].lastArrowTool);
-		}, []),
-	);
 	const [drawState, setDrawState] = useState(DrawState.Idle);
 	useStateSubscriber(
 		DrawStatePublisher,
@@ -57,6 +41,7 @@ const ArrowToolCore: React.FC<{
 		[updateAppSettings],
 	);
 
+	// 箭头：独立按钮，图标下方显示"箭头"文字
 	const arrowButton = useMemo(() => {
 		return (
 			<ToolButton
@@ -79,63 +64,30 @@ const ArrowToolCore: React.FC<{
 		updateLastArrowTool,
 	]);
 
+	// 直线：独立按钮，图标下方显示"直线"文字（与其他工具按钮一致）
 	const lineButton = useMemo(() => {
 		return (
-			<Button
+			<ToolButton
+				hidden={customToolbarToolHiddenMap?.[DrawState.Line]}
+				componentKey={DrawToolbarKeyEventKey.LineTool}
 				icon={<LineIcon style={{ fontSize: "1.15em", height: "1em" }} />}
-				title={intl.formatMessage({ id: "draw.lineTool" })}
-				type={getButtonTypeByState(drawState === DrawState.Line)}
+				drawState={DrawState.Line}
+				disable={disable}
 				key="line"
 				onClick={() => {
 					onToolClickAction(DrawState.Line);
 					updateLastArrowTool(DrawState.Line);
 				}}
-				disabled={disable}
 			/>
 		);
-	}, [disable, drawState, intl, onToolClickAction, updateLastArrowTool]);
+	}, [disable, customToolbarToolHiddenMap, onToolClickAction, updateLastArrowTool]);
 
-	let mainToolbarButton: React.ReactNode = customToolbarToolHiddenMap?.[
-		DrawState.Arrow
-	]
-		? lineButton
-		: arrowButton;
-	if (
-		lastArrowTool === DrawState.Arrow &&
-		!customToolbarToolHiddenMap?.[DrawState.Arrow]
-	) {
-		mainToolbarButton = arrowButton;
-	} else if (
-		lastArrowTool === DrawState.Line &&
-		!customToolbarToolHiddenMap?.[DrawState.Line]
-	) {
-		mainToolbarButton = lineButton;
-	}
-
-	if (
-		customToolbarToolHiddenMap?.[DrawState.Arrow] &&
-		customToolbarToolHiddenMap?.[DrawState.Line]
-	) {
-		mainToolbarButton = undefined;
-	}
-
+	// 箭头与直线拆开，两个独立按钮并列显示在主工具栏
 	return (
-		<ToolbarPopover
-			trigger={
-				!customToolbarToolHiddenMap?.[DrawState.Arrow] &&
-				!customToolbarToolHiddenMap?.[DrawState.Line]
-					? "hover"
-					: []
-			}
-			content={
-				<Flex align="center" gap={token.paddingXS} className="popover-toolbar">
-					{arrowButton}
-					{!customToolbarToolHiddenMap?.[DrawState.Line] && lineButton}
-				</Flex>
-			}
-		>
-			<div>{mainToolbarButton}</div>
-		</ToolbarPopover>
+		<>
+			{arrowButton}
+			{lineButton}
+		</>
 	);
 };
 

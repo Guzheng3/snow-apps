@@ -33,6 +33,10 @@ export const defaultDrawToolbarKeyEventSettings: Record<
 		hotKey: "3",
 		unique: true,
 	},
+	[DrawToolbarKeyEventKey.LineTool]: {
+		hotKey: "",
+		unique: true,
+	},
 	[DrawToolbarKeyEventKey.PenTool]: {
 		hotKey: "4",
 		unique: true,
