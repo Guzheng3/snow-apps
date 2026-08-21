@@ -169,3 +169,25 @@ body {
     width: 16px !important;
     height: 16px !important;
 }
+
+/* ============ 截图快捷键提示显示项：网格规整排版 ============ */
+.status-bar-tip-checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px 32px;
+    width: 100%;
+}
+.status-bar-tip-checkbox-group .ant-checkbox-group-item {
+    margin-inline-end: 0 !important;
+    padding: 5px 8px;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+    line-height: 20px;
+}
+.status-bar-tip-checkbox-group .ant-checkbox-group-item:hover {
+    background-color: rgba(22, 119, 255, 0.06);
+}
+.status-bar-tip-checkbox-group .ant-checkbox + span {
+    padding-inline-start: 8px;
+    font-size: 13px;
+}

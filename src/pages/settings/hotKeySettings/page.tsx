@@ -344,6 +344,7 @@ export const HotKeySettingsPage = () => {
 
 			<Spin spinning={appSettingsLoading}>
 				<Checkbox.Group
+					className="status-bar-tip-checkbox-group"
 					options={statusBarTipOptions}
 					value={allStatusBarTipValues.filter(
 						(v) => !hotKeyTipHiddenKeys.includes(v),
