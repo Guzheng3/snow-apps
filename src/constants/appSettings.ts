@@ -146,6 +146,9 @@ export const defaultAppSettingsData: AppSettingsData = {
 		targetLanguage: "zh-CHS",
 		translationDomain: TranslationDomain.General,
 		translationType: TranslationType.Youdao,
+		enableLocalTranslation: false,
+		enableCloudTranslation: true,
+		translationPriority: "cloud",
 	},
 	[AppSettingsGroup.FunctionTranslationCache]: {
 		cacheSourceLanguage: "auto",

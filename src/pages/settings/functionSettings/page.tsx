@@ -1550,6 +1550,30 @@ export const FunctionSettingsPage = () => {
 							<Row gutter={token.marginLG}>
 								<Col span={12}>
 									<ProFormSwitch
+										name="enableLocalTranslation"
+										label="启用本地翻译（离线 Opus-MT，需在插件页下载模型）"
+									/>
+								</Col>
+								<Col span={12}>
+									<ProFormSwitch
+										name="enableCloudTranslation"
+										label="启用云端翻译（snowshot.top / 自定义 API）"
+									/>
+								</Col>
+								<Col span={12}>
+									<ProFormSelect
+										name="translationPriority"
+										label="翻译引擎优先级"
+										options={[
+											{ label: "本地翻译优先（失败自动切换云端）", value: "local" },
+											{ label: "云端翻译优先（失败自动切换本地）", value: "cloud" },
+										]}
+									/>
+								</Col>
+							</Row>
+							<Row gutter={token.marginLG}>
+								<Col span={12}>
+									<ProFormSwitch
 										name="optimizeAiTranslationLayout"
 										label={
 											<IconLabel

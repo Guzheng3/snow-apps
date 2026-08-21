@@ -415,6 +415,12 @@ export type AppSettingsData = {
 		targetLanguage: string;
 		translationDomain: TranslationDomain;
 		translationType: TranslationType | string;
+		/** 是否启用本地翻译（onnxruntime Opus-MT） */
+		enableLocalTranslation: boolean;
+		/** 是否启用云端翻译 */
+		enableCloudTranslation: boolean;
+		/** 翻译引擎优先级：local=本地优先 cloud=云端优先 */
+		translationPriority: "local" | "cloud";
 	};
 	[AppSettingsGroup.FunctionTranslationCache]: {
 		cacheSourceLanguage: string;
