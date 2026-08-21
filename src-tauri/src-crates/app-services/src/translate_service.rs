@@ -85,11 +85,11 @@ impl TranslateService {
     pub async fn translate(&mut self, text: &str) -> Result<String, String> {
         let encoder = self
             .encoder_session
-            .as_ref()
+            .as_mut()
             .ok_or("[TranslateService] encoder not initialized")?;
         let decoder = self
             .decoder_session
-            .as_ref()
+            .as_mut()
             .ok_or("[TranslateService] decoder not initialized")?;
         let tokenizer = self
             .tokenizer
