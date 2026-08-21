@@ -621,6 +621,8 @@ pub async fn create_video_record_window(
                         }
                     }
 
+                    let _ = window.show();
+
                     window
                 }
                 None => tauri::WebviewWindowBuilder::new(
@@ -666,6 +668,8 @@ pub async fn create_video_record_window(
                             log::error!("[create_video_record_window] Failed to emit event: {}", e);
                         }
                     }
+
+                    let _ = window.show();
 
                     window
                 }
@@ -715,20 +719,24 @@ pub async fn close_video_record_window(
     app: tauri::AppHandle,
     video_record_window_label: tauri::State<'_, Mutex<Option<VideoRecordWindowLabels>>>,
 ) -> Result<(), String> {
-    let mut video_record_window_labels = video_record_window_label.lock().await;
-    let VideoRecordWindowLabels {
+    // 若已经没有录屏窗口（可能被系统级关闭已消费过状态），直接返回，避免 unwrap  panic
+    let video_record_window_labels = video_record_window_label.lock().await.take();
+    let Some(VideoRecordWindowLabels {
         video_record_window_label,
         toolbar_window_label,
-    } = video_record_window_labels.take().unwrap();
+    }) = video_record_window_labels
+    else {
+        return Ok(());
+    };
 
     let window = app.get_webview_window(video_record_window_label.as_str());
     if let Some(window) = window {
-        window.close().unwrap();
+        let _ = window.close();
     }
 
     let window = app.get_webview_window(toolbar_window_label.as_str());
     if let Some(window) = window {
-        window.close().unwrap();
+        let _ = window.close();
     }
 
     Ok(())

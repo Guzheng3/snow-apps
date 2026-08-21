@@ -5,8 +5,12 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { theme } from "antd";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { setCurrentWindowAlwaysOnTop } from "@/commands/core";
+import {
+	closeVideoRecordWindow,
+	setCurrentWindowAlwaysOnTop,
+} from "@/commands/core";
 import { listenKeyStart, listenKeyStop } from "@/commands/listenKey";
+import { videoRecordKill } from "@/commands/videoRecord";
 import { EventListenerContext } from "@/components/eventListener";
 import {
 	LISTEN_KEY_SERVICE_KEY_DOWN_EMIT_KEY,
@@ -254,13 +258,20 @@ export const VideoRecordPage: React.FC = () => {
 
 	useEffect(() => {
 		const appWindow = getCurrentWindow();
-		const unlisten = appWindow.onCloseRequested(async () => {
-			await listenKeyStop(true).catch((error) => {
-				appError(
-					"[VideoRecordPage] onCloseRequested listenKeyStop error",
-					error,
-				);
-			});
+		const unlisten = appWindow.onCloseRequested(async (event) => {
+			// 系统级关闭（Alt+F4 / 点原生关闭）时，确保录屏窗口与工具栏窗口一起关闭，
+			// 避免只关掉一个导致另一个（蓝色选择框 / 控制栏）残留在屏幕上
+			event.preventDefault();
+			await Promise.all([
+				listenKeyStop(true).catch((error) => {
+					appError(
+						"[VideoRecordPage] onCloseRequested listenKeyStop error",
+						error,
+					);
+				}),
+				videoRecordKill().catch(() => {}),
+				closeVideoRecordWindow().catch(() => {}),
+			]);
 		});
 
 		return () => {

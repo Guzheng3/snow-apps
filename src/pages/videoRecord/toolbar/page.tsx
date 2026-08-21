@@ -418,7 +418,10 @@ export const VideoRecordToolbarPage: React.FC = () => {
 		videoRecordKill();
 
 		const closeUnlisten = getCurrentWindow().onCloseRequested(async () => {
-			videoRecordKill();
+			// 系统级关闭（Alt+F4 / 点原生关闭）时，确保录屏窗口与工具栏窗口一起关闭，
+			// 避免只关掉一个导致另一个（蓝色选择框 / 控制栏）残留在屏幕上
+			videoRecordKill().catch(() => {});
+			closeVideoRecordWindow().catch(() => {});
 		});
 
 		return () => {
