@@ -55,7 +55,7 @@ body {
     display: none !important;
 }
 
-.draw-core-layer .excalidraw .selected-shape-actions fieldset {
+.draw-core-layer .excalidraw .shape-actions fieldset {
     margin: 0;
     padding: 0;
     border: none;
