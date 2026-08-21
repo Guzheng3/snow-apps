@@ -61,7 +61,7 @@ jobs:
       - name: Clone Excalidraw
         run: |
           cd ..
-          git clone --depth 1 --branch custom/master https://github.com/mg-chao/excalidraw.git
+          git clone --depth 1 --branch custom/master https://github.com/Guzheng3/excalidraw.git
         shell: bash
 
       # yarn 缓存
