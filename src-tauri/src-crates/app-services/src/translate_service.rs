@@ -119,8 +119,7 @@ impl TranslateService {
             .run(ort::inputs![input_ids_tensor, attention_mask_tensor])
             .map_err(|e| format!("[TranslateService] encoder run error: {e}"))?;
         let encoder_hidden = encoder_outputs
-            .get(0)
-            .ok_or("[TranslateService] encoder output missing")?
+            [0]
             .clone();
 
         // decoder 自回归（greedy）
@@ -138,8 +137,8 @@ impl TranslateService {
                 .run(ort::inputs![decoder_input_ids, encoder_hidden.clone()])
                 .map_err(|e| format!("[TranslateService] decoder run error: {e}"))?;
             let logits = decoder_outputs
-                .get(0)
-                .ok_or("[TranslateService] decoder output missing")?;
+                [0]
+                .clone();
 
             // logits shape: [1, seq_len, vocab]
             let (shape, data) = logits
@@ -183,7 +182,7 @@ impl TranslateService {
 
         // 解码（跳过 bos）
         let decoded = tokenizer_guard
-            .decode(&generated[1..], true)
+            .decode(&generated[1..].iter().map(|&x| x as u32).collect::<Vec<u32>>(), true)
             .map_err(|e| format!("[TranslateService] decode error: {e}"))?;
 
         Ok(decoded)
