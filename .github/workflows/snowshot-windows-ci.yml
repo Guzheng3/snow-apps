@@ -92,19 +92,19 @@ jobs:
           echo "PUBLIC_ONLINE_STATUS=true" > .env
         shell: bash
 
-      # 安装主项目前端依赖
-      - name: Install app dependencies
-        run: pnpm install --frozen-lockfile
 
-      # 构建 excalidraw 本地包（等价原 update:excalidraw，但用 $GITHUB_WORKSPACE 回仓库根，修掉 cd ../snow-shot bug）
+
+      # 构建 excalidraw 本地包（先构建出 dist，再装主项目依赖，确保 pnpm 链接到含字体的完整包）
       - name: Build Excalidraw
         run: |
           cd ../excalidraw
           rm -rf ./packages/excalidraw/dist
           yarn build:packages
-          cd "$GITHUB_WORKSPACE"
-          pnpm update @mg-chao/excalidraw
         shell: bash
+
+      # 安装主项目前端依赖（此时 excalidraw 已有完整 dist）
+      - name: Install app dependencies
+        run: pnpm install --frozen-lockfile
 
       # 下载 onnxruntime 静态库（Windows x64，覆盖仓库内可能为 LFS 指针的 lib/）
       - name: Download and setup onnxruntime (Windows)
