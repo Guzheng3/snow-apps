@@ -1,3 +1,4 @@
+import React from "react";
 import { ScanOutlined } from "@ant-design/icons";
 import { Button, Flex, message, theme } from "antd";
 import { useCallback, useContext, useState } from "react";

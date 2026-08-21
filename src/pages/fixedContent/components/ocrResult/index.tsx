@@ -1,3 +1,4 @@
+import React from "react";
 import { Menu } from "@tauri-apps/api/menu";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { theme } from "antd";
