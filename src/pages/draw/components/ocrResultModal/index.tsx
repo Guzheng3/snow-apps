@@ -1,11 +1,17 @@
 import { Button, Input, Modal, Radio, Space, Typography } from "antd";
 import { useContext, useEffect, useState } from "react";
-import { CopyOutlined } from "@ant-design/icons";
+import { CopyOutlined, LinkOutlined, MailOutlined } from "@ant-design/icons";
 import { AntdContext } from "@/contexts/antdContext";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import { writeTextToClipboard } from "@/utils/clipboard";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 type LayoutType = "original" | "semantic";
+
+type ExtractedLinks = {
+	urls: string[];
+	emails: string[];
+};
 
 /**
  * 原图格式排版：按识别顺序，每个文本块一行
@@ -92,7 +98,7 @@ const semanticLayout = (result: OcrDetectResult): string => {
 
 	// 语义合并：段落内，行尾无句末标点且下一行非段落开头 → 合并为一句（去掉换行）
 	// 中文直接拼接；相邻英文/数字用空格分隔
-	const sentenceEndPattern = /[。！？!?…；;：:""''）)】》」』]$/;
+	const sentenceEndPattern = /[。！？!?…；;：:"“”''）)】》」』]$/;
 	const paragraphStartPattern =
 		/^[（(【\[《“"「『]|^[0-9一二三四五六七八九十]+[、.．]|^[A-Za-z0-9#*•·-]/;
 
@@ -129,6 +135,45 @@ const semanticLayout = (result: OcrDetectResult): string => {
 	return paragraphs.map(mergeParagraph).join("\n\n");
 };
 
+/**
+ * 从文本中提取链接与邮箱（去重、去尾部标点）
+ */
+const extractLinks = (text: string): ExtractedLinks => {
+	const urlSet = new Set<string>();
+	const emailSet = new Set<string>();
+
+	// URL：http(s):// 或 www. 开头，直到空白/引号/尖括号
+	const urlPattern = /(?:https?:\/\/|www\.)[^\s<>"'“”‘’]+/gi;
+	let m: RegExpExecArray | null;
+	let cleaned = text;
+	while ((m = urlPattern.exec(text)) !== null) {
+		let url = m[0];
+		// 去掉尾部常见标点（. , ; : ！？)】]）等）
+		url = url.replace(/[.,;:!?。，；：！？）)】】》》」』"'“”‘’]+$/, "");
+		if (url) {
+			urlSet.add(url);
+		}
+		// 挖掉 URL（含认证段），避免其内部被误当邮箱
+		cleaned = cleaned.replace(m[0], " ");
+	}
+
+	// 邮箱（在挖掉 URL 后的文本中提取）
+	const emailPattern = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+	while ((m = emailPattern.exec(cleaned)) !== null) {
+		emailSet.add(m[0]);
+	}
+
+	return { urls: [...urlSet], emails: [...emailSet] };
+};
+
+/**
+ * 打开链接（www. 开头补 https://）
+ */
+const openLink = (url: string) => {
+	const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+	openUrl(normalized);
+};
+
 export const OcrResultModal: React.FC<{
 	open: boolean;
 	ocrResult: OcrDetectResult | undefined;
@@ -138,6 +183,11 @@ export const OcrResultModal: React.FC<{
 	const [layoutType, setLayoutType] = useState<LayoutType>("original");
 	const [editableText, setEditableText] = useState("");
 	const [copying, setCopying] = useState(false);
+	const [extracted, setExtracted] = useState<ExtractedLinks>({
+		urls: [],
+		emails: [],
+	});
+	const [copiedItem, setCopiedItem] = useState("");
 
 	// 每次 OCR 结果变化时，重置为原图格式排版
 	useEffect(() => {
@@ -146,6 +196,12 @@ export const OcrResultModal: React.FC<{
 			setEditableText(originalLayout(ocrResult));
 		}
 	}, [open, ocrResult]);
+
+	// 编辑内容变化 → 实时重新提取链接/邮箱（编辑后成为链接也会自动显示）
+	useEffect(() => {
+		setExtracted(extractLinks(editableText));
+		setCopiedItem("");
+	}, [editableText]);
 
 	const handleLayoutChange = (type: LayoutType) => {
 		setLayoutType(type);
@@ -172,6 +228,18 @@ export const OcrResultModal: React.FC<{
 			setCopying(false);
 		}
 	};
+
+	const handleCopyItem = async (value: string, type: "链接" | "邮箱") => {
+		try {
+			await writeTextToClipboard(value);
+			setCopiedItem(value);
+			message.success(`${type}已复制`);
+		} catch {
+			message.error("复制失败");
+		}
+	};
+
+	const hasExtracted = extracted.urls.length > 0 || extracted.emails.length > 0;
 
 	return (
 		<Modal
@@ -214,6 +282,93 @@ export const OcrResultModal: React.FC<{
 					placeholder="识别结果为空"
 					style={{ fontSize: 13 }}
 				/>
+				{hasExtracted && (
+					<div
+						style={{
+							border: "1px solid #d9d9d9",
+							borderRadius: 8,
+							padding: "8px 12px",
+							background: "#fafafa",
+							maxHeight: 160,
+							overflowY: "auto",
+						}}
+					>
+						<Typography.Text
+							strong
+							style={{ fontSize: 12, display: "block", marginBottom: 4 }}
+						>
+							识别到的链接 / 邮箱
+						</Typography.Text>
+						{extracted.urls.map((url) => (
+							<div
+								key={`u-${url}`}
+								style={{
+									display: "flex",
+									alignItems: "center",
+									gap: 8,
+									padding: "2px 0",
+								}}
+							>
+								<LinkOutlined style={{ color: "#1677ff" }} />
+								<a
+									style={{
+										flex: 1,
+										fontSize: 12,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
+									}}
+									title={url}
+									onClick={() => openLink(url)}
+								>
+									{url}
+								</a>
+								<Button
+									size="small"
+									type={copiedItem === url ? "primary" : "default"}
+									icon={<CopyOutlined />}
+									onClick={() => handleCopyItem(url, "链接")}
+								>
+									{copiedItem === url ? "已复制" : "复制"}
+								</Button>
+							</div>
+						))}
+						{extracted.emails.map((email) => (
+							<div
+								key={`e-${email}`}
+								style={{
+									display: "flex",
+									alignItems: "center",
+									gap: 8,
+									padding: "2px 0",
+								}}
+							>
+								<MailOutlined style={{ color: "#1677ff" }} />
+								<a
+									style={{
+										flex: 1,
+										fontSize: 12,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
+									}}
+									title={`点击复制 ${email}`}
+									onClick={() => handleCopyItem(email, "邮箱")}
+								>
+									{email}
+								</a>
+								<Button
+									size="small"
+									type={copiedItem === email ? "primary" : "default"}
+									icon={<CopyOutlined />}
+									onClick={() => handleCopyItem(email, "邮箱")}
+								>
+									{copiedItem === email ? "已复制" : "复制"}
+								</Button>
+							</div>
+						))}
+					</div>
+				)}
 			</Space>
 		</Modal>
 	);
