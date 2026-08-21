@@ -658,6 +658,21 @@ export const VideoRecordToolbarPage: React.FC = () => {
 							key="annotate-bg-fixed"
 						/>
 
+						{/* 批注工具切换 */}
+						{ANNOTATE_TOOLS.map((tool) => (
+							<Button
+								key={"at-" + tool.key}
+								onClick={() => {
+									setAnnotateTool(tool.key);
+									emit("video-record-annotate-tool", { tool: tool.key });
+								}}
+								icon={tool.icon}
+								title={tool.label}
+								type={annotateTool === tool.key ? "primary" : "text"}
+								style={{ padding: "0 6px", minWidth: 28 }}
+							/>
+						))}
+
 						{ANNOTATE_COLORS.map((c) => (
 							<Button
 								key={"ac-" + c}
