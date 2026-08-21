@@ -79,17 +79,42 @@ const BlurGroupToolCore: React.FC<{
 
 	const blurFreeDrawButton = useMemo(() => {
 		return (
-			<Button
-				icon={<FilterFreeDrawIcon style={{ fontSize: "1em" }} />}
+			<div
+				className="draw-toolbar-btn-wrap"
 				title={intl.formatMessage({ id: "draw.blurFreeDrawTool" })}
-				type={getButtonTypeByState(drawState === DrawState.BlurFreeDraw)}
-				key="blurFreeDraw"
-				onClick={() => {
-					onToolClickAction(DrawState.BlurFreeDraw);
-					updateLastBlurTool(DrawState.BlurFreeDraw);
+				style={{
+					display: "inline-flex",
+					flexDirection: "column",
+					alignItems: "center",
+					gap: 7,
+					lineHeight: 1,
 				}}
-				disabled={disable}
-			/>
+			>
+				<Button
+					icon={<FilterFreeDrawIcon style={{ fontSize: "1em" }} />}
+					type={getButtonTypeByState(drawState === DrawState.BlurFreeDraw)}
+					key="blurFreeDraw"
+					onClick={() => {
+						onToolClickAction(DrawState.BlurFreeDraw);
+						updateLastBlurTool(DrawState.BlurFreeDraw);
+					}}
+					disabled={disable}
+				/>
+				<span
+					style={{
+						fontSize: 10,
+						lineHeight: 1.1,
+						whiteSpace: "nowrap",
+						overflow: "hidden",
+						textOverflow: "ellipsis",
+						maxWidth: 72,
+						color: token.colorTextSecondary,
+						pointerEvents: "none",
+					}}
+				>
+					{intl.formatMessage({ id: "draw.blurFreeDrawTool" })}
+				</span>
+			</div>
 		);
 	}, [disable, drawState, intl, onToolClickAction, updateLastBlurTool]);
 
