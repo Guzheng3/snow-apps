@@ -153,19 +153,27 @@ body {
 }
 
 /* ============ 属性面板 RadioSelection 紧凑化（修复边框样式/线条风格显示异常偏大） ============ */
-.draw-core-layer .excalidraw .selected-shape-actions .ant-radio-group .ant-radio-button-wrapper {
+/* 注意：antd 5 实际渲染容器类名为 shape-actions（非 selected-shape-actions），选择器必须命中它 */
+.draw-core-layer .excalidraw .shape-actions .ant-radio-button-wrapper {
     height: 24px !important;
-    padding: 0 6px !important;
+    padding: 0 8px !important;
     line-height: 22px !important;
     font-size: 12px !important;
 }
-.draw-core-layer .excalidraw .selected-shape-actions .ant-radio-group .ant-radio-button-wrapper .radio-button-icon {
+.draw-core-layer .excalidraw .shape-actions .ant-radio-button-wrapper-checked {
+    height: 24px !important;
+    line-height: 22px !important;
+    font-size: 12px !important;
+}
+.draw-core-layer .excalidraw .shape-actions .ant-radio-button-wrapper .radio-button-icon {
     display: flex;
     align-items: center;
     justify-content: center;
     height: 100%;
 }
-.draw-core-layer .excalidraw .selected-shape-actions .ant-radio-group .ant-radio-button-wrapper .radio-button-icon svg {
+.draw-core-layer .excalidraw .shape-actions .ant-radio-button-wrapper .radio-button-icon svg,
+.draw-core-layer .excalidraw .shape-actions .ant-radio-button-wrapper svg,
+.draw-core-layer .excalidraw .shape-actions .ant-radio-button-wrapper .icon {
     width: 16px !important;
     height: 16px !important;
 }
