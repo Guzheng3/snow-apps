@@ -215,6 +215,8 @@ export const OcrResultModal: React.FC<{
 	const [extracted, setExtracted] = useState<ExtractedLinks>({
 		urls: [],
 		emails: [],
+		phones: [],
+		qqs: [],
 	});
 	const [copiedItem, setCopiedItem] = useState("");
 
