@@ -878,7 +878,7 @@ return (
 
 							{/* 橡皮擦：点击弹出模式选择（笔画擦 / 一键清屏） */}
 														<ToolbarPopover
-								trigger="click"
+								trigger="hover"
 								content={
 									<Flex vertical gap={2} style={{ minWidth: 150, padding: 2 }}>
 										<Button
@@ -912,7 +912,7 @@ return (
 									icon={<EraserIcon style={{ fontSize: "0.9em" }} />}
 									drawState={DrawState.Eraser}
 									disable={disableNormalScreenshotTool}
-									onClick={() => {}}
+									onClick={() => { onToolClick(DrawState.Eraser); }}
 								/>
 							</ToolbarPopover>
 
