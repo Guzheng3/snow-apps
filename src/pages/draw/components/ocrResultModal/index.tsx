@@ -1,6 +1,12 @@
 import { Button, Input, Modal, Radio, Space, Typography } from "antd";
 import { useContext, useEffect, useState } from "react";
-import { CopyOutlined, LinkOutlined, MailOutlined } from "@ant-design/icons";
+import {
+	CopyOutlined,
+	LinkOutlined,
+	MailOutlined,
+	MobileOutlined,
+	QqOutlined,
+} from "@ant-design/icons";
 import { AntdContext } from "@/contexts/antdContext";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import { writeTextToClipboard } from "@/utils/clipboard";
@@ -11,6 +17,8 @@ type LayoutType = "original" | "semantic";
 type ExtractedLinks = {
 	urls: string[];
 	emails: string[];
+	phones: string[];
+	qqs: string[];
 };
 
 /**
@@ -161,9 +169,30 @@ const extractLinks = (text: string): ExtractedLinks => {
 	const emailPattern = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 	while ((m = emailPattern.exec(cleaned)) !== null) {
 		emailSet.add(m[0]);
+		// 挖掉邮箱，避免其内部被误当手机号/QQ
+		cleaned = cleaned.replace(m[0], " ");
 	}
 
-	return { urls: [...urlSet], emails: [...emailSet] };
+	const phoneSet = new Set<string>();
+	const qqSet = new Set<string>();
+
+	// 手机号：1[3-9] 开头 11 位（中国大陆）
+	const phonePattern = /(?<![0-9])1[3-9][0-9]{9}(?![0-9])/g;
+	while ((m = phonePattern.exec(cleaned)) !== null) {
+		phoneSet.add(m[0]);
+		cleaned = cleaned.replace(m[0], " ");
+	}
+
+	// QQ 号：5-11 位独立数字段（排除手机号、排除 0 开头、排除长数字内截取）
+	const qqPattern = /(?<![0-9])([1-9][0-9]{4,10})(?![0-9])/g;
+	while ((m = qqPattern.exec(cleaned)) !== null) {
+		const num = m[1];
+		// 11 位且 1[3-9] 开头 = 手机号，跳过
+		if (num.length === 11 && /^1[3-9]/.test(num)) continue;
+		qqSet.add(num);
+	}
+
+	return { urls: [...urlSet], emails: [...emailSet], phones: [...phoneSet], qqs: [...qqSet] };
 };
 
 /**
@@ -229,7 +258,10 @@ export const OcrResultModal: React.FC<{
 		}
 	};
 
-	const handleCopyItem = async (value: string, type: "链接" | "邮箱") => {
+	const handleCopyItem = async (
+	value: string,
+	type: "链接" | "邮箱" | "手机号" | "QQ 号"
+) => {
 		try {
 			await writeTextToClipboard(value);
 			setCopiedItem(value);
@@ -239,7 +271,11 @@ export const OcrResultModal: React.FC<{
 		}
 	};
 
-	const hasExtracted = extracted.urls.length > 0 || extracted.emails.length > 0;
+	const hasExtracted =
+		extracted.urls.length > 0 ||
+		extracted.emails.length > 0 ||
+		extracted.phones.length > 0 ||
+		extracted.qqs.length > 0;
 
 	return (
 		<Modal
@@ -297,7 +333,7 @@ export const OcrResultModal: React.FC<{
 							strong
 							style={{ fontSize: 12, display: "block", marginBottom: 4 }}
 						>
-							识别到的链接 / 邮箱
+							识别到的链接 / 邮箱 / 手机号 / QQ
 						</Typography.Text>
 						{extracted.urls.map((url) => (
 							<div
@@ -364,6 +400,74 @@ export const OcrResultModal: React.FC<{
 									onClick={() => handleCopyItem(email, "邮箱")}
 								>
 									{copiedItem === email ? "已复制" : "复制"}
+								</Button>
+							</div>
+						))}
+						{extracted.phones.map((phone) => (
+							<div
+								key={`p-${phone}`}
+								style={{
+									display: "flex",
+									alignItems: "center",
+									gap: 8,
+									padding: "2px 0",
+								}}
+							>
+								<MobileOutlined style={{ color: "#1677ff" }} />
+								<a
+									style={{
+										flex: 1,
+										fontSize: 12,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
+									}}
+									title={`点击复制 ${phone}`}
+									onClick={() => handleCopyItem(phone, "手机号")}
+								>
+									{phone}
+								</a>
+								<Button
+									size="small"
+									type={copiedItem === phone ? "primary" : "default"}
+									icon={<CopyOutlined />}
+									onClick={() => handleCopyItem(phone, "手机号")}
+								>
+									{copiedItem === phone ? "已复制" : "复制"}
+								</Button>
+							</div>
+						))}
+						{extracted.qqs.map((qq) => (
+							<div
+								key={`q-${qq}`}
+								style={{
+									display: "flex",
+									alignItems: "center",
+									gap: 8,
+									padding: "2px 0",
+								}}
+							>
+								<QqOutlined style={{ color: "#1677ff" }} />
+								<a
+									style={{
+										flex: 1,
+										fontSize: 12,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
+									}}
+									title={`点击复制 ${qq}`}
+									onClick={() => handleCopyItem(qq, "QQ 号")}
+								>
+									{qq}
+								</a>
+								<Button
+									size="small"
+									type={copiedItem === qq ? "primary" : "default"}
+									icon={<CopyOutlined />}
+									onClick={() => handleCopyItem(qq, "QQ 号")}
+								>
+									{copiedItem === qq ? "已复制" : "复制"}
 								</Button>
 							</div>
 						))}
