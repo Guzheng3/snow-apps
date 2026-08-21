@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use ort::session::builder::SessionBuilder;
 use ort::session::Session;
 use ort::value::Tensor;
 use tokio::sync::Mutex;
@@ -29,12 +28,6 @@ impl TranslateService {
         }
     }
 
-    fn build_session(builder: SessionBuilder) -> Result<SessionBuilder, ort::Error> {
-        Ok(builder
-            .with_intra_threads(num_cpus::get_physical())?
-            .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)?)
-    }
-
     /// 从插件目录加载模型（如果目录变化则重新加载）
     pub async fn init(&mut self, model_dir: &Path) -> Result<(), String> {
         if self.loaded_dir.as_deref() == Some(model_dir) && self.encoder_session.is_some() {
@@ -52,10 +45,20 @@ impl TranslateService {
             ));
         }
 
-        let encoder = Session::builder()?
+        let encoder = Session::builder()
+            .map_err(|e| format!("[TranslateService] encoder builder error: {e}"))?
+            .with_intra_threads(num_cpus::get_physical())
+            .map_err(|e| format!("[TranslateService] encoder threads error: {e}"))?
+            .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)
+            .map_err(|e| format!("[TranslateService] encoder opt error: {e}"))?
             .commit_from_file(&encoder_path)
             .map_err(|e| format!("[TranslateService] encoder load error: {e}"))?;
-        let decoder = Session::builder()?
+        let decoder = Session::builder()
+            .map_err(|e| format!("[TranslateService] decoder builder error: {e}"))?
+            .with_intra_threads(num_cpus::get_physical())
+            .map_err(|e| format!("[TranslateService] decoder threads error: {e}"))?
+            .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)
+            .map_err(|e| format!("[TranslateService] decoder opt error: {e}"))?
             .commit_from_file(&decoder_path)
             .map_err(|e| format!("[TranslateService] decoder load error: {e}"))?;
         let tokenizer = tokenizers::Tokenizer::from_file(&tokenizer_path)
@@ -97,25 +100,28 @@ impl TranslateService {
         let encoding = tokenizer_guard
             .encode(text, true)
             .map_err(|e| format!("[TranslateService] tokenize error: {e}"))?;
-        let input_ids = encoding.get_ids();
-        let attention_mask = encoding.get_attention_mask();
+        let input_ids: Vec<i64> = encoding.get_ids().iter().map(|&x| x as i64).collect();
+        let attention_mask: Vec<i64> = encoding
+            .get_attention_mask()
+            .iter()
+            .map(|&x| x as i64)
+            .collect();
 
-        let input_ids_tensor = Tensor::from_array(
-            std::array::from_fn::<_, 1, _>(|_| input_ids.to_vec().into()),
-        )
-        .map_err(|e| format!("[TranslateService] input_ids tensor error: {e}"))?;
-        let attention_mask_tensor = Tensor::from_array(
-            std::array::from_fn::<_, 1, _>(|_| attention_mask.to_vec().into()),
-        )
-        .map_err(|e| format!("[TranslateService] attention_mask tensor error: {e}"))?;
+        // encoder 输入：shape [1, seq_len]
+        let enc_shape = vec![1i64, input_ids.len() as i64];
+        let input_ids_tensor = Tensor::from_array((enc_shape.clone(), input_ids))
+            .map_err(|e| format!("[TranslateService] input_ids tensor error: {e}"))?;
+        let attention_mask_tensor = Tensor::from_array((enc_shape, attention_mask))
+            .map_err(|e| format!("[TranslateService] attention_mask tensor error: {e}"))?;
 
         // encoder 前向
         let encoder_outputs = encoder
-            .run(ort::inputs![input_ids_tensor, attention_mask_tensor]?)
+            .run(ort::inputs![input_ids_tensor, attention_mask_tensor])
             .map_err(|e| format!("[TranslateService] encoder run error: {e}"))?;
         let encoder_hidden = encoder_outputs
             .get(0)
-            .ok_or("[TranslateService] encoder output missing")?;
+            .ok_or("[TranslateService] encoder output missing")?
+            .clone();
 
         // decoder 自回归（greedy）
         let bos_id = 0i64;
@@ -124,34 +130,37 @@ impl TranslateService {
         let mut generated: Vec<i64> = vec![bos_id];
 
         for _ in 0..max_len {
-            let decoder_input_ids = Tensor::from_array(
-                std::array::from_fn::<_, 1, _>(|_| generated.clone().into()),
-            )
-            .map_err(|e| format!("[TranslateService] decoder input tensor error: {e}"))?;
+            let dec_shape = vec![1i64, generated.len() as i64];
+            let decoder_input_ids = Tensor::from_array((dec_shape, generated.clone()))
+                .map_err(|e| format!("[TranslateService] decoder input tensor error: {e}"))?;
 
             let decoder_outputs = decoder
-                .run(ort::inputs![decoder_input_ids, encoder_hidden.clone()]?)
+                .run(ort::inputs![decoder_input_ids, encoder_hidden.clone()])
                 .map_err(|e| format!("[TranslateService] decoder run error: {e}"))?;
             let logits = decoder_outputs
                 .get(0)
                 .ok_or("[TranslateService] decoder output missing")?;
 
             // logits shape: [1, seq_len, vocab]
-            let last_step = logits
+            let (shape, data) = logits
                 .try_extract_tensor::<f32>()
                 .map_err(|e| format!("[TranslateService] logits extract error: {e}"))?;
-            let view = last_step.view();
-            let shape = view.shape();
-            if shape.len() != 3 {
+            let seq_len = generated.len();
+            let total = shape.num_elements();
+            if seq_len == 0 || total % seq_len != 0 {
                 return Err(format!(
-                    "[TranslateService] unexpected logits shape: {:?}",
-                    shape
+                    "[TranslateService] unexpected logits shape: num_elements={total}, seq_len={seq_len}"
                 ));
             }
-            let seq_len = shape[1];
-            let vocab = shape[2];
+            let vocab = total / seq_len;
             let offset = (seq_len - 1) * vocab;
-            let last_row = &view.as_slice().unwrap()[offset..offset + vocab];
+            if offset + vocab > data.len() {
+                return Err(format!(
+                    "[TranslateService] logits data too short: offset={offset}, vocab={vocab}, len={}",
+                    data.len()
+                ));
+            }
+            let last_row = &data[offset..offset + vocab];
 
             // argmax
             let mut best_id = 0usize;
