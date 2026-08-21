@@ -936,20 +936,31 @@ const DrawCoreComponent: React.FC<{
 
                         .draw-core-layer :global(.excalidraw .radio-button-icon) {
                             width: var(--default-icon-size);
-                            height: 100%;
+                            height: 24px;
+                            min-height: 24px;
                             display: flex;
                             align-items: center;
                             justify-content: center;
                             font-size: var(--default-icon-size);
+                            line-height: 1;
+                        }
+
+                        .draw-core-layer :global(.excalidraw .radio-button-icon svg) {
+                            width: 16px;
+                            height: 16px;
+                            max-width: 16px;
+                            max-height: 16px;
                         }
 
                         .draw-core-layer :global(.excalidraw .subtool-radio-button-icon) {
-                            height: 100%;
+                            height: 24px;
+                            min-height: 24px;
                             display: flex;
                             align-items: center;
                             padding-inline: ${token.paddingXS}px;
                             width: var(--default-icon-size);
                             font-size: var(--default-icon-size);
+                            line-height: 1;
                         }
 
                         .draw-core-layer :global(.excalidraw .ant-radio-button-wrapper) {

@@ -155,37 +155,61 @@ body {
 /* ============ 绘制面板（含选中元素后弹出的属性面板/形状切换）系统性紧凑化 ============
    根因：属性面板里的「字体大小/描边宽度」走 antd Slider+InputNumber，「边框样式/线条风格/形状切换」
         走 antd Radio.Button，excalidraw 形状按钮是原生 ToolButton。antd 与 excalidraw 默认尺寸偏大，
-        需要整体收紧。选择器统一挂在 .draw-core-layer .excalidraw 下，覆盖所有面板控件。 */
+        且 .radio-button-icon 原本 height:100% 会反向把选项按内容撑高，导致面板被纵向拉开成窄长条。
+        修复要点：icon 固定 16px、Radio.Button 固定 24px、Radio.Group 强制横向不换行、picker 行固定高度。 */
 
-/* —— 1. Radio.Button（边框样式/线条风格/形状切换 椭圆·矩形·箭头·序号 等） —— */
+/* —— 1. Radio.Group / Radio.Button（边框样式/线条风格/形状切换 椭圆·矩形·箭头·序号 等） —— */
+.draw-core-layer .excalidraw .picker-radio-group,
+.draw-core-layer .excalidraw .ant-radio-group {
+    display: inline-flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+.draw-core-layer .excalidraw .picker-radio-space {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
 .draw-core-layer .excalidraw .ant-radio-button-wrapper {
     height: 24px !important;
+    min-height: 24px !important;
     padding: 0 8px !important;
     line-height: 22px !important;
     font-size: 12px !important;
+    display: inline-flex !important;
+    align-items: center !important;
 }
 .draw-core-layer .excalidraw .ant-radio-button-wrapper-checked {
     height: 24px !important;
+    min-height: 24px !important;
     line-height: 22px !important;
     font-size: 12px !important;
 }
 .draw-core-layer .excalidraw .ant-radio-button-wrapper .radio-button-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 24px !important;
+    min-height: 24px !important;
+    line-height: 1 !important;
 }
 .draw-core-layer .excalidraw .ant-radio-button-wrapper .radio-button-icon svg,
 .draw-core-layer .excalidraw .ant-radio-button-wrapper svg,
 .draw-core-layer .excalidraw .ant-radio-button-wrapper .icon {
     width: 16px !important;
     height: 16px !important;
+    max-width: 16px !important;
+    max-height: 16px !important;
 }
 
 /* —— 2. 普通 Radio（字体对齐 等） —— */
 .draw-core-layer .excalidraw .ant-radio-wrapper {
     font-size: 12px !important;
     line-height: 22px !important;
+    display: inline-flex !important;
+    align-items: center !important;
 }
 
 /* —— 3. Slider（字体大小 / 描边宽度 的滑块） —— */
@@ -231,11 +255,17 @@ body {
     height: 16px !important;
 }
 
-/* —— 7. 属性面板整体收窄，避免被控件撑高 —— */
+/* —— 7. 属性面板容器：固定稳定宽度 + 行高，避免被内容纵向撑成窄长条 —— */
 .draw-core-layer .excalidraw .shape-actions,
 .draw-core-layer .excalidraw .selected-shape-actions,
-.draw-core-layer .excalidraw .Island.App-menu__left {
+.draw-core-layer .excalidraw .Island.App-menu__left,
+.draw-core-layer .excalidraw .layout-menu-render .picker {
     font-size: 12px !important;
+    box-sizing: border-box !important;
+}
+.draw-core-layer .excalidraw .layout-menu-render .picker {
+    width: 220px !important;
+    max-width: 220px !important;
 }
 
 /* ============ 截图快捷键提示显示项：网格规整排版 ============ */
