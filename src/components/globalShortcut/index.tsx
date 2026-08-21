@@ -400,6 +400,8 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
 										title: "快捷键冲突",
 										content: `快捷键「${v}」已被其他软件占用，请更换为其他快捷键。`,
 									});
+								} else {
+									startupConflictRef.current.push(v);
 								}
 								allOk = false;
 							}
@@ -434,6 +436,7 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
 		useState(true);
 	const previousAppFunctionSettingsRef =
 		useRef<AppSettingsData[AppSettingsGroup.AppFunction]>(undefined);
+	const startupConflictRef = useRef<string[]>([]);
 
 	const appFunctionComponentConfigsKeys = useMemo(
 		() => Object.keys(defaultAppFunctionComponentConfigs),
@@ -480,6 +483,15 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
 					}
 				}),
 			);
+
+			if (startupConflictRef.current.length) {
+				const conflictKeys = startupConflictRef.current.join("、");
+				Modal.warning({
+					title: "快捷键冲突",
+					content: `以下快捷键已被其他软件占用，请到「设置 → 热键设置」中更换：${conflictKeys}`,
+				});
+				startupConflictRef.current = [];
+			}
 
 			setShortcutKeyStatus(keyStatus);
 			previousAppFunctionSettingsRef.current = settings;
