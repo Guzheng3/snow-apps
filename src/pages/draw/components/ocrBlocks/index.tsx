@@ -38,7 +38,6 @@ import {
 } from "../../extra";
 import { DrawContext } from "../../types";
 import OcrTool, { isOcrTool } from "../drawToolbar/components/tools/ocrTool";
-import OcrResultModal from "../ocrResultModal";
 
 export type OcrBlocksSelectedText = {
 	type: "text" | "visionModelHtml";
@@ -60,7 +59,9 @@ export type OcrBlocksActionType = {
 export const OcrBlocks: React.FC<{
 	actionRef: React.RefObject<OcrBlocksActionType | undefined>;
 	finishCapture: () => void;
-}> = ({ actionRef, finishCapture }) => {
+	onFixed: () => void;
+	onShowOcrResultModal: (ocrResult: OcrDetectResult) => void;
+}> = ({ actionRef, finishCapture, onFixed, onShowOcrResultModal }) => {
 	const { selectLayerActionRef, imageLayerActionRef, drawLayerActionRef } =
 		useContext(DrawContext);
 	const ocrResultActionRef = useRef<OcrResultActionType>(undefined);
@@ -134,20 +135,29 @@ export const OcrBlocks: React.FC<{
 					writeTextToClipboard(covertOcrResultToText(ocrResult));
 					finishCapture?.();
 				}
-				// 默认弹窗显示识别文字（关闭窗口类操作不弹）
+
+				// 默认（未设置关闭窗口类操作）：退出截图并切换到词块编辑界面，同时弹窗显示识别文字
 				if (
 					ocrAfterAction !== OcrDetectAfterAction.CopyTextAndCloseWindow &&
 					ocrAfterAction !==
 						OcrDetectAfterAction.OcrDetectCopyTextAndCloseWindow
 				) {
-					setOcrModalResult(ocrResult);
-					setOcrModalOpen(true);
+					onShowOcrResultModal(ocrResult);
+					// 同窗口切换到词块编辑界面（词块可单击选行/双击选词块/三击选段）
+					onFixed?.();
 				}
 			} else if (getDrawState() === DrawState.OcrTranslate) {
 				ocrResultActionRef.current?.startTranslate();
 			}
 		},
-		[finishCapture, getAppSettings, getDrawState, getScreenshotType],
+		[
+			finishCapture,
+			getAppSettings,
+			getDrawState,
+			getScreenshotType,
+			onFixed,
+			onShowOcrResultModal,
+		],
 	);
 
 	const onTranslate = useCallback(() => {
@@ -220,8 +230,6 @@ export const OcrBlocks: React.FC<{
 		],
 	);
 
-	const [ocrModalOpen, setOcrModalOpen] = useState(false);
-	const [ocrModalResult, setOcrModalResult] = useState<OcrDetectResult | undefined>(undefined);
 	const [currentOcrResult, setCurrentOcrResult] = useState<
 		(AppOcrResult & { ocrResultType: OcrResultType }) | undefined
 	>(undefined);
@@ -282,12 +290,6 @@ export const OcrBlocks: React.FC<{
 				onVisionModelHtmlResultChange={setVisionModelHtmlResult}
 				onVisionModelMarkdownResultChange={setVisionModelMarkdownResult}
 				onVisionModelMarkdownLoading={setVisionModelMarkdownLoading}
-			/>
-
-			<OcrResultModal
-				open={ocrModalOpen}
-				ocrResult={ocrModalResult}
-				onClose={() => setOcrModalOpen(false)}
 			/>
 		</>
 	);

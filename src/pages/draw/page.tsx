@@ -64,6 +64,7 @@ import {
 	ImageBufferType,
 	ImageEncoder,
 } from "@/types/commands/screenshot";
+import type { OcrDetectResult } from "@/types/commands/ocr";
 import { DrawState } from "@/types/draw";
 import { getCorrectHdrColorAlgorithm } from "@/utils/appSettings";
 import {
@@ -130,6 +131,7 @@ import {
 	type OcrBlocksActionType,
 	type OcrBlocksSelectedText,
 } from "./components/ocrBlocks";
+import OcrResultModal from "./components/ocrResultModal";
 import SelectLayer, {
 	type SelectLayerActionType,
 } from "./components/selectLayer";
@@ -172,7 +174,13 @@ const DrawPageCore: React.FC<{
 	getFixedContentAction: () => FixedContentActionType | undefined;
 	onFixedContentLoad: () => void;
 	showFixedContent: () => void;
-}> = ({ getFixedContentAction, onFixedContentLoad, showFixedContent }) => {
+	onShowOcrResultModal: (ocrResult: OcrDetectResult) => void;
+}> = ({
+	getFixedContentAction,
+	onFixedContentLoad,
+	showFixedContent,
+	onShowOcrResultModal,
+}) => {
 	const { message } = useContext(AntdContext);
 	const intl = useIntl();
 
@@ -1554,6 +1562,12 @@ const DrawPageCore: React.FC<{
 	}, [unsetLatestExcalidrawNewElement]);
 	const onDoubleClick = useCallback<React.MouseEventHandler<HTMLDivElement>>(
 		(e) => {
+			// OCR 工具激活时，双击用于选择/编辑词块（双击选词块、三击选段），
+			// 不应触发复制/保存/固定到屏幕等退出截图的动作
+			if (isOcrTool(getDrawState())) {
+				return;
+			}
+
 			const doubleClickAction =
 				getAppSettings()[AppSettingsGroup.FunctionScreenshot].doubleClickAction;
 			if (doubleClickAction === DoubleClickAction.None) {
@@ -1610,6 +1624,8 @@ const DrawPageCore: React.FC<{
 					<OcrBlocks
 						actionRef={ocrBlocksActionRef}
 						finishCapture={finishCapture}
+						onFixed={onFixed}
+						onShowOcrResultModal={onShowOcrResultModal}
 					/>
 
 					<div className={styles.drawLayerWrap} ref={drawLayerWrapRef}>
@@ -1673,6 +1689,15 @@ export const DrawPage: React.FC = () => {
 		undefined,
 	);
 
+	const [ocrModalOpen, setOcrModalOpen] = useState(false);
+	const [ocrModalResult, setOcrModalResult] = useState<OcrDetectResult | undefined>(
+		undefined,
+	);
+	const onShowOcrResultModal = useCallback((ocrResult: OcrDetectResult) => {
+		setOcrModalResult(ocrResult);
+		setOcrModalOpen(true);
+	}, []);
+
 	const getFixedContentAction = useCallback(() => {
 		return fixedContentActionRef.current;
 	}, []);
@@ -1693,6 +1718,7 @@ export const DrawPage: React.FC = () => {
 					getFixedContentAction={getFixedContentAction}
 					onFixedContentLoad={onFixedContentLoad}
 					showFixedContent={showFixedContent}
+					onShowOcrResultModal={onShowOcrResultModal}
 				/>
 			)}
 			<div>
@@ -1701,6 +1727,11 @@ export const DrawPage: React.FC = () => {
 					disabled={fixedContentDisabled}
 				/>
 			</div>
+			<OcrResultModal
+				open={ocrModalOpen}
+				ocrResult={ocrModalResult}
+				onClose={() => setOcrModalOpen(false)}
+			/>
 		</TextScaleFactorContextProvider>
 	);
 };

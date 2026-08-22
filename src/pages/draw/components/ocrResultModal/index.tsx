@@ -220,11 +220,11 @@ export const OcrResultModal: React.FC<{
 	});
 	const [copiedItem, setCopiedItem] = useState("");
 
-	// 每次 OCR 结果变化时，重置为原图格式排版
+	// 每次 OCR 结果变化时，重置为语义智能排版（按几何位置聚类行与段落，更贴近阅读顺序）
 	useEffect(() => {
 		if (open && ocrResult) {
-			setLayoutType("original");
-			setEditableText(originalLayout(ocrResult));
+			setLayoutType("semantic");
+			setEditableText(semanticLayout(ocrResult));
 		}
 	}, [open, ocrResult]);
 

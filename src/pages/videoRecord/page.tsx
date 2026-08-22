@@ -262,6 +262,8 @@ export const VideoRecordPage: React.FC = () => {
 			// 系统级关闭（Alt+F4 / 点原生关闭）时，确保录屏窗口与工具栏窗口一起关闭，
 			// 避免只关掉一个导致另一个（蓝色选择框 / 控制栏）残留在屏幕上
 			event.preventDefault();
+			// 若批注开启导致窗口不穿透，先恢复穿透再关闭，避免残留可交互的透明窗口
+			appWindow.setIgnoreCursorEvents(true);
 			await Promise.all([
 				listenKeyStop(true).catch((error) => {
 					appError(
@@ -603,11 +605,17 @@ const clearAnnotations = useCallback(() => {
 
 	// 监听批注命令（来自录屏工具栏窗口）
 	useEffect(() => {
+		const appWindow = getCurrentWindow();
 		const unlist: (() => void)[] = [];
 		listen<{ enabled: boolean }>("video-record-annotate-toggle", (e) => {
 			setAnnotateEnabled(e.payload.enabled);
 			if (e.payload.enabled) {
+				// 开启批注后需要接收鼠标事件进行绘制，解除窗口级鼠标穿透
+				appWindow.setIgnoreCursorEvents(false);
 				setTimeout(resizeAnnotateCanvas, 0);
+			} else {
+				// 关闭批注后恢复穿透，避免遮挡下层操作
+				appWindow.setIgnoreCursorEvents(true);
 			}
 		}).then((fn) => unlist.push(fn));
 		listen("video-record-annotate-clear", () => {
