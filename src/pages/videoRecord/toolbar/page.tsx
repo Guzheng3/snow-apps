@@ -5,7 +5,6 @@ import {
 	ArrowRightOutlined,
 	BgColorsOutlined,
 	BorderOutlined,
-	CircleOutlined,
 	ClearOutlined,
 	CloseOutlined,
 	CopyOutlined,
@@ -52,6 +51,7 @@ import {
 } from "@/commands/videoRecord";
 import { EventListenerContext } from "@/components/eventListener";
 import {
+	CircleIcon,
 	FolderIcon,
 	MicrophoneIcon,
 	ResumeRecordIcon,
@@ -98,7 +98,7 @@ const ANNOTATE_TOOLS: Array<{
 }> = [
 	{ key: "pen", label: "画笔", icon: <EditOutlined /> },
 	{ key: "rect", label: "矩形", icon: <BorderOutlined /> },
-	{ key: "ellipse", label: "椭圆", icon: <CircleOutlined /> },
+	{ key: "ellipse", label: "椭圆", icon: <CircleIcon /> },
 	{ key: "arrow", label: "箭头", icon: <ArrowRightOutlined /> },
 	{ key: "line", label: "直线", icon: <MinusOutlined /> },
 	{ key: "text", label: "文字", icon: <FontSizeOutlined /> },
