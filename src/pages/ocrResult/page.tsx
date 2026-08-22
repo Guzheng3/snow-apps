@@ -23,7 +23,7 @@ export const OcrResultPage: React.FC = () => {
 		const appWindow = getCurrentWindow();
 		const monitorInfo = await getCurrentMonitorInfo();
 
-		const windowWidth = 760;
+		const windowWidth = 540;
 		const windowHeight = 860;
 
 		const windowX = Math.round(

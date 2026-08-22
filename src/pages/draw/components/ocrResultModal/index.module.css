@@ -1,12 +1,16 @@
-/* OCR 结果独立面板：铺满整个无边框透明窗口，无多余卡片层级 */
+/* OCR 结果独立面板：与 ocr-result-panel.prototype.html demo 完全一致 */
 .panel {
 	display: flex;
 	flex-direction: column;
 	height: 100vh;
 	width: 100vw;
 	box-sizing: border-box;
-	padding: 20px 24px;
+	padding: 22px 24px;
 	color: var(--ocr-text);
+	background: var(--ocr-panel-bg);
+	border: 1px solid var(--ocr-border);
+	border-radius: 18px;
+	overflow: hidden;
 }
 
 /* ===== 顶部工具栏 ===== */
@@ -14,7 +18,7 @@
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
-	gap: 16px;
+	gap: 12px;
 	margin-bottom: 16px;
 }
 
@@ -42,19 +46,13 @@
 	border-radius: 10px;
 	background: var(--ocr-badge-bg);
 	color: var(--ocr-badge-fg);
-}
-
-.subtitle {
-	margin: 4px 0 0;
-	font-size: 12px;
-	line-height: 1.6;
-	color: var(--ocr-muted);
+	white-space: nowrap;
 }
 
 .headerActions {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 6px;
 	flex-shrink: 0;
 }
 
@@ -73,7 +71,7 @@
 	color: var(--ocr-muted);
 	font-size: 12px;
 	line-height: 1;
-	padding: 7px 14px;
+	padding: 7px 13px;
 	border-radius: 8px;
 	cursor: pointer;
 	transition: background 0.18s ease, color 0.18s ease;
@@ -99,8 +97,8 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 34px;
-	height: 34px;
+	width: 32px;
+	height: 32px;
 	border: none;
 	border-radius: 10px;
 	background: transparent;
@@ -113,6 +111,12 @@
 .closeBtn:hover {
 	background: var(--ocr-danger-bg);
 	color: var(--ocr-danger-fg);
+}
+
+.closeBtn svg {
+	width: 14px;
+	height: 14px;
+	stroke-width: 2.2;
 }
 
 /* ===== 编辑区 ===== */
@@ -132,7 +136,7 @@
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	padding: 10px 14px;
+	padding: 9px 14px;
 	border-bottom: 1px solid var(--ocr-border);
 	background: var(--ocr-editor-bar-bg);
 }
@@ -174,14 +178,14 @@
 
 /* ===== 提取区 ===== */
 .extracted {
-	margin-top: 14px;
+	margin-top: 12px;
 }
 
 .extractedHeader {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	margin-bottom: 10px;
+	margin-bottom: 8px;
 }
 
 .extractedTitle {
@@ -191,27 +195,23 @@
 	margin: 0;
 }
 
-.extractedCount {
-	font-size: 12px;
-	color: var(--ocr-muted);
-}
-
 .extractedGrid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-	gap: 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
 }
 
 .extractedItem {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 10px;
+	width: 100%;
 	min-width: 0;
-	padding: 7px 10px;
+	padding: 8px 12px;
 	border: 1px solid var(--ocr-border);
 	border-radius: 10px;
 	background: var(--ocr-chip-bg);
-	cursor: pointer;
+	cursor: default;
 	transition: border-color 0.18s ease, background 0.18s ease;
 }
 
@@ -220,11 +220,56 @@
 	background: var(--ocr-chip-hover-bg);
 }
 
+.extractedMain {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1;
+	min-width: 0;
+	cursor: pointer;
+}
+
+.extractedActions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex-shrink: 0;
+}
+
+.extractedAction {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: none;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--ocr-muted);
+	cursor: pointer;
+	transition: background 0.18s ease, color 0.18s ease;
+}
+
+.extractedAction:hover {
+	background: var(--ocr-chip-hover-bg);
+	color: var(--ocr-accent);
+}
+
+.extractedAction svg {
+	width: 14px;
+	height: 14px;
+}
+
 .extractedIcon {
 	flex-shrink: 0;
 	font-size: 13px;
 	color: var(--ocr-accent);
 	display: inline-flex;
+}
+
+.extractedIcon svg {
+	width: 13px;
+	height: 13px;
 }
 
 .extractedLabel {
@@ -248,7 +293,11 @@
 	color: var(--ocr-text);
 }
 
-.extractedCopied {
+.link {
+	color: var(--ocr-accent);
+}
+
+.copied {
 	color: var(--ocr-accent);
 }
 
@@ -258,12 +307,47 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: 12px;
-	margin-top: 14px;
+	margin-top: 12px;
 }
 
 .footerHint {
 	font-size: 12px;
 	color: var(--ocr-muted);
+	white-space: nowrap;
+}
+
+.footerRight {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-shrink: 0;
+}
+
+.closeWinBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	border: 1px solid var(--ocr-border);
+	border-radius: 12px;
+	padding: 10px 18px;
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--ocr-text);
+	background: var(--ocr-chip-bg);
+	cursor: pointer;
+	transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.closeWinBtn:hover {
+	border-color: var(--ocr-danger-fg);
+	color: var(--ocr-danger-fg);
+	background: var(--ocr-danger-bg);
+}
+
+.closeWinBtn svg {
+	width: 13px;
+	height: 13px;
+	stroke-width: 2;
 }
 
 .copyBtn {
@@ -297,6 +381,11 @@
 	box-shadow: none;
 }
 
+.copyBtn svg {
+	width: 14px;
+	height: 14px;
+}
+
 /* ===== 空态 ===== */
 .empty {
 	flex: 1;
@@ -307,47 +396,50 @@
 	font-size: 14px;
 }
 
-/* ===== 颜色变量：跟随系统深浅色 ===== */
+/* ===== 颜色变量：浅色（默认）===== */
 :root {
 	--ocr-text: #1f2329;
 	--ocr-muted: #86909c;
 	--ocr-border: #e5e6eb;
+	--ocr-panel-bg: rgba(255, 255, 255, 0.97);
 	--ocr-accent: #3370ff;
 	--ocr-accent-2: #6f8dff;
 	--ocr-accent-shadow: rgba(51, 112, 255, 0.35);
-	--ocr-editor-bg: rgba(255, 255, 255, 0.9);
-	--ocr-editor-bar-bg: rgba(250, 250, 250, 0.9);
-	--ocr-editor-shadow: 0 8px 32px rgba(31, 35, 41, 0.1);
-	--ocr-seg-bg: rgba(229, 230, 235, 0.6);
+	--ocr-editor-bg: rgba(255, 255, 255, 0.92);
+	--ocr-editor-bar-bg: rgba(248, 249, 250, 0.92);
+	--ocr-editor-shadow: 0 8px 32px rgba(31, 35, 41, 0.08);
+	--ocr-seg-bg: rgba(229, 230, 235, 0.65);
 	--ocr-seg-active-bg: #ffffff;
 	--ocr-seg-active-fg: #1f2329;
 	--ocr-badge-bg: rgba(51, 112, 255, 0.1);
 	--ocr-badge-fg: #3370ff;
-	--ocr-chip-bg: rgba(255, 255, 255, 0.6);
+	--ocr-chip-bg: rgba(250, 250, 250, 0.9);
 	--ocr-chip-hover-bg: rgba(51, 112, 255, 0.06);
-	--ocr-chip-label-bg: rgba(229, 230, 235, 0.6);
+	--ocr-chip-label-bg: rgba(229, 230, 235, 0.65);
 	--ocr-danger-bg: rgba(245, 63, 63, 0.1);
 	--ocr-danger-fg: #f53f3f;
 	--ocr-dot: #c9cdd4;
 }
 
+/* ===== 颜色变量：深色（跟随系统）===== */
 @media (prefers-color-scheme: dark) {
 	:root {
 		--ocr-text: #e5e6eb;
 		--ocr-muted: #6b7075;
 		--ocr-border: #2e3237;
+		--ocr-panel-bg: rgba(28, 31, 35, 0.97);
 		--ocr-accent: #4d7dff;
 		--ocr-accent-2: #7596ff;
 		--ocr-accent-shadow: rgba(77, 125, 255, 0.35);
-		--ocr-editor-bg: rgba(28, 31, 35, 0.92);
-		--ocr-editor-bar-bg: rgba(24, 26, 30, 0.92);
-		--ocr-editor-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+		--ocr-editor-bg: rgba(28, 31, 35, 0.95);
+		--ocr-editor-bar-bg: rgba(24, 26, 30, 0.95);
+		--ocr-editor-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 		--ocr-seg-bg: rgba(46, 50, 55, 0.7);
 		--ocr-seg-active-bg: #34383e;
 		--ocr-seg-active-fg: #ffffff;
 		--ocr-badge-bg: rgba(77, 125, 255, 0.18);
 		--ocr-badge-fg: #7ba2ff;
-		--ocr-chip-bg: rgba(46, 50, 55, 0.7);
+		--ocr-chip-bg: rgba(46, 50, 55, 0.75);
 		--ocr-chip-hover-bg: rgba(77, 125, 255, 0.12);
 		--ocr-chip-label-bg: rgba(58, 62, 68, 0.9);
 		--ocr-danger-bg: rgba(245, 63, 63, 0.2);

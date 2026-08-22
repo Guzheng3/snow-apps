@@ -1,6 +1,7 @@
 import {
 	CloseOutlined,
 	CopyOutlined,
+	ExportOutlined,
 	LinkOutlined,
 	MailOutlined,
 	MobileOutlined,
@@ -321,12 +322,11 @@ export const OcrResultModal: React.FC<{
 					<h2 className={styles.title}>
 						文本识别结果
 						{blockCount > 0 && (
-							<span className={styles.titleBadge}>{blockCount} 个文本块</span>
+							<span className={styles.titleBadge}>
+								{blockCount} 个文本块
+							</span>
 						)}
 					</h2>
-					<p className={styles.subtitle}>
-						识别结果可直接编辑，编辑后点击「一键复制」复制当前内容
-					</p>
 				</div>
 				<div className={styles.headerActions}>
 					<div className={styles.layoutGroup}>
@@ -381,9 +381,6 @@ export const OcrResultModal: React.FC<{
 				<div className={styles.extracted}>
 					<div className={styles.extractedHeader}>
 						<span className={styles.extractedTitle}>识别到的信息</span>
-						<span className={styles.extractedCount}>
-							点击链接打开 · 其余点击复制
-						</span>
 					</div>
 					<div className={styles.extractedGrid}>
 						{ITEM_ORDER.map((key) =>
@@ -391,28 +388,54 @@ export const OcrResultModal: React.FC<{
 								const meta = ICONS[key];
 								const copied = copiedItem === value;
 								return (
-									<button
+									<div
 										key={`${key}-${value}`}
 										className={styles.extractedItem}
-										title={
-											key === "urls" ? "点击在浏览器打开" : "点击复制"
-										}
-										onClick={() => handleItemClick(key, value)}
 									>
-										<span className={styles.extractedIcon}>
-											{meta.icon}
-										</span>
-										<span className={styles.extractedLabel}>
-											{meta.label}
-										</span>
-										<span
-											className={`${styles.extractedValue} ${
-												copied ? styles.extractedCopied : ""
-											}`}
+										<div
+											className={styles.extractedMain}
+											title={
+												key === "urls"
+													? "点击在浏览器打开"
+													: "点击复制"
+											}
+											onClick={() => handleItemClick(key, value)}
 										>
-											{copied ? "已复制" : value}
-										</span>
-									</button>
+											<span className={styles.extractedIcon}>
+												{meta.icon}
+											</span>
+											<span className={styles.extractedLabel}>
+												{meta.label}
+											</span>
+											<span
+												className={`${styles.extractedValue} ${
+													key === "urls" ? styles.link : ""
+												} ${copied ? styles.copied : ""}`}
+											>
+												{copied ? "已复制" : value}
+											</span>
+										</div>
+										<div className={styles.extractedActions}>
+											{key === "urls" && (
+												<button
+													className={styles.extractedAction}
+													title="在浏览器打开"
+													onClick={() => handleItemClick(key, value)}
+												>
+													<ExportOutlined />
+												</button>
+											)}
+											<button
+												className={styles.extractedAction}
+												title="复制"
+												onClick={() =>
+													handleCopyItem(value, meta.type)
+												}
+											>
+												<CopyOutlined />
+											</button>
+										</div>
+									</div>
 								);
 							}),
 						)}
@@ -427,20 +450,23 @@ export const OcrResultModal: React.FC<{
 						? "语义排版 · 已按阅读顺序整理"
 						: "原图排版 · 与截图顺序一致"}
 				</span>
-				<button
-					className={styles.copyBtn}
-					onClick={handleCopy}
-					disabled={!editableText || copying}
-				>
-					{copying ? (
-						<span>复制中…</span>
-					) : (
-						<>
-							<CopyOutlined />
-							<span>一键复制</span>
-						</>
-					)}
-				</button>
+				<div className={styles.footerRight}>
+					<button
+						className={styles.closeWinBtn}
+						onClick={onClose}
+					>
+						<CloseOutlined />
+						<span>关闭窗口</span>
+					</button>
+					<button
+						className={styles.copyBtn}
+						onClick={handleCopy}
+						disabled={!editableText || copying}
+					>
+						<CopyOutlined />
+						<span>{copying ? "复制中…" : "一键复制"}</span>
+					</button>
+				</div>
 			</div>
 		</div>
 	);
