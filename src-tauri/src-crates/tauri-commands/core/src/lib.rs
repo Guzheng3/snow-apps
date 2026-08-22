@@ -304,8 +304,8 @@ pub async fn create_ocr_result_window(
     let monitor_width = monitor.width().unwrap() as f64;
     let monitor_height = monitor.height().unwrap() as f64;
 
-    let window_width = 600.0;
-    let window_height = 640.0;
+    let window_width = 760.0;
+    let window_height = 860.0;
 
     // 弹窗居中于鼠标所在显示器
     let window_x = monitor_x + monitor_width / 2.0 - window_width / 2.0;

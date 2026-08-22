@@ -1,16 +1,17 @@
-import { Button, Input, Modal, Radio, Space, Typography } from "antd";
-import { useContext, useEffect, useState } from "react";
 import {
+	CloseOutlined,
 	CopyOutlined,
 	LinkOutlined,
 	MailOutlined,
 	MobileOutlined,
 	QqOutlined,
 } from "@ant-design/icons";
+import { useContext, useEffect, useState, type ReactNode } from "react";
 import { AntdContext } from "@/contexts/antdContext";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import { writeTextToClipboard } from "@/utils/clipboard";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import styles from "./index.module.css";
 
 type LayoutType = "original" | "semantic";
 
@@ -203,6 +204,23 @@ const openLink = (url: string) => {
 	openUrl(normalized);
 };
 
+const ICONS: Record<
+	"urls" | "emails" | "phones" | "qqs",
+	{ icon: ReactNode; label: string; type: "链接" | "邮箱" | "手机号" | "QQ 号" }
+> = {
+	urls: { icon: <LinkOutlined />, label: "链接", type: "链接" },
+	emails: { icon: <MailOutlined />, label: "邮箱", type: "邮箱" },
+	phones: { icon: <MobileOutlined />, label: "手机", type: "手机号" },
+	qqs: { icon: <QqOutlined />, label: "QQ", type: "QQ 号" },
+};
+
+const ITEM_ORDER: ("urls" | "emails" | "phones" | "qqs")[] = [
+	"urls",
+	"emails",
+	"phones",
+	"qqs",
+];
+
 export const OcrResultModal: React.FC<{
 	open: boolean;
 	ocrResult: OcrDetectResult | undefined;
@@ -261,9 +279,9 @@ export const OcrResultModal: React.FC<{
 	};
 
 	const handleCopyItem = async (
-	value: string,
-	type: "链接" | "邮箱" | "手机号" | "QQ 号"
-) => {
+		value: string,
+		type: "链接" | "邮箱" | "手机号" | "QQ 号",
+	) => {
 		try {
 			await writeTextToClipboard(value);
 			setCopiedItem(value);
@@ -273,210 +291,158 @@ export const OcrResultModal: React.FC<{
 		}
 	};
 
-	const hasExtracted =
-		extracted.urls.length > 0 ||
-		extracted.emails.length > 0 ||
-		extracted.phones.length > 0 ||
-		extracted.qqs.length > 0;
+	const handleItemClick = (
+		key: "urls" | "emails" | "phones" | "qqs",
+		value: string,
+	) => {
+		if (key === "urls") {
+			openLink(value);
+		} else {
+			handleCopyItem(value, ICONS[key].type);
+		}
+	};
+
+	if (!open) {
+		return null;
+	}
+
+	const blockCount = ocrResult?.text_blocks.length ?? 0;
+	const totalExtracted =
+		extracted.urls.length +
+		extracted.emails.length +
+		extracted.phones.length +
+		extracted.qqs.length;
 
 	return (
-		<Modal
-			title="文本识别结果"
-			open={open}
-			onCancel={onClose}
-			width={560}
-			destroyOnClose
-			footer={
-				<Space>
-					<Button onClick={onClose}>关闭</Button>
-					<Button
-						type="primary"
-						icon={<CopyOutlined />}
-						loading={copying}
-						onClick={handleCopy}
-					>
-						一键复制
-					</Button>
-				</Space>
-			}
-		>
-			<Space direction="vertical" style={{ width: "100%" }} size={12}>
-				<Radio.Group
-					value={layoutType}
-					onChange={(e) => handleLayoutChange(e.target.value)}
-					optionType="button"
-					buttonStyle="solid"
-				>
-					<Radio.Button value="original">原图格式排版</Radio.Button>
-					<Radio.Button value="semantic">语义智能排版</Radio.Button>
-				</Radio.Group>
-				<Typography.Text type="secondary" style={{ fontSize: 12 }}>
-					识别结果可直接编辑，编辑后点击「一键复制」复制当前内容。
-				</Typography.Text>
-				<Input.TextArea
-					value={editableText}
-					onChange={(e) => setEditableText(e.target.value)}
-					autoSize={{ minRows: 8, maxRows: 20 }}
-					placeholder="识别结果为空"
-					style={{ fontSize: 13 }}
-				/>
-				{hasExtracted && (
-					<div
-						style={{
-							border: "1px solid #d9d9d9",
-							borderRadius: 8,
-							padding: "8px 12px",
-							background: "#fafafa",
-							maxHeight: 160,
-							overflowY: "auto",
-						}}
-					>
-						<Typography.Text
-							strong
-							style={{ fontSize: 12, display: "block", marginBottom: 4 }}
+		<div className={styles.panel}>
+			{/* 顶部工具栏 */}
+			<div className={styles.header}>
+				<div className={styles.titleWrap}>
+					<h2 className={styles.title}>
+						文本识别结果
+						{blockCount > 0 && (
+							<span className={styles.titleBadge}>{blockCount} 个文本块</span>
+						)}
+					</h2>
+					<p className={styles.subtitle}>
+						识别结果可直接编辑，编辑后点击「一键复制」复制当前内容
+					</p>
+				</div>
+				<div className={styles.headerActions}>
+					<div className={styles.layoutGroup}>
+						<button
+							className={`${styles.layoutItem} ${
+								layoutType === "original" ? styles.layoutItemActive : ""
+							}`}
+							onClick={() => handleLayoutChange("original")}
 						>
-							识别到的链接 / 邮箱 / 手机号 / QQ
-						</Typography.Text>
-						{extracted.urls.map((url) => (
-							<div
-								key={`u-${url}`}
-								style={{
-									display: "flex",
-									alignItems: "center",
-									gap: 8,
-									padding: "2px 0",
-								}}
-							>
-								<LinkOutlined style={{ color: "#1677ff" }} />
-								<a
-									style={{
-										flex: 1,
-										fontSize: 12,
-										overflow: "hidden",
-										textOverflow: "ellipsis",
-										whiteSpace: "nowrap",
-									}}
-									title={url}
-									onClick={() => openLink(url)}
-								>
-									{url}
-								</a>
-								<Button
-									size="small"
-									type={copiedItem === url ? "primary" : "default"}
-									icon={<CopyOutlined />}
-									onClick={() => handleCopyItem(url, "链接")}
-								>
-									{copiedItem === url ? "已复制" : "复制"}
-								</Button>
-							</div>
-						))}
-						{extracted.emails.map((email) => (
-							<div
-								key={`e-${email}`}
-								style={{
-									display: "flex",
-									alignItems: "center",
-									gap: 8,
-									padding: "2px 0",
-								}}
-							>
-								<MailOutlined style={{ color: "#1677ff" }} />
-								<a
-									style={{
-										flex: 1,
-										fontSize: 12,
-										overflow: "hidden",
-										textOverflow: "ellipsis",
-										whiteSpace: "nowrap",
-									}}
-									title={`点击复制 ${email}`}
-									onClick={() => handleCopyItem(email, "邮箱")}
-								>
-									{email}
-								</a>
-								<Button
-									size="small"
-									type={copiedItem === email ? "primary" : "default"}
-									icon={<CopyOutlined />}
-									onClick={() => handleCopyItem(email, "邮箱")}
-								>
-									{copiedItem === email ? "已复制" : "复制"}
-								</Button>
-							</div>
-						))}
-						{extracted.phones.map((phone) => (
-							<div
-								key={`p-${phone}`}
-								style={{
-									display: "flex",
-									alignItems: "center",
-									gap: 8,
-									padding: "2px 0",
-								}}
-							>
-								<MobileOutlined style={{ color: "#1677ff" }} />
-								<a
-									style={{
-										flex: 1,
-										fontSize: 12,
-										overflow: "hidden",
-										textOverflow: "ellipsis",
-										whiteSpace: "nowrap",
-									}}
-									title={`点击复制 ${phone}`}
-									onClick={() => handleCopyItem(phone, "手机号")}
-								>
-									{phone}
-								</a>
-								<Button
-									size="small"
-									type={copiedItem === phone ? "primary" : "default"}
-									icon={<CopyOutlined />}
-									onClick={() => handleCopyItem(phone, "手机号")}
-								>
-									{copiedItem === phone ? "已复制" : "复制"}
-								</Button>
-							</div>
-						))}
-						{extracted.qqs.map((qq) => (
-							<div
-								key={`q-${qq}`}
-								style={{
-									display: "flex",
-									alignItems: "center",
-									gap: 8,
-									padding: "2px 0",
-								}}
-							>
-								<QqOutlined style={{ color: "#1677ff" }} />
-								<a
-									style={{
-										flex: 1,
-										fontSize: 12,
-										overflow: "hidden",
-										textOverflow: "ellipsis",
-										whiteSpace: "nowrap",
-									}}
-									title={`点击复制 ${qq}`}
-									onClick={() => handleCopyItem(qq, "QQ 号")}
-								>
-									{qq}
-								</a>
-								<Button
-									size="small"
-									type={copiedItem === qq ? "primary" : "default"}
-									icon={<CopyOutlined />}
-									onClick={() => handleCopyItem(qq, "QQ 号")}
-								>
-									{copiedItem === qq ? "已复制" : "复制"}
-								</Button>
-							</div>
-						))}
+							原图排版
+						</button>
+						<button
+							className={`${styles.layoutItem} ${
+								layoutType === "semantic" ? styles.layoutItemActive : ""
+							}`}
+							onClick={() => handleLayoutChange("semantic")}
+						>
+							语义排版
+						</button>
 					</div>
-				)}
-			</Space>
-		</Modal>
+					<button
+						className={styles.closeBtn}
+						title="关闭"
+						onClick={onClose}
+					>
+						<CloseOutlined />
+					</button>
+				</div>
+			</div>
+
+			{/* 编辑区 */}
+			{blockCount === 0 ? (
+				<div className={styles.empty}>识别结果为空</div>
+			) : (
+				<div className={styles.editor}>
+					<div className={styles.editorBar}>
+						<span className={styles.editorDot} />
+						<span className={styles.editorHint}>可编辑</span>
+					</div>
+					<textarea
+						className={styles.editorArea}
+						value={editableText}
+						onChange={(e) => setEditableText(e.target.value)}
+						placeholder="识别结果为空"
+						spellCheck={false}
+					/>
+				</div>
+			)}
+
+			{/* 提取区 */}
+			{totalExtracted > 0 && (
+				<div className={styles.extracted}>
+					<div className={styles.extractedHeader}>
+						<span className={styles.extractedTitle}>识别到的信息</span>
+						<span className={styles.extractedCount}>
+							点击链接打开 · 其余点击复制
+						</span>
+					</div>
+					<div className={styles.extractedGrid}>
+						{ITEM_ORDER.map((key) =>
+							extracted[key].map((value) => {
+								const meta = ICONS[key];
+								const copied = copiedItem === value;
+								return (
+									<button
+										key={`${key}-${value}`}
+										className={styles.extractedItem}
+										title={
+											key === "urls" ? "点击在浏览器打开" : "点击复制"
+										}
+										onClick={() => handleItemClick(key, value)}
+									>
+										<span className={styles.extractedIcon}>
+											{meta.icon}
+										</span>
+										<span className={styles.extractedLabel}>
+											{meta.label}
+										</span>
+										<span
+											className={`${styles.extractedValue} ${
+												copied ? styles.extractedCopied : ""
+											}`}
+										>
+											{copied ? "已复制" : value}
+										</span>
+									</button>
+								);
+							}),
+						)}
+					</div>
+				</div>
+			)}
+
+			{/* 底部操作栏 */}
+			<div className={styles.footer}>
+				<span className={styles.footerHint}>
+					{layoutType === "semantic"
+						? "语义排版 · 已按阅读顺序整理"
+						: "原图排版 · 与截图顺序一致"}
+				</span>
+				<button
+					className={styles.copyBtn}
+					onClick={handleCopy}
+					disabled={!editableText || copying}
+				>
+					{copying ? (
+						<span>复制中…</span>
+					) : (
+						<>
+							<CopyOutlined />
+							<span>一键复制</span>
+						</>
+					)}
+				</button>
+			</div>
+		</div>
 	);
 };
 

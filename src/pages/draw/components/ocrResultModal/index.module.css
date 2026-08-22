@@ -1,0 +1,357 @@
+/* OCR 结果独立面板：铺满整个无边框透明窗口，无多余卡片层级 */
+.panel {
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+	width: 100vw;
+	box-sizing: border-box;
+	padding: 20px 24px;
+	color: var(--ocr-text);
+}
+
+/* ===== 顶部工具栏 ===== */
+.header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+	margin-bottom: 16px;
+}
+
+.titleWrap {
+	min-width: 0;
+}
+
+.title {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 600;
+	line-height: 1.3;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.titleBadge {
+	display: inline-flex;
+	align-items: center;
+	padding: 1px 10px;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 20px;
+	border-radius: 10px;
+	background: var(--ocr-badge-bg);
+	color: var(--ocr-badge-fg);
+}
+
+.subtitle {
+	margin: 4px 0 0;
+	font-size: 12px;
+	line-height: 1.6;
+	color: var(--ocr-muted);
+}
+
+.headerActions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+/* ===== 布局切换 ===== */
+.layoutGroup {
+	display: inline-flex;
+	background: var(--ocr-seg-bg);
+	border-radius: 10px;
+	padding: 3px;
+	gap: 2px;
+}
+
+.layoutItem {
+	border: none;
+	background: transparent;
+	color: var(--ocr-muted);
+	font-size: 12px;
+	line-height: 1;
+	padding: 7px 14px;
+	border-radius: 8px;
+	cursor: pointer;
+	transition: background 0.18s ease, color 0.18s ease;
+	white-space: nowrap;
+}
+
+.layoutItem:hover {
+	color: var(--ocr-text);
+}
+
+.layoutItemActive {
+	background: var(--ocr-seg-active-bg);
+	color: var(--ocr-seg-active-fg);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.layoutItemActive:hover {
+	color: var(--ocr-seg-active-fg);
+}
+
+/* ===== 关闭按钮 ===== */
+.closeBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	border: none;
+	border-radius: 10px;
+	background: transparent;
+	color: var(--ocr-muted);
+	font-size: 16px;
+	cursor: pointer;
+	transition: background 0.18s ease, color 0.18s ease;
+}
+
+.closeBtn:hover {
+	background: var(--ocr-danger-bg);
+	color: var(--ocr-danger-fg);
+}
+
+/* ===== 编辑区 ===== */
+.editor {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	background: var(--ocr-editor-bg);
+	border: 1px solid var(--ocr-border);
+	border-radius: 14px;
+	overflow: hidden;
+	box-shadow: var(--ocr-editor-shadow);
+}
+
+.editorBar {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 14px;
+	border-bottom: 1px solid var(--ocr-border);
+	background: var(--ocr-editor-bar-bg);
+}
+
+.editorDot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--ocr-dot);
+}
+
+.editorHint {
+	font-size: 12px;
+	color: var(--ocr-muted);
+}
+
+.editorArea {
+	flex: 1;
+	width: 100%;
+	box-sizing: border-box;
+	border: none;
+	outline: none;
+	resize: none;
+	background: transparent;
+	color: var(--ocr-text);
+	font-size: 15px;
+	line-height: 1.8;
+	padding: 16px 18px;
+	font-family: inherit;
+}
+
+.editorArea::placeholder {
+	color: var(--ocr-muted);
+}
+
+.editorArea:focus {
+	box-shadow: none;
+}
+
+/* ===== 提取区 ===== */
+.extracted {
+	margin-top: 14px;
+}
+
+.extractedHeader {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 10px;
+}
+
+.extractedTitle {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--ocr-text);
+	margin: 0;
+}
+
+.extractedCount {
+	font-size: 12px;
+	color: var(--ocr-muted);
+}
+
+.extractedGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 8px;
+}
+
+.extractedItem {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	padding: 7px 10px;
+	border: 1px solid var(--ocr-border);
+	border-radius: 10px;
+	background: var(--ocr-chip-bg);
+	cursor: pointer;
+	transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.extractedItem:hover {
+	border-color: var(--ocr-accent);
+	background: var(--ocr-chip-hover-bg);
+}
+
+.extractedIcon {
+	flex-shrink: 0;
+	font-size: 13px;
+	color: var(--ocr-accent);
+	display: inline-flex;
+}
+
+.extractedLabel {
+	flex-shrink: 0;
+	font-size: 11px;
+	color: var(--ocr-muted);
+	display: inline-flex;
+	align-items: center;
+	padding: 1px 6px;
+	border-radius: 6px;
+	background: var(--ocr-chip-label-bg);
+}
+
+.extractedValue {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 12px;
+	color: var(--ocr-text);
+}
+
+.extractedCopied {
+	color: var(--ocr-accent);
+}
+
+/* ===== 底部操作栏 ===== */
+.footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-top: 14px;
+}
+
+.footerHint {
+	font-size: 12px;
+	color: var(--ocr-muted);
+}
+
+.copyBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	border: none;
+	border-radius: 12px;
+	padding: 10px 22px;
+	font-size: 14px;
+	font-weight: 600;
+	color: #fff;
+	background: linear-gradient(135deg, var(--ocr-accent), var(--ocr-accent-2));
+	cursor: pointer;
+	transition: filter 0.18s ease, transform 0.12s ease;
+	box-shadow: 0 4px 14px var(--ocr-accent-shadow);
+}
+
+.copyBtn:hover {
+	filter: brightness(1.06);
+}
+
+.copyBtn:active {
+	transform: translateY(1px);
+}
+
+.copyBtn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+	filter: none;
+	box-shadow: none;
+}
+
+/* ===== 空态 ===== */
+.empty {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--ocr-muted);
+	font-size: 14px;
+}
+
+/* ===== 颜色变量：跟随系统深浅色 ===== */
+:root {
+	--ocr-text: #1f2329;
+	--ocr-muted: #86909c;
+	--ocr-border: #e5e6eb;
+	--ocr-accent: #3370ff;
+	--ocr-accent-2: #6f8dff;
+	--ocr-accent-shadow: rgba(51, 112, 255, 0.35);
+	--ocr-editor-bg: rgba(255, 255, 255, 0.9);
+	--ocr-editor-bar-bg: rgba(250, 250, 250, 0.9);
+	--ocr-editor-shadow: 0 8px 32px rgba(31, 35, 41, 0.1);
+	--ocr-seg-bg: rgba(229, 230, 235, 0.6);
+	--ocr-seg-active-bg: #ffffff;
+	--ocr-seg-active-fg: #1f2329;
+	--ocr-badge-bg: rgba(51, 112, 255, 0.1);
+	--ocr-badge-fg: #3370ff;
+	--ocr-chip-bg: rgba(255, 255, 255, 0.6);
+	--ocr-chip-hover-bg: rgba(51, 112, 255, 0.06);
+	--ocr-chip-label-bg: rgba(229, 230, 235, 0.6);
+	--ocr-danger-bg: rgba(245, 63, 63, 0.1);
+	--ocr-danger-fg: #f53f3f;
+	--ocr-dot: #c9cdd4;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--ocr-text: #e5e6eb;
+		--ocr-muted: #6b7075;
+		--ocr-border: #2e3237;
+		--ocr-accent: #4d7dff;
+		--ocr-accent-2: #7596ff;
+		--ocr-accent-shadow: rgba(77, 125, 255, 0.35);
+		--ocr-editor-bg: rgba(28, 31, 35, 0.92);
+		--ocr-editor-bar-bg: rgba(24, 26, 30, 0.92);
+		--ocr-editor-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+		--ocr-seg-bg: rgba(46, 50, 55, 0.7);
+		--ocr-seg-active-bg: #34383e;
+		--ocr-seg-active-fg: #ffffff;
+		--ocr-badge-bg: rgba(77, 125, 255, 0.18);
+		--ocr-badge-fg: #7ba2ff;
+		--ocr-chip-bg: rgba(46, 50, 55, 0.7);
+		--ocr-chip-hover-bg: rgba(77, 125, 255, 0.12);
+		--ocr-chip-label-bg: rgba(58, 62, 68, 0.9);
+		--ocr-danger-bg: rgba(245, 63, 63, 0.2);
+		--ocr-danger-fg: #f76560;
+		--ocr-dot: #4a4f55;
+	}
+}
