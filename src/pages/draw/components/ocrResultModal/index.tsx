@@ -7,12 +7,84 @@ import {
 	MobileOutlined,
 	QqOutlined,
 } from "@ant-design/icons";
-import { useContext, useEffect, useState, type ReactNode } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { AntdContext } from "@/contexts/antdContext";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import { writeTextToClipboard } from "@/utils/clipboard";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import styles from "./index.module.css";
+
+/** Tauri v2 ResizeDirection 枚举值 */
+const RESIZE_DIRECTIONS = {
+	top: "North",
+	bottom: "South",
+	left: "West",
+	right: "East",
+	topLeft: "NorthWest",
+	topRight: "NorthEast",
+	bottomLeft: "SouthWest",
+	bottomRight: "SouthEast",
+} as const;
+
+type ResizeDirection = keyof typeof RESIZE_DIRECTIONS;
+
+/**
+ * 无边框窗口的拖拽调整大小边框
+ * 利用 Tauri v2 原生 startResizeDragging 实现，四边 + 四角共 8 个拖拽热区
+ */
+const ResizeBorder: React.FC = () => {
+	const handleResizeMouseDown = useCallback(
+		(e: React.MouseEvent, direction: ResizeDirection) => {
+			e.preventDefault();
+			e.stopPropagation();
+			const win = getCurrentWindow() as unknown as {
+				startResizeDragging: (dir: string) => Promise<void>;
+			};
+			win.startResizeDragging(RESIZE_DIRECTIONS[direction]).catch((err: unknown) => {
+				console.warn("[ResizeBorder] startResizeDragging failed:", err);
+			});
+		},
+		[],
+	);
+
+	return (
+		<div className={styles.resizeBorder}>
+			<div
+				className={styles.resizeTop}
+				onMouseDown={(e) => handleResizeMouseDown(e, "top")}
+			/>
+			<div
+				className={styles.resizeBottom}
+				onMouseDown={(e) => handleResizeMouseDown(e, "bottom")}
+			/>
+			<div
+				className={styles.resizeLeft}
+				onMouseDown={(e) => handleResizeMouseDown(e, "left")}
+			/>
+			<div
+				className={styles.resizeRight}
+				onMouseDown={(e) => handleResizeMouseDown(e, "right")}
+			/>
+			<div
+				className={styles.resizeTopLeft}
+				onMouseDown={(e) => handleResizeMouseDown(e, "topLeft")}
+			/>
+			<div
+				className={styles.resizeTopRight}
+				onMouseDown={(e) => handleResizeMouseDown(e, "topRight")}
+			/>
+			<div
+				className={styles.resizeBottomLeft}
+				onMouseDown={(e) => handleResizeMouseDown(e, "bottomLeft")}
+			/>
+			<div
+				className={styles.resizeBottomRight}
+				onMouseDown={(e) => handleResizeMouseDown(e, "bottomRight")}
+			/>
+		</div>
+	);
+};
 
 type LayoutType = "original" | "semantic";
 
@@ -316,6 +388,9 @@ export const OcrResultModal: React.FC<{
 
 	return (
 		<div className={styles.panel}>
+			{/* 拖拽调整窗口大小边框（四边 + 四角） */}
+			<ResizeBorder />
+
 			{/* 顶部工具栏（可拖动区域） */}
 			<div className={styles.header} data-tauri-drag-region>
 				<div className={styles.titleWrap}>

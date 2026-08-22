@@ -1,4 +1,4 @@
-/* OCR 结果独立面板：从屏幕中间淡入出现 */
+/* OCR 结果独立面板：从屏幕中间直接淡入出现（纯 opacity，无位移/缩放） */
 .panel {
 	display: flex;
 	flex-direction: column;
@@ -11,17 +11,15 @@
 	border: 1px solid var(--ocr-border);
 	border-radius: 18px;
 	overflow: hidden;
-	animation: panelFadeIn 0.25s ease-out both;
+	animation: panelFadeIn 0.18s ease-out both;
 }
 
 @keyframes panelFadeIn {
 	from {
 		opacity: 0;
-		transform: scale(0.92);
 	}
 	to {
 		opacity: 1;
-		transform: scale(1);
 	}
 }
 
@@ -399,6 +397,97 @@
 .copyBtn svg {
 	width: 14px;
 	height: 14px;
+}
+
+/* ===== 拖拽调整窗口大小边框 ===== */
+.resizeBorder {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+	z-index: 9999;
+}
+
+.resizeTop,
+.resizeBottom,
+.resizeLeft,
+.resizeRight {
+	position: absolute;
+	pointer-events: auto;
+}
+
+.resizeTop {
+	top: 0;
+	left: 12px;
+	right: 12px;
+	height: 5px;
+	cursor: n-resize;
+}
+
+.resizeBottom {
+	bottom: 0;
+	left: 12px;
+	right: 12px;
+	height: 5px;
+	cursor: s-resize;
+}
+
+.resizeLeft {
+	left: 0;
+	top: 12px;
+	bottom: 12px;
+	width: 5px;
+	cursor: w-resize;
+}
+
+.resizeRight {
+	right: 0;
+	top: 12px;
+	bottom: 12px;
+	width: 5px;
+	cursor: e-resize;
+}
+
+.resizeTopLeft,
+.resizeTopRight,
+.resizeBottomLeft,
+.resizeBottomRight {
+	position: absolute;
+	pointer-events: auto;
+}
+
+.resizeTopLeft {
+	top: 0;
+	left: 0;
+	width: 14px;
+	height: 14px;
+	cursor: nw-resize;
+}
+
+.resizeTopRight {
+	top: 0;
+	right: 0;
+	width: 14px;
+	height: 14px;
+	cursor: ne-resize;
+}
+
+.resizeBottomLeft {
+	bottom: 0;
+	left: 0;
+	width: 14px;
+	height: 14px;
+	cursor: sw-resize;
+}
+
+.resizeBottomRight {
+	bottom: 0;
+	right: 0;
+	width: 14px;
+	height: 14px;
+	cursor: se-resize;
 }
 
 /* ===== 空态 ===== */

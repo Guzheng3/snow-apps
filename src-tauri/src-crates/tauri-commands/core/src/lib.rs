@@ -334,6 +334,12 @@ pub async fn create_ocr_result_window(
         window.set_always_on_top(true).unwrap();
         window.set_title("Snow Shot - OCR Result").unwrap();
         window
+            .set_position(tauri::PhysicalPosition::new(
+                window_x as i32,
+                window_y as i32,
+            ))
+            .unwrap();
+        window
             .set_size(tauri::PhysicalSize::new(
                 window_width as u32,
                 window_height as u32,
