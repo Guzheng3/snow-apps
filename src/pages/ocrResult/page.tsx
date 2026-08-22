@@ -82,10 +82,10 @@ export const OcrResultPage: React.FC = () => {
 		};
 	}, [addListener, removeListener, loadOcrResult]);
 
-	/** 关闭弹窗后隐藏窗口（保留窗口以便复用） */
+	/** 关闭弹窗后销毁窗口，确保屏幕不留任何 Snow Shot 窗口 */
 	const handleClose = useCallback(() => {
 		setOpen(false);
-		getCurrentWindow().hide();
+		getCurrentWindow().close();
 	}, []);
 
 	return (
