@@ -619,6 +619,11 @@ const clearAnnotations = useCallback(() => {
 		listen<{ color: string }>("video-record-annotate-color", (e) => {
 			setAnnotateColor(e.payload.color);
 		}).then((fn) => unlist.push(fn));
+		listen<{
+			tool: "pen" | "rect" | "ellipse" | "arrow" | "line" | "text";
+		}>("video-record-annotate-tool", (e) => {
+			setAnnotateTool(e.payload.tool);
+		}).then((fn) => unlist.push(fn));
 		return () => {
 			unlist.forEach((fn) => fn());
 		};

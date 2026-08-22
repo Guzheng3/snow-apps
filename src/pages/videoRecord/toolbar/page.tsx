@@ -2,13 +2,18 @@
 
 import React from "react";
 import {
+	ArrowRightOutlined,
 	BgColorsOutlined,
+	BorderOutlined,
+	CircleOutlined,
 	ClearOutlined,
 	CloseOutlined,
 	CopyOutlined,
 	EditOutlined,
+	FontSizeOutlined,
 	GifOutlined,
 	HolderOutlined,
+	MinusOutlined,
 	PauseOutlined,
 } from "@ant-design/icons";
 import { emit } from "@tauri-apps/api/event";
@@ -83,6 +88,21 @@ import { zIndexs } from "@/utils/zIndex";
 import { getVideoRecordParams, VideoRecordState } from "../extra";
 
 dayjs.extend(duration);
+
+type AnnotateTool = "pen" | "rect" | "ellipse" | "arrow" | "line" | "text";
+
+const ANNOTATE_TOOLS: Array<{
+	key: AnnotateTool;
+	label: string;
+	icon: React.ReactNode;
+}> = [
+	{ key: "pen", label: "画笔", icon: <EditOutlined /> },
+	{ key: "rect", label: "矩形", icon: <BorderOutlined /> },
+	{ key: "ellipse", label: "椭圆", icon: <CircleOutlined /> },
+	{ key: "arrow", label: "箭头", icon: <ArrowRightOutlined /> },
+	{ key: "line", label: "直线", icon: <MinusOutlined /> },
+	{ key: "text", label: "文字", icon: <FontSizeOutlined /> },
+];
 
 const convertVideoMaxSizeToWidthAndHeight = (
 	videoMaxSize: VideoMaxSize,
@@ -215,6 +235,7 @@ export const VideoRecordToolbarPage: React.FC = () => {
 	const [annotateEnabled, setAnnotateEnabled] = useState(false);
 	const [annotateBackgroundFixed, setAnnotateBackgroundFixed] = useState(false);
 	const [annotateColor, setAnnotateColor] = useState("#f5222d");
+	const [annotateTool, setAnnotateTool] = useState<AnnotateTool>("pen");
 	const ANNOTATE_COLORS = ["#f5222d", "#fa8c16", "#52c41a", "#1677ff", "#000000", "#ffffff"];
 	// const [enableSystemAudio, setEnableSystemAudio] = useState(true);
 	const durationRef = useRef(0);
