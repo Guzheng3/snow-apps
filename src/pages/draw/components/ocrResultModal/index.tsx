@@ -316,8 +316,8 @@ export const OcrResultModal: React.FC<{
 
 	return (
 		<div className={styles.panel}>
-			{/* 顶部工具栏 */}
-			<div className={styles.header}>
+			{/* 顶部工具栏（可拖动区域） */}
+			<div className={styles.header} data-tauri-drag-region>
 				<div className={styles.titleWrap}>
 					<h2 className={styles.title}>
 						文本识别结果

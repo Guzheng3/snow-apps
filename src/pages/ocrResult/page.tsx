@@ -1,4 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { LogicalSize } from "@tauri-apps/api/dpi";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { getCurrentMonitorInfo } from "@/commands/core";
 import { getOcrResultState } from "@/commands/globalSate";
@@ -22,9 +23,13 @@ export const OcrResultPage: React.FC = () => {
 	const positionAndShowWindow = useCallback(async () => {
 		const appWindow = getCurrentWindow();
 		const monitorInfo = await getCurrentMonitorInfo();
+		const scaleFactor = window.devicePixelRatio;
 
-		const windowWidth = 680;
-		const windowHeight = 860;
+		// 基准逻辑像素尺寸，根据 DPI 自动缩放
+		const logicalWidth = 560;
+		const logicalHeight = 720;
+		const windowWidth = Math.round(logicalWidth * scaleFactor);
+		const windowHeight = Math.round(logicalHeight * scaleFactor);
 
 		const windowX = Math.round(
 			monitorInfo.monitor_x + monitorInfo.monitor_width / 2 - windowWidth / 2,
@@ -39,6 +44,8 @@ export const OcrResultPage: React.FC = () => {
 			max_x: windowX + windowWidth,
 			max_y: windowY + windowHeight,
 		});
+		// 设置最小窗口尺寸（逻辑像素）
+		await appWindow.setMinSize(new LogicalSize(400, 500));
 		await showWindow();
 	}, []);
 

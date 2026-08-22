@@ -303,9 +303,13 @@ pub async fn create_ocr_result_window(
     let monitor_y = monitor.y().unwrap() as f64;
     let monitor_width = monitor.width().unwrap() as f64;
     let monitor_height = monitor.height().unwrap() as f64;
+    let monitor_scale_factor = monitor.scale_factor().unwrap() as f64;
 
-    let window_width = 680.0;
-    let window_height = 860.0;
+    // 基准逻辑像素尺寸，根据 DPI 缩放为物理像素
+    let logical_width = 560.0;
+    let logical_height = 720.0;
+    let window_width = logical_width * monitor_scale_factor;
+    let window_height = logical_height * monitor_scale_factor;
 
     // 弹窗居中于鼠标所在显示器
     let window_x = monitor_x + monitor_width / 2.0 - window_width / 2.0;
@@ -315,7 +319,6 @@ pub async fn create_ocr_result_window(
     let (window_x, window_y) = (window_x, window_y);
     #[cfg(not(target_os = "macos"))]
     let (window_x, window_y) = {
-        let monitor_scale_factor = monitor.scale_factor().unwrap() as f64;
         (
             window_x / monitor_scale_factor,
             window_y / monitor_scale_factor,
@@ -331,7 +334,13 @@ pub async fn create_ocr_result_window(
         window.set_always_on_top(true).unwrap();
         window.set_title("Snow Shot - OCR Result").unwrap();
         window
-            .set_size(tauri::PhysicalSize::new(window_width, window_height))
+            .set_size(tauri::PhysicalSize::new(
+                window_width as u32,
+                window_height as u32,
+            ))
+            .unwrap();
+        window
+            .set_min_size(Some(tauri::LogicalSize::new(400.0, 500.0)))
             .unwrap();
         window.show().unwrap();
 
@@ -383,7 +392,7 @@ pub async fn create_ocr_result_window(
             tauri::WebviewUrl::App(PathBuf::from(url)),
         )
         .always_on_top(true)
-        .resizable(false)
+        .resizable(true)
         .maximizable(false)
         .minimizable(false)
         .fullscreen(false)
@@ -393,7 +402,7 @@ pub async fn create_ocr_result_window(
         .shadow(false)
         .transparent(true)
         .skip_taskbar(true)
-        .resizable(false)
+        .min_inner_size(tauri::LogicalSize::new(400.0, 500.0))
         .inner_size(window_width, window_height)
         .build()
         .unwrap();

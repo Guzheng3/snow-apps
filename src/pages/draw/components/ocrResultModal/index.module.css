@@ -1,4 +1,4 @@
-/* OCR 结果独立面板：与 ocr-result-panel.prototype.html demo 完全一致 */
+/* OCR 结果独立面板：从屏幕中间淡入出现 */
 .panel {
 	display: flex;
 	flex-direction: column;
@@ -11,15 +11,29 @@
 	border: 1px solid var(--ocr-border);
 	border-radius: 18px;
 	overflow: hidden;
+	animation: panelFadeIn 0.25s ease-out both;
 }
 
-/* ===== 顶部工具栏 ===== */
+@keyframes panelFadeIn {
+	from {
+		opacity: 0;
+		transform: scale(0.92);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+/* ===== 顶部工具栏（可拖动） ===== */
 .header {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
 	gap: 12px;
 	margin-bottom: 16px;
+	cursor: grab;
+	user-select: none;
 }
 
 .titleWrap {

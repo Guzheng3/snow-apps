@@ -1,16 +1,10 @@
 "use client";
 
-import React from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { listen } from "@tauri-apps/api/event";
 import { theme } from "antd";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import {
-	closeVideoRecordWindow,
-	setCurrentWindowAlwaysOnTop,
-} from "@/commands/core";
+import { setCurrentWindowAlwaysOnTop } from "@/commands/core";
 import { listenKeyStart, listenKeyStop } from "@/commands/listenKey";
-import { videoRecordKill } from "@/commands/videoRecord";
 import { EventListenerContext } from "@/components/eventListener";
 import {
 	LISTEN_KEY_SERVICE_KEY_DOWN_EMIT_KEY,
@@ -47,30 +41,6 @@ interface KeyDisplayItem {
 export const VideoRecordPage: React.FC = () => {
 	const { token } = theme.useToken();
 	const selectCanvasRef = useRef<HTMLDivElement>(null);
-	// 动态批注层
-	const annotateCanvasRef = useRef<HTMLCanvasElement>(null);
-	const [annotateEnabled, setAnnotateEnabled] = useState(false);
-	const [annotateColor, setAnnotateColor] = useState("#f5222d");
-	const [annotateBackgroundFixed, setAnnotateBackgroundFixed] = useState(false);
-	// 批注工具：pen=画笔 rect=矩形 ellipse=椭圆 arrow=箭头 line=直线 text=文字
-	const [annotateTool, setAnnotateTool] = useState<"pen" | "rect" | "ellipse" | "arrow" | "line" | "text">("pen");
-	const annotateDrawingRef = useRef(false);
-	const annotateLastPointRef = useRef<{ x: number; y: number } | null>(null);
-	const annotateStartPointRef = useRef<{ x: number; y: number } | null>(null);
-	const annotateShapesRef = useRef<
-		{
-			type: "pen" | "rect" | "ellipse" | "arrow" | "line" | "text";
-			x1: number;
-			y1: number;
-			x2: number;
-			y2: number;
-			color: string;
-			lineWidth: number;
-			text?: string;
-		}[]
-	>([]);
-	const [annotateTextInput, setAnnotateTextInput] = useState<{ x: number; y: number } | null>(null);
-	const annotateTextValueRef = useRef("");
 
 	const selectRectRef = useRef<ElementRect | undefined>(undefined);
 
@@ -258,22 +228,13 @@ export const VideoRecordPage: React.FC = () => {
 
 	useEffect(() => {
 		const appWindow = getCurrentWindow();
-		const unlisten = appWindow.onCloseRequested(async (event) => {
-			// 系统级关闭（Alt+F4 / 点原生关闭）时，确保录屏窗口与工具栏窗口一起关闭，
-			// 避免只关掉一个导致另一个（蓝色选择框 / 控制栏）残留在屏幕上
-			event.preventDefault();
-			// 若批注开启导致窗口不穿透，先恢复穿透再关闭，避免残留可交互的透明窗口
-			appWindow.setIgnoreCursorEvents(true);
-			await Promise.all([
-				listenKeyStop(true).catch((error) => {
-					appError(
-						"[VideoRecordPage] onCloseRequested listenKeyStop error",
-						error,
-					);
-				}),
-				videoRecordKill().catch(() => {}),
-				closeVideoRecordWindow().catch(() => {}),
-			]);
+		const unlisten = appWindow.onCloseRequested(async () => {
+			await listenKeyStop(true).catch((error) => {
+				appError(
+					"[VideoRecordPage] onCloseRequested listenKeyStop error",
+					error,
+				);
+			});
 		});
 
 		return () => {
@@ -481,162 +442,6 @@ export const VideoRecordPage: React.FC = () => {
 
 	const { isReadyStatus } = usePluginServiceContext();
 
-	// 批注绘制：按工具绘制一条形状到 ctx
-const drawShape = (
-	ctx: CanvasRenderingContext2D,
-	shape: {
-		type: string;
-		x1: number;
-		y1: number;
-		x2: number;
-		y2: number;
-		color: string;
-		lineWidth: number;
-		text?: string;
-	},
-) => {
-	ctx.save();
-	ctx.strokeStyle = shape.color;
-	ctx.fillStyle = shape.color;
-	ctx.lineWidth = shape.lineWidth;
-	ctx.lineCap = "round";
-	ctx.lineJoin = "round";
-	const x1 = shape.x1, y1 = shape.y1, x2 = shape.x2, y2 = shape.y2;
-	if (shape.type === "pen" || shape.type === "line") {
-		ctx.beginPath();
-		ctx.moveTo(x1, y1);
-		ctx.lineTo(x2, y2);
-		ctx.stroke();
-	} else if (shape.type === "rect") {
-		ctx.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
-	} else if (shape.type === "ellipse") {
-		ctx.beginPath();
-		ctx.ellipse(
-			(x1 + x2) / 2, (y1 + y2) / 2,
-			Math.abs(x2 - x1) / 2, Math.abs(y2 - y1) / 2,
-			0, 0, Math.PI * 2,
-		);
-		ctx.stroke();
-	} else if (shape.type === "arrow") {
-		const angle = Math.atan2(y2 - y1, x2 - x1);
-		const headLen = 12 * (shape.lineWidth / 3);
-		ctx.beginPath();
-		ctx.moveTo(x1, y1);
-		ctx.lineTo(x2, y2);
-		ctx.stroke();
-		ctx.beginPath();
-		ctx.moveTo(x2, y2);
-		ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
-		ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
-		ctx.closePath();
-		ctx.fill();
-	} else if (shape.type === "text") {
-		ctx.font = `${Math.max(14, shape.lineWidth * 5)}px sans-serif`;
-		ctx.fillText(shape.text ?? "", x1, y1);
-	}
-	ctx.restore();
-};
-
-// 重绘整层：所有已保存形状 + 当前预览形状
-const redrawAnnotateCanvas = useCallback(
-	(preview?: { type: string; x1: number; y1: number; x2: number; y2: number; color: string; lineWidth: number; text?: string }) => {
-		const canvas = annotateCanvasRef.current;
-		if (!canvas) return;
-		const ctx = canvas.getContext("2d");
-		if (!ctx) return;
-		ctx.clearRect(0, 0, canvas.width, canvas.height);
-		annotateShapesRef.current.forEach((shape) => drawShape(ctx, shape));
-		if (preview) drawShape(ctx, preview);
-	},
-	[],
-);
-
-const drawAnnotateLine = useCallback(
-	(x: number, y: number) => {
-		const canvas = annotateCanvasRef.current;
-		if (!canvas) return;
-		const ctx = canvas.getContext("2d");
-		if (!ctx) return;
-		const rect = canvas.getBoundingClientRect();
-		const scaleX = canvas.width / (rect.width || 1);
-		const scaleY = canvas.height / (rect.height || 1);
-		const px = x * scaleX;
-		const py = y * scaleY;
-		const start = annotateStartPointRef.current;
-		const last = annotateLastPointRef.current;
-		const lineWidth = 3 * scaleX;
-		if (annotateTool === "pen") {
-			if (last) {
-				annotateShapesRef.current.push({
-					type: "pen", x1: last.x, y1: last.y, x2: px, y2: py,
-					color: annotateColor, lineWidth,
-				});
-			}
-			annotateLastPointRef.current = { x: px, y: py };
-			redrawAnnotateCanvas();
-		} else if (start) {
-			// 矩形/椭圆/箭头/直线：实时预览
-			redrawAnnotateCanvas({
-				type: annotateTool, x1: start.x, y1: start.y, x2: px, y2: py,
-				color: annotateColor, lineWidth,
-			});
-		}
-	},
-	[annotateColor, annotateTool, redrawAnnotateCanvas],
-);
-
-const clearAnnotations = useCallback(() => {
-	annotateShapesRef.current = [];
-	const canvas = annotateCanvasRef.current;
-	if (!canvas) return;
-	const ctx = canvas.getContext("2d");
-	if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-}, []);
-
-	const resizeAnnotateCanvas = useCallback(() => {
-		const canvas = annotateCanvasRef.current;
-		if (!canvas) {
-			return;
-		}
-		const dpr = window.devicePixelRatio || 1;
-		canvas.width = Math.round(window.innerWidth * dpr);
-		canvas.height = Math.round(window.innerHeight * dpr);
-	}, []);
-
-	// 监听批注命令（来自录屏工具栏窗口）
-	useEffect(() => {
-		const appWindow = getCurrentWindow();
-		const unlist: (() => void)[] = [];
-		listen<{ enabled: boolean }>("video-record-annotate-toggle", (e) => {
-			setAnnotateEnabled(e.payload.enabled);
-			if (e.payload.enabled) {
-				// 开启批注后需要接收鼠标事件进行绘制，解除窗口级鼠标穿透
-				appWindow.setIgnoreCursorEvents(false);
-				setTimeout(resizeAnnotateCanvas, 0);
-			} else {
-				// 关闭批注后恢复穿透，避免遮挡下层操作
-				appWindow.setIgnoreCursorEvents(true);
-			}
-		}).then((fn) => unlist.push(fn));
-		listen("video-record-annotate-clear", () => {
-			clearAnnotations();
-		}).then((fn) => unlist.push(fn));
-		listen<{ fixed: boolean }>("video-record-annotate-background-fixed", (e) => {
-			setAnnotateBackgroundFixed(e.payload.fixed);
-		}).then((fn) => unlist.push(fn));
-		listen<{ color: string }>("video-record-annotate-color", (e) => {
-			setAnnotateColor(e.payload.color);
-		}).then((fn) => unlist.push(fn));
-		listen<{
-			tool: "pen" | "rect" | "ellipse" | "arrow" | "line" | "text";
-		}>("video-record-annotate-tool", (e) => {
-			setAnnotateTool(e.payload.tool);
-		}).then((fn) => unlist.push(fn));
-		return () => {
-			unlist.forEach((fn) => fn());
-		};
-	}, [clearAnnotations, resizeAnnotateCanvas]);
-
 	useEffect(() => {
 		if (!isReadyStatus) {
 			return;
@@ -650,106 +455,6 @@ const clearAnnotations = useCallback(() => {
 	return (
 		<div className="container" onContextMenu={(e) => e.preventDefault()}>
 			<div ref={selectCanvasRef} className="select-canvas" />
-
-			{/* 批注蒙版：批注模式下半透明蒙版，防止鼠标穿透到录屏内容 */}
-			{annotateEnabled && <div className="annotate-mask" />}
-
-			{/* 动态批注层 */}
-			<canvas
-				ref={annotateCanvasRef}
-				className="annotate-canvas"
-				onMouseDown={(e) => {
-					if (!annotateEnabled) {
-						return;
-					}
-					if (annotateTool === "text") {
-						const rect = annotateCanvasRef.current?.getBoundingClientRect();
-						if (rect) {
-							annotateTextValueRef.current = "";
-							setAnnotateTextInput({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-						}
-						return;
-					}
-					annotateDrawingRef.current = true;
-					const canvas = annotateCanvasRef.current;
-					const rect = canvas?.getBoundingClientRect();
-					const scaleX = canvas ? canvas.width / (rect?.width || 1) : 1;
-					const scaleY = canvas ? canvas.height / (rect?.height || 1) : 1;
-					annotateStartPointRef.current = { x: e.clientX * scaleX, y: e.clientY * scaleY };
-					annotateLastPointRef.current = { x: e.clientX * scaleX, y: e.clientY * scaleY };
-					drawAnnotateLine(e.clientX, e.clientY);
-				}}
-				onMouseMove={(e) => {
-					if (!annotateEnabled || !annotateDrawingRef.current) {
-						return;
-					}
-					drawAnnotateLine(e.clientX, e.clientY);
-				}}
-				onMouseUp={() => {
-					if (!annotateEnabled) return;
-					if (annotateTool !== "pen" && annotateStartPointRef.current) {
-						const canvas = annotateCanvasRef.current;
-						const rect = canvas?.getBoundingClientRect();
-						const scaleX = canvas ? canvas.width / (rect?.width || 1) : 1;
-						const scaleY = canvas ? canvas.height / (rect?.height || 1) : 1;
-						const end = annotateLastPointRef.current ?? annotateStartPointRef.current;
-						annotateShapesRef.current.push({
-							type: annotateTool,
-							x1: annotateStartPointRef.current.x,
-							y1: annotateStartPointRef.current.y,
-							x2: end.x,
-							y2: end.y,
-							color: annotateColor,
-							lineWidth: 3 * scaleX,
-						});
-						redrawAnnotateCanvas();
-					}
-					annotateDrawingRef.current = false;
-					annotateLastPointRef.current = null;
-					annotateStartPointRef.current = null;
-				}}
-				onMouseLeave={() => {
-					annotateDrawingRef.current = false;
-					annotateLastPointRef.current = null;
-					annotateStartPointRef.current = null;
-				}}
-			/>
-			{/* 文字输入框 */}
-			{annotateTextInput && annotateEnabled && (
-				<input
-					autoFocus
-					className="annotate-text-input"
-					style={{ left: annotateTextInput.x, top: annotateTextInput.y }}
-					placeholder="输入批注文字，回车确认"
-					value={annotateTextValueRef.current}
-					onChange={(e) => { annotateTextValueRef.current = e.target.value; }}
-					onKeyDown={(e) => {
-						if (e.key === "Enter") {
-							const text = annotateTextValueRef.current.trim();
-							if (text) {
-								const canvas = annotateCanvasRef.current;
-								const rect = canvas?.getBoundingClientRect();
-								const scaleX = canvas ? canvas.width / (rect?.width || 1) : 1;
-								const scaleY = canvas ? canvas.height / (rect?.height || 1) : 1;
-								annotateShapesRef.current.push({
-									type: "text",
-									x1: annotateTextInput.x * scaleX,
-									y1: annotateTextInput.y * scaleY,
-									x2: annotateTextInput.x * scaleX,
-									y2: annotateTextInput.y * scaleY,
-									color: annotateColor,
-									lineWidth: 3 * scaleX,
-									text,
-								});
-								redrawAnnotateCanvas();
-							}
-							setAnnotateTextInput(null);
-						} else if (e.key === "Escape") {
-							setAnnotateTextInput(null);
-						}
-					}}
-				/>
-			)}
 
 			{/* 按键显示区域 */}
 			<div className="key-display-container">
@@ -778,42 +483,7 @@ const clearAnnotations = useCallback(() => {
                     height: calc(100% - ${BORDER_WIDTH * 2}px);
                 }
 
-  
-
-                .annotate-mask {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100vw;
-                    height: 100vh;
-                    background: rgba(0, 0, 0, 0.08);
-                    pointer-events: auto;
-                    cursor: crosshair;
-                    z-index: 9;
-                }
-                .annotate-text-input {
-                    position: fixed;
-                    z-index: 12;
-                    min-width: 160px;
-                    font-size: 16px;
-                    padding: 4px 8px;
-                    border: 1px solid #1677ff;
-                    border-radius: 4px;
-                    outline: none;
-                    background: rgba(255, 255, 255, 0.95);
-                    color: #000;
-                }
-                .annotate-canvas {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100vw;
-                    height: 100vh;
-                    pointer-events: ${annotateEnabled ? "auto" : "none"};
-                    cursor: crosshair;
-                    z-index: 10;
-                    background: ${annotateBackgroundFixed ? "rgba(255, 255, 255, 0.15)" : "transparent"};
-                }              .key-display-container {
+                .key-display-container {
                     position: fixed;
                     bottom: ${token.margin - token.paddingLG}px;
                     right: ${token.margin - token.paddingLG}px;

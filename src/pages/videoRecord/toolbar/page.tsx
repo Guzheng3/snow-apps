@@ -1,21 +1,12 @@
 "use client";
 
-import React from "react";
 import {
-	ArrowRightOutlined,
-	BgColorsOutlined,
-	BorderOutlined,
-	ClearOutlined,
 	CloseOutlined,
 	CopyOutlined,
-	EditOutlined,
-	FontSizeOutlined,
 	GifOutlined,
 	HolderOutlined,
-	MinusOutlined,
 	PauseOutlined,
 } from "@ant-design/icons";
-import { emit } from "@tauri-apps/api/event";
 import { join as joinPath } from "@tauri-apps/api/path";
 import {
 	type Window as AppWindow,
@@ -51,7 +42,6 @@ import {
 } from "@/commands/videoRecord";
 import { EventListenerContext } from "@/components/eventListener";
 import {
-	CircleIcon,
 	FolderIcon,
 	MicrophoneIcon,
 	ResumeRecordIcon,
@@ -88,21 +78,6 @@ import { zIndexs } from "@/utils/zIndex";
 import { getVideoRecordParams, VideoRecordState } from "../extra";
 
 dayjs.extend(duration);
-
-type AnnotateTool = "pen" | "rect" | "ellipse" | "arrow" | "line" | "text";
-
-const ANNOTATE_TOOLS: Array<{
-	key: AnnotateTool;
-	label: string;
-	icon: React.ReactNode;
-}> = [
-	{ key: "pen", label: "画笔", icon: <EditOutlined /> },
-	{ key: "rect", label: "矩形", icon: <BorderOutlined /> },
-	{ key: "ellipse", label: "椭圆", icon: <CircleIcon /> },
-	{ key: "arrow", label: "箭头", icon: <ArrowRightOutlined /> },
-	{ key: "line", label: "直线", icon: <MinusOutlined /> },
-	{ key: "text", label: "文字", icon: <FontSizeOutlined /> },
-];
 
 const convertVideoMaxSizeToWidthAndHeight = (
 	videoMaxSize: VideoMaxSize,
@@ -231,12 +206,6 @@ export const VideoRecordToolbarPage: React.FC = () => {
 	}, [intl]);
 
 	const [enableMicrophone, setEnableMicrophone] = useState(false);
-	// 动态批注状态
-	const [annotateEnabled, setAnnotateEnabled] = useState(false);
-	const [annotateBackgroundFixed, setAnnotateBackgroundFixed] = useState(false);
-	const [annotateColor, setAnnotateColor] = useState("#f5222d");
-	const [annotateTool, setAnnotateTool] = useState<AnnotateTool>("pen");
-	const ANNOTATE_COLORS = ["#f5222d", "#fa8c16", "#52c41a", "#1677ff", "#000000", "#ffffff"];
 	// const [enableSystemAudio, setEnableSystemAudio] = useState(true);
 	const durationRef = useRef(0);
 
@@ -439,10 +408,7 @@ export const VideoRecordToolbarPage: React.FC = () => {
 		videoRecordKill();
 
 		const closeUnlisten = getCurrentWindow().onCloseRequested(async () => {
-			// 系统级关闭（Alt+F4 / 点原生关闭）时，确保录屏窗口与工具栏窗口一起关闭，
-			// 避免只关掉一个导致另一个（蓝色选择框 / 控制栏）残留在屏幕上
-			videoRecordKill().catch(() => {});
-			closeVideoRecordWindow().catch(() => {});
+			videoRecordKill();
 		});
 
 		return () => {
@@ -632,95 +598,6 @@ export const VideoRecordToolbarPage: React.FC = () => {
 							type={"text"}
 							key="microphone"
 						/>
-
-						<div className="video-record-toolbar-splitter" />
-
-						{/* 动态批注 */}
-						<Button
-							onClick={() => {
-								const next = !annotateEnabled;
-								setAnnotateEnabled(next);
-								emit("video-record-annotate-toggle", { enabled: next });
-							}}
-							icon={
-								<EditOutlined
-									style={{
-										color: getButtonIconColorByState(annotateEnabled, token),
-									}}
-								/>
-							}
-							title="动态批注"
-							type={"text"}
-							key="annotate-toggle"
-						/>
-
-						<Button
-							onClick={() => {
-								emit("video-record-annotate-clear");
-							}}
-							icon={<ClearOutlined style={{}} />}
-							title="一键清除批注"
-							type={"text"}
-							key="annotate-clear"
-						/>
-
-						<Button
-							onClick={() => {
-								const next = !annotateBackgroundFixed;
-								setAnnotateBackgroundFixed(next);
-								emit("video-record-annotate-background-fixed", { fixed: next });
-							}}
-							icon={
-								<BgColorsOutlined
-									style={{
-										color: getButtonIconColorByState(annotateBackgroundFixed, token),
-									}}
-								/>
-							}
-							title="固定背景"
-							type={"text"}
-							key="annotate-bg-fixed"
-						/>
-
-						{/* 批注工具切换 */}
-						{ANNOTATE_TOOLS.map((tool) => (
-							<Button
-								key={"at-" + tool.key}
-								onClick={() => {
-									setAnnotateTool(tool.key);
-									emit("video-record-annotate-tool", { tool: tool.key });
-								}}
-								icon={tool.icon}
-								title={tool.label}
-								type={annotateTool === tool.key ? "primary" : "text"}
-								style={{ padding: "0 6px", minWidth: 28 }}
-							/>
-						))}
-
-						{ANNOTATE_COLORS.map((c) => (
-							<Button
-								key={"ac-" + c}
-								onClick={() => {
-									setAnnotateColor(c);
-									emit("video-record-annotate-color", { color: c });
-								}}
-								icon={
-									<span
-										style={{
-											display: "inline-block",
-											width: 12,
-											height: 12,
-											borderRadius: 3,
-											background: c,
-											border: "1px solid " + token.colorBorder,
-										}}
-									/>
-								}
-								title={"批注颜色 " + c}
-								type={annotateColor === c ? "primary" : "text"}
-								style={{ padding: "0 4px", minWidth: 24 }}
-							/>
-						))}
 
 						{/* <Button
                         onClick={() => {
