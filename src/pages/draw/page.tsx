@@ -82,6 +82,7 @@ import {
 } from "@/utils/file";
 import { appError, appWarn } from "@/utils/log";
 import { MousePosition } from "@/utils/mousePosition";
+import { translateCanvasWithSTranslate } from "@/services/tools/sTranslate";
 import { ScreenshotType } from "@/utils/types";
 import { setWindowRect, showWindow as showCurrentWindow } from "@/utils/window";
 import { zIndexs } from "@/utils/zIndex";
@@ -1071,14 +1072,51 @@ const DrawPageCore: React.FC<{
 		await finishCapture();
 	}, [finishCapture]);
 
-	const onOcrDetect = useCallback(async () => {
+	const onOcrDetect = useCallback(async (drawState: DrawState) => {
 		if (
-			!captureBoundingBoxInfoRef.current ||
 			!selectLayerActionRef.current ||
 			!imageLayerActionRef.current ||
-			!drawLayerActionRef.current ||
-			!ocrBlocksActionRef.current
+			!drawLayerActionRef.current
 		) {
+			return;
+		}
+
+		const screenshotSettings =
+			getAppSettings()[AppSettingsGroup.FunctionScreenshot];
+		if (
+			drawState === DrawState.OcrTranslate &&
+			screenshotSettings.enableSTranslate
+		) {
+			const imageCanvas = await getCanvas(
+				selectLayerActionRef.current.getSelectRectParams(),
+				imageLayerActionRef.current,
+				drawLayerActionRef.current,
+				true,
+				true,
+				INIT_CONTAINER_KEY,
+			);
+			if (!imageCanvas) {
+				return;
+			}
+
+			try {
+				await translateCanvasWithSTranslate(
+					imageCanvas,
+					screenshotSettings.sTranslatePort,
+				);
+				await finishCapture();
+			} catch (error) {
+				appError("[DrawPageCore] STranslate screenshot translation error", error);
+				message.error(
+					error instanceof Error
+						? error.message
+						: "STranslate 截图翻译失败",
+				);
+			}
+			return;
+		}
+
+		if (!captureBoundingBoxInfoRef.current || !ocrBlocksActionRef.current) {
 			return;
 		}
 
@@ -1090,7 +1128,7 @@ const DrawPageCore: React.FC<{
 			ocrBlocksActionRef.current,
 			true,
 		);
-	}, []);
+	}, [finishCapture, getAppSettings, message]);
 
 	const onCopyToClipboard = useCallback(async () => {
 		const enableAutoSave =

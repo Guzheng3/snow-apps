@@ -101,7 +101,7 @@ export type DrawToolbarProps = {
 	onFixed: () => void;
 	onTopWindow: () => void;
 	onCopyToClipboard: () => void;
-	onOcrDetect: () => void;
+	onOcrDetect: (drawState: DrawState) => void;
 };
 
 export type DrawToolbarActionType = {
@@ -160,6 +160,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 	const [enableFastSave, setEnableFastSave] = useState(false);
 	const [enableSaveToCloud, setEnableSaveToCloud] = useState(false);
 	const [enableScrollScreenshot, setEnableScrollScreenshot] = useState(false);
+	const [enableSTranslate, setEnableSTranslate] = useState(false);
 	const [shortcutCanleTip, setShortcutCanleTip] = useState(false);
 	const [customToolbarToolHiddenMap, setCustomToolbarToolHiddenMap] = useState<
 		Partial<Record<DrawState, boolean>> | undefined
@@ -207,6 +208,9 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 				);
 				setEnableSaveToCloud(
 					settings[AppSettingsGroup.FunctionScreenshot].saveToCloud,
+				);
+				setEnableSTranslate(
+					settings[AppSettingsGroup.FunctionScreenshot].enableSTranslate,
 				);
 				// 不显示锁定绘制工具
 				setShowLockDrawTool(
@@ -491,8 +495,11 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 					break;
 				case DrawState.OcrDetect:
 				case DrawState.OcrTranslate:
-					if (isReady?.(PLUGIN_ID_RAPID_OCR)) {
-						onOcrDetect();
+					if (
+						(next === DrawState.OcrTranslate && enableSTranslate) ||
+						isReady?.(PLUGIN_ID_RAPID_OCR)
+					) {
+						onOcrDetect(next);
 					}
 					break;
 				case DrawState.VideoRecord:
@@ -517,6 +524,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 			getDrawState,
 			intl,
 			isReady,
+			enableSTranslate,
 			message,
 			onOcrDetect,
 			selectLayerActionRef,
@@ -980,8 +988,9 @@ return (
 								hidden={
 									customToolbarToolHiddenMap?.[DrawState.OcrTranslate] ||
 									!(
-										isReadyStatus?.(PLUGIN_ID_RAPID_OCR) &&
-										isReadyStatus?.(PLUGIN_ID_TRANSLATE)
+										enableSTranslate ||
+										(isReadyStatus?.(PLUGIN_ID_RAPID_OCR) &&
+											isReadyStatus?.(PLUGIN_ID_TRANSLATE))
 									)
 								}
 								componentKey={DrawToolbarKeyEventKey.OcrTranslateTool}
@@ -990,8 +999,9 @@ return (
 								disable={
 									disableNormalScreenshotTool ||
 									!(
-										isReadyStatus?.(PLUGIN_ID_RAPID_OCR) &&
-										isReadyStatus?.(PLUGIN_ID_TRANSLATE)
+										enableSTranslate ||
+										(isReadyStatus?.(PLUGIN_ID_RAPID_OCR) &&
+											isReadyStatus?.(PLUGIN_ID_TRANSLATE))
 									)
 								}
 								onClick={() => {

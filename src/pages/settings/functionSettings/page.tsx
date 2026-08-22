@@ -790,6 +790,43 @@ export const FunctionSettingsPage = () => {
 						</Col>
 					</Row>
 
+					{currentPlatform === "windows" && (
+						<Row gutter={token.marginLG}>
+							<Col span={12}>
+								<ProFormSwitch
+									name="enableSTranslate"
+									layout="horizontal"
+									label={
+										<IconLabel
+											label={
+												<FormattedMessage id="settings.functionSettings.screenshotSettings.sTranslate.enable" />
+											}
+											tooltipTitle={
+												<FormattedMessage id="settings.functionSettings.screenshotSettings.sTranslate.enable.tip" />
+											}
+										/>
+									}
+								/>
+							</Col>
+							<Col span={12}>
+								<ProFormDependency name={["enableSTranslate"]}>
+									{({ enableSTranslate }) => (
+										<ProFormDigit
+											name="sTranslatePort"
+											layout="horizontal"
+											label={
+												<FormattedMessage id="settings.functionSettings.screenshotSettings.sTranslate.port" />
+											}
+											min={1}
+											max={65535}
+											disabled={!enableSTranslate}
+										/>
+									)}
+								</ProFormDependency>
+							</Col>
+						</Row>
+					)}
+
 					{isReadyStatus?.(PLUGIN_ID_RAPID_OCR) && (
 						<Row gutter={token.marginLG}>
 							<Col span={12}>

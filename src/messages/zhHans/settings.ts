@@ -221,6 +221,12 @@ export const settings = {
 		"文本识别-复制文本并关闭窗口",
 	"settings.functionSettings.screenshotSettings.ocrCopyText":
 		"文本识别复制时复制文本",
+	"settings.functionSettings.screenshotSettings.sTranslate.enable":
+		"启用 STranslate 截图翻译",
+	"settings.functionSettings.screenshotSettings.sTranslate.enable.tip":
+		"需先启动 STranslate，并在其“网络设置”启用外部调用。",
+	"settings.functionSettings.screenshotSettings.sTranslate.port":
+		"STranslate 外部调用端口",
 	"settings.functionSettings.screenshotSettings.focusedWindowCopyToClipboard":
 		"截取当前具有焦点的窗口时复制到剪贴板",
 	"settings.functionSettings.screenshotSettings.fullScreenCopyToClipboard":

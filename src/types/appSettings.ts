@@ -475,6 +475,10 @@ export type AppSettingsData = {
 		ocrAfterAction: OcrDetectAfterAction;
 		/** OCR 复制时复制文本 */
 		ocrCopyText: boolean;
+		/** 使用 STranslate 处理截图翻译 */
+		enableSTranslate: boolean;
+		/** STranslate 外部调用端口 */
+		sTranslatePort: number;
 		/** 选区预设 */
 		selectRectPresetList: SelectRectPreset[];
 	};

@@ -1009,6 +1009,16 @@ const AppSettingsContextProviderCore: React.FC<{
 						typeof newSettings?.ocrCopyText === "boolean"
 							? newSettings.ocrCopyText
 							: (prevSettings?.ocrCopyText ?? false),
+					enableSTranslate:
+						typeof newSettings?.enableSTranslate === "boolean"
+							? newSettings.enableSTranslate
+							: (prevSettings?.enableSTranslate ??
+								defaultAppSettingsData[group].enableSTranslate),
+					sTranslatePort:
+						typeof newSettings?.sTranslatePort === "number"
+							? newSettings.sTranslatePort
+							: (prevSettings?.sTranslatePort ??
+								defaultAppSettingsData[group].sTranslatePort),
 					focusedWindowCopyToClipboard:
 						typeof newSettings?.focusedWindowCopyToClipboard === "boolean"
 							? newSettings.focusedWindowCopyToClipboard
