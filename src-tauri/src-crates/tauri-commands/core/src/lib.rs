@@ -20,6 +20,7 @@ use snow_shot_app_services::{
 };
 use snow_shot_app_shared::{ElementRect, EnigoManager};
 use snow_shot_app_utils::{get_target_monitor, monitor_info::MonitorRect};
+use snow_shot_global_state::OcrResultState;
 
 pub async fn exit_app(handle: tauri::AppHandle) {
     handle.exit(0);
@@ -246,6 +247,177 @@ pub async fn create_fixed_content_window(
 pub struct FullScreenDrawWindowLabels {
     full_screen_draw_window_label: String,
     switch_mouse_through_window_label: String,
+}
+
+pub struct OcrResultWindowLabels {
+    ocr_result_window_label: String,
+}
+
+#[derive(Serialize, Clone)]
+struct OcrResultWindowInfo {
+    ocr_result_json: String,
+}
+
+/// 创建 OCR 识别结果弹窗窗口
+/// OCR 识别完成后，在鼠标所在显示器居中弹出一个独立的小窗口展示可编辑的识别文本
+///
+/// 数据传递策略：OCR 数据写入全局状态（OcrResultState），由前端 /ocrResult 页面主动拉取，
+/// 彻底避免事件早于前端监听器注册导致的丢失问题。
+/// "ocr-result-show" 事件仅作为"有新的 OCR 数据，请去拉取"的通知信号。
+pub async fn create_ocr_result_window(
+    app: tauri::AppHandle,
+    ocr_result_window_labels: tauri::State<'_, Mutex<Option<OcrResultWindowLabels>>>,
+    hot_load_page_service: tauri::State<'_, Arc<HotLoadPageService>>,
+    ocr_result_json: String,
+) -> Result<(), String> {
+    let mut ocr_result_window_labels = ocr_result_window_labels.lock().await;
+
+    // 数据写入全局状态，前端页面挂载后主动拉取
+    let ocr_result_state = app.state::<tokio::sync::Mutex<OcrResultState>>();
+    {
+        let mut state = ocr_result_state.lock().await;
+        state.ocr_result_json = ocr_result_json.clone();
+    }
+
+    // 已有窗口：复用并通知前端拉取新数据
+    if let Some(labels) = ocr_result_window_labels.as_ref() {
+        if let Some(window) =
+            app.get_webview_window(labels.ocr_result_window_label.as_str())
+        {
+            window
+                .emit(
+                    "ocr-result-show",
+                    OcrResultWindowInfo {
+                        ocr_result_json,
+                    },
+                )
+                .unwrap();
+            window.show().unwrap();
+            return Ok(());
+        }
+    }
+
+    let (_, _, monitor) = get_target_monitor()?;
+
+    let monitor_x = monitor.x().unwrap() as f64;
+    let monitor_y = monitor.y().unwrap() as f64;
+    let monitor_width = monitor.width().unwrap() as f64;
+    let monitor_height = monitor.height().unwrap() as f64;
+
+    let window_width = 600.0;
+    let window_height = 640.0;
+
+    // 弹窗居中于鼠标所在显示器
+    let window_x = monitor_x + monitor_width / 2.0 - window_width / 2.0;
+    let window_y = monitor_y + monitor_height / 2.0 - window_height / 2.0;
+
+    #[cfg(target_os = "macos")]
+    let (window_x, window_y) = (window_x, window_y);
+    #[cfg(not(target_os = "macos"))]
+    let (window_x, window_y) = {
+        let monitor_scale_factor = monitor.scale_factor().unwrap() as f64;
+        (
+            window_x / monitor_scale_factor,
+            window_y / monitor_scale_factor,
+        )
+    };
+
+    let url = "/ocrResult".to_string();
+
+    let mut label: Option<String> = None;
+
+    if let Some(window) = hot_load_page_service.pop_page().await {
+        label = Some(window.label().to_owned());
+        window.set_always_on_top(true).unwrap();
+        window.set_title("Snow Shot - OCR Result").unwrap();
+        window
+            .set_size(tauri::PhysicalSize::new(window_width, window_height))
+            .unwrap();
+        window.show().unwrap();
+
+        match window.emit(
+            "hot-load-page-route-push",
+            HotLoadPageRoutePushEvent {
+                label: window.label().to_owned(),
+                url: url.clone(),
+            },
+        ) {
+            Ok(_) => (),
+            Err(e) => {
+                log::error!("[create_ocr_result_window] Failed to emit event: {}", e);
+            }
+        }
+
+        // 通知前端拉取最新 OCR 数据（前端挂载后主动 get_ocr_result_state）
+        match window.emit(
+            "ocr-result-show",
+            OcrResultWindowInfo {
+                ocr_result_json,
+            },
+        ) {
+            Ok(_) => (),
+            Err(e) => {
+                log::error!("[create_ocr_result_window] Failed to emit ocr result: {}", e);
+            }
+        }
+
+        match hot_load_page_service.create_idle_windows().await {
+            Ok(_) => (),
+            Err(e) => {
+                log::error!(
+                    "[create_ocr_result_window] Failed to create idle windows: {}",
+                    e
+                );
+            }
+        }
+    } else {
+        let window = tauri::WebviewWindowBuilder::new(
+            &app,
+            format!(
+                "ocr-result-{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
+            tauri::WebviewUrl::App(PathBuf::from(url)),
+        )
+        .always_on_top(true)
+        .resizable(false)
+        .maximizable(false)
+        .minimizable(false)
+        .fullscreen(false)
+        .title("Snow Shot - OCR Result")
+        .position(window_x, window_y)
+        .decorations(false)
+        .shadow(false)
+        .transparent(true)
+        .skip_taskbar(true)
+        .resizable(false)
+        .inner_size(window_width, window_height)
+        .build()
+        .unwrap();
+
+        label = Some(window.label().to_owned());
+
+        window.hide().unwrap();
+
+        // 新窗口首次加载后，由前端页面挂载时主动拉取全局状态中的 OCR 数据并显示
+        window
+            .emit(
+                "ocr-result-show",
+                OcrResultWindowInfo {
+                    ocr_result_json,
+                },
+            )
+            .unwrap();
+    }
+
+    *ocr_result_window_labels = Some(OcrResultWindowLabels {
+        ocr_result_window_label: label.unwrap_or_default(),
+    });
+
+    Ok(())
 }
 
 /// 创建全屏绘制窗口

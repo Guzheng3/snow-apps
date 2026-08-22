@@ -61,10 +61,9 @@ import { AppSettingsGroup, DoubleClickAction } from "@/types/appSettings";
 import {
 	type ElementRect,
 	type ImageBuffer,
-	ImageBufferType,
-	ImageEncoder,
-} from "@/types/commands/screenshot";
-import type { OcrDetectResult } from "@/types/commands/ocr";
+		ImageBufferType,
+		ImageEncoder,
+	} from "@/types/commands/screenshot";
 import { DrawState } from "@/types/draw";
 import { getCorrectHdrColorAlgorithm } from "@/utils/appSettings";
 import {
@@ -131,7 +130,6 @@ import {
 	type OcrBlocksActionType,
 	type OcrBlocksSelectedText,
 } from "./components/ocrBlocks";
-import OcrResultModal from "./components/ocrResultModal";
 import SelectLayer, {
 	type SelectLayerActionType,
 } from "./components/selectLayer";
@@ -174,12 +172,10 @@ const DrawPageCore: React.FC<{
 	getFixedContentAction: () => FixedContentActionType | undefined;
 	onFixedContentLoad: () => void;
 	showFixedContent: () => void;
-	onShowOcrResultModal: (ocrResult: OcrDetectResult) => void;
 }> = ({
 	getFixedContentAction,
 	onFixedContentLoad,
 	showFixedContent,
-	onShowOcrResultModal,
 }) => {
 	const { message } = useContext(AntdContext);
 	const intl = useIntl();
@@ -1624,8 +1620,6 @@ const DrawPageCore: React.FC<{
 					<OcrBlocks
 						actionRef={ocrBlocksActionRef}
 						finishCapture={finishCapture}
-						onFixed={onFixed}
-						onShowOcrResultModal={onShowOcrResultModal}
 					/>
 
 					<div className={styles.drawLayerWrap} ref={drawLayerWrapRef}>
@@ -1689,15 +1683,6 @@ export const DrawPage: React.FC = () => {
 		undefined,
 	);
 
-	const [ocrModalOpen, setOcrModalOpen] = useState(false);
-	const [ocrModalResult, setOcrModalResult] = useState<OcrDetectResult | undefined>(
-		undefined,
-	);
-	const onShowOcrResultModal = useCallback((ocrResult: OcrDetectResult) => {
-		setOcrModalResult(ocrResult);
-		setOcrModalOpen(true);
-	}, []);
-
 	const getFixedContentAction = useCallback(() => {
 		return fixedContentActionRef.current;
 	}, []);
@@ -1713,25 +1698,19 @@ export const DrawPage: React.FC = () => {
 
 	return (
 		<TextScaleFactorContextProvider>
-			{!isFixed && (
-				<DrawPageContent
-					getFixedContentAction={getFixedContentAction}
-					onFixedContentLoad={onFixedContentLoad}
-					showFixedContent={showFixedContent}
-					onShowOcrResultModal={onShowOcrResultModal}
-				/>
-			)}
-			<div>
-				<FixedContentCore
-					actionRef={fixedContentActionRef}
-					disabled={fixedContentDisabled}
-				/>
-			</div>
-			<OcrResultModal
-				open={ocrModalOpen}
-				ocrResult={ocrModalResult}
-				onClose={() => setOcrModalOpen(false)}
-			/>
-		</TextScaleFactorContextProvider>
-	);
-};
+				{!isFixed && (
+					<DrawPageContent
+						getFixedContentAction={getFixedContentAction}
+						onFixedContentLoad={onFixedContentLoad}
+						showFixedContent={showFixedContent}
+					/>
+				)}
+				<div>
+					<FixedContentCore
+						actionRef={fixedContentActionRef}
+						disabled={fixedContentDisabled}
+					/>
+				</div>
+			</TextScaleFactorContextProvider>
+		);
+	};

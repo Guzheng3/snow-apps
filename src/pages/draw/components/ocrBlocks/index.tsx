@@ -6,6 +6,7 @@ import {
 	useState,
 } from "react";
 import { useIntl } from "react-intl";
+import { createOcrResultWindow } from "@/commands/core";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
 import {
@@ -29,6 +30,7 @@ import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { DrawState } from "@/types/draw";
 import { writeTextToClipboard } from "@/utils/clipboard";
+import { appError } from "@/utils/log";
 import { ScreenshotType } from "@/utils/types";
 import { zIndexs } from "@/utils/zIndex";
 import { getCanvas } from "../../actions";
@@ -59,9 +61,7 @@ export type OcrBlocksActionType = {
 export const OcrBlocks: React.FC<{
 	actionRef: React.RefObject<OcrBlocksActionType | undefined>;
 	finishCapture: () => void;
-	onFixed: () => void;
-	onShowOcrResultModal: (ocrResult: OcrDetectResult) => void;
-}> = ({ actionRef, finishCapture, onFixed, onShowOcrResultModal }) => {
+}> = ({ actionRef, finishCapture }) => {
 	const { selectLayerActionRef, imageLayerActionRef, drawLayerActionRef } =
 		useContext(DrawContext);
 	const ocrResultActionRef = useRef<OcrResultActionType>(undefined);
@@ -136,15 +136,17 @@ export const OcrBlocks: React.FC<{
 					finishCapture?.();
 				}
 
-				// 默认（未设置关闭窗口类操作）：退出截图并切换到词块编辑界面，同时弹窗显示识别文字
+				// 默认（未设置关闭窗口类操作）：退出截图，打开独立可编辑弹窗展示识别文字
 				if (
 					ocrAfterAction !== OcrDetectAfterAction.CopyTextAndCloseWindow &&
 					ocrAfterAction !==
 						OcrDetectAfterAction.OcrDetectCopyTextAndCloseWindow
 				) {
-					onShowOcrResultModal(ocrResult);
-					// 同窗口切换到词块编辑界面（词块可单击选行/双击选词块/三击选段）
-					onFixed?.();
+					// 新建独立 OCR 结果弹窗窗口（可编辑识别文本），并退出截图窗口
+					createOcrResultWindow(ocrResult).catch((error) => {
+						appError("[OcrBlocks] createOcrResultWindow error", error);
+					});
+					finishCapture?.();
 				}
 			} else if (getDrawState() === DrawState.OcrTranslate) {
 				ocrResultActionRef.current?.startTranslate();
@@ -155,8 +157,6 @@ export const OcrBlocks: React.FC<{
 			getAppSettings,
 			getDrawState,
 			getScreenshotType,
-			onFixed,
-			onShowOcrResultModal,
 		],
 	);
 

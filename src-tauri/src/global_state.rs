@@ -1,7 +1,7 @@
 use tauri::command;
 use tokio::sync::Mutex;
 
-use snow_shot_global_state::{CaptureState, ReadClipboardState};
+use snow_shot_global_state::{CaptureState, OcrResultState, ReadClipboardState};
 
 #[command]
 pub async fn set_capture_state(
@@ -38,4 +38,22 @@ pub async fn get_read_clipboard_state(
 ) -> Result<ReadClipboardState, String> {
     let read_clipboard_state = read_clipboard_state.lock().await;
     Ok(read_clipboard_state.clone())
+}
+
+#[command]
+pub async fn set_ocr_result_state(
+    ocr_result_state: tauri::State<'_, Mutex<OcrResultState>>,
+    ocr_result_json: String,
+) -> Result<(), String> {
+    let mut ocr_result_state = ocr_result_state.lock().await;
+    ocr_result_state.ocr_result_json = ocr_result_json;
+    Ok(())
+}
+
+#[command]
+pub async fn get_ocr_result_state(
+    ocr_result_state: tauri::State<'_, Mutex<OcrResultState>>,
+) -> Result<OcrResultState, String> {
+    let ocr_result_state = ocr_result_state.lock().await;
+    Ok(ocr_result_state.clone())
 }

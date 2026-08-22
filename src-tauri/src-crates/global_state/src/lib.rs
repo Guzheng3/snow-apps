@@ -29,3 +29,16 @@ impl ReadClipboardState {
         Self { reading: value }
     }
 }
+
+/// 最近一次 OCR 识别结果的 JSON 字符串，供 OCR 结果弹窗窗口主动拉取
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OcrResultState {
+    pub ocr_result_json: String,
+}
+
+impl OcrResultState {
+    pub fn new(ocr_result_json: String) -> Self {
+        Self { ocr_result_json }
+    }
+}

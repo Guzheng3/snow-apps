@@ -5,15 +5,16 @@ export const usePathname = () => {
 	const { pathname } = useLocation();
 	const hasLayout = useMemo(
 		() =>
-			!(
-				pathname === "/draw" ||
-				pathname === "/fixedContent" ||
-				pathname === "/fullScreenDraw" ||
-				pathname === "/fullScreenDrawSwitchMouseThrough" ||
-				pathname === "/videoRecord" ||
-				pathname === "/videoRecordToolbar" ||
-				pathname === "/idle"
-			),
+				!(
+					pathname === "/draw" ||
+					pathname === "/fixedContent" ||
+					pathname === "/ocrResult" ||
+					pathname === "/fullScreenDraw" ||
+					pathname === "/fullScreenDrawSwitchMouseThrough" ||
+					pathname === "/videoRecord" ||
+					pathname === "/videoRecordToolbar" ||
+					pathname === "/idle"
+				),
 		[pathname],
 	);
 

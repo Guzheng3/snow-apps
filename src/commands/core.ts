@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { MonitorRect } from "@/pages/draw/extra";
+import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect } from "@/types/commands/screenshot";
 import type { ResizeWindowSide } from "@/utils/types";
 
@@ -42,6 +43,18 @@ export const autoScrollThrough = async (
 export const createFixedContentWindow = async (scrollScreenshot?: boolean) => {
 	const result = await invoke<void>("create_fixed_content_window", {
 		scrollScreenshot: scrollScreenshot ?? false,
+	});
+	return result;
+};
+
+/**
+ * 创建 OCR 识别结果弹窗窗口（独立窗口展示可编辑的识别文本）
+ */
+export const createOcrResultWindow = async (
+	ocrResult: OcrDetectResult,
+) => {
+	const result = await invoke<void>("create_ocr_result_window", {
+		ocrResultJson: JSON.stringify(ocrResult),
 	});
 	return result;
 };

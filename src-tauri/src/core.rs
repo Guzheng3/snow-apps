@@ -1,7 +1,8 @@
 use snow_shot_app_shared::{ElementRect, EnigoManager};
 use snow_shot_global_state::WebViewSharedBufferState;
 use snow_shot_tauri_commands_core::{
-    FullScreenDrawWindowLabels, MonitorsBoundingBox, VideoRecordWindowLabels,
+    FullScreenDrawWindowLabels, MonitorsBoundingBox, OcrResultWindowLabels,
+    VideoRecordWindowLabels,
 };
 use std::{path::PathBuf, sync::Arc};
 use tauri::{Manager, PhysicalPosition, PhysicalSize, command, ipc::Response};
@@ -72,6 +73,26 @@ pub async fn create_fixed_content_window(
         app,
         hot_load_page_service,
         scroll_screenshot,
+    )
+    .await
+}
+
+/// 创建 OCR 识别结果弹窗窗口
+#[command]
+pub async fn create_ocr_result_window(
+    app: tauri::AppHandle,
+    ocr_result_window_labels: tauri::State<'_, Mutex<Option<OcrResultWindowLabels>>>,
+    hot_load_page_service: tauri::State<
+        '_,
+        Arc<snow_shot_app_services::hot_load_page_service::HotLoadPageService>,
+    >,
+    ocr_result_json: String,
+) -> Result<(), String> {
+    snow_shot_tauri_commands_core::create_ocr_result_window(
+        app,
+        ocr_result_window_labels,
+        hot_load_page_service,
+        ocr_result_json,
     )
     .await
 }

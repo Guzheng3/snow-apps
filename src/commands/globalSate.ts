@@ -24,3 +24,19 @@ export const getReadClipboardState = async () => {
 	const result = await invoke<ReadClipboardState>("get_read_clipboard_state");
 	return result;
 };
+
+export type OcrResultState = {
+	ocrResultJson: string;
+};
+
+export const setOcrResultState = async (ocrResultJson: string) => {
+	const result = await invoke<void>("set_ocr_result_state", {
+		ocrResultJson,
+	});
+	return result;
+};
+
+export const getOcrResultState = async () => {
+	const result = await invoke<OcrResultState>("get_ocr_result_state");
+	return result;
+};

@@ -14,7 +14,9 @@ pub mod video_record;
 pub mod webview;
 
 use snow_shot_app_services::listen_mouse_service;
-use snow_shot_tauri_commands_core::{FullScreenDrawWindowLabels, VideoRecordWindowLabels};
+use snow_shot_tauri_commands_core::{
+    FullScreenDrawWindowLabels, OcrResultWindowLabels, VideoRecordWindowLabels,
+};
 use std::sync::Arc;
 use tauri::Emitter;
 use tokio::sync::Mutex;
@@ -34,7 +36,9 @@ use snow_shot_app_services::translate_service::TranslateService;
 use snow_shot_app_services::resize_window_service;
 use snow_shot_app_services::video_record_service;
 use snow_shot_app_shared::EnigoManager;
-use snow_shot_global_state::{CaptureState, ReadClipboardState, WebViewSharedBufferState};
+use snow_shot_global_state::{
+    CaptureState, OcrResultState, ReadClipboardState, WebViewSharedBufferState,
+};
 use snow_shot_plugin_service::plugin_service;
 
 #[cfg(feature = "dhat-heap")]
@@ -78,10 +82,12 @@ pub fn run() {
 
     let full_screen_draw_window_labels = Mutex::new(Option::<FullScreenDrawWindowLabels>::None);
     let video_record_window_label = Mutex::new(Option::<VideoRecordWindowLabels>::None);
+    let ocr_result_window_label = Mutex::new(Option::<OcrResultWindowLabels>::None);
 
     let webview_shared_buffer_state = WebViewSharedBufferState::new(false);
 
     let read_clipboard_state = Mutex::new(ReadClipboardState { reading: false });
+    let ocr_result_state = Mutex::new(OcrResultState::new(String::new()));
 
     use tauri_plugin_log::{Target, TargetKind};
 
@@ -231,8 +237,10 @@ pub fn run() {
         .manage(webview_shared_buffer_state)
         .manage(hot_load_page_service)
         .manage(video_record_window_label)
+        .manage(ocr_result_window_label)
         .manage(capture_state)
         .manage(read_clipboard_state)
+        .manage(ocr_result_state)
         .invoke_handler(tauri::generate_handler![
             screenshot::capture_current_monitor,
             screenshot::capture_all_monitors,
@@ -273,6 +281,7 @@ pub fn run() {
             core::read_image_from_clipboard,
             core::create_full_screen_draw_window,
             core::close_full_screen_draw_window,
+            core::create_ocr_result_window,
             core::get_current_monitor_info,
             core::get_monitors_bounding_box,
             core::send_new_version_notification,
@@ -341,6 +350,8 @@ pub fn run() {
             global_state::get_capture_state,
             global_state::set_read_clipboard_state,
             global_state::get_read_clipboard_state,
+            global_state::set_ocr_result_state,
+            global_state::get_ocr_result_state,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {

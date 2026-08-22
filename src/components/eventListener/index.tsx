@@ -129,6 +129,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 		isVideoRecordPage,
 		isIdlePage,
 		isFixedContentPage,
+		isOcrResultPage,
 		isVideoRecordToolbarPage,
 	} = useMemo(() => {
 		let isDrawPage = false;
@@ -138,6 +139,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 		let isVideoRecordToolbarPage = false;
 		let isIdlePage = false;
 		let isFixedContentPage = false;
+		let isOcrResultPage = false;
 		if (pathname === "/draw") {
 			isDrawPage = true;
 		} else if (pathname === "/fullScreenDraw") {
@@ -152,6 +154,8 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 			isIdlePage = true;
 		} else if (pathname === "/fixedContent") {
 			isFixedContentPage = true;
+		} else if (pathname === "/ocrResult") {
+			isOcrResultPage = true;
 		}
 
 		return {
@@ -162,6 +166,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 			isVideoRecordToolbarPage,
 			isIdlePage,
 			isFixedContentPage,
+			isOcrResultPage,
 		};
 	}, [pathname]);
 
@@ -408,6 +413,13 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 			if (isIdlePage || isFixedContentPage) {
 				defaultListener.push({
 					event: "hot-load-page-route-push",
+					callback: async () => {},
+				});
+			}
+
+			if (isOcrResultPage) {
+				defaultListener.push({
+					event: "ocr-result-show",
 					callback: async () => {},
 				});
 			}
