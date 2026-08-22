@@ -1,3 +1,4 @@
+pub mod cloud_translate;
 pub mod core;
 pub mod file;
 pub mod font;
@@ -32,9 +33,9 @@ use snow_shot_app_services::free_drag_window_service;
 use snow_shot_app_services::hot_load_page_service;
 use snow_shot_app_services::listen_key_service;
 use snow_shot_app_services::ocr_service::OcrService;
-use snow_shot_app_services::translate_service::TranslateService;
 use snow_shot_app_services::resize_window_service;
 use snow_shot_app_services::video_record_service;
+use crate::translate::CloudTranslatorState;
 use snow_shot_app_shared::EnigoManager;
 use snow_shot_global_state::{
     CaptureState, OcrResultState, ReadClipboardState, WebViewSharedBufferState,
@@ -48,7 +49,7 @@ pub static PROFILER: std::sync::LazyLock<Mutex<Option<dhat::Profiler>>> =
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let ocr_instance = Mutex::new(OcrService::new());
-    let translate_instance = Mutex::new(TranslateService::new());
+    let cloud_translator_state = CloudTranslatorState::new();
     let video_record_service = Mutex::new(video_record_service::VideoRecordService::new());
     let hot_load_page_service = Arc::new(hot_load_page_service::HotLoadPageService::new());
     let enigo_instance = Mutex::new(EnigoManager::new());
@@ -220,7 +221,7 @@ pub fn run() {
         })
         .manage(ui_elements)
         .manage(ocr_instance)
-        .manage(translate_instance)
+        .manage(cloud_translator_state)
         .manage(enigo_instance)
         .manage(scroll_screenshot_service)
         .manage(scroll_screenshot_image_service)
@@ -334,9 +335,10 @@ pub fn run() {
             plugin::plugin_register_plugin,
             plugin::plugin_install_plugin,
             plugin::plugin_uninstall_plugin,
-            translate::translate_local_init,
-            translate::translate_local_release,
-            translate::translate_local_text,
+            translate::cloud_translate,
+            translate::cloud_translate_set_config,
+            translate::cloud_translate_get_engines,
+            translate::cloud_translate_test,
             webview::create_webview_shared_buffer,
             webview::set_support_webview_shared_buffer,
             #[cfg(target_os = "windows")]

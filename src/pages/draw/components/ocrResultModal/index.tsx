@@ -6,6 +6,7 @@ import {
 	MailOutlined,
 	MobileOutlined,
 	QqOutlined,
+	TranslationOutlined,
 } from "@ant-design/icons";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useContext, useEffect, useState, type ReactNode } from "react";
@@ -13,6 +14,7 @@ import { AntdContext } from "@/contexts/antdContext";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import { writeTextToClipboard } from "@/utils/clipboard";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { cloudTranslate } from "@/commands/translate";
 import styles from "./index.module.css";
 
 /** Tauri v2 ResizeDirection 枚举值 */
@@ -310,6 +312,10 @@ export const OcrResultModal: React.FC<{
 		qqs: [],
 	});
 	const [copiedItem, setCopiedItem] = useState("");
+	const [showTranslate, setShowTranslate] = useState(false);
+	const [translatedText, setTranslatedText] = useState("");
+	const [translating, setTranslating] = useState(false);
+	const [copyingTr, setCopyingTr] = useState(false);
 
 	// 每次 OCR 结果变化时，重置为语义智能排版（按几何位置聚类行与段落，更贴近阅读顺序）
 	useEffect(() => {
@@ -337,19 +343,48 @@ export const OcrResultModal: React.FC<{
 	};
 
 	const handleCopy = async () => {
-		if (!editableText) {
-			return;
-		}
-		setCopying(true);
-		try {
-			await writeTextToClipboard(editableText);
-			message.success("已复制到剪贴板");
-		} catch {
-			message.error("复制失败");
-		} finally {
-			setCopying(false);
-		}
-	};
+				if (!editableText) {
+					return;
+				}
+				setCopying(true);
+				try {
+					await writeTextToClipboard(editableText);
+					message.success("已复制到剪贴板");
+				} catch {
+					message.error("复制失败");
+				} finally {
+					setCopying(false);
+				}
+			};
+
+			const handleTranslate = async () => {
+				if (!editableText) return;
+				setShowTranslate(!showTranslate);
+				if (!showTranslate && !translatedText) {
+					setTranslating(true);
+					try {
+						const result = await cloudTranslate(editableText, "auto", "zh-CHS");
+						setTranslatedText(result);
+					} catch {
+						message.error("翻译失败");
+					} finally {
+						setTranslating(false);
+					}
+				}
+			};
+
+			const handleCopyTranslation = async () => {
+				if (!translatedText) return;
+				setCopyingTr(true);
+				try {
+					await writeTextToClipboard(translatedText);
+					message.success("译文已复制");
+				} catch {
+					message.error("复制失败");
+				} finally {
+					setCopyingTr(false);
+				}
+			};
 
 	const handleCopyItem = async (
 		value: string,
@@ -428,6 +463,13 @@ export const OcrResultModal: React.FC<{
 						onClick={onClose}
 					>
 						<CloseOutlined />
+					</button>
+					<button
+						className={styles.translateBtn}
+						title="翻译"
+						onClick={handleTranslate}
+					>
+						<TranslationOutlined />
 					</button>
 				</div>
 			</div>
@@ -518,7 +560,38 @@ export const OcrResultModal: React.FC<{
 				</div>
 			)}
 
-			{/* 底部操作栏 */}
+			{/* 翻译面板 */}
+				{showTranslate && (
+					<div className={styles.translatePanel}>
+						<div className={styles.translateHeader}>
+							<span className={styles.translateTitle}>翻译结果</span>
+						</div>
+						<div className={styles.translateBody}>
+							{translating ? (
+								<div className={styles.translateLoading}>翻译中…</div>
+							) : (
+								<textarea
+									className={styles.translateArea}
+									value={translatedText}
+									readOnly
+									placeholder="点击翻译按钮获取译文"
+								/>
+							)}
+						</div>
+						<div className={styles.translateFooter}>
+							<button
+								className={styles.copyBtn}
+								onClick={handleCopyTranslation}
+								disabled={!translatedText || copyingTr}
+							>
+								<CopyOutlined />
+								<span>{copyingTr ? "复制中…" : "复制译文"}</span>
+							</button>
+						</div>
+					</div>
+				)}
+
+				{/* 底部操作栏 */}
 			<div className={styles.footer}>
 				<span className={styles.footerHint}>
 					{layoutType === "semantic"

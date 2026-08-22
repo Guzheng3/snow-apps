@@ -72,6 +72,16 @@ export enum TranslationApiType {
 	DeepL = "translation_api_deepl",
 	Google = "translation_api_google",
 	Youdao = "translation_api_youdao",
+	/** 金山词霸 (免Key) */
+	ICiba = "translation_api_iciba",
+	/** 腾讯通天塔 (免Key) */
+	Transmart = "translation_api_transmart",
+	/** Yandex (免Key) */
+	Yandex = "translation_api_yandex",
+	/** 百度翻译 (需AppID+AppKey) */
+	Baidu = "translation_api_baidu",
+	/** 智谱GLM (需API Key) */
+	BigModel = "translation_api_bigmodel",
 }
 
 export type TranslationApiConfig = {
@@ -83,6 +93,17 @@ export type TranslationApiConfig = {
 	/** 优先级，数字越小越优先 */
 	priority: number;
 	deepl_prefer_quality_optimized?: boolean;
+};
+
+/** 云翻译引擎优先级排序 */
+export type CloudEngineOrder = TranslationApiType[];
+
+/** 云翻译引擎配置 */
+export type CloudTranslationConfig = {
+	baiduAppId: string;
+	baiduAppKey: string;
+	bigmodelKey: string;
+	engineOrder: CloudEngineOrder;
 };
 
 export enum AppSettingsGroup {
@@ -415,12 +436,10 @@ export type AppSettingsData = {
 		targetLanguage: string;
 		translationDomain: TranslationDomain;
 		translationType: TranslationType | string;
-		/** 是否启用本地翻译（onnxruntime Opus-MT） */
-		enableLocalTranslation: boolean;
+		/** 云翻译引擎配置 */
+		cloudTranslationConfig: CloudTranslationConfig;
 		/** 是否启用云端翻译 */
 		enableCloudTranslation: boolean;
-		/** 翻译引擎优先级：local=本地优先 cloud=云端优先 */
-		translationPriority: "local" | "cloud";
 	};
 	[AppSettingsGroup.FunctionTranslationCache]: {
 		cacheSourceLanguage: string;

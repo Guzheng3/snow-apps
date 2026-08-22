@@ -1,12 +1,4 @@
-# Snow Shot - Windows-only 构建工作流（个人 fork 专用）
-# 相比原 release.yml 的改动：
-#   1. 只构建 Windows x64（去掉 macOS 两个平台，省一半以上时间）
-#   2. 不创建 GitHub Release / 不改 changelog，产物直接传 Artifact 下载
-#   3. 关闭 updater artifact（createUpdaterArtifacts=false）→ 不需要 TAURI_SIGNING_PRIVATE_KEY 签名
-#   4. 修掉原脚本里 cd ../snow-shot 的目录名 bug（用 $GITHUB_WORKSPACE 绕开，不依赖 fork 后仓库名）
-#   5. 上传 artifact 时带上 target/release/resources/（含 app-icons 托盘图标 png）——
-#      否则裸 exe 找不到 resourceDir()/app-icons/*.png，设置页托盘图标预览图不显示
-# 触发方式：push 任意 v* tag，或 仓库 Actions 页手动 Run workflow
+# Snow Shot - Windows-only 构建工作流 (原生翻译+OCR，无插件依赖)
 name: Snow Shot Windows CI
 
 on:
