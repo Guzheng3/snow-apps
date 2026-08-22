@@ -151,3 +151,90 @@ body {
     max-width: 100%;
     padding: 0;
 }
+
+/* ============ 二级弹窗（属性面板）防纵向撑高 ============
+   弹窗结构代码为 v0.7.8-beta 原版，此处仅用纯 CSS 修复其原生缺陷：
+   v0.7.8-beta 的 .radio-button-icon 高度为 height:100%，会被内部内容（SVG/文字）
+   反向撑高，导致属性面板被纵向拉大成窄长条、预览块被拉伸。
+   修复：Radio.Button 与 radio-button-icon 固定高度、图标固定 16px、行高收紧，
+   仅覆盖渲染样式，不改动 v0.7.8-beta 的弹窗结构代码。 */
+
+.draw-core-layer .excalidraw .ant-radio-group {
+    display: inline-flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+}
+
+.draw-core-layer .excalidraw .ant-radio-button-wrapper {
+    height: 24px !important;
+    min-height: 24px !important;
+    padding: 0 8px !important;
+    line-height: 22px !important;
+    font-size: 12px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.draw-core-layer .excalidraw .ant-radio-button-wrapper .radio-button-icon {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 24px !important;
+    min-height: 24px !important;
+    line-height: 1 !important;
+}
+
+.draw-core-layer .excalidraw .ant-radio-button-wrapper .radio-button-icon svg,
+.draw-core-layer .excalidraw .ant-radio-button-wrapper svg,
+.draw-core-layer .excalidraw .ant-radio-button-wrapper .icon {
+    width: 16px !important;
+    height: 16px !important;
+    max-width: 16px !important;
+    max-height: 16px !important;
+}
+
+.draw-core-layer .excalidraw .subtool-radio-button-icon {
+    height: 24px !important;
+    min-height: 24px !important;
+    line-height: 1 !important;
+}
+
+.draw-core-layer .excalidraw .ant-radio-wrapper {
+    font-size: 12px !important;
+    line-height: 22px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.draw-core-layer .excalidraw .ant-slider {
+    margin: 6px 6px !important;
+}
+
+.draw-core-layer .excalidraw .ant-slider-with-marks {
+    margin-bottom: 6px !important;
+}
+
+.draw-core-layer .excalidraw .ant-input-number {
+    height: 24px !important;
+    width: 52px !important;
+}
+
+.draw-core-layer .excalidraw .ant-input-number .ant-input-number-input {
+    height: 22px !important;
+    font-size: 12px !important;
+}
+
+.draw-core-layer .excalidraw .ant-select-selector {
+    height: 24px !important;
+}
+
+.draw-core-layer .excalidraw .ant-select-selection-item,
+.draw-core-layer .excalidraw .ant-select-selection-placeholder {
+    line-height: 22px !important;
+    font-size: 12px !important;
+}
+
+.draw-core-layer .excalidraw .layout-menu-render .picker {
+    font-size: 12px !important;
+}
