@@ -339,9 +339,6 @@ pub async fn create_ocr_result_window(
                 window_height as u32,
             ))
             .unwrap();
-        window
-            .set_min_size(Some(tauri::LogicalSize::new(400.0, 500.0)))
-            .unwrap();
         window.show().unwrap();
 
         match window.emit(
@@ -402,7 +399,7 @@ pub async fn create_ocr_result_window(
         .shadow(false)
         .transparent(true)
         .skip_taskbar(true)
-        .min_inner_size(tauri::LogicalSize::new(400.0, 500.0))
+        .min_inner_size(400.0, 500.0)
         .inner_size(window_width, window_height)
         .build()
         .unwrap();

@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { theme } from "antd";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
