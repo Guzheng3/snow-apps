@@ -1,6 +1,6 @@
 "use client";
 
-import { Checkbox, Col, Divider, Flex, Form, Row, Spin, theme } from "antd";
+import { Col, Divider, Form, Row, Spin, theme } from "antd";
 import { useCallback, useContext, useMemo, useState } from "react";
 import { FormattedMessage } from "react-intl";
 import { GroupTitle } from "@/components/groupTitle";
@@ -11,15 +11,10 @@ import {
 	defaultCommonKeyEventSettings,
 } from "@/constants/commonKeyEvent";
 import {
-	defaultDrawToolbarKeyEventComponentConfig,
-	defaultDrawToolbarKeyEventSettings,
-} from "@/constants/drawToolbarKeyEvent";
-import {
-	PLUGIN_ID_AI_CHAT,
-	PLUGIN_ID_RAPID_OCR,
-	PLUGIN_ID_TRANSLATE,
-} from "@/constants/pluginService";
-import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
+		defaultDrawToolbarKeyEventComponentConfig,
+		defaultDrawToolbarKeyEventSettings,
+	} from "@/constants/drawToolbarKeyEvent";
+	import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
 import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
 import { usePlatform } from "@/hooks/usePlatform";
@@ -49,36 +44,6 @@ export const HotKeySettingsPage = () => {
 		AppSettingsData[AppSettingsGroup.CommonKeyEvent]
 	>(defaultCommonKeyEventSettings);
 
-	// 截图快捷键提示窗口的显示项配置
-	const [hotKeyTipHiddenKeys, setHotKeyTipHiddenKeys] = useState<string[]>([]);
-	const statusBarTipOptions = useMemo(
-		() => [
-			{ label: <FormattedMessage id="draw.colorPickerMoveUp" />, value: "colorPickerMoveUp" },
-			{ label: <FormattedMessage id="draw.colorPickerMoveDown" />, value: "colorPickerMoveDown" },
-			{ label: <FormattedMessage id="draw.colorPickerMoveLeft" />, value: "colorPickerMoveLeft" },
-			{ label: <FormattedMessage id="draw.colorPickerMoveRight" />, value: "colorPickerMoveRight" },
-			{ label: <FormattedMessage id="draw.selectWindowOrElement" />, value: "selectWindowOrElement" },
-			{ label: <FormattedMessage id="draw.changeSelectLevel" />, value: "changeSelectLevel" },
-			{ label: <FormattedMessage id="draw.selectPrevRectTool" />, value: "selectPrevRectTool" },
-			{ label: <FormattedMessage id="draw.dragSelectRect" />, value: "dragSelectRect" },
-			{ label: <FormattedMessage id="draw.lockWidthHeightPicker" />, value: "lockWidthHeightPicker" },
-			{ label: <FormattedMessage id="draw.switchCapture" />, value: "switchCapture" },
-			{ label: <FormattedMessage id="draw.colorPickerCopy" />, value: "colorPickerCopy" },
-			{ label: <FormattedMessage id="draw.switchColorFormat" />, value: "switchColorFormat" },
-			{ label: <FormattedMessage id="draw.maintainAspectRatioPicker" />, value: "maintainAspectRatioPicker" },
-			{ label: <FormattedMessage id="draw.resizeFromCenterPicker" />, value: "resizeFromCenterPicker" },
-			{ label: <FormattedMessage id="draw.autoAlignPicker" />, value: "autoAlignPicker" },
-			{ label: <FormattedMessage id="draw.rotateWithDiscreteAnglePicker" />, value: "rotateWithDiscreteAnglePicker" },
-			{ label: <FormattedMessage id="draw.serialNumberDisableArrow2" />, value: "serialNumberDisableArrow" },
-			{ label: <FormattedMessage id="draw.selectSameTypeElement" />, value: "selectSameTypeElement" },
-			{ label: <FormattedMessage id="draw.editElementStyle" />, value: "editElementStyle" },
-		],
-		[],
-	);
-	const allStatusBarTipValues = useMemo(
-		() => statusBarTipOptions.map((opt) => opt.value),
-		[statusBarTipOptions],
-	);
 	useAppSettingsLoad(
 		useCallback((settings: AppSettingsData, preSettings?: AppSettingsData) => {
 			setAppSettingsLoading(false);
@@ -98,10 +63,6 @@ export const HotKeySettingsPage = () => {
 			) {
 				setCommonKeyEvent(settings[AppSettingsGroup.CommonKeyEvent]);
 			}
-
-			setHotKeyTipHiddenKeys(
-				settings[AppSettingsGroup.Screenshot].hotKeyTipHiddenKeys ?? [],
-			);
 		}, []),
 		true,
 	);
@@ -126,17 +87,6 @@ export const HotKeySettingsPage = () => {
 					}
 				}
 
-				if (key === DrawToolbarKeyEventKey.OcrDetectTool) {
-					return isReadyStatus?.(PLUGIN_ID_RAPID_OCR);
-				}
-
-				if (key === DrawToolbarKeyEventKey.OcrTranslateTool) {
-					return (
-						isReadyStatus?.(PLUGIN_ID_RAPID_OCR) &&
-						isReadyStatus?.(PLUGIN_ID_TRANSLATE)
-					);
-				}
-
 				return true;
 			})
 			.map((key) => {
@@ -153,49 +103,28 @@ export const HotKeySettingsPage = () => {
 							label={<FormattedMessage id={componentConfig.messageId} />}
 							name={key}
 						>
-							<Flex align="center" gap={8}>
-								<KeyButton
-									title={
-										<FormattedMessage key={key} id={componentConfig.messageId} />
-									}
-									keyValue={config.hotKey}
-									maxWidth={100}
-									onKeyChange={async (value) => {
-										updateAppSettings(
-											AppSettingsGroup.DrawToolbarKeyEvent,
-											{
-												[key]: {
-													...config,
-													hotKey: value,
-												},
+							<KeyButton
+								title={
+									<FormattedMessage key={key} id={componentConfig.messageId} />
+								}
+								keyValue={config.hotKey}
+								maxWidth={100}
+								onKeyChange={async (value) => {
+									updateAppSettings(
+										AppSettingsGroup.DrawToolbarKeyEvent,
+										{
+											[key]: {
+												...config,
+												hotKey: value,
 											},
-											false,
-											true,
-											true,
-										);
-									}}
-									maxLength={2}
-								/>
-								<Checkbox
-									checked={config.showInToolbar !== false}
-									onChange={(e) => {
-										updateAppSettings(
-											AppSettingsGroup.DrawToolbarKeyEvent,
-											{
-												[key]: {
-													...config,
-													showInToolbar: e.target.checked,
-												},
-											},
-											false,
-											true,
-											true,
-										);
-									}}
-								>
-									<FormattedMessage id="settings.hotKeySettings.showInHotKeyTip" />
-								</Checkbox>
-							</Flex>
+										},
+										false,
+										true,
+										true,
+									);
+								}}
+								maxLength={2}
+							/>
 						</Form.Item>
 					</Col>
 				);
@@ -205,7 +134,6 @@ export const HotKeySettingsPage = () => {
 	const keyEventFormItemList = useMemo(() => {
 		const groupFormItemMap: Record<CommonKeyEventGroup, React.ReactNode[]> = {
 			[CommonKeyEventGroup.Translation]: [],
-			[CommonKeyEventGroup.Chat]: [],
 			[CommonKeyEventGroup.FixedContent]: [],
 		};
 
@@ -266,14 +194,7 @@ export const HotKeySettingsPage = () => {
 				form={commonKeyEventForm}
 			>
 				{keyEventFormItemListKeys
-					.filter((configGroup) => {
-						if (configGroup === CommonKeyEventGroup.Chat) {
-							return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
-						}
-
-						return true;
-					})
-					.map((configGroup, index) => {
+										.map((configGroup, index) => {
 						return (
 							<div key={configGroup}>
 								<GroupTitle
@@ -319,53 +240,6 @@ export const HotKeySettingsPage = () => {
 						);
 					})}
 			</Form>
-
-			<Divider />
-
-			<GroupTitle
-				id="statusBarTip"
-				extra={
-					<ResetSettingsButton
-						title={
-							<FormattedMessage
-								id="settings.hotKeySettings.statusBarTip"
-								key="statusBarTip"
-							/>
-						}
-						appSettingsGroup={AppSettingsGroup.Screenshot}
-						filter={(settings) => {
-							return { hotKeyTipHiddenKeys: settings.hotKeyTipHiddenKeys };
-						}}
-					/>
-				}
-			>
-				<FormattedMessage id="settings.hotKeySettings.statusBarTip" />
-			</GroupTitle>
-
-			<Spin spinning={appSettingsLoading}>
-				<Checkbox.Group
-					className="status-bar-tip-checkbox-group"
-					options={statusBarTipOptions}
-					value={allStatusBarTipValues.filter(
-						(v) => !hotKeyTipHiddenKeys.includes(v),
-					)}
-					onChange={(checkedValues) => {
-						const hidden = allStatusBarTipValues.filter(
-							(v) => !checkedValues.includes(v),
-						);
-						setHotKeyTipHiddenKeys(hidden);
-						updateAppSettings(
-							AppSettingsGroup.Screenshot,
-							{ hotKeyTipHiddenKeys: hidden },
-							true,
-							true,
-							true,
-							true,
-							false,
-						);
-					}}
-				/>
-			</Spin>
 
 			<Divider />
 

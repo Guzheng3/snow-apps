@@ -12,7 +12,6 @@ import {
 	PLUGIN_ID_FFMPEG,
 	PLUGIN_ID_RAPID_OCR,
 	PLUGIN_ID_TRANSLATE,
-	PLUGIN_ID_TRANSLATE_LOCAL,
 } from "@/constants/pluginService";
 import { PluginServiceContext } from "@/contexts/pluginServiceContext";
 import { useStateRef } from "@/hooks/useStateRef";
@@ -49,17 +48,9 @@ export const PluginServiceContextProvider: React.FC<{
 				file_list: [],
 			},
 			{
-				id: PLUGIN_ID_TRANSLATE_LOCAL,
-				file_list: [
-					"encoder_model.onnx",
-					"decoder_model.onnx",
-					"tokenizer.json",
-				],
-			},
-			{
-				id: PLUGIN_ID_AI_CHAT,
-				file_list: [],
-			},
+						id: PLUGIN_ID_AI_CHAT,
+						file_list: [],
+					},
 		];
 	}, []);
 

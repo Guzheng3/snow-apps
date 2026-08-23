@@ -8,16 +8,6 @@ export const plugin = {
 	"plugin.rapid_ocr.description":
 		"使用基于 ONNXRuntime 和 Paddle OCR 的 Rapid OCR 实现高性能跨平台文本识别。支持结合 AI 对话插件获得更高阶的文本识别能力",
 	"plugin.rapid_ocr.functionDescription": "文本识别",
-	"plugin.ai_chat.name": "AI 对话",
-	"plugin.ai_chat.description":
-		"使用最前沿的 AI 大模型简化工作流程，支持自定义配置兼容 Open AI SDK 的 API。",
-	"plugin.translate.name": "翻译",
-	"plugin.translate_local.name": "本地翻译模型",
-	"plugin.translate_local.description":
-		"离线翻译模型（Helsinki-NLP Opus-MT 中英），基于 ONNXRuntime 本地推理，无需联网。安装后可在「功能设置 → 翻译设置」中启用本地翻译。",
-	"plugin.translate_local.functionDescription": "本地离线翻译",
-	"plugin.translate.description": "支持图片翻译、文本翻译等功能",
-	"plugin.ai_chat.functionDescription": "AI 对话页面",
 	"plugin.status.NotInstalled": "未安装",
 	"plugin.status.Installed": "已安装",
 	"plugin.status.Downloading": "下载中",

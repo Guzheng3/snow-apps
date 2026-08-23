@@ -968,8 +968,7 @@ return (
 							{/* OCR */}
 							<ToolButton
 								hidden={
-									customToolbarToolHiddenMap?.[DrawState.OcrDetect] ||
-									!isReadyStatus?.(PLUGIN_ID_RAPID_OCR)
+									customToolbarToolHiddenMap?.[DrawState.OcrDetect]
 								}
 								componentKey={DrawToolbarKeyEventKey.OcrDetectTool}
 								icon={<OcrDetectIcon style={{ fontSize: "0.88em" }} />}
@@ -986,12 +985,7 @@ return (
 							{/* OCR 翻译 */}
 							<ToolButton
 								hidden={
-									customToolbarToolHiddenMap?.[DrawState.OcrTranslate] ||
-									!(
-										enableSTranslate ||
-										(isReadyStatus?.(PLUGIN_ID_RAPID_OCR) &&
-											isReadyStatus?.(PLUGIN_ID_TRANSLATE))
-									)
+									customToolbarToolHiddenMap?.[DrawState.OcrTranslate]
 								}
 								componentKey={DrawToolbarKeyEventKey.OcrTranslateTool}
 								icon={<OcrTranslateIcon style={{ fontSize: "1em" }} />}

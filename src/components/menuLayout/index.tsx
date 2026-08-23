@@ -20,10 +20,9 @@ import {
 	TrayIconStatePublisher,
 } from "@/components/trayIconLoader";
 import {
-	PLUGIN_ID_AI_CHAT,
-	PLUGIN_ID_FFMPEG,
-	PLUGIN_ID_TRANSLATE,
-} from "@/constants/pluginService";
+		PLUGIN_ID_FFMPEG,
+		PLUGIN_ID_TRANSLATE,
+	} from "@/constants/pluginService";
 import { AppContext } from "@/contexts/appContext";
 import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
@@ -126,41 +125,33 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 				label: intl.formatMessage({ id: "menu.functions" }),
 				icon: <AppstoreOutlined />,
 				tabs: [
-					{
-						key: "screenshotFunction",
-						label: intl.formatMessage({ id: "home.screenshotFunction" }),
-					},
-					{
-						key: "chatFunction",
-						label: intl.formatMessage({ id: "home.chatFunction" }),
-					},
-					{
-						key: "translationFunction",
-						label: intl.formatMessage({ id: "home.translationFunction" }),
-					},
-					{
-						key: "videoRecordFunction",
-						label: intl.formatMessage({ id: "home.videoRecordFunction" }),
-					},
-					{
-						key: "otherFunction",
-						label: intl.formatMessage({ id: "home.otherFunction" }),
-					},
-				].filter((item) => {
-					if (item.key === "videoRecordFunction") {
-						return isReadyStatus?.(PLUGIN_ID_FFMPEG);
-					}
+										{
+											key: "screenshotFunction",
+											label: intl.formatMessage({ id: "home.screenshotFunction" }),
+										},
+										{
+											key: "translationFunction",
+											label: intl.formatMessage({ id: "home.translationFunction" }),
+										},
+										{
+											key: "videoRecordFunction",
+											label: intl.formatMessage({ id: "home.videoRecordFunction" }),
+										},
+										{
+											key: "otherFunction",
+											label: intl.formatMessage({ id: "home.otherFunction" }),
+										},
+									].filter((item) => {
+										if (item.key === "videoRecordFunction") {
+											return isReadyStatus?.(PLUGIN_ID_FFMPEG);
+										}
 
-					if (item.key === "chatFunction") {
-						return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
-					}
+										if (item.key === "translationFunction") {
+											return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
+										}
 
-					if (item.key === "translationFunction") {
-						return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
-					}
-
-					return true;
-				}),
+										return true;
+									}),
 			},
 			{
 				key: "/tools",
@@ -169,53 +160,37 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 				icon: <ToolOutlined />,
 				tabs: [],
 				children: [
-					{
-						key: "/tools/translation",
-						path: "/tools/translation",
-						label: intl.formatMessage({ id: "menu.tools.translation" }),
-						hideTabs: true,
-						tabs: [
-							{
-								key: "translation",
-								label: intl.formatMessage({ id: "menu.tools.translation" }),
-							},
-						],
-					},
-					{
-						key: "/tools/chat",
-						path: "/tools/chat",
-						label: intl.formatMessage({ id: "menu.tools.chat" }),
-						hideTabs: true,
-						tabs: [
-							{
-								key: "chat",
-								label: intl.formatMessage({ id: "menu.tools.chat" }),
-							},
-						],
-					},
-					{
-						key: "/tools/captureHistory",
-						path: "/tools/captureHistory",
-						label: intl.formatMessage({ id: "menu.tools.captureHistory" }),
-						hideTabs: true,
-						tabs: [
-							{
-								key: "captureHistory",
-								label: intl.formatMessage({ id: "menu.tools.captureHistory" }),
-							},
-						],
-					},
-				].filter((item) => {
-					if (item.key === "/tools/chat") {
-						return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
-					}
+										{
+											key: "/tools/translation",
+											path: "/tools/translation",
+											label: intl.formatMessage({ id: "menu.tools.translation" }),
+											hideTabs: true,
+											tabs: [
+												{
+													key: "translation",
+													label: intl.formatMessage({ id: "menu.tools.translation" }),
+												},
+											],
+										},
+										{
+											key: "/tools/captureHistory",
+											path: "/tools/captureHistory",
+											label: intl.formatMessage({ id: "menu.tools.captureHistory" }),
+											hideTabs: true,
+											tabs: [
+												{
+													key: "captureHistory",
+													label: intl.formatMessage({ id: "menu.tools.captureHistory" }),
+												},
+											],
+										},
+									].filter((item) => {
+										if (item.key === "/tools/translation") {
+											return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
+										}
 
-					if (item.key === "/tools/translation") {
-						return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
-					}
-
-					return true;
-				}),
+										return true;
+									}),
 			},
 			{
 				key: "/personalization",
@@ -267,218 +242,29 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 						key: "/settings/generalSettings",
 						path: "/settings/generalSettings",
 						label: intl.formatMessage({ id: "menu.settings.generalSettings" }),
-						tabs: [
-							{
-								key: "commonSettings",
-								label: intl.formatMessage({ id: "settings.commonSettings" }),
-							},
-							{
-								key: "screenshotSettings",
-								label: intl.formatMessage({
-									id: "settings.screenshotSettings",
-								}),
-							},
-							{
-								key: "fixedContentSettings",
-								label: intl.formatMessage({
-									id: "settings.fixedContentSettings",
-								}),
-							},
-							{
-								key: "trayIconSettings",
-								label: intl.formatMessage({
-									id: "settings.commonSettings.trayIconSettings",
-								}),
-							},
-						],
+						hideTabs: true,
+						tabs: [],
 					},
 					{
 						key: "/settings/functionSettings",
 						path: "/settings/functionSettings",
 						label: intl.formatMessage({ id: "menu.settings.functionSettings" }),
-						tabs: [
-							{
-								key: "screenshotSettings",
-								label: intl.formatMessage({
-									id: "settings.functionSettings.screenshotSettings",
-								}),
-							},
-							{
-								key: "functionDrawSettings",
-								label: intl.formatMessage({
-									id: "settings.commonSettings.draw",
-								}),
-							},
-							{
-								key: "fixedContentSettings",
-								label: intl.formatMessage({
-									id: "settings.functionSettings.fixedContentSettings",
-								}),
-							},
-							{
-								key: "ocrSettings",
-								label: intl.formatMessage({
-									id: "settings.functionSettings.ocrSettings",
-								}),
-							},
-							{
-								key: "translationSettings",
-								label: intl.formatMessage({
-									id: "settings.functionSettings.translationSettings",
-								}),
-							},
-							{
-								key: "chatSettings",
-								label: intl.formatMessage({
-									id: "settings.functionSettings.chatSettings",
-								}),
-							},
-							{
-								key: "fullScreenDrawSettings",
-								label: intl.formatMessage({
-									id: "settings.functionSettings.fullScreenDrawSettings",
-								}),
-							},
-							{
-								key: "videoRecordSettings",
-								label: intl.formatMessage({
-									id: "settings.functionSettings.videoRecordSettings",
-								}),
-							},
-							{
-								key: "trayIconSettings",
-								label: intl.formatMessage({
-									id: "settings.functionSettings.trayIconSettings",
-								}),
-							},
-							{
-								key: "globalShortcutSettings",
-								label: intl.formatMessage({
-									id: "settings.functionSettings.globalShortcutSettings",
-								}),
-							},
-							{
-								key: "outputSettings",
-								label: intl.formatMessage({
-									id: "settings.functionSettings.outputSettings",
-								}),
-							},
-						].filter((item) => {
-							if (item.key === "videoRecordSettings") {
-								return isReadyStatus?.(PLUGIN_ID_FFMPEG);
-							}
-
-							if (item.key === "translationSettings") {
-								return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
-							}
-
-							if (item.key === "chatSettings") {
-								return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
-							}
-
-							return true;
-						}),
+						hideTabs: true,
+						tabs: [],
 					},
 					{
 						key: "/settings/hotKeySettings",
 						path: "/settings/hotKeySettings",
 						label: intl.formatMessage({ id: "menu.settings.hotKeySettings" }),
-						tabs: [
-							{
-								key: "translation",
-								label: intl.formatMessage({
-									id: "settings.hotKeySettings.translation",
-								}),
-							},
-							{
-								key: "chat",
-								label: intl.formatMessage({
-									id: "settings.hotKeySettings.chat",
-								}),
-							},
-							{
-								key: "fixedContent",
-								label: intl.formatMessage({
-									id: "settings.hotKeySettings.fixedContent",
-								}),
-							},
-							{
-								key: "drawingHotKey",
-								label: intl.formatMessage({ id: "settings.drawingHotKey" }),
-							},
-						].filter((item) => {
-							if (item.key === "chat") {
-								return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
-							}
-
-							if (item.key === "translation") {
-								return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
-							}
-
-							return true;
-						}),
+						hideTabs: true,
+						tabs: [],
 					},
 					{
 						key: "/settings/systemSettings",
 						path: "/settings/systemSettings",
 						label: intl.formatMessage({ id: "menu.settings.systemSettings" }),
-						tabs: [
-							{
-								key: "commonSettings",
-								label: intl.formatMessage({ id: "settings.commonSettings" }),
-							},
-							...getPlatformValue(
-								[],
-								[
-									{
-										key: "macosPermissionsSettings",
-										label: intl.formatMessage({
-											id: "settings.systemSettings.macosPermissionsSettings",
-										}),
-									},
-								],
-							),
-							{
-								key: "screenshotSettings",
-								label: intl.formatMessage({
-									id: "settings.systemSettings.screenshotSettings",
-								}),
-							},
-							{
-								key: "networkSettings",
-								label: intl.formatMessage({
-									id: "settings.systemSettings.networkSettings",
-								}),
-							},
-							{
-								key: "scrollScreenshotSettings",
-								label: intl.formatMessage({
-									id: "settings.systemSettings.scrollScreenshotSettings",
-								}),
-							},
-							{
-								key: "chatSettings",
-								label: intl.formatMessage({ id: "settings.chatSettings" }),
-							},
-							{
-								key: "coreSettings",
-								label: intl.formatMessage({
-									id: "settings.systemSettings.coreSettings",
-								}),
-							},
-							{
-								key: "dataFile",
-								label: intl.formatMessage({
-									id: "settings.systemSettings.dataFile",
-								}),
-							},
-						].filter(() => {
-							// if (item.key === 'chatSettings') {
-							//     return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
-							// }
-
-							return true;
-						}),
+						hideTabs: true,
+						tabs: [],
 					},
 				],
 			},

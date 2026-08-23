@@ -613,23 +613,7 @@ export const GeneralSettingsPage = () => {
 						</Col>
 
 						<Col span={12}>
-							<ProFormSlider
-								label={
-									<IconLabel
-										label={
-											<FormattedMessage id="settings.functionSettings.screenshotSettings.hotKeyTipOpacity" />
-										}
-									/>
-								}
-								name="hotKeyTipOpacity"
-								min={0}
-								max={100}
-								step={1}
-								marks={{
-									0: "0%",
-									100: "100%",
-								}}
-							/>							<ProForm.Item
+							<ProForm.Item
 								label={
 									<IconLabel
 										label={"截图圆角（px）"}

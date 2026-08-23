@@ -65,8 +65,6 @@ export const SystemSettingsPage = () => {
 	// const [renderForm] = Form.useForm<AppSettingsData[AppSettingsGroup.Render]>();
 	const [scrollScreenshotForm] =
 		Form.useForm<AppSettingsData[AppSettingsGroup.SystemScrollScreenshot]>();
-	const [chatForm] =
-		Form.useForm<AppSettingsData[AppSettingsGroup.SystemChat]>();
 	const [networkForm] =
 		Form.useForm<AppSettingsData[AppSettingsGroup.SystemNetwork]>();
 	const [screenshotForm] =
@@ -91,14 +89,6 @@ export const SystemSettingsPage = () => {
 						settings[AppSettingsGroup.SystemCommon]
 				) {
 					commonForm.setFieldsValue(settings[AppSettingsGroup.SystemCommon]);
-				}
-
-				if (
-					preSettings === undefined ||
-					preSettings[AppSettingsGroup.SystemChat] !==
-						settings[AppSettingsGroup.SystemChat]
-				) {
-					chatForm.setFieldsValue(settings[AppSettingsGroup.SystemChat]);
 				}
 
 				if (
@@ -139,7 +129,6 @@ export const SystemSettingsPage = () => {
 			},
 			[
 				commonForm,
-				chatForm,
 				networkForm,
 				scrollScreenshotForm,
 				screenshotForm,
@@ -839,110 +828,6 @@ export const SystemSettingsPage = () => {
 				</ProForm>
 			</Spin>
 
-			<Divider />
-
-			<GroupTitle
-				id="chatSettings"
-				extra={
-					<ResetSettingsButton
-						title={
-							<FormattedMessage id="settings.chatSettings" key="chatSettings" />
-						}
-						appSettingsGroup={AppSettingsGroup.SystemChat}
-					/>
-				}
-			>
-				<FormattedMessage id="settings.chatSettings" />
-			</GroupTitle>
-
-			<Spin spinning={appSettingsLoading}>
-				<ProForm
-					form={chatForm}
-					onValuesChange={(_, values) => {
-						updateAppSettings(
-							AppSettingsGroup.SystemChat,
-							values,
-							true,
-							true,
-							false,
-							true,
-						);
-					}}
-					submitter={false}
-				>
-					<ProForm.Item
-						key="maxTokens"
-						label={
-							<IconLabel
-								label={
-									<FormattedMessage id="settings.chatSettings.maxTokens" />
-								}
-								tooltipTitle={
-									<FormattedMessage id="settings.chatSettings.maxTokens.tip" />
-								}
-							/>
-						}
-						name="maxTokens"
-					>
-						<Slider
-							min={512}
-							max={8192}
-							step={128}
-							marks={{
-								512: "512",
-								4096: "4096",
-								8192: "8192",
-							}}
-						/>
-					</ProForm.Item>
-
-					<ProFormSlider
-						key="temperature"
-						label={
-							<IconLabel
-								label={
-									<FormattedMessage id="settings.chatSettings.temperature" />
-								}
-								tooltipTitle={
-									<FormattedMessage id="settings.chatSettings.temperature.tip" />
-								}
-							/>
-						}
-						name="temperature"
-						min={0}
-						max={2}
-						step={0.1}
-						marks={{
-							0: "0",
-							1: "1",
-							2: "2",
-						}}
-					/>
-
-					<ProFormSlider
-						key="thinkingBudgetTokens"
-						label={
-							<IconLabel
-								label={
-									<FormattedMessage id="settings.chatSettings.thinkingBudgetTokens" />
-								}
-								tooltipTitle={
-									<FormattedMessage id="settings.chatSettings.thinkingBudgetTokens.tip" />
-								}
-							/>
-						}
-						name="thinkingBudgetTokens"
-						min={1024}
-						max={8192}
-						step={128}
-						marks={{
-							1024: "1024",
-							4096: "4096",
-							8192: "8192",
-						}}
-					/>
-				</ProForm>
-			</Spin>
 
 			<Divider />
 
