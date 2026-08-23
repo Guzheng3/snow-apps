@@ -53,9 +53,8 @@ import {
 	TRANSLATION_DOMAIN_ENV_VARIABLE,
 } from "@/constants/components/translation";
 import {
-	PLUGIN_ID_AI_CHAT,
-	PLUGIN_ID_FFMPEG,
-	PLUGIN_ID_RAPID_OCR,
+		PLUGIN_ID_FFMPEG,
+		PLUGIN_ID_RAPID_OCR,
 	PLUGIN_ID_TRANSLATE,
 } from "@/constants/pluginService";
 import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
@@ -113,9 +112,6 @@ export const FunctionSettingsPage = () => {
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionVideoRecord]>();
 	const [functionOcrForm] =
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionOcr]>();
-	const [paddlePasteOpen, setPaddlePasteOpen] = useState(false);
-	const [paddlePasteText, setPaddlePasteText] = useState("");
-	const [paddleParseTip, setPaddleParseTip] = useState<React.ReactNode>(null);
 	const [functionGlobalShortcutForm] =
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionGlobalShortcut]>();
 
@@ -280,7 +276,7 @@ export const FunctionSettingsPage = () => {
 				return microphoneDeviceName;
 			}
 
-			// 匹配格式: [0] 设备名，直接提取设备名部分
+			// 匹配格式: [0] 设备名，直接提取设备名部�?
 			const regex = /\[\d+\]\s+(.+)/;
 			const match = microphoneDeviceName.match(regex);
 
@@ -568,11 +564,11 @@ export const FunctionSettingsPage = () => {
 				value: TranslationApiType.DeepL,
 			},
 			{
-				label: "Google 翻译（免费，无需 Key）",
+				label: "Google 翻译（免费，无需 Key�?,
 				value: TranslationApiType.Google,
 			},
 			{
-				label: "有道智云翻译（免费注册，Key 填 appKey:secretKey）",
+				label: "有道智云翻译（免费注册，Key �?appKey:secretKey�?,
 				value: TranslationApiType.Youdao,
 			},
 		];
@@ -1392,7 +1388,7 @@ export const FunctionSettingsPage = () => {
 									/>
 								</Col>
 
-								{isReadyStatus?.(PLUGIN_ID_AI_CHAT) && (
+								{false && (
 									<>
 										<Col span={12}>
 											<ProFormSelect
@@ -1457,21 +1453,16 @@ export const FunctionSettingsPage = () => {
 							PaddleOCR 云端识别（可选）
 						</Typography.Text>
 						<Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
-							开启后可在「文本识别」时调用 PaddleOCR 云端 API，识别效果更佳。可设置引擎优先级。
+							开启后可在「文本识别」时调用 PaddleOCR 云端 API，识别效果更佳。可设置引擎优先级�?
 						</Typography.Paragraph>
 						<Flex align="center" gap={8} style={{ marginBottom: 12 }}>
 							<Button
 								onClick={() => {
-									setPaddlePasteText("");
-									setPaddleParseTip(null);
-									setPaddlePasteOpen(true);
 								}}
 							>
 								粘贴配置自动识别
 							</Button>
-							{paddleParseTip && (
 								<Typography.Text type="success" style={{ fontSize: 12 }}>
-									{paddleParseTip}
 								</Typography.Text>
 							)}
 						</Flex>
@@ -1485,7 +1476,7 @@ export const FunctionSettingsPage = () => {
 							<Col span={12}>
 								<ProFormSelect
 									name="ocrPriority"
-									label="OCR 引擎优先级"
+									label="OCR 引擎优先�?
 									options={[
 										{ label: "本地 RapidOCR 优先", value: "local" },
 										{ label: "云端 PaddleOCR 优先", value: "paddle" },
@@ -1503,7 +1494,7 @@ export const FunctionSettingsPage = () => {
 								<ProFormText.Password
 									name="paddleOcrToken"
 									label="PaddleOCR API Token"
-									placeholder="请输入 Token"
+									placeholder="请输�?Token"
 								/>
 							</Col>
 							<Col span={12}>
@@ -1517,9 +1508,7 @@ export const FunctionSettingsPage = () => {
 
 						<Modal
 							title="粘贴 PaddleOCR 配置自动识别"
-							open={paddlePasteOpen}
 							onOk={() => {
-								const text = paddlePasteText;
 								const url = text.match(
 									/(?:JOB_URL|API_URL|URL)\s*[:=]\s*["']?([^"'\s]+)["']?/i,
 								)?.[1];
@@ -1534,7 +1523,6 @@ export const FunctionSettingsPage = () => {
 								if (token) parsed.paddleOcrToken = token;
 								if (model) parsed.paddleOcrModel = model;
 								if (Object.keys(parsed).length === 0) {
-									setPaddleParseTip(
 										"未识别到有效配置，请粘贴 JOB_URL / TOKEN / MODEL 三行",
 									);
 									return;
@@ -1550,20 +1538,15 @@ export const FunctionSettingsPage = () => {
 									false,
 								);
 								const tipParts: string[] = [];
-								if (url) tipParts.push("API地址 ✓");
-								if (token) tipParts.push("Token ✓");
-								if (model) tipParts.push("模型 ✓");
-								setPaddleParseTip("已自动识别并填入：" + tipParts.join(" "));
-								setPaddlePasteOpen(false);
+								if (url) tipParts.push("API地址 �?);
+								if (token) tipParts.push("Token �?);
+								if (model) tipParts.push("模型 �?);
 							}}
-							onCancel={() => setPaddlePasteOpen(false)}
 						>
 							<Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
-								粘贴以下格式的内容，将自动识别并填入上方配置：
+								粘贴以下格式的内容，将自动识别并填入上方配置�?
 							</Typography.Paragraph>
 							<Input.TextArea
-								value={paddlePasteText}
-								onChange={(e) => setPaddlePasteText(e.target.value)}
 								rows={6}
 								placeholder={'JOB_URL = "https://paddleocr.aistudio-app.com/api/v2/ocr/jobs"\nTOKEN = "xxx"\nMODEL = "PaddleOCR-VL-1.6"'}
 							/>
@@ -1610,30 +1593,14 @@ export const FunctionSettingsPage = () => {
 							submitter={false}
 						>
 							<Row gutter={token.marginLG}>
-								<Col span={12}>
-									<ProFormSwitch
-										name="enableLocalTranslation"
-										label="启用本地翻译（离线 Opus-MT，需在插件页下载模型）"
-									/>
-								</Col>
-								<Col span={12}>
-									<ProFormSwitch
-										name="enableCloudTranslation"
-										label="启用云端翻译（snowshot.top / 自定义 API）"
-									/>
-								</Col>
-								<Col span={12}>
-									<ProFormSelect
-										name="translationPriority"
-										label="翻译引擎优先级"
-										options={[
-											{ label: "本地翻译优先（失败自动切换云端）", value: "local" },
-											{ label: "云端翻译优先（失败自动切换本地）", value: "cloud" },
-										]}
-									/>
-								</Col>
-							</Row>
-							<Row gutter={token.marginLG}>
+																<Col span={12}>
+																	<ProFormSwitch
+																		name="enableCloudTranslation"
+																		label="启用云端翻译（snowshot.top / 自定�?API�?
+																	/>
+																</Col>
+															</Row>
+															<Row gutter={token.marginLG}>
 								<Col span={12}>
 									<ProFormSwitch
 										name="optimizeAiTranslationLayout"
@@ -1756,7 +1723,7 @@ export const FunctionSettingsPage = () => {
 													<Col span={6}>
 														<ProFormDigit
 															name="priority"
-															label="优先级（小=优先）"
+															label="优先级（�?优先�?
 															min={1}
 															max={99}
 														/>
@@ -1857,7 +1824,7 @@ export const FunctionSettingsPage = () => {
 			)}
 
 			{(isReadyStatus?.(PLUGIN_ID_TRANSLATE) ||
-				isReadyStatus?.(PLUGIN_ID_AI_CHAT)) && (
+				false) && (
 				<>
 					<Divider />
 
@@ -1891,7 +1858,7 @@ export const FunctionSettingsPage = () => {
 							}}
 							submitter={false}
 						>
-							{isReadyStatus?.(PLUGIN_ID_AI_CHAT) && (
+							{false && (
 								<Row gutter={token.marginLG}>
 									<Col span={12}>
 										<ProForm.Item
@@ -2086,7 +2053,7 @@ export const FunctionSettingsPage = () => {
 													}
 												/>
 											</Col>
-											{isReadyStatus?.(PLUGIN_ID_AI_CHAT) && (
+											{false && (
 												<Col span={12}>
 													<ProFormSwitch
 														name="support_vision"
@@ -2181,7 +2148,7 @@ export const FunctionSettingsPage = () => {
 					<ProForm
 						form={videoRecordForm}
 						onValuesChange={(_, values) => {
-							// 处理颜色值转换
+							// 处理颜色值转�?
 							if (typeof values.keyDisplayBackgroundColor === "object") {
 								values.keyDisplayBackgroundColor = (
 									values.keyDisplayBackgroundColor as AggregationColor

@@ -14,11 +14,10 @@ import {
 	createFullScreenDrawWindow,
 } from "@/commands/core";
 import {
-	PLUGIN_ID_AI_CHAT,
-	PLUGIN_ID_FFMPEG,
-	PLUGIN_ID_RAPID_OCR,
-	PLUGIN_ID_TRANSLATE,
-} from "@/constants/pluginService";
+		PLUGIN_ID_FFMPEG,
+		PLUGIN_ID_RAPID_OCR,
+		PLUGIN_ID_TRANSLATE,
+	} from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppContext } from "@/contexts/appContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
@@ -28,13 +27,11 @@ import {
 	executeScreenshotFocusedWindow,
 } from "@/functions/screenshot";
 import {
-	executeChat,
-	executeChatSelectedText,
-	executeTranslate,
-	executeTranslateSelectedText,
-	openCaptureHistory,
-	openImageSaveFolder,
-} from "@/functions/tools";
+		executeTranslate,
+		executeTranslateSelectedText,
+		openCaptureHistory,
+		openImageSaveFolder,
+	} from "@/functions/tools";
 import { startOrCopyVideo } from "@/functions/videoRecord";
 import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
 import { createPublisher } from "@/hooks/useStatePublisher";
@@ -309,40 +306,6 @@ const TrayIconLoaderComponent = () => {
 						executeScreenshot(ScreenshotType.CaptureFullScreen);
 					},
 				},
-				...(isReadyStatus(PLUGIN_ID_AI_CHAT)
-					? [
-							{
-								item: "Separator",
-							} as unknown as MenuItem,
-							{
-								id: `${appWindow.label}-chat`,
-								text: intl.formatMessage({ id: "home.chat" }),
-								accelerator: disableShortcut
-									? undefined
-									: formatKey(shortcutKeys[AppFunction.Chat].shortcutKey),
-								action: async () => {
-									executeChat();
-								},
-							},
-							...(shortcutKeys[AppFunction.ChatSelectText].shortcutKey
-								? [
-										{
-											id: `${appWindow.label}-chat-selectText`,
-											text: intl.formatMessage({ id: "home.chatSelectText" }),
-											accelerator: disableShortcut
-												? undefined
-												: formatKey(
-														shortcutKeys[AppFunction.ChatSelectText]
-															.shortcutKey,
-													),
-											action: async () => {
-												executeChatSelectedText();
-											},
-										},
-									]
-								: []),
-						]
-					: []),
 				...(isReadyStatus(PLUGIN_ID_TRANSLATE)
 					? [
 							{

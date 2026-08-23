@@ -4,13 +4,10 @@ import { useIntl } from "react-intl";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
 import {
 	OcrTranslateIcon,
-	VisionMarkdownIcon,
-	VisionModelHtmlIcon,
 } from "@/components/icons";
 import {
-	PLUGIN_ID_AI_CHAT,
-	PLUGIN_ID_TRANSLATE,
-} from "@/constants/pluginService";
+		PLUGIN_ID_TRANSLATE,
+	} from "@/constants/pluginService";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
 import {
@@ -110,61 +107,7 @@ const OcrTool: React.FC<{
 							/>,
 						]
 					: []),
-				...(isReadyStatus?.(PLUGIN_ID_AI_CHAT)
-					? [
-							<Button
-								loading={visionModelHtmlLoading}
-								onClick={() => {
-									if (visionModelHtmlResult) {
-										onSwitchOcrResult(
-											currentOcrResult?.ocrResultType ===
-												OcrResultType.VisionModelHtml
-												? OcrResultType.Ocr
-												: OcrResultType.VisionModelHtml,
-										);
-									} else {
-										onConvertImageToHtml();
-									}
-								}}
-								type={
-									currentOcrResult?.ocrResultType ===
-									OcrResultType.VisionModelHtml
-										? "primary"
-										: "text"
-								}
-								icon={<VisionModelHtmlIcon />}
-								title={intl.formatMessage({
-									id: "draw.ocrDetect.visionModelHtml",
-								})}
-								key="visionModelHtml"
-							/>,
-							<Button
-								loading={visionModelMarkdownLoading}
-								onClick={() => {
-									if (visionModelMarkdownResult) {
-										onSwitchOcrResult(
-											currentOcrResult?.ocrResultType ===
-												OcrResultType.VisionModelMarkdown
-												? OcrResultType.Ocr
-												: OcrResultType.VisionModelMarkdown,
-										);
-									} else {
-										onConvertImageToMarkdown();
-									}
-								}}
-								type={
-									currentOcrResult?.ocrResultType ===
-									OcrResultType.VisionModelMarkdown
-										? "primary"
-										: "text"
-								}
-								icon={<VisionMarkdownIcon />}
-								title={intl.formatMessage({
-									id: "draw.ocrDetect.visionModelMarkdown",
-								})}
-								key="visionModelMarkdown"
-							/>,
-						]
+				<OcrToolModalSettings
 					: []),
 				<OcrToolModalSettings
 					key="ocrToolModalSettings"

@@ -68,6 +68,7 @@ windows = "0.61"
 base64 = "^0.22"
 tauri-plugin-clipboard-manager = "^2"
 clipboard-win = "5.4.1"
+paddle-ocr-rs = "0.6.0"
 
 # 项目内依赖
 snow-shot-app-services = { path = "src-crates/app-services" }
@@ -112,6 +113,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 # tauri 相关
+paddle-ocr-rs = { workspace = true }
 tauri = { workspace = true, features = [
     "protocol-asset",
     "macos-private-api",

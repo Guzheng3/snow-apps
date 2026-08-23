@@ -8,11 +8,10 @@ import {
 	pluginRegisterPlugin,
 } from "@/commands/plugin";
 import {
-	PLUGIN_ID_AI_CHAT,
-	PLUGIN_ID_FFMPEG,
-	PLUGIN_ID_RAPID_OCR,
-	PLUGIN_ID_TRANSLATE,
-} from "@/constants/pluginService";
+		PLUGIN_ID_FFMPEG,
+		PLUGIN_ID_RAPID_OCR,
+		PLUGIN_ID_TRANSLATE,
+	} from "@/constants/pluginService";
 import { PluginServiceContext } from "@/contexts/pluginServiceContext";
 import { useStateRef } from "@/hooks/useStateRef";
 import { PluginStatus, type PluginStatusResult } from "@/types/commands/plugin";
@@ -44,14 +43,10 @@ export const PluginServiceContextProvider: React.FC<{
 				file_list: getPlatform() === "windows" ? ["ffmpeg.exe"] : ["ffmpeg"],
 			},
 			{
-				id: PLUGIN_ID_TRANSLATE,
-				file_list: [],
-			},
-			{
-						id: PLUGIN_ID_AI_CHAT,
+						id: PLUGIN_ID_TRANSLATE,
 						file_list: [],
 					},
-		];
+				];
 	}, []);
 
 	const [pluginConfig, setPluginConfig, pluginConfigRef] = useStateRef<

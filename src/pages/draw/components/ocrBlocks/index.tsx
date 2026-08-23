@@ -10,9 +10,8 @@ import { createOcrResultWindow } from "@/commands/core";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
 import {
-	PLUGIN_ID_AI_CHAT,
-	PLUGIN_ID_TRANSLATE,
-} from "@/constants/pluginService";
+		PLUGIN_ID_TRANSLATE,
+	} from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
@@ -261,8 +260,7 @@ export const OcrBlocks: React.FC<{
 
 	return (
 		<>
-			{(isReadyStatus?.(PLUGIN_ID_TRANSLATE) ||
-				isReadyStatus?.(PLUGIN_ID_AI_CHAT)) && (
+			{(isReadyStatus?.(PLUGIN_ID_TRANSLATE)) && (
 				<OcrTool
 					onSwitchOcrResult={onSwitchOcrResult}
 					onTranslate={onTranslate}

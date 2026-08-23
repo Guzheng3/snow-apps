@@ -448,46 +448,13 @@ if (!("apiConfig" in config)) {
 	);
 
 	const requestTranslate = useCallback(
-		async (sourceContent: string[], requestId?: number) => {
-			const translationType = translationTypeRef.current;
-			const translationDomain = translationDomainRef.current;
-			const sourceLanguage = sourceLanguageRef.current;
-			const targetLanguage = targetLanguageRef.current;
+				async (sourceContent: string[], requestId?: number) => {
+					const translationType = translationTypeRef.current;
+					const translationDomain = translationDomainRef.current;
+					const sourceLanguage = sourceLanguageRef.current;
+					const targetLanguage = targetLanguageRef.current;
 
-			// 本地翻译（onnxruntime Opus-MT）与云端翻译的优先级处理
-			const transSettings = translationConfig;
-			const enableLocal = transSettings?.enableLocalTranslation ?? false;
-			const enableCloud = transSettings?.enableCloudTranslation ?? true;
-			const priority = transSettings?.translationPriority ?? "cloud";
-
-			const tryLocal = async (): Promise<boolean> => {
-				if (!enableLocal) return false;
-				try {
-					const modelDir = await getLocalTranslateModelDir();
-					if (!modelDir) return false;
-					await translateLocalInit(modelDir);
-					const results: { content: string }[] = [];
-					for (const text of sourceContent) {
-						const out = await translateLocalText(text);
-						results.push({ content: out });
-					}
-					options?.onComplete?.(results, requestId);
-					setTranslatedContent(results.map((r) => r.content).join("\n"));
-					return true;
-				} catch (error) {
-					appError("[requestTranslate] local translation error", error);
-					return false;
-				}
-			};
-
-			// 本地优先：先试本地，失败再走云端
-			if (enableLocal && enableCloud && priority === "local") {
-				if (await tryLocal()) {
-					return;
-				}
-			}
-
-			if (options?.lazyLoad) {
+					if (options?.lazyLoad) {
 				await reloadOnlineConfigs();
 				await new Promise((resolve) => setTimeout(resolve, 17));
 			}
@@ -559,25 +526,13 @@ if (!("apiConfig" in config)) {
 
 			setStartTranslateLoading(false);
 
-			// 云端翻译失败/未启用时，本地兜底
-			if (
-				(!translateResult ||
-					!translateResult.success() ||
-					!translateResult.data?.results.length) &&
-				enableLocal
-			) {
-				if (await tryLocal()) {
-					return;
-				}
-			}
-
-			if (
-				!translateResult ||
-				!translateResult.success() ||
-				!translateResult.data?.results.length
-			) {
-				return;
-			}
+							if (
+								!translateResult ||
+								!translateResult.success() ||
+								!translateResult.data?.results.length
+							) {
+								return;
+							}
 
 			options?.onComplete?.(translateResult.data?.results, requestId);
 			setTranslatedContent(
@@ -595,9 +550,8 @@ if (!("apiConfig" in config)) {
 			translationTypeRef,
 			setTranslatedContent,
 			reloadOnlineConfigs,
-			translationConfig,
-		],
-	);
+						],
+					);
 
 	const updateTranslationDomain = useCallback(
 		(translationDomain: TranslationDomain) => {

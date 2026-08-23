@@ -59,7 +59,7 @@ export const defaultAppSettingsData: AppSettingsData = {
 		toolbarUiScale: 100,
 		hotKeyTipHiddenKeys: [],
 		controlNode: AppSettingsControlNode.Circle,
-		// 在 Mac 上禁用动画
+		// �?Mac 上禁用动�?
 		disableAnimation: getPlatformValue(false, true),
 		colorPickerShowMode: ColorPickerShowMode.BeyondSelectRect,
 		beyondSelectRectElementOpacity: 100,
@@ -147,9 +147,7 @@ export const defaultAppSettingsData: AppSettingsData = {
 		targetLanguage: "zh-CHS",
 		translationDomain: TranslationDomain.General,
 		translationType: TranslationType.Youdao,
-		enableLocalTranslation: false,
 		enableCloudTranslation: true,
-		translationPriority: "cloud",
 		cloudTranslationConfig: {
 			baiduAppId: "",
 			baiduAppKey: "",
@@ -170,13 +168,8 @@ export const defaultAppSettingsData: AppSettingsData = {
 		cacheTranslationType: TranslationType.Youdao,
 	},
 	[AppSettingsGroup.FunctionOcr]: {
-		enablePaddleOcr: false,
-		paddleOcrApiUrl: "https://paddleocr.aistudio-app.com/api/v2/ocr/jobs",
-		paddleOcrToken: "",
-		paddleOcrModel: "PaddleOCR-VL-1.6",
-		ocrPriority: "local",
-		htmlVisionModel: "",
 		ocrModel: OcrModel.RapidOcrV4,
+		htmlVisionModel: "",
 		htmlVisionModelSystemPrompt: `You are a professional image-to-HTML conversion engine. Your sole objective is to accurately convert images into clean, semantic HTML code.
 
 ## Conversion Rules (must follow)
@@ -260,7 +253,7 @@ Priority order (highest to lowest):
 		focusedWindowCopyToClipboard: true,
 		fullScreenCopyToClipboard: true,
 		fastSave: false,
-		/** 保存到云端 */
+		/** 保存到云�?*/
 		saveToCloud: false,
 		/** 云端保存协议 */
 		cloudSaveUrlType: CloudSaveUrlType.S3,
@@ -349,7 +342,7 @@ Priority order (highest to lowest):
 		iconClickAction: TrayIconClickAction.Screenshot,
 	},
 	[AppSettingsGroup.SystemCore]: {
-		/// 热加载页面数量
+		/// 热加载页面数�?
 		hotLoadPageCount: 2,
 	},
 	[AppSettingsGroup.FunctionGlobalShortcut]: {

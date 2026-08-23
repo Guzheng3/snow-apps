@@ -17,6 +17,7 @@ pub struct OcrService {
 pub enum OcrModel {
     RapidOcrV4,
     RapidOcrV5,
+    WeChatOcr,
 }
 
 impl OcrService {
@@ -141,6 +142,9 @@ impl OcrService {
                 orc_plugin_path.join("ch_ppocr_mobile_v2.0_cls_infer.onnx"),
                 orc_plugin_path.join("ch_PP-OCRv5_rec_mobile_infer.onnx"),
             ),
+            OcrModel::WeChatOcr => {
+                return Ok(()); // WeChat OCR doesn't use ONNX models
+            }
         };
 
         let (det_model_config, cls_model_config, rec_model_config) = if ocr_model_write_to_memory {

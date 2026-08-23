@@ -92,5 +92,5 @@ pub async fn cloud_translate_test(
     let t = translator
         .as_ref()
         .ok_or("CloudTranslator not initialized")?;
-    t.translate(&text, &from, &to).await
+    t.test_engine(engine, &text, &from, &to).await
 }

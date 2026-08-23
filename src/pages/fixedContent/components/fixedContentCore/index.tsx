@@ -36,10 +36,9 @@ import { showMainWindow } from "@/commands/videoRecord";
 import { OcrTranslateIcon } from "@/components/icons";
 import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
 import {
-	PLUGIN_ID_AI_CHAT,
-	PLUGIN_ID_RAPID_OCR,
-	PLUGIN_ID_TRANSLATE,
-} from "@/constants/pluginService";
+		PLUGIN_ID_RAPID_OCR,
+		PLUGIN_ID_TRANSLATE,
+	} from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
@@ -299,19 +298,11 @@ const FixedContentCoreInner: React.FC<{
 		);
 	}, [fixedContentType, enableSelectText, ocrResult, isReadyStatus]);
 	const enableVisionModelHtml = useMemo(() => {
-		return (
-			getSelectTextMode(fixedContentType) === "ocr" &&
-			enableSelectText &&
-			isReadyStatus?.(PLUGIN_ID_AI_CHAT)
-		);
-	}, [fixedContentType, enableSelectText, isReadyStatus]);
-	const enableVisionModelMarkdown = useMemo(() => {
-		return (
-			getSelectTextMode(fixedContentType) === "ocr" &&
-			enableSelectText &&
-			isReadyStatus?.(PLUGIN_ID_AI_CHAT)
-		);
-	}, [fixedContentType, enableSelectText, isReadyStatus]);
+				return false;
+			}, []);
+			const enableVisionModelMarkdown = useMemo(() => {
+				return false;
+			}, []);
 
 	const [textContent, setTextContent, textContentRef] = useStateRef<
 		| {

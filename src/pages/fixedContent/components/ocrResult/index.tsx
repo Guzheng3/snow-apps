@@ -14,8 +14,7 @@ import {
 	useState,
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { ocrDetect, ocrDetectWithSharedBuffer } from "@/commands/ocr";
-import { getPaddleOcrSettings, paddleOcrDetect, shouldUsePaddleOcr } from "@/services/tools/paddleOcr";
+import { ocrDetect, ocrDetectWithSharedBuffer, wechatOcrDetect } from "@/commands/ocr";
 
 import { createWebViewSharedBufferChannel } from "@/commands/webview";
 import { PLUGIN_ID_RAPID_OCR } from "@/constants/pluginService";
@@ -36,7 +35,7 @@ import {
 import { CUSTOM_MODEL_PREFIX, MarkdownContent } from "@/pages/tools/chat/page";
 import { appFetch, getUrl } from "@/services/tools";
 import { getChatModelsWithCache } from "@/services/tools/chat";
-import { AppSettingsGroup, type ChatApiConfig } from "@/types/appSettings";
+import { AppSettingsGroup, type ChatApiConfig, OcrModel } from "@/types/appSettings";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { writeHtmlToClipboard, writeTextToClipboard } from "@/utils/clipboard";
@@ -525,90 +524,63 @@ export const OcrResult: React.FC<{
 	);
 
 	const ocrDetectByCanvas = useCallback(
-		async (
-			canvas: HTMLCanvasElement,
-			scaleFactor: number,
-			detectAngle: boolean,
-		): Promise<OcrDetectResult | undefined> => {
-			const appSettings = getAppSettings();
-			const ocrSettings = appSettings[AppSettingsGroup.FunctionOcr];
-			const paddleEnabled =
-				ocrSettings?.enablePaddleOcr === true &&
-				!!ocrSettings?.paddleOcrApiUrl &&
-				!!ocrSettings?.paddleOcrToken;
-			const paddleFirst = paddleEnabled && ocrSettings?.ocrPriority === "paddle";
+				async (
+					canvas: HTMLCanvasElement,
+					scaleFactor: number,
+					detectAngle: boolean,
+				): Promise<OcrDetectResult | undefined> => {
+					const appSettings = getAppSettings();
+					const ocrModel = appSettings[AppSettingsGroup.FunctionOcr]?.ocrModel;
 
-			const runLocalOcr = async (): Promise<OcrDetectResult | undefined> => {
-				const ocrResultWithSharedBuffer = await ocrDetectWithSharedBufferAction(
-					canvas,
-					scaleFactor,
-					detectAngle,
-				);
-
-				if (ocrResultWithSharedBuffer) {
-					return ocrResultWithSharedBuffer;
-				}
-
-				const imageBlob = await new Promise<Blob | null>((resolve) => {
-					canvas.toBlob(resolve, "image/png", 1);
-				});
-
-				if (!imageBlob) {
-					return undefined;
-				}
-
-				const ocrResult = await ocrDetect(
-					await imageBlob.arrayBuffer(),
-					scaleFactor,
-					detectAngle,
-				);
-				return ocrResult;
-			};
-
-			// 云端优先：先试 PaddleOCR，失败再回退本地
-			if (paddleFirst) {
-				try {
-					const paddleSettings = getPaddleOcrSettings(appSettings);
-					if (paddleSettings) {
-						const paddleResult = await paddleOcrDetect(canvas, paddleSettings);
-						if (paddleResult) {
-							return paddleResult;
-						}
+					// WeChat OCR — use the external helper
+					if (ocrModel === OcrModel.WeChatOcr) {
+						const imageBlob = await new Promise<Blob | null>((resolve) => {
+							canvas.toBlob(resolve, "image/png", 1);
+						});
+						if (!imageBlob) return undefined;
+						return await wechatOcrDetect(await imageBlob.arrayBuffer());
 					}
-				} catch (error) {
-					appError("[ocrDetectByCanvas] PaddleOCR failed, fallback to local", error);
-					message.warning("云端 OCR 失败，已回退本地识别");
-				}
-			}
 
-			// 本地识别
-			try {
-				const localResult = await runLocalOcr();
-				if (localResult) {
-					return localResult;
-				}
-			} catch (error) {
-				appError("[ocrDetectByCanvas] local OCR failed", error);
-				// 本地失败且配置了云端（但非云端优先）→ 回退云端
-				if (paddleEnabled && !paddleFirst) {
-					try {
-						const paddleSettings = getPaddleOcrSettings(appSettings);
-						if (paddleSettings) {
-							const paddleResult = await paddleOcrDetect(canvas, paddleSettings);
-							if (paddleResult) {
-								return paddleResult;
+					const runLocalOcr = async (): Promise<OcrDetectResult | undefined> => {
+								const ocrResultWithSharedBuffer = await ocrDetectWithSharedBufferAction(
+									canvas,
+									scaleFactor,
+									detectAngle,
+								);
+
+								if (ocrResultWithSharedBuffer) {
+									return ocrResultWithSharedBuffer;
+								}
+
+								const imageBlob = await new Promise<Blob | null>((resolve) => {
+									canvas.toBlob(resolve, "image/png", 1);
+								});
+
+								if (!imageBlob) {
+									return undefined;
+								}
+
+								const ocrResult = await ocrDetect(
+									await imageBlob.arrayBuffer(),
+									scaleFactor,
+									detectAngle,
+								);
+								return ocrResult;
+							};
+
+							try {
+								const localResult = await runLocalOcr();
+								if (localResult) {
+									return localResult;
+								}
+							} catch (error) {
+								appError("[ocrDetectByCanvas] local OCR failed", error);
+								throw error;
 							}
-						}
-					} catch (paddleError) {
-						appError("[ocrDetectByCanvas] PaddleOCR fallback failed", paddleError);
-					}
-				}
-				throw error;
-			}
 
-			return undefined;
-		},
-		[getAppSettings, ocrDetectWithSharedBufferAction, message],
+							return undefined;
+						},
+		[ocrDetectWithSharedBufferAction, getAppSettings],
 	);
 
 	/** 请求 ID，避免 OCR 检测中切换工具后仍然触发 OCR 结果 */

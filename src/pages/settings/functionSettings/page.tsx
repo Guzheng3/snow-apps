@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import ProForm, {
@@ -67,19 +67,21 @@ import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
 import { usePlatform } from "@/hooks/usePlatform";
 import { useVisionModelList } from "@/pages/fixedContent/components/ocrResult";
 import {
-	type AppSettingsData,
-	AppSettingsFixedContentInitialPosition,
-	AppSettingsGroup,
-	CloudSaveUrlFormat,
-	CloudSaveUrlType,
-	DoubleClickAction,
-	GifFormat,
-	KeyDisplayDirection,
-	OcrDetectAfterAction,
-	OcrModel,
-	TrayIconClickAction,
-	VideoMaxSize,
-} from "@/types/appSettings";
+		type AppSettingsData,
+		AppSettingsFixedContentInitialPosition,
+		AppSettingsGroup,
+		CloudSaveUrlFormat,
+		CloudSaveUrlType,
+		DoubleClickAction,
+		GifFormat,
+		KeyDisplayDirection,
+		OcrDetectAfterAction,
+		OcrModel,
+		TranslationApiType,
+		TrayIconClickAction,
+		VideoMaxSize,
+	} from "@/types/appSettings";
+import { CloudTranslationEngineManager } from "./components/cloudTranslationEngineManager";
 import { DrawState } from "@/types/draw";
 import { ImageFormat } from "@/types/utils/file";
 import {
@@ -108,10 +110,9 @@ export const FunctionSettingsPage = () => {
 	const [videoRecordForm] =
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionVideoRecord]>();
 	const [functionOcrForm] =
-		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionOcr]>();
-	const [paddlePasteOpen, setPaddlePasteOpen] = useState(false);
-	const [paddlePasteText, setPaddlePasteText] = useState("");
-	const [paddleParseTip, setPaddleParseTip] = useState<React.ReactNode>(null);
+				Form.useForm<AppSettingsData[AppSettingsGroup.FunctionOcr]>();
+		const [translationForm] =
+				Form.useForm<AppSettingsData[AppSettingsGroup.FunctionTranslation]>();
 	const [functionGlobalShortcutForm] =
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionGlobalShortcut]>();
 
@@ -119,6 +120,12 @@ export const FunctionSettingsPage = () => {
 
 	// 功能设置压栈切换：当前激活的分组 tab
 	const [activeTab, setActiveTab] = useState("screenshotSettings");
+
+	const ocrModelOptions = useMemo(() => [
+		{ label: "RapidOCR v4", value: OcrModel.RapidOcrV4 },
+		{ label: "RapidOCR v5", value: OcrModel.RapidOcrV5 },
+		{ label: "WeChat OCR（需安装微信）", value: OcrModel.WeChatOcr },
+	], []);
 
 	const { message } = App.useApp();
 
@@ -218,11 +225,21 @@ export const FunctionSettingsPage = () => {
 						settings[AppSettingsGroup.FunctionOcr]
 				) {
 					functionOcrForm.setFieldsValue(
-						settings[AppSettingsGroup.FunctionOcr],
-					);
-				}
+												settings[AppSettingsGroup.FunctionOcr],
+											);
+										}
 
-				if (
+										if (
+											preSettings === undefined ||
+											preSettings[AppSettingsGroup.FunctionTranslation] !==
+												settings[AppSettingsGroup.FunctionTranslation]
+										) {
+											translationForm.setFieldsValue(
+												settings[AppSettingsGroup.FunctionTranslation],
+											);
+										}
+
+										if (
 					preSettings === undefined ||
 					preSettings[AppSettingsGroup.FunctionGlobalShortcut] !==
 						settings[AppSettingsGroup.FunctionGlobalShortcut]
@@ -242,6 +259,7 @@ export const FunctionSettingsPage = () => {
 				trayIconForm,
 				functionOcrForm,
 				functionGlobalShortcutForm,
+				translationForm,
 			],
 		),
 		true,
@@ -258,7 +276,7 @@ export const FunctionSettingsPage = () => {
 				return microphoneDeviceName;
 			}
 
-			// 匹配格式: [0] 设备名，直接提取设备名部分
+			// 匹配格式: [0] 设备名，直接提取设备名部�?
 			const regex = /\[\d+\]\s+(.+)/;
 			const match = microphoneDeviceName.match(regex);
 
@@ -702,7 +720,8 @@ export const FunctionSettingsPage = () => {
 					{ key: "functionDrawSettings", label: intl.formatMessage({ id: "settings.functionSettings.drawSettings" }) },
 					{ key: "fixedContentSettings", label: intl.formatMessage({ id: "settings.functionSettings.fixedContentSettings" }) },
 					{ key: "ocrSettings", label: intl.formatMessage({ id: "settings.functionSettings.ocrSettings" }) },
-					{ key: "fullScreenDrawSettings", label: intl.formatMessage({ id: "settings.functionSettings.fullScreenDrawSettings" }) },
+											{ key: "translationSettings", label: "云翻译引�? },
+											{ key: "fullScreenDrawSettings", label: intl.formatMessage({ id: "settings.functionSettings.fullScreenDrawSettings" }) },
 					{ key: "videoRecordSettings", label: intl.formatMessage({ id: "settings.functionSettings.videoRecordSettings" }) },
 					{ key: "trayIconSettings", label: intl.formatMessage({ id: "settings.commonSettings.trayIconSettings" }) },
 					{ key: "globalShortcutSettings", label: intl.formatMessage({ id: "settings.functionSettings.globalShortcutSettings" }) },
@@ -1353,128 +1372,73 @@ export const FunctionSettingsPage = () => {
 									</Col>
 													</Row>
 
-						<Divider style={{ margin: "12px 0" }} />
-						<Typography.Text strong>
-							PaddleOCR 云端识别（可选）
-						</Typography.Text>
-						<Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
-							开启后可在「文本识别」时调用 PaddleOCR 云端 API，识别效果更佳。可设置引擎优先级。
-						</Typography.Paragraph>
-						<Flex align="center" gap={8} style={{ marginBottom: 12 }}>
-							<Button
-								onClick={() => {
-									setPaddlePasteText("");
-									setPaddleParseTip(null);
-									setPaddlePasteOpen(true);
-								}}
-							>
-								粘贴配置自动识别
-							</Button>
-							{paddleParseTip && (
-								<Typography.Text type="success" style={{ fontSize: 12 }}>
-									{paddleParseTip}
-								</Typography.Text>
-							)}
-						</Flex>
-						<Row gutter={token.marginLG}>
-							<Col span={12}>
-								<ProFormSwitch
-									name="enablePaddleOcr"
-									label="启用 PaddleOCR（云端）"
-								/>
-							</Col>
-							<Col span={12}>
-								<ProFormSelect
-									name="ocrPriority"
-									label="OCR 引擎优先级"
-									options={[
-										{ label: "本地 RapidOCR 优先", value: "local" },
-										{ label: "云端 PaddleOCR 优先", value: "paddle" },
-									]}
-								/>
-							</Col>
-							<Col span={12}>
-								<ProFormText
-									name="paddleOcrApiUrl"
-									label="PaddleOCR API 地址"
-									placeholder="https://paddleocr.aistudio-app.com/api/v2/ocr/jobs"
-								/>
-							</Col>
-							<Col span={12}>
-								<ProFormText.Password
-									name="paddleOcrToken"
-									label="PaddleOCR API Token"
-									placeholder="请输入 Token"
-								/>
-							</Col>
-							<Col span={12}>
-								<ProFormText
-									name="paddleOcrModel"
-									label="PaddleOCR 模型"
-									placeholder="PaddleOCR-VL-1.6"
-								/>
-							</Col>
-						</Row>
-
-						<Modal
-							title="粘贴 PaddleOCR 配置自动识别"
-							open={paddlePasteOpen}
-							onOk={() => {
-								const text = paddlePasteText;
-								const url = text.match(
-									/(?:JOB_URL|API_URL|URL)\s*[:=]\s*["']?([^"'\s]+)["']?/i,
-								)?.[1];
-								const token = text.match(
-									/(?:TOKEN|API_KEY|KEY)\s*[:=]\s*["']?([^"'\s]+)["']?/i,
-								)?.[1];
-								const model = text.match(
-									/MODEL\s*[:=]\s*["']?([^"'\s]+)["']?/i,
-								)?.[1];
-								const parsed: Record<string, string> = {};
-								if (url) parsed.paddleOcrApiUrl = url;
-								if (token) parsed.paddleOcrToken = token;
-								if (model) parsed.paddleOcrModel = model;
-								if (Object.keys(parsed).length === 0) {
-									setPaddleParseTip(
-										"未识别到有效配置，请粘贴 JOB_URL / TOKEN / MODEL 三行",
-									);
-									return;
-								}
-								functionOcrForm.setFieldsValue(parsed);
-								updateAppSettings(
-									AppSettingsGroup.FunctionOcr,
-									parsed,
-									false,
-									true,
-									true,
-									true,
-									false,
-								);
-								const tipParts: string[] = [];
-								if (url) tipParts.push("API地址 ✓");
-								if (token) tipParts.push("Token ✓");
-								if (model) tipParts.push("模型 ✓");
-								setPaddleParseTip("已自动识别并填入：" + tipParts.join(" "));
-								setPaddlePasteOpen(false);
-							}}
-							onCancel={() => setPaddlePasteOpen(false)}
-						>
-							<Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
-								粘贴以下格式的内容，将自动识别并填入上方配置：
-							</Typography.Paragraph>
-							<Input.TextArea
-								value={paddlePasteText}
-								onChange={(e) => setPaddlePasteText(e.target.value)}
-								rows={6}
-								placeholder={'JOB_URL = "https://paddleocr.aistudio-app.com/api/v2/ocr/jobs"\nTOKEN = "xxx"\nMODEL = "PaddleOCR-VL-1.6"'}
-							/>
-						</Modal>
 					</ProForm>
 				</Spin>
-			</div>
+								</div>
+
+								<div style={{ display: activeTab === "translationSettings" ? undefined : "none" }}>
+									<GroupTitle
+										id="translationSettings"
+										extra={
+											<ResetSettingsButton
+												title="云翻译引�?
+												appSettingsGroup={AppSettingsGroup.FunctionTranslation}
+											/>
+										}
+									>
+										云翻译引�?
+									</GroupTitle>
+
+									<Spin spinning={appSettingsLoading}>
+										<ProForm
+											form={translationForm}
+											onValuesChange={(_, values) => {
+												updateAppSettings(
+													AppSettingsGroup.FunctionTranslation,
+													values,
+													true,
+													true,
+													true,
+													true,
+													false,
+												);
+											}}
+											submitter={false}
+											layout="horizontal"
+										>
+											<Row gutter={token.marginLG}>
+												<Col span={12}>
+													<ProFormSwitch
+														name="enableCloudTranslation"
+														label="启用内建云翻译引�?
+													/>
+												</Col>
+												<Col span={12}>
+													<ProFormSwitch
+														name="optimizeAiTranslationLayout"
+														label={
+															<IconLabel
+																label="优化 AI 翻译排版"
+																tooltipTitle="移除翻译结果中的多余空行，使排版更紧�?
+															/>
+														}
+													/>
+												</Col>
+											</Row>
+										</ProForm>
+
+										<Divider style={{ margin: "12px 0" }} />
+										<Typography.Text strong>内建翻译引擎管理</Typography.Text>
+										<Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
+											配置各翻译引擎的 API Key 和优先级顺序。翻译时按优先级从上到下自动 fallback�?
+										</Typography.Paragraph>
+
+										<CloudTranslationEngineManager />
+									</Spin>
+								</div>
 
 
-			<div style={{ display: activeTab === "fullScreenDrawSettings" ? undefined : "none" }}>
+								<div style={{ display: activeTab === "fullScreenDrawSettings" ? undefined : "none" }}>
 			<GroupTitle
 				id="fullScreenDrawSettings"
 				extra={
@@ -1545,7 +1509,7 @@ export const FunctionSettingsPage = () => {
 					<ProForm
 						form={videoRecordForm}
 						onValuesChange={(_, values) => {
-							// 处理颜色值转换
+							// 处理颜色值转�?
 							if (typeof values.keyDisplayBackgroundColor === "object") {
 								values.keyDisplayBackgroundColor = (
 									values.keyDisplayBackgroundColor as AggregationColor

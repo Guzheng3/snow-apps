@@ -98,6 +98,17 @@ impl CloudTranslator {
         Err("所有翻译引擎均失败".to_string())
     }
 
+    /// Test a single engine directly (no fallback)
+    pub async fn test_engine(
+        &self,
+        engine: CloudEngine,
+        text: &str,
+        from: &str,
+        to: &str,
+    ) -> Result<String, String> {
+        self.try_engine(engine, text, from, to).await
+    }
+
     async fn try_engine(
         &self,
         engine: CloudEngine,
