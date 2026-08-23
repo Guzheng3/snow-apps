@@ -218,10 +218,9 @@ export const useTranslationTypeOptions = (
 			value: item.type,
 		}));
 	}, [supportedTranslationTypes]);
-	}, [supportedTranslationTypes]);
 
-	return {
-		translationTypeOptions,
+		return {
+				translationTypeOptions,
 	};
 };
 

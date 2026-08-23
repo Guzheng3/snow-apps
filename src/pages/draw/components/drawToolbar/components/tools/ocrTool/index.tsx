@@ -107,9 +107,7 @@ const OcrTool: React.FC<{
 							/>,
 						]
 					: []),
-				<OcrToolModalSettings
-					: []),
-				<OcrToolModalSettings
+									<OcrToolModalSettings
 					key="ocrToolModalSettings"
 					onFinish={async () => {
 						onTranslate();
