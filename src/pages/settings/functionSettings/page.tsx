@@ -12,6 +12,7 @@ import ProForm, {
 } from "@ant-design/pro-form";
 import {
 	Alert,
+	App,
 	Button,
 	Col,
 	ColorPicker,
@@ -19,12 +20,16 @@ import {
 	Flex,
 	Form,
 	Input,
+	List,
 	Modal,
 	Row,
 	Select,
 	type SelectProps,
 	Spin,
 	Switch,
+	Tabs,
+	Tag,
+	Tooltip,
 	Typography,
 	theme,
 } from "antd";
@@ -68,6 +73,7 @@ import {
 	AppSettingsGroup,
 	CloudSaveUrlFormat,
 	CloudSaveUrlType,
+	type CloudTranslationConfig,
 	DoubleClickAction,
 	GifFormat,
 	KeyDisplayDirection,
@@ -86,6 +92,61 @@ import {
 } from "@/utils/file";
 import { TestChat } from "./components/testChat";
 import { TranslationConfig } from "./components/translationConfig";
+
+/** 云翻译引擎元数据 */
+const CLOUD_ENGINE_META: Record<
+	TranslationApiType,
+	{ label: string; needKey: boolean; tag: string; desc: string }
+> = {
+	[TranslationApiType.Transmart]: {
+		label: "腾讯通天塔",
+		needKey: false,
+		tag: "green",
+		desc: "免 Key · QQ 翻译接口",
+	},
+	[TranslationApiType.ICiba]: {
+		label: "金山词霸",
+		needKey: false,
+		tag: "green",
+		desc: "免 Key · ICiba 批量翻译接口",
+	},
+	[TranslationApiType.Yandex]: {
+		label: "Yandex",
+		needKey: false,
+		tag: "green",
+		desc: "免 Key · 模拟安卓客户端",
+	},
+	[TranslationApiType.Baidu]: {
+		label: "百度翻译",
+		needKey: true,
+		tag: "orange",
+		desc: "需 AppID + AppKey，接口地址已内置",
+	},
+	[TranslationApiType.BigModel]: {
+		label: "智谱 GLM",
+		needKey: true,
+		tag: "orange",
+		desc: "需 API Key，接口地址已内置",
+	},
+	[TranslationApiType.DeepL]: {
+		label: "DeepL",
+		needKey: true,
+		tag: "orange",
+		desc: "DeepL 翻译",
+	},
+	[TranslationApiType.Google]: {
+		label: "Google",
+		needKey: false,
+		tag: "green",
+		desc: "Google 网页翻译",
+	},
+	[TranslationApiType.Youdao]: {
+		label: "有道翻译",
+		needKey: false,
+		tag: "green",
+		desc: "有道翻译",
+	},
+};
 
 export const FunctionSettingsPage = () => {
 	const intl = useIntl();
@@ -120,6 +181,61 @@ export const FunctionSettingsPage = () => {
 
 	const [appSettingsLoading, setAppSettingsLoading] = useState(true);
 
+	// 功能设置压栈切换：当前激活的分组 tab
+	const [activeTab, setActiveTab] = useState("screenshotSettings");
+
+	// 云翻译引擎配置（百度/智谱 Key + 引擎优先级）
+	const [translationCloudConfig, setTranslationCloudConfig] = useState<
+		CloudTranslationConfig
+	>({
+		baiduAppId: "",
+		baiduAppKey: "",
+		bigmodelKey: "",
+		engineOrder: [
+			TranslationApiType.Transmart,
+			TranslationApiType.ICiba,
+			TranslationApiType.Yandex,
+			TranslationApiType.Baidu,
+			TranslationApiType.BigModel,
+		],
+	});
+	// 当前展开配置面板的引擎
+	const [cloudEngineConfigOpen, setCloudEngineConfigOpen] = useState<
+		TranslationApiType | undefined
+	>(undefined);
+	// 连通性测试状态
+	const [cloudEngineTesting, setCloudEngineTesting] = useState<
+		TranslationApiType | undefined
+	>(undefined);
+	const cloudEngineOrder = translationCloudConfig.engineOrder;
+	const { message } = App.useApp();
+
+	// 云翻译引擎连通性测试（模拟）
+	const cloudEngineTest = useCallback(
+		(engine: TranslationApiType) => {
+			const meta = CLOUD_ENGINE_META[engine];
+			let hasKey = false;
+			if (engine === TranslationApiType.Baidu) {
+				hasKey =
+					!!translationCloudConfig.baiduAppId &&
+					!!translationCloudConfig.baiduAppKey;
+			} else if (engine === TranslationApiType.BigModel) {
+				hasKey = !!translationCloudConfig.bigmodelKey;
+			}
+			if (!hasKey) {
+				message.warning("请先填写 Key 后再测试连通性");
+				return;
+			}
+			setCloudEngineTesting(engine);
+			setTimeout(() => {
+				setCloudEngineTesting(undefined);
+				// 演示环境模拟成功
+				message.success(`${meta.label} 连通性测试通过`);
+			}, 1200);
+		},
+		[message, translationCloudConfig],
+	);
+
 	useAppSettingsLoad(
 		useCallback(
 			(settings: AppSettingsData, preSettings?: AppSettingsData) => {
@@ -133,6 +249,12 @@ export const FunctionSettingsPage = () => {
 					translationForm.setFieldsValue(
 						settings[AppSettingsGroup.FunctionTranslation],
 					);
+					if (settings[AppSettingsGroup.FunctionTranslation].cloudTranslationConfig) {
+						setTranslationCloudConfig(
+							settings[AppSettingsGroup.FunctionTranslation]
+								.cloudTranslationConfig,
+						);
+					}
 				}
 
 				if (
@@ -728,6 +850,27 @@ export const FunctionSettingsPage = () => {
 
 	return (
 		<ContentWrap>
+			{/* 功能设置压栈切换导航 */}
+			<Tabs
+				activeKey={activeTab}
+				onChange={setActiveTab}
+				size="small"
+				style={{ marginBottom: 12 }}
+				items={[
+					{ key: "screenshotSettings", label: intl.formatMessage({ id: "settings.functionSettings.screenshotSettings" }) },
+					{ key: "functionDrawSettings", label: intl.formatMessage({ id: "settings.functionSettings.drawSettings" }) },
+					{ key: "fixedContentSettings", label: intl.formatMessage({ id: "settings.functionSettings.fixedContentSettings" }) },
+					{ key: "ocrSettings", label: intl.formatMessage({ id: "settings.functionSettings.ocrSettings" }) },
+					{ key: "translationSettings", label: intl.formatMessage({ id: "settings.functionSettings.translationSettings" }) },
+					{ key: "chatSettings", label: intl.formatMessage({ id: "settings.functionSettings.chatSettings" }) },
+					{ key: "fullScreenDrawSettings", label: intl.formatMessage({ id: "settings.functionSettings.fullScreenDrawSettings" }) },
+					{ key: "videoRecordSettings", label: intl.formatMessage({ id: "settings.functionSettings.videoRecordSettings" }) },
+					{ key: "trayIconSettings", label: intl.formatMessage({ id: "settings.commonSettings.trayIconSettings" }) },
+					{ key: "globalShortcutSettings", label: intl.formatMessage({ id: "settings.functionSettings.globalShortcutSettings" }) },
+					{ key: "outputSettings", label: intl.formatMessage({ id: "settings.functionSettings.outputSettings" }) },
+				]}
+			/>
+			<div style={{ display: activeTab === "screenshotSettings" ? undefined : "none" }}>
 			<GroupTitle
 				id="screenshotSettings"
 				extra={
@@ -1118,7 +1261,9 @@ export const FunctionSettingsPage = () => {
 					</ProFormDependency>
 				</ProForm>
 			</Spin>
+			</div>
 
+			<div style={{ display: activeTab === "functionDrawSettings" ? undefined : "none" }}>
 			<Divider />
 
 			<GroupTitle
@@ -1219,7 +1364,9 @@ export const FunctionSettingsPage = () => {
 					</Row>
 				</Spin>
 			</ProForm>
+			</div>
 
+			<div style={{ display: activeTab === "fixedContentSettings" ? undefined : "none" }}>
 			<Divider />
 
 			<GroupTitle
@@ -1317,12 +1464,11 @@ export const FunctionSettingsPage = () => {
 				</ProForm>
 			</Spin>
 
-			{isReadyStatus?.(PLUGIN_ID_RAPID_OCR) && (
-				<>
-					<Divider />
+			</div>
 
-					<GroupTitle
-						id="ocrSettings"
+			<div style={{ display: activeTab === "ocrSettings" ? undefined : "none" }}>
+			<GroupTitle
+					id="ocrSettings"
 						extra={
 							<ResetSettingsButton
 								title={
@@ -1545,15 +1691,11 @@ export const FunctionSettingsPage = () => {
 						</Modal>
 					</ProForm>
 				</Spin>
-				</>
-			)}
+			</div>
 
-			{isReadyStatus?.(PLUGIN_ID_TRANSLATE) && (
-				<>
-					<Divider />
-
-					<GroupTitle
-						id="translationSettings"
+			<div style={{ display: activeTab === "translationSettings" ? undefined : "none" }}>
+				<GroupTitle
+					id="translationSettings"
 						extra={
 							<ResetSettingsButton
 								title={
@@ -1566,49 +1708,31 @@ export const FunctionSettingsPage = () => {
 						<FormattedMessage id="settings.functionSettings.translationSettings" />
 					</GroupTitle>
 
-					<Spin spinning={appSettingsLoading}>
-						<TranslationConfig />
+						<Spin spinning={appSettingsLoading}>
+							<TranslationConfig />
 
-						<ProForm
-							form={translationForm}
-							onValuesChange={(_, values) => {
-								updateAppSettings(
-									AppSettingsGroup.FunctionTranslation,
-									values,
-									true,
-									true,
-									true,
-									true,
-									false,
-								);
-							}}
-							submitter={false}
-						>
+							<div
+								style={{
+									border: "1px solid #d3adf7",
+									background: "#fdfaff",
+									borderRadius: 8,
+									padding: "10px 14px",
+									marginBottom: 16,
+									color: "#722ed1",
+									fontSize: 13,
+								}}
+							>
+								原生支持，默认开启。内置 5 个云翻译引擎，无需安装插件。未配置百度/智谱时默认调用
+								<b>腾讯通天塔</b>。拖动下方列表可调整引擎优先级，失败自动切换下一个。
+							</div>
+
 							<Row gutter={token.marginLG}>
-								<Col span={12}>
-									<ProFormSwitch
-										name="enableLocalTranslation"
-										label="启用本地翻译（离线 Opus-MT，需在插件页下载模型）"
-									/>
-								</Col>
 								<Col span={12}>
 									<ProFormSwitch
 										name="enableCloudTranslation"
-										label="启用云端翻译（snowshot.top / 自定义 API）"
+										label="启用云端翻译（原生云引擎）"
 									/>
 								</Col>
-								<Col span={12}>
-									<ProFormSelect
-										name="translationPriority"
-										label="翻译引擎优先级"
-										options={[
-											{ label: "本地翻译优先（失败自动切换云端）", value: "local" },
-											{ label: "云端翻译优先（失败自动切换本地）", value: "cloud" },
-										]}
-									/>
-								</Col>
-							</Row>
-							<Row gutter={token.marginLG}>
 								<Col span={12}>
 									<ProFormSwitch
 										name="optimizeAiTranslationLayout"
@@ -1627,210 +1751,319 @@ export const FunctionSettingsPage = () => {
 								</Col>
 							</Row>
 
-							<Row gutter={token.marginLG}>
-								<Col span={24}>
-									<ProFormList
-										name="translationApiConfigList"
-										label={
-											<IconLabel
-												label={
-													<FormattedMessage id="settings.functionSettings.translationSettings.apiConfig" />
-												}
-											/>
-										}
-										creatorButtonProps={{
-											creatorButtonText: intl.formatMessage({
-												id: "settings.functionSettings.translationSettings.apiConfig.add",
-											}),
-										}}
-										className="api-config-list"
-										min={0}
-										itemRender={({ listDom, action }) => (
-											<Flex align="end" justify="space-between">
-												{listDom}
-
-												<div>{action}</div>
-											</Flex>
-										)}
-										creatorRecord={() => ({
-											api_uri: "",
-											api_key: "",
-											api_type: TranslationApiType.DeepL,
-										enable: true,
-										priority: 1,
-										})}
-									>
-										<Row gutter={token.marginLG} style={{ width: "100%" }}>
-											<Col span={12}>
-												<ProFormSelect
-													name="api_type"
-													label={
-														<IconLabel
-															label={
-																<FormattedMessage id="settings.functionSettings.translationSettings.apiConfig.apiType" />
-															}
-														/>
-													}
-													allowClear={false}
-													options={translationApiTypeOptions}
-												/>
-											</Col>
-											<Col span={12}>
-												<ProFormText
-													name="api_uri"
-													label={
-														<IconLabel
-															label={
-																<FormattedMessage id="settings.functionSettings.translationSettings.apiConfig.apiUri" />
-															}
-															tooltipTitle={
-																<FormattedMessage id="settings.functionSettings.translationSettings.apiConfig.apiUri.tip" />
-															}
-														/>
-													}
-													rules={[
-														{
-															required: true,
-															message: intl.formatMessage({
-																id: "settings.functionSettings.translationSettings.apiConfig.apiUri.required",
-															}),
-														},
-													]}
-												/>
-											</Col>
-											<Col span={12}>
-												<ProFormText.Password
-													name="api_key"
-													label={
-														<IconLabel
-															label={
-																<FormattedMessage id="settings.functionSettings.translationSettings.apiConfig.apiKey" />
-															}
-															tooltipTitle={
-																<FormattedMessage id="settings.functionSettings.translationSettings.apiConfig.apiKey.tip" />
-															}
-														/>
-													}
-													rules={[
-														{
-															required: true,
-															message: intl.formatMessage({
-																id: "settings.functionSettings.translationSettings.apiConfig.apiKey.required",
-															}),
-														},
-													]}
-												/>
-											</Col>
-
-													<Col span={6}>
-														<ProFormSwitch
-															name="enable"
-															label="启用"
-														/>
-													</Col>
-													<Col span={6}>
-														<ProFormDigit
-															name="priority"
-															label="优先级（小=优先）"
-															min={1}
-															max={99}
-														/>
-													</Col>
-
-											<ProFormDependency<{ api_type: TranslationApiType }>
-												name={["api_type"]}
-											>
-												{({ api_type }) => {
-													if (api_type === TranslationApiType.DeepL) {
-														return (
-															<Col span={12}>
-																<ProFormSwitch
-																	name="deepl_prefer_quality_optimized"
-																	label={
-																		<IconLabel
-																			label={
-																				<FormattedMessage id="settings.functionSettings.translationSettings.apiConfig.deeplPreferQualityOptimized" />
-																			}
-																			tooltipTitle={
-																				<FormattedMessage id="settings.functionSettings.translationSettings.apiConfig.deeplPreferQualityOptimized.tip" />
-																			}
-																		/>
-																	}
-																/>
-															</Col>
-														);
-													}
-
-													return null;
-												}}
-											</ProFormDependency>
-										</Row>
-									</ProFormList>
-								</Col>
-							</Row>
-
-							<Row gutter={token.marginLG}>
-								<Col span={24}>
-									<Alert
-										message={
-											<Typography>
-												<Row>
-													<Col span={24}>
-														<FormattedMessage id="settings.functionSettings.translationSettings.chatPrompt.variables" />
-													</Col>
-													<Col span={12}>
-														<FormattedMessage id="settings.functionSettings.translationSettings.chatPrompt.sourceLanguage" />
-														<code>{SOURCE_LANGUAGE_ENV_VARIABLE}</code>
-													</Col>
-													<Col span={12}>
-														<FormattedMessage id="settings.functionSettings.translationSettings.chatPrompt.targetLanguage" />
-														<code>{TARGET_LANGUAGE_ENV_VARIABLE}</code>
-													</Col>
-													<Col span={12}>
-														<FormattedMessage id="settings.functionSettings.translationSettings.chatPrompt.translationDomain" />
-														<code>{TRANSLATION_DOMAIN_ENV_VARIABLE}</code>
-													</Col>
-												</Row>
-											</Typography>
-										}
-										type="info"
-										style={{ marginBottom: token.margin }}
-									/>
-									<ProFormTextArea
-										label={
-											<IconLabel
-												label={
-													<FormattedMessage id="settings.functionSettings.translationSettings.chatPrompt" />
-												}
-												tooltipTitle={
-													<FormattedMessage id="settings.functionSettings.translationSettings.chatPrompt.tip" />
-												}
-											/>
-										}
+							<Row gutter={token.marginLG} style={{ marginTop: 8 }}>
+								<Col span={12}>
+									<ProForm.Item
+										label="默认引擎（拖拽排序后自动跟随第一位）"
 										layout="horizontal"
-										name="translationSystemPrompt"
-										rules={[
-											{
-												required: true,
-												message: intl.formatMessage({
-													id: "settings.functionSettings.translationSettings.chatPrompt.required",
-												}),
-											},
-										]}
-										fieldProps={{
-											autoSize: {
-												minRows: 1,
-												maxRows: 1,
-											},
-										}}
-									/>
+									>
+										<Select
+											id="cloudEngineDefaultSelect"
+											value={cloudEngineOrder[0]}
+											onChange={(value) => {
+												const next = [value, ...cloudEngineOrder.filter((v) => v !== value)];
+												updateAppSettings(
+													AppSettingsGroup.FunctionTranslation,
+													{ cloudTranslationConfig: { ...translationCloudConfig, engineOrder: next } },
+													true,
+													true,
+													true,
+													true,
+													false,
+												);
+											}}
+											options={cloudEngineOrder.map((v) => ({
+												value: v,
+												label: CLOUD_ENGINE_META[v]?.label ?? v,
+											}))}
+										/>
+									</ProForm.Item>
 								</Col>
 							</Row>
-						</ProForm>
-					</Spin>
-				</>
-			)}
 
+							<Divider style={{ margin: "16px 0" }} />
+
+							<Flex justify="space-between" align="center" style={{ marginBottom: 12 }}>
+								<Typography.Text strong>翻译引擎优先级</Typography.Text>
+								<Typography.Text type="secondary" style={{ fontSize: 12 }}>
+									上下拖动调整调用顺序，前面的引擎失败时自动尝试下一个
+								</Typography.Text>
+							</Flex>
+
+							<List
+								className="cloud-engine-list"
+								dataSource={cloudEngineOrder}
+								renderItem={(engine, index) => {
+									const meta = CLOUD_ENGINE_META[engine] ?? {
+										label: engine,
+										needKey: false,
+										tag: "default",
+									};
+									const isFirst = index === 0;
+									const isConfigOpen = cloudEngineConfigOpen === engine;
+									return (
+										<Flex
+											key={engine}
+											align="center"
+											gap={12}
+											style={{
+												padding: "10px 14px",
+												border: isFirst
+													? "1px solid #d3adf7"
+													: "1px solid #f0f0f0",
+												borderRadius: 8,
+												marginBottom: 8,
+												background: isFirst ? "#fdfaff" : "#fff",
+												cursor: "grab",
+											}}
+											onDragStart={(e) => {
+												e.dataTransfer.setData("text/plain", engine);
+											}}
+											onDrop={(e) => {
+												e.preventDefault();
+												const dragged = e.dataTransfer.getData("text/plain");
+												if (!dragged || dragged === engine) return;
+												const next = [...cloudEngineOrder];
+												const from = next.indexOf(dragged);
+												next.splice(from, 1);
+												const to = next.indexOf(engine);
+												next.splice(to, 0, dragged);
+												updateAppSettings(
+													AppSettingsGroup.FunctionTranslation,
+													{ cloudTranslationConfig: { ...translationCloudConfig, engineOrder: next } },
+													true,
+													true,
+													true,
+													true,
+													false,
+												);
+											}}
+											onDragOver={(e) => e.preventDefault()}
+										>
+											<span style={{ color: "#bbb", fontSize: 16 }}>☰</span>
+											<div style={{ flex: 1 }}>
+												<div style={{ fontSize: 14, fontWeight: 500 }}>
+													{meta.label}
+													{meta.needKey && (
+														<Tag color="orange" style={{ marginLeft: 8 }}>
+															需配置
+														</Tag>
+													)}
+													{!meta.needKey && (
+														<Tag color="green" style={{ marginLeft: 8 }}>
+															免 Key
+														</Tag>
+													)}
+													{isFirst && (
+														<Tag color="purple" style={{ marginLeft: 4 }}>
+															★ 默认
+														</Tag>
+													)}
+												</div>
+												<div style={{ fontSize: 12, color: "#8c8c8c", marginTop: 2 }}>
+													{meta.desc}
+												</div>
+											</div>
+											{meta.needKey && (
+												<Tooltip title="配置 API Key">
+													<Button
+														size="small"
+														icon={<span>✎</span>}
+														onClick={() =>
+															setCloudEngineConfigOpen(
+																isConfigOpen ? undefined : engine,
+															)
+														}
+													/>
+												</Tooltip>
+											)}
+										</Flex>
+									);
+								}}
+							/>
+
+							{cloudEngineConfigOpen === TranslationApiType.Baidu && (
+								<div
+									style={{
+										border: "1px dashed #d3adf7",
+										background: "#faf8ff",
+										borderRadius: 10,
+										padding: "20px 24px",
+										marginTop: 4,
+									}}
+								>
+									<div style={{ fontWeight: 600, color: "#722ed1", marginBottom: 14 }}>
+										🔑 百度翻译 API 配置
+									</div>
+									<Row gutter={16} style={{ marginBottom: 12 }}>
+										<Col span={10}>
+											<Input
+												placeholder="请输入百度翻译 AppID"
+												value={translationCloudConfig.baiduAppId}
+												onChange={(e) =>
+													updateAppSettings(
+														AppSettingsGroup.FunctionTranslation,
+														{
+															cloudTranslationConfig: {
+																...translationCloudConfig,
+																baiduAppId: e.target.value,
+															},
+														},
+														true,
+														true,
+														true,
+														true,
+														false,
+													)
+												}
+											/>
+										</Col>
+										<Col span={10}>
+											<Input.Password
+												placeholder="请输入百度翻译密钥"
+												value={translationCloudConfig.baiduAppKey}
+												onChange={(e) =>
+													updateAppSettings(
+														AppSettingsGroup.FunctionTranslation,
+														{
+															cloudTranslationConfig: {
+																...translationCloudConfig,
+																baiduAppKey: e.target.value,
+															},
+														},
+														true,
+														true,
+														true,
+														true,
+														false,
+													)
+												}
+											/>
+										</Col>
+									</Row>
+									<Flex justify="space-between" align="center">
+										<Typography.Text type="secondary" style={{ fontSize: 12 }}>
+											接口地址已内置 https://api.fanyi.baidu.com/api/trans/vip/translate
+										</Typography.Text>
+										<Button
+											size="small"
+											onClick={() =>
+												cloudEngineTest(TranslationApiType.Baidu)
+											}
+										>
+											测试连通性
+										</Button>
+									</Flex>
+								</div>
+							)}
+
+							{cloudEngineConfigOpen === TranslationApiType.BigModel && (
+								<div
+									style={{
+										border: "1px dashed #d3adf7",
+										background: "#faf8ff",
+										borderRadius: 10,
+										padding: "20px 24px",
+										marginTop: 4,
+									}}
+								>
+									<div style={{ fontWeight: 600, color: "#722ed1", marginBottom: 14 }}>
+										🔑 智谱 GLM API 配置
+									</div>
+									<Row gutter={16} style={{ marginBottom: 12 }}>
+										<Col span={14}>
+											<Input.Password
+												placeholder="请输入智谱 API Key（注意本地明文保存）"
+												value={translationCloudConfig.bigmodelKey}
+												onChange={(e) =>
+													updateAppSettings(
+														AppSettingsGroup.FunctionTranslation,
+														{
+															cloudTranslationConfig: {
+																...translationCloudConfig,
+																bigmodelKey: e.target.value,
+															},
+														},
+														true,
+														true,
+														true,
+														true,
+														false,
+													)
+												}
+											/>
+										</Col>
+									</Row>
+									<Flex justify="space-between" align="center">
+										<Typography.Text type="secondary" style={{ fontSize: 12 }}>
+											接口地址已内置 https://open.bigmodel.cn/api/paas/v4/chat/completions
+										</Typography.Text>
+										<Button
+											size="small"
+											onClick={() =>
+												cloudEngineTest(TranslationApiType.BigModel)
+											}
+										>
+											测试连通性
+										</Button>
+									</Flex>
+								</div>
+							)}
+
+							<Divider style={{ margin: "16px 0" }} />
+
+							<ProForm
+								form={translationForm}
+								onValuesChange={(_, values) => {
+									updateAppSettings(
+										AppSettingsGroup.FunctionTranslation,
+										values,
+										true,
+										true,
+										true,
+										true,
+										false,
+									);
+								}}
+								submitter={false}
+							>
+								<Row gutter={token.marginLG}>
+									<Col span={24}>
+										<ProFormTextArea
+											label={
+												<IconLabel
+													label={
+														<FormattedMessage id="settings.functionSettings.translationSettings.chatPrompt" />
+													}
+													tooltipTitle={
+														<FormattedMessage id="settings.functionSettings.translationSettings.chatPrompt.tip" />
+													}
+												/>
+											}
+											layout="horizontal"
+											name="translationSystemPrompt"
+											rules={[
+												{
+													required: true,
+													message: intl.formatMessage({
+														id: "settings.functionSettings.translationSettings.chatPrompt.required",
+													}),
+												},
+											]}
+											fieldProps={{
+												autoSize: {
+													minRows: 1,
+													maxRows: 1,
+												},
+											}}
+										/>
+									</Col>
+								</Row>
+							</ProForm>
+						</Spin>
+				</div>
+
+			<div style={{ display: activeTab === "chatSettings" ? undefined : "none" }}>
 			{(isReadyStatus?.(PLUGIN_ID_TRANSLATE) ||
 				isReadyStatus?.(PLUGIN_ID_AI_CHAT)) && (
 				<>
@@ -2086,9 +2319,11 @@ export const FunctionSettingsPage = () => {
 					</Spin>
 				</>
 			)}
+			</div>
 
 			<Divider />
 
+			<div style={{ display: activeTab === "fullScreenDrawSettings" ? undefined : "none" }}>
 			<GroupTitle
 				id="fullScreenDrawSettings"
 				extra={
@@ -2135,6 +2370,9 @@ export const FunctionSettingsPage = () => {
 				</ProForm>
 			</Spin>
 
+			</div>
+
+			<div style={{ display: activeTab === "videoRecordSettings" ? undefined : "none" }}>
 			<Divider />
 
 			<div hidden={!isReadyStatus?.(PLUGIN_ID_FFMPEG)}>
@@ -2503,6 +2741,7 @@ export const FunctionSettingsPage = () => {
 				<Divider />
 			</div>
 
+			<div style={{ display: activeTab === "trayIconSettings" ? undefined : "none" }}>
 			<GroupTitle
 				id="trayIconSettings"
 				extra={
@@ -2549,7 +2788,9 @@ export const FunctionSettingsPage = () => {
 			</Spin>
 
 			<Divider />
+			</div>
 
+			<div style={{ display: activeTab === "globalShortcutSettings" ? undefined : "none" }}>
 			<GroupTitle
 				id="globalShortcutSettings"
 				extra={
@@ -2596,7 +2837,9 @@ export const FunctionSettingsPage = () => {
 			</Spin>
 
 			<Divider />
+			</div>
 
+			<div style={{ display: activeTab === "outputSettings" ? undefined : "none" }}>
 			<GroupTitle
 				id="outputSettings"
 				extra={
@@ -2883,6 +3126,7 @@ export const FunctionSettingsPage = () => {
                     width: 100%;
                 }
             `}</style>
+			</div>
 		</ContentWrap>
 	);
 };

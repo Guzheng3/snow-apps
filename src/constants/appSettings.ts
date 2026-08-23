@@ -18,6 +18,7 @@ import {
 	OcrModel,
 	TrayIconClickAction,
 	TrayIconDefaultIcon,
+	TranslationApiType,
 	VideoMaxSize,
 } from "@/types/appSettings";
 import { DrawState } from "@/types/draw";
@@ -149,6 +150,18 @@ export const defaultAppSettingsData: AppSettingsData = {
 		enableLocalTranslation: false,
 		enableCloudTranslation: true,
 		translationPriority: "cloud",
+		cloudTranslationConfig: {
+			baiduAppId: "",
+			baiduAppKey: "",
+			bigmodelKey: "",
+			engineOrder: [
+				TranslationApiType.Transmart,
+				TranslationApiType.ICiba,
+				TranslationApiType.Yandex,
+				TranslationApiType.Baidu,
+				TranslationApiType.BigModel,
+			],
+		},
 	},
 	[AppSettingsGroup.FunctionTranslationCache]: {
 		cacheSourceLanguage: "auto",
