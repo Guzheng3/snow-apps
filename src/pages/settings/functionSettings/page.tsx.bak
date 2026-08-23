@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import ProForm, {
@@ -85,7 +85,6 @@ import {
 	getVideoRecordSaveDirectory,
 } from "@/utils/file";
 import { TestChat } from "./components/testChat";
-import { TranslationConfig } from "./components/translationConfig";
 
 export const FunctionSettingsPage = () => {
 	const intl = useIntl();
@@ -276,7 +275,7 @@ export const FunctionSettingsPage = () => {
 				return microphoneDeviceName;
 			}
 
-			// 匹配格式: [0] 设备名，直接提取设备名部�?
+			// 匹配格式: [0] 设备名，直接提取设备名部�?
 			const regex = /\[\d+\]\s+(.+)/;
 			const match = microphoneDeviceName.match(regex);
 
@@ -564,11 +563,11 @@ export const FunctionSettingsPage = () => {
 				value: TranslationApiType.DeepL,
 			},
 			{
-				label: "Google 翻译（免费，无需 Key�?,
+				label: "Google 翻译（免费，无需 Key�?,
 				value: TranslationApiType.Google,
 			},
 			{
-				label: "有道智云翻译（免费注册，Key �?appKey:secretKey�?,
+				label: "有道智云翻译（免费注册，Key �?appKey:secretKey�?,
 				value: TranslationApiType.Youdao,
 			},
 		];
@@ -1453,7 +1452,7 @@ export const FunctionSettingsPage = () => {
 							PaddleOCR 云端识别（可选）
 						</Typography.Text>
 						<Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
-							开启后可在「文本识别」时调用 PaddleOCR 云端 API，识别效果更佳。可设置引擎优先级�?
+							开启后可在「文本识别」时调用 PaddleOCR 云端 API，识别效果更佳。可设置引擎优先级�?
 						</Typography.Paragraph>
 						<Flex align="center" gap={8} style={{ marginBottom: 12 }}>
 							<Button
@@ -1476,7 +1475,7 @@ export const FunctionSettingsPage = () => {
 							<Col span={12}>
 								<ProFormSelect
 									name="ocrPriority"
-									label="OCR 引擎优先�?
+									label="OCR 引擎优先�?
 									options={[
 										{ label: "本地 RapidOCR 优先", value: "local" },
 										{ label: "云端 PaddleOCR 优先", value: "paddle" },
@@ -1494,7 +1493,7 @@ export const FunctionSettingsPage = () => {
 								<ProFormText.Password
 									name="paddleOcrToken"
 									label="PaddleOCR API Token"
-									placeholder="请输�?Token"
+									placeholder="请输�?Token"
 								/>
 							</Col>
 							<Col span={12}>
@@ -1538,13 +1537,13 @@ export const FunctionSettingsPage = () => {
 									false,
 								);
 								const tipParts: string[] = [];
-								if (url) tipParts.push("API地址 �?);
-								if (token) tipParts.push("Token �?);
-								if (model) tipParts.push("模型 �?);
+								if (url) tipParts.push("API地址 �?);
+								if (token) tipParts.push("Token �?);
+								if (model) tipParts.push("模型 �?);
 							}}
 						>
 							<Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
-								粘贴以下格式的内容，将自动识别并填入上方配置�?
+								粘贴以下格式的内容，将自动识别并填入上方配置�?
 							</Typography.Paragraph>
 							<Input.TextArea
 								rows={6}
@@ -1596,7 +1595,7 @@ export const FunctionSettingsPage = () => {
 																<Col span={12}>
 																	<ProFormSwitch
 																		name="enableCloudTranslation"
-																		label="启用云端翻译（snowshot.top / 自定�?API�?
+																		label="启用云端翻译（snowshot.top / 自定�?API�?
 																	/>
 																</Col>
 															</Row>
@@ -1723,7 +1722,7 @@ export const FunctionSettingsPage = () => {
 													<Col span={6}>
 														<ProFormDigit
 															name="priority"
-															label="优先级（�?优先�?
+															label="优先级（�?优先�?
 															min={1}
 															max={99}
 														/>
@@ -2148,7 +2147,7 @@ export const FunctionSettingsPage = () => {
 					<ProForm
 						form={videoRecordForm}
 						onValuesChange={(_, values) => {
-							// 处理颜色值转�?
+							// 处理颜色值转�?
 							if (typeof values.keyDisplayBackgroundColor === "object") {
 								values.keyDisplayBackgroundColor = (
 									values.keyDisplayBackgroundColor as AggregationColor

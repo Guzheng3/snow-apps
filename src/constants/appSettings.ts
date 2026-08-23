@@ -1,4 +1,4 @@
-import {
+﻿import {
 	AppSettingsControlNode,
 	type AppSettingsData,
 	AppSettingsFixedContentInitialPosition,
@@ -59,7 +59,7 @@ export const defaultAppSettingsData: AppSettingsData = {
 		toolbarUiScale: 100,
 		hotKeyTipHiddenKeys: [],
 		controlNode: AppSettingsControlNode.Circle,
-		// �?Mac 上禁用动�?
+		// �?Mac 上禁用动�?
 		disableAnimation: getPlatformValue(false, true),
 		colorPickerShowMode: ColorPickerShowMode.BeyondSelectRect,
 		beyondSelectRectElementOpacity: 100,
@@ -141,9 +141,7 @@ export const defaultAppSettingsData: AppSettingsData = {
 	},
 	[AppSettingsGroup.FunctionTranslation]: {
 		optimizeAiTranslationLayout: true,
-		translationSystemPrompt: defaultTranslationPrompt,
-		translationApiConfigList: [],
-		sourceLanguage: "auto",
+		translationSystemPrompt: defaultTranslationPrompt,		sourceLanguage: "auto",
 		targetLanguage: "zh-CHS",
 		translationDomain: TranslationDomain.General,
 		translationType: TranslationType.Youdao,
@@ -253,7 +251,7 @@ Priority order (highest to lowest):
 		focusedWindowCopyToClipboard: true,
 		fullScreenCopyToClipboard: true,
 		fastSave: false,
-		/** 保存到云�?*/
+		/** 保存到云�?*/
 		saveToCloud: false,
 		/** 云端保存协议 */
 		cloudSaveUrlType: CloudSaveUrlType.S3,
@@ -342,7 +340,7 @@ Priority order (highest to lowest):
 		iconClickAction: TrayIconClickAction.Screenshot,
 	},
 	[AppSettingsGroup.SystemCore]: {
-		/// 热加载页面数�?
+		/// 热加载页面数�?
 		hotLoadPageCount: 2,
 	},
 	[AppSettingsGroup.FunctionGlobalShortcut]: {

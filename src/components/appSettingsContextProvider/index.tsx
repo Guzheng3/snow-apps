@@ -1,4 +1,4 @@
-import { emit } from "@tauri-apps/api/event";
+﻿import { emit } from "@tauri-apps/api/event";
 import {
 	type Window as AppWindow,
 	getCurrentWindow,
@@ -867,20 +867,6 @@ const AppSettingsContextProviderCore: React.FC<{
 							? newSettings.optimizeAiTranslationLayout
 							: (prevSettings?.optimizeAiTranslationLayout ??
 								defaultAppSettingsData[group].optimizeAiTranslationLayout),
-					translationApiConfigList: Array.isArray(
-						newSettings?.translationApiConfigList,
-					)
-						? newSettings.translationApiConfigList.map((item) => ({
-								api_uri: `${item.api_uri ?? ""}`,
-								api_key: `${item.api_key ?? ""}`,
-								api_type: item.api_type,
-								deepl_prefer_quality_optimized:
-									typeof item.deepl_prefer_quality_optimized === "boolean"
-										? item.deepl_prefer_quality_optimized
-										: false,
-							}))
-						: (prevSettings?.translationApiConfigList ??
-							defaultAppSettingsData[group].translationApiConfigList),
 					sourceLanguage:
 						typeof newSettings?.sourceLanguage === "string"
 							? newSettings.sourceLanguage

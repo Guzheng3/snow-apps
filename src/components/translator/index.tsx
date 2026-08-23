@@ -1,4 +1,4 @@
-import { CloseOutlined, CopyOutlined, SwapOutlined } from "@ant-design/icons";
+﻿import { CloseOutlined, CopyOutlined, SwapOutlined } from "@ant-design/icons";
 import {
 	Button,
 	Col,
@@ -26,7 +26,6 @@ import {
 } from "@/core/translations";
 import { useStateRef } from "@/hooks/useStateRef";
 import { ModelSelectLabel } from "@/pages/tools/chat/components/modelSelectLabel";
-import { TranslationApiType } from "@/types/appSettings";
 import { TranslationDomain } from "@/types/servies/translation";
 import { writeTextToClipboard } from "@/utils/clipboard";
 
@@ -214,35 +213,11 @@ export const useTranslationTypeOptions = (
 	supportedTranslationTypes: TranslationServiceConfig[],
 ) => {
 	const translationTypeOptions = useMemo((): SelectProps["options"] => {
-		const customTranslationTypeOptions: SelectProps["options"] = [];
-		const officialTranslationTypeOptions: SelectProps["options"] = [];
-
-		supportedTranslationTypes.forEach((item) => {
-			if (item.isOfficial) {
-				officialTranslationTypeOptions.push({
-					label: <ModelSelectLabel modelName={item.name} />,
-					value: item.type,
-				});
-			} else {
-				customTranslationTypeOptions.push({
-					label: <ModelSelectLabel modelName={item.name} />,
-					value: item.type,
-				});
-			}
-		});
-
-		return [
-			customTranslationTypeOptions.length > 0
-				? {
-						label: <FormattedMessage id="tools.translation.type.custom" />,
-						options: customTranslationTypeOptions,
-					}
-				: undefined,
-			{
-				label: <FormattedMessage id="tools.translation.type.official" />,
-				options: officialTranslationTypeOptions,
-			},
-		].filter(Boolean) as SelectProps["options"];
+		return supportedTranslationTypes.map((item) => ({
+			label: <ModelSelectLabel modelName={item.name} />,
+			value: item.type,
+		}));
+	}, [supportedTranslationTypes]);
 	}, [supportedTranslationTypes]);
 
 	return {
@@ -360,13 +335,7 @@ const TranslatorCore: React.FC<{
 		translationDomain,
 	]);
 
-	const supportDomain = useMemo(() => {
-		if (translationType === TranslationApiType.DeepL) {
-			return false;
-		}
-
-		return true;
-	}, [translationType]);
+	const supportDomain = useMemo(() => true, []);
 
 	const onCopy = useCallback(() => {
 		if (!getTranslatedContent()) {
