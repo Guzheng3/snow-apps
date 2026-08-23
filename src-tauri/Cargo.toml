@@ -107,6 +107,9 @@ snow-shot-global-state = { workspace = true }
 # workspace 依赖
 tokio = { workspace = true }
 log = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # tauri 相关
 tauri = { workspace = true, features = [
@@ -133,8 +136,6 @@ tauri-plugin-macos-permissions = "2.3.0"
 
 # 其他依赖
 base64 = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 md-5 = "0.10"
 uuid = { version = "1", features = ["v4"] }
 urlencoding = "2"

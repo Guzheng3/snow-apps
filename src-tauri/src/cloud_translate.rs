@@ -4,6 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use md5::{Digest, Md5};
 use serde_json::Value;
 
 /// Supported cloud translation engines
@@ -44,7 +45,7 @@ impl CloudEngine {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudConfig {
     pub baidu_app_id: String,
     pub baidu_app_key: String,
@@ -125,7 +126,9 @@ impl CloudTranslator {
         let key = "1000006";
         let salt = "7ece94d9f9c202b0d2ec557dg4r9bc";
         let raw = format!("{path}{client}{key}{ts}{salt}");
-        let sig = format!("{:x}", md5::compute(raw.as_bytes()));
+        let mut hasher = Md5::new();
+        hasher.update(raw.as_bytes());
+        let sig = format!("{:x}", hasher.finalize());
         let url = format!(
             "https://dictionary.iciba.com/dictionary/fy/batch?client={client}&key={key}&timestamp={ts}&signature={sig}"
         );
@@ -267,7 +270,9 @@ impl CloudTranslator {
             "{}{}{}{}",
             self.config.baidu_app_id, text, salt, self.config.baidu_app_key
         );
-        let sign = format!("{:x}", md5::compute(sign_raw.as_bytes()));
+        let mut hasher = Md5::new();
+        hasher.update(sign_raw.as_bytes());
+        let sign = format!("{:x}", hasher.finalize());
         let url = format!(
             "https://fanyi-api.baidu.com/api/trans/vip/translate?q={}&from={}&to={}&appid={}&salt={}&sign={}",
             urlencoding::encode(text),
