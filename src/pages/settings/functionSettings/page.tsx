@@ -1709,24 +1709,24 @@ export const FunctionSettingsPage = () => {
 					</GroupTitle>
 
 						<Spin spinning={appSettingsLoading}>
-							<TranslationConfig />
+												<TranslationConfig />
 
-							<ProForm
-								form={translationForm}
-								onValuesChange={(_, values) => {
-									updateAppSettings(
-										AppSettingsGroup.FunctionTranslation,
-										values,
-										true,
-										true,
-										true,
-										true,
-										false,
-									);
-								}}
-								submitter={false}
-							>
-							<div
+												<ProForm
+													form={translationForm}
+													onValuesChange={(_, values) => {
+														updateAppSettings(
+															AppSettingsGroup.FunctionTranslation,
+															values,
+															true,
+															true,
+															true,
+															true,
+															false,
+														);
+													}}
+													submitter={false}
+												>
+												<div
 								style={{
 									border: "1px solid #d3adf7",
 									background: "#fdfaff",
@@ -1836,7 +1836,7 @@ export const FunctionSettingsPage = () => {
 											}}
 											onDrop={(e) => {
 												e.preventDefault();
-												const dragged = e.dataTransfer.getData("text/plain");
+												const dragged = e.dataTransfer.getData("text/plain") as TranslationApiType;
 												if (!dragged || dragged === engine) return;
 												const next = [...cloudEngineOrder];
 												const from = next.indexOf(dragged);
@@ -2023,26 +2023,11 @@ export const FunctionSettingsPage = () => {
 										</Button>
 									</Flex>
 								</div>
-							)}
+																)}
 
-							<Divider style={{ margin: "16px 0" }} />
+																<Divider style={{ margin: "16px 0" }} />
 
-							<ProForm
-								form={translationForm}
-								onValuesChange={(_, values) => {
-									updateAppSettings(
-										AppSettingsGroup.FunctionTranslation,
-										values,
-										true,
-										true,
-										true,
-										true,
-										false,
-									);
-								}}
-								submitter={false}
-							>
-								<Row gutter={token.marginLG}>
+																<Row gutter={token.marginLG}>
 									<Col span={24}>
 										<ProFormTextArea
 											label={
@@ -2754,9 +2739,10 @@ export const FunctionSettingsPage = () => {
 				</Spin>
 
 				<Divider />
-			</div>
+				</div>
+				</div>
 
-			<div style={{ display: activeTab === "trayIconSettings" ? undefined : "none" }}>
+				<div style={{ display: activeTab === "trayIconSettings" ? undefined : "none" }}>
 			<GroupTitle
 				id="trayIconSettings"
 				extra={
