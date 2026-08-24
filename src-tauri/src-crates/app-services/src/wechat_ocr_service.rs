@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use serde::Deserialize;
 use serde::Serialize;
+use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tokio::time::timeout;
 
@@ -129,16 +130,13 @@ impl WeChatOcrService {
             .map_err(|e| format!("[WeChatOcrService] helper process error: {}", e))?;
 
         if !exit_status.success() {
-            let stderr_output = child
-                .stderr
-                .take()
-                .map(|mut s| {
-                    use std::io::Read;
-                    let mut buf = vec![];
-                    s.read_to_end(&mut buf).ok();
-                    String::from_utf8_lossy(&buf).to_string()
-                })
-                .unwrap_or_default();
+            let stderr_output = if let Some(mut s) = child.stderr.take() {
+                let mut buf = Vec::new();
+                let _ = s.read_to_end(&mut buf).await;
+                String::from_utf8_lossy(&buf).to_string()
+            } else {
+                String::new()
+            };
 
             // Kill the process if it's still running
             let _ = child.kill().await;
@@ -154,9 +152,9 @@ impl WeChatOcrService {
             "[WeChatOcrService] failed to capture stdout".to_string(),
         )?;
         let mut output = String::new();
-        use std::io::Read;
         stdout
             .read_to_string(&mut output)
+            .await
             .map_err(|e| format!("[WeChatOcrService] failed to read stdout: {}", e))?;
 
         if output.trim().is_empty() {
