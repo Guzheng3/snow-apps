@@ -54,10 +54,13 @@ pub async fn wechat_ocr_detect(
                 .box_points
                 .into_iter()
                 .map(|p| paddle_ocr_rs::ocr_result::Point {
-                    x: p.x as i32,
-                    y: p.y as i32,
+                    x: p.x as u32,
+                    y: p.y as u32,
                 })
                 .collect(),
+            box_score: 1.0,
+            angle_index: -1,
+            angle_score: 0.0,
             text: block.text,
             text_score: block.text_score,
         })
