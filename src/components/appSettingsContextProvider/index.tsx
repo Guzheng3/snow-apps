@@ -416,7 +416,12 @@ const AppSettingsContextProviderCore: React.FC<{
 							? newSettings.enableTabFindChildrenElements
 							: (prevSettings?.enableTabFindChildrenElements ??
 								defaultAppSettingsData[group].enableTabFindChildrenElements),
-				};
+					fontInstallDeclined:
+						typeof newSettings?.fontInstallDeclined === "boolean"
+							? newSettings.fontInstallDeclined
+							: (prevSettings?.fontInstallDeclined ??
+								defaultAppSettingsData[group].fontInstallDeclined),
+					};
 			} else if (group === AppSettingsGroup.Screenshot) {
 				newSettings = newSettings as AppSettingsData[typeof group];
 				const prevSettings = appSettingsRef.current[group] as
@@ -888,8 +893,17 @@ const AppSettingsContextProviderCore: React.FC<{
 							? newSettings.translationType
 							: (prevSettings?.translationType ??
 								defaultAppSettingsData[group].translationType),
-				};
-			} else if (group === AppSettingsGroup.FunctionScreenshot) {
+					cloudTranslationConfig:
+						newSettings?.cloudTranslationConfig ??
+						(prevSettings?.cloudTranslationConfig ??
+							defaultAppSettingsData[group].cloudTranslationConfig),
+					enableCloudTranslation:
+						typeof newSettings?.enableCloudTranslation === "boolean"
+							? newSettings.enableCloudTranslation
+							: (prevSettings?.enableCloudTranslation ??
+								defaultAppSettingsData[group].enableCloudTranslation),
+					};
+					} else if (group === AppSettingsGroup.FunctionScreenshot) {
 				newSettings = newSettings as AppSettingsData[typeof group];
 				const prevSettings = appSettingsRef.current[group] as
 					| AppSettingsData[typeof group]

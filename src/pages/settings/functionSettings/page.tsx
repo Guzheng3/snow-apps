@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import ProForm, {
@@ -67,20 +67,19 @@ import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
 import { usePlatform } from "@/hooks/usePlatform";
 import { useVisionModelList } from "@/pages/fixedContent/components/ocrResult";
 import {
-		type AppSettingsData,
-		AppSettingsFixedContentInitialPosition,
-		AppSettingsGroup,
-		CloudSaveUrlFormat,
-		CloudSaveUrlType,
-		DoubleClickAction,
-		GifFormat,
-		KeyDisplayDirection,
-		OcrDetectAfterAction,
-		OcrModel,
-		TranslationApiType,
-		TrayIconClickAction,
-		VideoMaxSize,
-	} from "@/types/appSettings";
+	type AppSettingsData,
+	AppSettingsFixedContentInitialPosition,
+	AppSettingsGroup,
+	CloudSaveUrlFormat,
+	CloudSaveUrlType,
+	DoubleClickAction,
+	GifFormat,
+	KeyDisplayDirection,
+	OcrDetectAfterAction,
+	OcrModel,
+	TrayIconClickAction,
+	VideoMaxSize,
+} from "@/types/appSettings";
 import { CloudTranslationEngineManager } from "./components/cloudTranslationEngineManager";
 import { DrawState } from "@/types/draw";
 import { ImageFormat } from "@/types/utils/file";
@@ -110,9 +109,9 @@ export const FunctionSettingsPage = () => {
 	const [videoRecordForm] =
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionVideoRecord]>();
 	const [functionOcrForm] =
-				Form.useForm<AppSettingsData[AppSettingsGroup.FunctionOcr]>();
-		const [translationForm] =
-				Form.useForm<AppSettingsData[AppSettingsGroup.FunctionTranslation]>();
+		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionOcr]>();
+	const [translationForm] =
+			Form.useForm<AppSettingsData[AppSettingsGroup.FunctionTranslation]>();
 	const [functionGlobalShortcutForm] =
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionGlobalShortcut]>();
 
@@ -120,12 +119,6 @@ export const FunctionSettingsPage = () => {
 
 	// 功能设置压栈切换：当前激活的分组 tab
 	const [activeTab, setActiveTab] = useState("screenshotSettings");
-
-	const ocrModelOptions = useMemo(() => [
-		{ label: "RapidOCR v4", value: OcrModel.RapidOcrV4 },
-		{ label: "RapidOCR v5", value: OcrModel.RapidOcrV5 },
-		{ label: "WeChat OCR（需安装微信）", value: OcrModel.WeChatOcr },
-	], []);
 
 	const { message } = App.useApp();
 
@@ -225,21 +218,11 @@ export const FunctionSettingsPage = () => {
 						settings[AppSettingsGroup.FunctionOcr]
 				) {
 					functionOcrForm.setFieldsValue(
-												settings[AppSettingsGroup.FunctionOcr],
-											);
-										}
+						settings[AppSettingsGroup.FunctionOcr],
+					);
+				}
 
-										if (
-											preSettings === undefined ||
-											preSettings[AppSettingsGroup.FunctionTranslation] !==
-												settings[AppSettingsGroup.FunctionTranslation]
-										) {
-											translationForm.setFieldsValue(
-												settings[AppSettingsGroup.FunctionTranslation],
-											);
-										}
-
-										if (
+				if (
 					preSettings === undefined ||
 					preSettings[AppSettingsGroup.FunctionGlobalShortcut] !==
 						settings[AppSettingsGroup.FunctionGlobalShortcut]
@@ -276,7 +259,7 @@ export const FunctionSettingsPage = () => {
 				return microphoneDeviceName;
 			}
 
-			// 匹配格式: [0] 设备名，直接提取设备名部�?
+			// 匹配格式: [0] 设备名，直接提取设备名部分
 			const regex = /\[\d+\]\s+(.+)/;
 			const match = microphoneDeviceName.match(regex);
 
@@ -720,8 +703,8 @@ export const FunctionSettingsPage = () => {
 					{ key: "functionDrawSettings", label: intl.formatMessage({ id: "settings.functionSettings.drawSettings" }) },
 					{ key: "fixedContentSettings", label: intl.formatMessage({ id: "settings.functionSettings.fixedContentSettings" }) },
 					{ key: "ocrSettings", label: intl.formatMessage({ id: "settings.functionSettings.ocrSettings" }) },
-											{ key: "translationSettings", label: "云翻译引擎" },
-											{ key: "fullScreenDrawSettings", label: intl.formatMessage({ id: "settings.functionSettings.fullScreenDrawSettings" }) },
+					{ key: "translationSettings", label: "云翻译引擎" },
+					{ key: "fullScreenDrawSettings", label: intl.formatMessage({ id: "settings.functionSettings.fullScreenDrawSettings" }) },
 					{ key: "videoRecordSettings", label: intl.formatMessage({ id: "settings.functionSettings.videoRecordSettings" }) },
 					{ key: "trayIconSettings", label: intl.formatMessage({ id: "settings.commonSettings.trayIconSettings" }) },
 					{ key: "globalShortcutSettings", label: intl.formatMessage({ id: "settings.functionSettings.globalShortcutSettings" }) },
@@ -1372,73 +1355,74 @@ export const FunctionSettingsPage = () => {
 									</Col>
 													</Row>
 
-					</ProForm>
-				</Spin>
-								</div>
+						<Divider style={{ margin: "12px 0" }} />
+							<Typography.Text strong>
+								内建翻译引擎管理
+							</Typography.Text>
+							<Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
+								配置各翻译引擎的 API Key 和优先级顺序。翻译时按优先级从上到下自动 fallback。
+							</Typography.Paragraph>
 
-								<div style={{ display: activeTab === "translationSettings" ? undefined : "none" }}>
-									<GroupTitle
-										id="translationSettings"
-										extra={
-											<ResetSettingsButton
-												title="云翻译引擎
-												appSettingsGroup={AppSettingsGroup.FunctionTranslation}
+							<CloudTranslationEngineManager />
+						</ProForm>
+					</Spin>
+				</div>
+
+				<div style={{ display: activeTab === "translationSettings" ? undefined : "none" }}>
+					<GroupTitle
+						id="translationSettings"
+						extra={
+							<ResetSettingsButton
+								title="云翻译引擎"
+								appSettingsGroup={AppSettingsGroup.FunctionTranslation}
+							/>
+						}
+					>
+						云翻译引擎
+					</GroupTitle>
+
+					<Spin spinning={appSettingsLoading}>
+						<ProForm
+							form={translationForm}
+							onValuesChange={(_, values) => {
+								updateAppSettings(
+									AppSettingsGroup.FunctionTranslation,
+									values,
+									true,
+									true,
+									true,
+									true,
+									false,
+								);
+							}}
+							submitter={false}
+							layout="horizontal"
+						>
+							<Row gutter={token.marginLG}>
+								<Col span={12}>
+									<ProFormSwitch
+										name="enableCloudTranslation"
+										label="启用内建云翻译引擎"
+									/>
+								</Col>
+								<Col span={12}>
+									<ProFormSwitch
+										name="optimizeAiTranslationLayout"
+										label={
+											<IconLabel
+												label="优化 AI 翻译排版"
+												tooltipTitle="移除翻译结果中的多余空行，使排版更紧凑"
 											/>
 										}
-									>
-										云翻译引擎
-									</GroupTitle>
-
-									<Spin spinning={appSettingsLoading}>
-										<ProForm
-											form={translationForm}
-											onValuesChange={(_, values) => {
-												updateAppSettings(
-													AppSettingsGroup.FunctionTranslation,
-													values,
-													true,
-													true,
-													true,
-													true,
-													false,
-												);
-											}}
-											submitter={false}
-											layout="horizontal"
-										>
-											<Row gutter={token.marginLG}>
-												<Col span={12}>
-													<ProFormSwitch
-														name="enableCloudTranslation"
-														label="启用内建云翻译引擎
-													/>
-												</Col>
-												<Col span={12}>
-													<ProFormSwitch
-														name="optimizeAiTranslationLayout"
-														label={
-															<IconLabel
-																label="优化 AI 翻译排版"
-																tooltipTitle="移除翻译结果中的多余空行，使排版更紧�?
-															/>
-														}
-													/>
-												</Col>
-											</Row>
-										</ProForm>
-
-										<Divider style={{ margin: "12px 0" }} />
-										<Typography.Text strong>内建翻译引擎管理</Typography.Text>
-										<Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
-											配置各翻译引擎的 API Key 和优先级顺序。翻译时按优先级从上到下自动 fallback�?
-										</Typography.Paragraph>
-
-										<CloudTranslationEngineManager />
-									</Spin>
-								</div>
+									/>
+								</Col>
+							</Row>
+						</ProForm>
+					</Spin>
+				</div>
 
 
-								<div style={{ display: activeTab === "fullScreenDrawSettings" ? undefined : "none" }}>
+				<div style={{ display: activeTab === "fullScreenDrawSettings" ? undefined : "none" }}>
 			<GroupTitle
 				id="fullScreenDrawSettings"
 				extra={
@@ -1509,7 +1493,7 @@ export const FunctionSettingsPage = () => {
 					<ProForm
 						form={videoRecordForm}
 						onValuesChange={(_, values) => {
-							// 处理颜色值转�?
+							// 处理颜色值转换
 							if (typeof values.keyDisplayBackgroundColor === "object") {
 								values.keyDisplayBackgroundColor = (
 									values.keyDisplayBackgroundColor as AggregationColor

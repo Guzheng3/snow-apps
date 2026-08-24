@@ -282,7 +282,6 @@ const TranslatorCore: React.FC<{
 		translationDomain,
 		supportedTranslationTypes,
 		startTranslateLoading,
-		deltaTranslateLoading,
 		updateSourceLanguage,
 		updateTargetLanguage,
 		updateTranslationType,
@@ -505,14 +504,6 @@ const TranslatorCore: React.FC<{
 					<Col span={12}>
 						<Spin spinning={startTranslateLoading}>
 							<div style={{ position: "relative" }}>
-								<Spin
-									spinning={deltaTranslateLoading}
-									style={{
-										position: "absolute",
-										bottom: token.margin,
-										right: token.marginLG,
-									}}
-								/>
 								<TextArea
 									rows={12}
 									variant="filled"

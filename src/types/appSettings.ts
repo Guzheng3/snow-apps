@@ -353,7 +353,8 @@ export type AppSettingsData = {
 		lastExtraTool: ExtraToolList;
 		// 记录上一次使用的绘制额外工具
 		lastDrawExtraTool: DrawState;
-		// 上一次水印内�?		lastWatermarkText: string;
+		// 上一次水印内容
+		lastWatermarkText: string;
 		/** 延迟截图秒数 */
 		delayScreenshotSeconds: number;
 		/** 锁定手动选区时的宽高�?*/

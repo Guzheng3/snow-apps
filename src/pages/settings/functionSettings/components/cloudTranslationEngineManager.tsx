@@ -90,6 +90,7 @@ export const CloudTranslationEngineManager: React.FC = () => {
 			{ cloudTranslationConfig: updated },
 			true,
 			true,
+			false,
 		);
 	}, [updateAppSettings, message]);
 
@@ -108,6 +109,7 @@ export const CloudTranslationEngineManager: React.FC = () => {
 				{ cloudTranslationConfig: updated },
 				true,
 				true,
+				false,
 			);
 		},
 		[updateAppSettings],
@@ -128,6 +130,7 @@ export const CloudTranslationEngineManager: React.FC = () => {
 				{ cloudTranslationConfig: updated },
 				true,
 				true,
+				false,
 			);
 		},
 		[updateAppSettings],
