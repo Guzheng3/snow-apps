@@ -266,8 +266,6 @@ Priority order (highest to lowest):
 		saveFileFormat: ImageFormat.PNG,
 		ocrAfterAction: OcrDetectAfterAction.None,
 		ocrCopyText: true,
-		enableSTranslate: false,
-		sTranslatePort: 50020,
 		selectRectPresetList: [],
 	},
 	[AppSettingsGroup.SystemScrollScreenshot]: {

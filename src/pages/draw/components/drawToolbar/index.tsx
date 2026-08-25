@@ -160,7 +160,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 	const [enableFastSave, setEnableFastSave] = useState(false);
 	const [enableSaveToCloud, setEnableSaveToCloud] = useState(false);
 	const [enableScrollScreenshot, setEnableScrollScreenshot] = useState(false);
-	const [enableSTranslate, setEnableSTranslate] = useState(false);
 	const [shortcutCanleTip, setShortcutCanleTip] = useState(false);
 	const [customToolbarToolHiddenMap, setCustomToolbarToolHiddenMap] = useState<
 		Partial<Record<DrawState, boolean>> | undefined
@@ -208,9 +207,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 				);
 				setEnableSaveToCloud(
 					settings[AppSettingsGroup.FunctionScreenshot].saveToCloud,
-				);
-				setEnableSTranslate(
-					settings[AppSettingsGroup.FunctionScreenshot].enableSTranslate,
 				);
 				// 不显示锁定绘制工具
 				setShowLockDrawTool(
@@ -495,9 +491,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 					break;
 				case DrawState.OcrDetect:
 				case DrawState.OcrTranslate:
-					if (
-						(next === DrawState.OcrTranslate && enableSTranslate) ||
-						isReady?.(PLUGIN_ID_RAPID_OCR)
+					if (isReady?.(PLUGIN_ID_RAPID_OCR)) {
 					) {
 						onOcrDetect(next);
 					}
@@ -524,7 +518,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 			getDrawState,
 			intl,
 			isReady,
-			enableSTranslate,
 			message,
 			onOcrDetect,
 			selectLayerActionRef,
@@ -993,7 +986,6 @@ return (
 								disable={
 									disableNormalScreenshotTool ||
 									!(
-										enableSTranslate ||
 										(isReadyStatus?.(PLUGIN_ID_RAPID_OCR) &&
 											isReadyStatus?.(PLUGIN_ID_TRANSLATE))
 									)
