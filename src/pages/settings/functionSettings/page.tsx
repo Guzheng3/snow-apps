@@ -722,9 +722,7 @@ export const FunctionSettingsPage = () => {
 						appSettingsGroup={AppSettingsGroup.FunctionScreenshot}
 					/>
 				}
-			>
-				<FormattedMessage id="settings.functionSettings.screenshotSettings" />
-			</GroupTitle>
+			></GroupTitle>
 
 			<Spin spinning={appSettingsLoading}>
 				<ProForm
@@ -1115,9 +1113,7 @@ export const FunctionSettingsPage = () => {
 						appSettingsGroup={AppSettingsGroup.FunctionDraw}
 					/>
 				}
-			>
-				<FormattedMessage id="settings.commonSettings.draw" />
-			</GroupTitle>
+			></GroupTitle>
 
 			<ProForm<AppSettingsData[AppSettingsGroup.FunctionDraw]>
 				className="settings-form common-draw-settings-form"
@@ -1220,9 +1216,7 @@ export const FunctionSettingsPage = () => {
 						appSettingsGroup={AppSettingsGroup.FunctionFixedContent}
 					/>
 				}
-			>
-				<FormattedMessage id="settings.functionSettings.fixedContentSettings" />
-			</GroupTitle>
+			></GroupTitle>
 
 			<Spin spinning={appSettingsLoading}>
 				<ProForm
@@ -1318,9 +1312,7 @@ export const FunctionSettingsPage = () => {
 								appSettingsGroup={AppSettingsGroup.FunctionOcr}
 							/>
 						}
-					>
-						<FormattedMessage id="settings.functionSettings.ocrSettings" />
-					</GroupTitle>
+					></GroupTitle>
 
 					<Spin spinning={appSettingsLoading}>
 						<ProForm
@@ -1377,9 +1369,7 @@ export const FunctionSettingsPage = () => {
 								appSettingsGroup={AppSettingsGroup.FunctionTranslation}
 							/>
 						}
-					>
-						云翻译引擎
-					</GroupTitle>
+					></GroupTitle>
 
 					<Spin spinning={appSettingsLoading}>
 						<ProForm
@@ -1433,9 +1423,7 @@ export const FunctionSettingsPage = () => {
 						appSettingsGroup={AppSettingsGroup.FunctionFullScreenDraw}
 					/>
 				}
-			>
-				<FormattedMessage id="settings.functionSettings.fullScreenDrawSettings" />
-			</GroupTitle>
+			></GroupTitle>
 
 			<Spin spinning={appSettingsLoading}>
 				<ProForm
@@ -1485,9 +1473,7 @@ export const FunctionSettingsPage = () => {
 							appSettingsGroup={AppSettingsGroup.FunctionVideoRecord}
 						/>
 					}
-				>
-					<FormattedMessage id="settings.functionSettings.videoRecordSettings" />
-				</GroupTitle>
+				></GroupTitle>
 
 				<Spin spinning={appSettingsLoading}>
 					<ProForm
@@ -1852,9 +1838,7 @@ export const FunctionSettingsPage = () => {
 						appSettingsGroup={AppSettingsGroup.FunctionTrayIcon}
 					/>
 				}
-			>
-				<FormattedMessage id="settings.functionSettings.trayIconSettings" />
-			</GroupTitle>
+			></GroupTitle>
 
 			<Spin spinning={appSettingsLoading}>
 				<ProForm
@@ -1901,9 +1885,7 @@ export const FunctionSettingsPage = () => {
 						appSettingsGroup={AppSettingsGroup.FunctionGlobalShortcut}
 					/>
 				}
-			>
-				<FormattedMessage id="settings.functionSettings.globalShortcutSettings" />
-			</GroupTitle>
+			></GroupTitle>
 
 			<Spin spinning={appSettingsLoading}>
 				<ProForm
@@ -1950,9 +1932,7 @@ export const FunctionSettingsPage = () => {
 						appSettingsGroup={AppSettingsGroup.FunctionOutput}
 					/>
 				}
-			>
-				<FormattedMessage id="settings.functionSettings.outputSettings" />
-			</GroupTitle>
+			></GroupTitle>
 
 			<Alert
 				message={
