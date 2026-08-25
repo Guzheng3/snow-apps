@@ -110,10 +110,6 @@ export const HomePage = () => {
 										/>
 									}
 								>
-									<FormattedMessage
-										id="home.screenshotFunction"
-										key="screenshotFunction"
-									/>
 								</GroupTitle>
 							);
 							break;
@@ -129,10 +125,6 @@ export const HomePage = () => {
 										/>
 									}
 								>
-									<FormattedMessage
-										id="home.translationFunction"
-										key="translationFunction"
-									/>
 								</GroupTitle>
 							);
 							break;
@@ -148,7 +140,6 @@ export const HomePage = () => {
 										/>
 									}
 								>
-									<FormattedMessage id="home.chatFunction" key="chatFunction" />
 								</GroupTitle>
 							);
 							break;
@@ -164,10 +155,6 @@ export const HomePage = () => {
 										/>
 									}
 								>
-									<FormattedMessage
-										id="home.otherFunction"
-										key="otherFunction"
-									/>
 								</GroupTitle>
 							);
 							break;
@@ -183,10 +170,6 @@ export const HomePage = () => {
 										/>
 									}
 								>
-									<FormattedMessage
-										id="home.videoRecordFunction"
-										key="videoRecordFunction"
-									/>
 								</GroupTitle>
 							);
 							break;
