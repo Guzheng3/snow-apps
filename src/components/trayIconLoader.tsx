@@ -16,7 +16,6 @@ import {
 import {
 		PLUGIN_ID_FFMPEG,
 		PLUGIN_ID_RAPID_OCR,
-		PLUGIN_ID_TRANSLATE,
 	} from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppContext } from "@/contexts/appContext";
@@ -27,8 +26,6 @@ import {
 	executeScreenshotFocusedWindow,
 } from "@/functions/screenshot";
 import {
-		executeTranslate,
-		executeTranslateSelectedText,
 		openCaptureHistory,
 		openImageSaveFolder,
 	} from "@/functions/tools";
@@ -306,7 +303,6 @@ const TrayIconLoaderComponent = () => {
 						executeScreenshot(ScreenshotType.CaptureFullScreen);
 					},
 				},
-				...(isReadyStatus(PLUGIN_ID_TRANSLATE)
 					? [
 							{
 								item: "Separator",
@@ -320,7 +316,6 @@ const TrayIconLoaderComponent = () => {
 											shortcutKeys[AppFunction.Translation].shortcutKey,
 										),
 								action: async () => {
-									executeTranslate();
 								},
 							},
 							...(shortcutKeys[AppFunction.TranslationSelectText].shortcutKey
@@ -337,7 +332,6 @@ const TrayIconLoaderComponent = () => {
 															.shortcutKey,
 													),
 											action: async () => {
-												executeTranslateSelectedText();
 											},
 										},
 									]

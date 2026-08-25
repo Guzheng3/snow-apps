@@ -826,82 +826,19 @@ const AppSettingsContextProviderCore: React.FC<{
 								defaultAppSettingsData[group]
 									.autoCreateNewSessionOnCloseWindow),
 				};
-			} else if (group === AppSettingsGroup.FunctionTranslationCache) {
 				newSettings = newSettings as AppSettingsData[typeof group];
 				const prevSettings = appSettingsRef.current[group] as
 					| AppSettingsData[typeof group]
 					| undefined;
 
 				settings = {
-					cacheSourceLanguage:
-						typeof newSettings?.cacheSourceLanguage === "string"
-							? newSettings.cacheSourceLanguage
-							: (prevSettings?.cacheSourceLanguage ??
-								defaultAppSettingsData[group].cacheSourceLanguage),
-					cacheTargetLanguage:
-						typeof newSettings?.cacheTargetLanguage === "string"
-							? newSettings.cacheTargetLanguage
-							: (prevSettings?.cacheTargetLanguage ??
-								defaultAppSettingsData[group].cacheTargetLanguage),
-					cacheTranslationDomain:
-						typeof newSettings?.cacheTranslationDomain === "string"
-							? newSettings.cacheTranslationDomain
-							: (prevSettings?.cacheTranslationDomain ??
-								defaultAppSettingsData[group].cacheTranslationDomain),
-					cacheTranslationType:
-						typeof newSettings?.cacheTranslationType === "number" ||
-						typeof newSettings?.cacheTranslationType === "string"
-							? newSettings.cacheTranslationType
-							: (prevSettings?.cacheTranslationType ??
-								defaultAppSettingsData[group].cacheTranslationType),
 				};
-			} else if (group === AppSettingsGroup.FunctionTranslation) {
 				newSettings = newSettings as AppSettingsData[typeof group];
 				const prevSettings = appSettingsRef.current[group] as
 					| AppSettingsData[typeof group]
 					| undefined;
 
 				settings = {
-					translationSystemPrompt:
-						typeof newSettings?.translationSystemPrompt === "string"
-							? newSettings.translationSystemPrompt
-							: (prevSettings?.translationSystemPrompt ??
-								defaultAppSettingsData[group].translationSystemPrompt),
-					optimizeAiTranslationLayout:
-						typeof newSettings?.optimizeAiTranslationLayout === "boolean"
-							? newSettings.optimizeAiTranslationLayout
-							: (prevSettings?.optimizeAiTranslationLayout ??
-								defaultAppSettingsData[group].optimizeAiTranslationLayout),
-					sourceLanguage:
-						typeof newSettings?.sourceLanguage === "string"
-							? newSettings.sourceLanguage
-							: (prevSettings?.sourceLanguage ??
-								defaultAppSettingsData[group].sourceLanguage),
-					targetLanguage:
-						typeof newSettings?.targetLanguage === "string"
-							? newSettings.targetLanguage
-							: (prevSettings?.targetLanguage ??
-								defaultAppSettingsData[group].targetLanguage),
-					translationDomain:
-						typeof newSettings?.translationDomain === "string"
-							? newSettings.translationDomain
-							: (prevSettings?.translationDomain ??
-								defaultAppSettingsData[group].translationDomain),
-					translationType:
-						typeof newSettings?.translationType === "number" ||
-						typeof newSettings?.translationType === "string"
-							? newSettings.translationType
-							: (prevSettings?.translationType ??
-								defaultAppSettingsData[group].translationType),
-					cloudTranslationConfig:
-						newSettings?.cloudTranslationConfig ??
-						(prevSettings?.cloudTranslationConfig ??
-							defaultAppSettingsData[group].cloudTranslationConfig),
-					enableCloudTranslation:
-						typeof newSettings?.enableCloudTranslation === "boolean"
-							? newSettings.enableCloudTranslation
-							: (prevSettings?.enableCloudTranslation ??
-								defaultAppSettingsData[group].enableCloudTranslation),
 					};
 					} else if (group === AppSettingsGroup.FunctionScreenshot) {
 				newSettings = newSettings as AppSettingsData[typeof group];

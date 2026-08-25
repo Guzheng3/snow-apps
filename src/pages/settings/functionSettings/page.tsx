@@ -54,11 +54,9 @@ import { FOCUS_WINDOW_APP_NAME_ENV_VARIABLE } from "@/constants/components/chat"
 import {
 	SOURCE_LANGUAGE_ENV_VARIABLE,
 	TARGET_LANGUAGE_ENV_VARIABLE,
-} from "@/constants/components/translation";
 import {
 	PLUGIN_ID_FFMPEG,
 	PLUGIN_ID_RAPID_OCR,
-	PLUGIN_ID_TRANSLATE,
 } from "@/constants/pluginService";
 import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";

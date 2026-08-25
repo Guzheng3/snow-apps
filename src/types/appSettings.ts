@@ -9,7 +9,6 @@ import type {
 	CommonKeyEventValue,
 } from "./core/commonKeyEvent";
 import { DrawState } from "./draw";
-import type { TranslationType } from "./servies/translation";
 import type { ImageFormat } from "./utils/file";
 
 export enum HistoryValidDuration {
@@ -68,61 +67,10 @@ export type ChatApiConfig = {
 	support_vision: boolean | undefined;
 };
 
-export enum TranslationApiType {	/** 金山词霸 (免Key) */
-	ICiba = "translation_api_iciba",
-	/** 腾讯通天�?(免Key) */
-	Transmart = "translation_api_transmart",
-	/** Yandex (免Key) */
-	Yandex = "translation_api_yandex",
-	/** 百度翻译 (需AppID+AppKey) */
-	Baidu = "translation_api_baidu",
-	/** 智谱GLM (需API Key) */
-	BigModel = "translation_api_bigmodel",
+		/** 腾讯通天�?(免Key) */
 }
 
 
-
-/** 云翻译引擎优先级排序 */
-export type CloudEngineOrder = TranslationApiType[];
-
-/** 云翻译引擎配�?*/
-export type CloudTranslationConfig = {
-	baiduAppId: string;
-	baiduAppKey: string;
-	bigmodelKey: string;
-	engineOrder: CloudEngineOrder;
-};
-
-export enum AppSettingsGroup {
-	Common = "common",
-	ThemeSkin = "themeSkin",
-	CommonTrayIcon = "commonTrayIcon",
-	FunctionDraw = "functionDraw",
-	Cache = "cache_20250731",
-	Screenshot = "screenshot",
-	FixedContent = "fixedContent",
-	DrawToolbarKeyEvent = "drawToolbarKeyEvent_20250526",
-	CommonKeyEvent = "commonKeyEvent",
-	AppFunction = "appFunction",
-	Render = "render",
-	SystemCommon = "systemCommon",
-	SystemChat = "systemChat",
-	SystemNetwork = "systemNetwork",
-	SystemScreenshot = "systemScreenshot_20250627",
-	SystemCore = "systemCore",
-	SystemScrollScreenshot = "systemScrollScreenshot_20250628",
-	FunctionChat = "functionChat",
-	FunctionOcr = "functionOcr",
-	FunctionTranslation = "functionTranslation",
-	FunctionTranslationCache = "functionTranslationCache",
-	FunctionScreenshot = "functionScreenshot",
-	FunctionFullScreenDraw = "functionFullScreenDraw",
-	FunctionOutput = "functionOutput_20250908",
-	FunctionFixedContent = "functionFixedContent",
-	FunctionVideoRecord = "functionVideoRecord",
-	FunctionTrayIcon = "functionTrayIcon",
-	FunctionGlobalShortcut = "functionGlobalShortcut",
-}
 
 export enum ShortcutKeyStatus {
 	Registered = "registered",
@@ -404,22 +352,6 @@ export type AppSettingsData = {
 		htmlVisionModelSystemPrompt: string;
 		/** 图片转为 Markdown �?System 提示�?*/
 		markdownVisionModelSystemPrompt: string;
-	};
-	[AppSettingsGroup.FunctionTranslation]: {
-		/** 优化 AI 翻译的排�?*/
-		optimizeAiTranslationLayout: boolean;
-		translationSystemPrompt: string;		sourceLanguage: string;
-		targetLanguage: string;
-		translationType: TranslationType | string;
-		/** 云翻译引擎配�?*/
-		cloudTranslationConfig: CloudTranslationConfig;
-		/** 是否启用云端翻译 */
-		enableCloudTranslation: boolean;
-	};
-	[AppSettingsGroup.FunctionTranslationCache]: {
-		cacheSourceLanguage: string;
-		cacheTargetLanguage: string;
-		cacheTranslationType: TranslationType | string;
 	};
 	[AppSettingsGroup.FunctionScreenshot]: {
 		/** 选取窗口子元�?*/

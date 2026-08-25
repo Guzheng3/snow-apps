@@ -136,7 +136,6 @@ const LayoutToolsTranslationLazyRoute =
     path: '/tools/translation',
     getParentRoute: () => LayoutRouteRoute,
   } as any).lazy(() =>
-    import('./routes/_layout/tools/translation.lazy').then((d) => d.Route),
   )
 const LayoutToolsChatLazyRoute = LayoutToolsChatLazyRouteImport.update({
   id: '/tools/chat',

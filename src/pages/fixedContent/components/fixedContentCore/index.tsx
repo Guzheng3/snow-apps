@@ -33,11 +33,9 @@ import {
 	startFreeDrag,
 } from "@/commands/core";
 import { showMainWindow } from "@/commands/videoRecord";
-import { OcrTranslateIcon } from "@/components/icons";
 import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
 import {
 		PLUGIN_ID_RAPID_OCR,
-		PLUGIN_ID_TRANSLATE,
 	} from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
@@ -294,7 +292,6 @@ const FixedContentCoreInner: React.FC<{
 			getSelectTextMode(fixedContentType) === "ocr" &&
 			ocrResult &&
 			enableSelectText &&
-			isReadyStatus?.(PLUGIN_ID_TRANSLATE)
 		);
 	}, [fixedContentType, enableSelectText, ocrResult, isReadyStatus]);
 	const enableVisionModelHtml = useMemo(() => {
@@ -2823,7 +2820,6 @@ const FixedContentCoreInner: React.FC<{
 				>
 					{enableOcrTranslate ? (
 						<Button
-							icon={<OcrTranslateIcon style={{ fontSize: "1.2em" }} />}
 							loading={translateLoading}
 							style={{
 								backgroundColor:

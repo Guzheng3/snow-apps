@@ -12,7 +12,6 @@ import { ResetSettingsButton } from "@/components/resetSettingsButton";
 import {
 		PLUGIN_ID_FFMPEG,
 		PLUGIN_ID_RAPID_OCR,
-		PLUGIN_ID_TRANSLATE,
 	} from "@/constants/pluginService";
 import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
@@ -82,7 +81,6 @@ export const HomePage = () => {
 											}
 
 					if (group === AppFunctionGroup.Translation) {
-						return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
 					}
 
 					return true;

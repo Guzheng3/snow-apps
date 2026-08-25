@@ -3,10 +3,8 @@ import { useCallback, useState } from "react";
 import { useIntl } from "react-intl";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
 import {
-	OcrTranslateIcon,
 } from "@/components/icons";
 import {
-		PLUGIN_ID_TRANSLATE,
 	} from "@/constants/pluginService";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
 import { useStateSubscriber } from "@/hooks/useStateSubscriber";
@@ -77,7 +75,6 @@ const OcrTool: React.FC<{
 	return (
 		<SubTools
 			buttons={[
-				...(isReadyStatus?.(PLUGIN_ID_TRANSLATE)
 					? [
 							<Button
 								disabled={!currentOcrResult}
@@ -101,7 +98,6 @@ const OcrTool: React.FC<{
 										? "primary"
 										: "text"
 								}
-								icon={<OcrTranslateIcon />}
 								title={intl.formatMessage({ id: "draw.ocrDetect.translate" })}
 								key="translate"
 							/>,

@@ -18,20 +18,16 @@
 	OcrModel,
 	TrayIconClickAction,
 	TrayIconDefaultIcon,
-	TranslationApiType,
 	VideoMaxSize,
 } from "@/types/appSettings";
 import { DrawState } from "@/types/draw";
 import {
 
-	TranslationType,
-} from "@/types/servies/translation";
 import { ImageFormat } from "@/types/utils/file";
 import { getPlatformValue } from "@/utils/platform";
 import { defaultAppFunctionConfigs } from "./appFunction";
 import { defaultCommonKeyEventSettings } from "./commonKeyEvent";
 import { FOCUS_WINDOW_APP_NAME_ENV_VARIABLE } from "./components/chat";
-import { defaultTranslationPrompt } from "./components/translation";
 import { defaultDrawToolbarKeyEventSettings } from "./drawToolbarKeyEvent";
 
 export const defaultAppSettingsData: AppSettingsData = {
@@ -138,30 +134,6 @@ export const defaultAppSettingsData: AppSettingsData = {
 		autoCreateNewSession: true,
 		autoCreateNewSessionOnCloseWindow: true,
 		chatApiConfigList: [],
-	},
-	[AppSettingsGroup.FunctionTranslation]: {
-		optimizeAiTranslationLayout: true,
-		translationSystemPrompt: defaultTranslationPrompt,		sourceLanguage: "auto",
-		targetLanguage: "zh-CHS",
-		translationType: TranslationType.Youdao,
-		enableCloudTranslation: true,
-		cloudTranslationConfig: {
-			baiduAppId: "",
-			baiduAppKey: "",
-			bigmodelKey: "",
-			engineOrder: [
-				TranslationApiType.Transmart,
-				TranslationApiType.ICiba,
-				TranslationApiType.Yandex,
-				TranslationApiType.Baidu,
-				TranslationApiType.BigModel,
-			],
-		},
-	},
-	[AppSettingsGroup.FunctionTranslationCache]: {
-		cacheSourceLanguage: "auto",
-		cacheTargetLanguage: "zh-CHS",
-		cacheTranslationType: TranslationType.Youdao,
 	},
 	[AppSettingsGroup.FunctionOcr]: {
 		ocrModel: OcrModel.RapidOcrV4,

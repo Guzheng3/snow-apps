@@ -35,11 +35,9 @@ import {
 	FullScreenDrawIcon,
 	FullScreenIcon,
 	OcrDetectIcon,
-	OcrTranslateIcon,
 	ScreenshotIcon,
 	SelectTextIcon,
 	TopWindowIcon,
-	TranslationIcon,
 	VideoRecordIcon,
 } from "@/components/icons";
 import { TrayIconStatePublisher } from "@/components/trayIconLoader";
@@ -47,7 +45,6 @@ import { defaultAppFunctionConfigs } from "@/constants/appFunction";
 import {
 		PLUGIN_ID_FFMPEG,
 		PLUGIN_ID_RAPID_OCR,
-		PLUGIN_ID_TRANSLATE,
 	} from "@/constants/pluginService";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
@@ -58,8 +55,6 @@ import {
 import {
 	executeChat,
 	executeChatSelectedText,
-	executeTranslate,
-	executeTranslateSelectedText,
 	openCaptureHistory,
 	openImageSaveFolder,
 	showOrHideMainWindow,
@@ -143,13 +138,11 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
 				}
 
 				if (key === AppFunction.Translation) {
-					return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
 				}
 
 				if (key === AppFunction.ScreenshotOcrTranslate) {
 					return (
 						isReadyStatus?.(PLUGIN_ID_RAPID_OCR) &&
-						isReadyStatus?.(PLUGIN_ID_TRANSLATE)
 					);
 				}
 
@@ -196,7 +189,6 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
 							break;
 						case AppFunction.ScreenshotOcrTranslate:
 							buttonTitle = <FormattedMessage id="draw.ocrTranslateTool" />;
-							buttonIcon = <OcrTranslateIcon style={{ fontSize: "1.2em" }} />;
 							buttonOnClick = () =>
 								executeScreenshot(ScreenshotType.OcrTranslate);
 							break;
@@ -234,14 +226,11 @@ const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
 							);
 							buttonIcon = <SelectTextIcon style={{ fontSize: "1em" }} />;
 							buttonOnClick = async () => {
-								executeTranslateSelectedText();
 							};
 							break;
 						case AppFunction.Translation:
 							buttonTitle = <FormattedMessage id="home.translation" />;
-							buttonIcon = <TranslationIcon />;
 							buttonOnClick = () => {
-								executeTranslate();
 							};
 							break;
 						case AppFunction.ChatSelectText:

@@ -22,7 +22,6 @@ import { AntdContext } from "@/contexts/antdContext";
 import { AppContext } from "@/contexts/appContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
-import { useTranslationRequest } from "@/core/translations";
 import { releaseOcrSession } from "@/functions/ocr";
 import { useHotkeysApp } from "@/hooks/useHotkeysApp";
 import { useStateRef } from "@/hooks/useStateRef";
@@ -1192,7 +1191,6 @@ export const OcrResult: React.FC<{
 		],
 	);
 
-	const { requestTranslate } = useTranslationRequest(
 		useMemo(() => {
 			return {
 				onComplete: (result, requestId) => {

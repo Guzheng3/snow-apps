@@ -291,11 +291,9 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({
 				callback: async () => {},
 			});
 			defaultListener.push({
-				event: "execute-translate",
 				callback: async () => {},
 			});
 			defaultListener.push({
-				event: "execute-translate-selected-text",
 				callback: async () => {},
 			});
 			defaultListener.push({

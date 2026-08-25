@@ -6,7 +6,6 @@ import {
 	MailOutlined,
 	MobileOutlined,
 	QqOutlined,
-	TranslationOutlined,
 } from "@ant-design/icons";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useContext, useEffect, useState, type ReactNode } from "react";
@@ -14,7 +13,6 @@ import { AntdContext } from "@/contexts/antdContext";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import { writeTextToClipboard } from "@/utils/clipboard";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { cloudTranslate } from "@/commands/translate";
 import styles from "./index.module.css";
 
 /** Tauri v2 ResizeDirection 枚举值 */
@@ -363,7 +361,6 @@ export const OcrResultModal: React.FC<{
 				if (!showTranslate && !translatedText) {
 					setTranslating(true);
 					try {
-						const result = await cloudTranslate(editableText, "auto", "zh-CHS");
 						setTranslatedText(result);
 					} catch {
 						message.error("翻译失败");
@@ -469,7 +466,6 @@ export const OcrResultModal: React.FC<{
 						title="翻译"
 						onClick={handleTranslate}
 					>
-						<TranslationOutlined />
 					</button>
 				</div>
 			</div>

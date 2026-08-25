@@ -21,7 +21,6 @@ import {
 } from "@/components/trayIconLoader";
 import {
 		PLUGIN_ID_FFMPEG,
-		PLUGIN_ID_TRANSLATE,
 	} from "@/constants/pluginService";
 import { AppContext } from "@/contexts/appContext";
 import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
@@ -147,7 +146,6 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 										}
 
 										if (item.key === "translationFunction") {
-											return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
 										}
 
 										return true;
@@ -186,7 +184,6 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 										},
 									].filter((item) => {
 										if (item.key === "/tools/translation") {
-											return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
 										}
 
 										return true;

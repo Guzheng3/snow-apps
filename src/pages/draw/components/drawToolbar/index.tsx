@@ -31,7 +31,6 @@ import {
 	FastSaveIcon,
 	FixedIcon,
 	OcrDetectIcon,
-	OcrTranslateIcon,
 	PenIcon,
 	SaveIcon,
 	SaveToCloudIcon,
@@ -41,7 +40,6 @@ import {
 } from "@/components/icons";
 import {
 	PLUGIN_ID_RAPID_OCR,
-	PLUGIN_ID_TRANSLATE,
 } from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
 import {
@@ -981,13 +979,11 @@ return (
 									customToolbarToolHiddenMap?.[DrawState.OcrTranslate]
 								}
 								componentKey={DrawToolbarKeyEventKey.OcrTranslateTool}
-								icon={<OcrTranslateIcon style={{ fontSize: "1em" }} />}
 								drawState={DrawState.OcrTranslate}
 								disable={
 									disableNormalScreenshotTool ||
 									!(
 										(isReadyStatus?.(PLUGIN_ID_RAPID_OCR) &&
-											isReadyStatus?.(PLUGIN_ID_TRANSLATE))
 									)
 								}
 								onClick={() => {

@@ -30,17 +30,6 @@ const GlobalEventHandlerCore: React.FC = () => {
 					to: `/tools/chat?selectText=${encodeParamsValue(text)}&t=${Date.now()}`,
 				});
 			}),
-			addListener("execute-translate", () => {
-				showWindow();
-				router.navigate({ to: `/tools/translation?t=${Date.now()}` });
-			}),
-			addListener("execute-translate-selected-text", async () => {
-				const text = (await getSelectedText()).substring(0, 10000);
-				await showWindow();
-				router.navigate({
-					to: `/tools/translation?selectText=${encodeParamsValue(text)}&t=${Date.now()}`,
-				});
-			}),
 			addListener("show-or-hide-main-window", () => {
 				showMainWindow(true);
 			}),

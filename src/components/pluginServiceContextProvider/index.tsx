@@ -10,7 +10,6 @@ import {
 import {
 		PLUGIN_ID_FFMPEG,
 		PLUGIN_ID_RAPID_OCR,
-		PLUGIN_ID_TRANSLATE,
 	} from "@/constants/pluginService";
 import { PluginServiceContext } from "@/contexts/pluginServiceContext";
 import { useStateRef } from "@/hooks/useStateRef";
@@ -43,7 +42,6 @@ export const PluginServiceContextProvider: React.FC<{
 				file_list: getPlatform() === "windows" ? ["ffmpeg.exe"] : ["ffmpeg"],
 			},
 			{
-						id: PLUGIN_ID_TRANSLATE,
 						file_list: [],
 					},
 				];
