@@ -23,7 +23,7 @@
 } from "@/types/appSettings";
 import { DrawState } from "@/types/draw";
 import {
-	TranslationDomain,
+
 	TranslationType,
 } from "@/types/servies/translation";
 import { ImageFormat } from "@/types/utils/file";
@@ -143,7 +143,6 @@ export const defaultAppSettingsData: AppSettingsData = {
 		optimizeAiTranslationLayout: true,
 		translationSystemPrompt: defaultTranslationPrompt,		sourceLanguage: "auto",
 		targetLanguage: "zh-CHS",
-		translationDomain: TranslationDomain.General,
 		translationType: TranslationType.Youdao,
 		enableCloudTranslation: true,
 		cloudTranslationConfig: {
@@ -162,7 +161,6 @@ export const defaultAppSettingsData: AppSettingsData = {
 	[AppSettingsGroup.FunctionTranslationCache]: {
 		cacheSourceLanguage: "auto",
 		cacheTargetLanguage: "zh-CHS",
-		cacheTranslationDomain: TranslationDomain.General,
 		cacheTranslationType: TranslationType.Youdao,
 	},
 	[AppSettingsGroup.FunctionOcr]: {

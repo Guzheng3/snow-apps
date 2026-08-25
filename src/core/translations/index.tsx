@@ -4,9 +4,7 @@ import { AntdContext } from "@/contexts/antdContext";
 import { AppSettingsActionContext } from "@/contexts/appSettingsActionContext";
 import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
 import { useStateRef } from "@/hooks/useStateRef";
-import { type ChatModel, getChatModelsWithCache } from "@/services/tools/chat";
 import {
-	getTranslationTypesWithCache,
 	translate,
 } from "@/services/tools/translation";
 import {
@@ -15,16 +13,10 @@ import {
 } from "@/types/appSettings";
 import {
 	type TranslateData,
-	TranslationDomain,
 	TranslationType,
-	type TranslationTypeOption,
 } from "@/types/servies/translation";
 import { type ServiceResponse } from "@/services/tools";
 import { appError } from "@/utils/log";
-
-export type TranslationServiceConfig = TranslationTypeOption & {
-	isOfficial: boolean;
-};
 
 export const useTranslationRequest = (options?: {
 	/// 配置从 Cache 中加载
@@ -37,9 +29,6 @@ export const useTranslationRequest = (options?: {
 	const intl = useIntl();
 	const { message } = useContext(AntdContext);
 
-	// 翻译领域
-	const [translationDomain, setTranslationDomain, translationDomainRef] =
-		useStateRef<TranslationDomain>(TranslationDomain.General);
 	// 翻译类型
 	const [translationType, setTranslationType, translationTypeRef] = useStateRef<
 		TranslationType | string
@@ -51,12 +40,6 @@ export const useTranslationRequest = (options?: {
 	const [targetLanguage, setTargetLanguage, targetLanguageRef] =
 		useStateRef<string>("zh-CHS");
 
-	// Snow Shot 自带的翻译类型
-	const [
-		officialTranslationTypes,
-		setOfficialTranslationTypes,
-		officialTranslationTypesRef,
-	] = useStateRef<TranslationTypeOption[] | undefined>(undefined);
 	const [translationConfig, setTranslationConfig] =
 		useState<AppSettingsData[AppSettingsGroup.FunctionTranslation]>();
 
@@ -64,10 +47,6 @@ export const useTranslationRequest = (options?: {
 		useCallback(
 			(settings: AppSettingsData) => {
 				if (options?.enableCacheConfig) {
-					setTranslationDomain(
-						settings[AppSettingsGroup.FunctionTranslationCache]
-							.cacheTranslationDomain,
-					);
 					setTranslationType(
 						settings[AppSettingsGroup.FunctionTranslationCache]
 							.cacheTranslationType,
@@ -81,9 +60,6 @@ export const useTranslationRequest = (options?: {
 							.cacheTargetLanguage,
 					);
 				} else {
-					setTranslationDomain(
-						settings[AppSettingsGroup.FunctionTranslation].translationDomain,
-					);
 					setTranslationType(
 						settings[AppSettingsGroup.FunctionTranslation].translationType,
 					);
@@ -100,7 +76,6 @@ export const useTranslationRequest = (options?: {
 			[
 				setSourceLanguage,
 				setTargetLanguage,
-				setTranslationDomain,
 				setTranslationType,
 				options?.enableCacheConfig,
 			],
@@ -108,48 +83,6 @@ export const useTranslationRequest = (options?: {
 		true,
 	);
 	const { updateAppSettings } = useContext(AppSettingsActionContext);
-
-	const reloadOnlineConfigsPromiseRef = useRef<
-		Promise<[undefined]> | undefined
-	>(undefined);
-	const reloadOnlineConfigs = useCallback(async () => {
-		if (officialTranslationTypesRef.current) {
-			return;
-		}
-
-		const promise = Promise.all([
-			getTranslationTypesWithCache().then((res) => {
-				setOfficialTranslationTypes(res ?? []);
-				return undefined;
-			}),
-		]);
-		reloadOnlineConfigsPromiseRef.current = promise;
-		await promise;
-	}, [setOfficialTranslationTypes, officialTranslationTypesRef]);
-
-	useEffect(() => {
-		if (options?.lazyLoad) {
-			return;
-		}
-
-		reloadOnlineConfigs();
-	}, [reloadOnlineConfigs, options?.lazyLoad]);
-
-	const [supportedTranslationTypes, setSupportedTranslationTypes] =
-		useState<TranslationServiceConfig[]>([]);
-
-	const [supportedTranslationTypesLoading, setSupportedTranslationTypesLoading] =
-		useState(false);
-	useEffect(() => {
-		setSupportedTranslationTypesLoading(true);
-		setSupportedTranslationTypes(
-			(officialTranslationTypes ?? []).map((item) => ({
-				...item,
-				isOfficial: true,
-			})),
-		);
-		setSupportedTranslationTypesLoading(false);
-	}, [officialTranslationTypes, setSupportedTranslationTypes]);
 
 	// 请求翻译的加载
 	const [startTranslateLoading, setStartTranslateLoading] = useState(false);
@@ -159,19 +92,8 @@ export const useTranslationRequest = (options?: {
 	const requestTranslate = useCallback(
 		async (sourceContent: string[], requestId?: number) => {
 			const translationType = translationTypeRef.current;
-			const translationDomain = translationDomainRef.current;
 			const sourceLanguage = sourceLanguageRef.current;
 			const targetLanguage = targetLanguageRef.current;
-
-			if (options?.lazyLoad) {
-				await reloadOnlineConfigs();
-				await new Promise((resolve) => setTimeout(resolve, 17));
-			}
-
-			if (reloadOnlineConfigsPromiseRef.current) {
-				await reloadOnlineConfigsPromiseRef.current;
-				await new Promise((resolve) => setTimeout(resolve, 17));
-			}
 
 			setStartTranslateLoading(true);
 			let translateResult:
@@ -182,7 +104,6 @@ export const useTranslationRequest = (options?: {
 					content: sourceContent,
 					from: sourceLanguage,
 					to: targetLanguage,
-					domain: translationDomain,
 					type: translationType as TranslationType,
 				});
 			} catch (error) {
@@ -211,38 +132,9 @@ export const useTranslationRequest = (options?: {
 			sourceLanguageRef,
 			message,
 			targetLanguageRef,
-			translationDomainRef,
 			translationTypeRef,
 			setTranslatedContent,
-			reloadOnlineConfigs,
 		],
-	);
-
-	const updateTranslationDomain = useCallback(
-		(translationDomain: TranslationDomain) => {
-			if (options?.enableCacheConfig) {
-				updateAppSettings(
-					AppSettingsGroup.FunctionTranslationCache,
-					{ cacheTranslationDomain: translationDomain },
-					true,
-					true,
-					false,
-					true,
-					false,
-				);
-			} else {
-				updateAppSettings(
-					AppSettingsGroup.FunctionTranslation,
-					{ translationDomain },
-					true,
-					true,
-					true,
-					true,
-					false,
-				);
-			}
-		},
-		[updateAppSettings, options?.enableCacheConfig],
 	);
 
 	const updateTranslationType = useCallback(
@@ -331,7 +223,6 @@ export const useTranslationRequest = (options?: {
 	}, [translatedContentRef]);
 
 	return {
-		updateTranslationDomain,
 		updateTranslationType,
 		updateSourceLanguage,
 		updateTargetLanguage,
@@ -339,11 +230,8 @@ export const useTranslationRequest = (options?: {
 		startTranslateLoading,
 		translatedContent,
 		translationType,
-		translationDomain,
 		sourceLanguage,
 		targetLanguage,
-		supportedTranslationTypes,
-		supportedTranslationTypesLoading,
 		getTranslatedContent,
 	};
 };

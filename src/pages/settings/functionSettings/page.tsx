@@ -54,7 +54,6 @@ import { FOCUS_WINDOW_APP_NAME_ENV_VARIABLE } from "@/constants/components/chat"
 import {
 	SOURCE_LANGUAGE_ENV_VARIABLE,
 	TARGET_LANGUAGE_ENV_VARIABLE,
-	TRANSLATION_DOMAIN_ENV_VARIABLE,
 } from "@/constants/components/translation";
 import {
 	PLUGIN_ID_FFMPEG,
@@ -80,7 +79,6 @@ import {
 	TrayIconClickAction,
 	VideoMaxSize,
 } from "@/types/appSettings";
-import { CloudTranslationEngineManager } from "./components/cloudTranslationEngineManager";
 import { DrawState } from "@/types/draw";
 import { ImageFormat } from "@/types/utils/file";
 import {
@@ -110,9 +108,7 @@ export const FunctionSettingsPage = () => {
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionVideoRecord]>();
 	const [functionOcrForm] =
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionOcr]>();
-	const [translationForm] =
-			Form.useForm<AppSettingsData[AppSettingsGroup.FunctionTranslation]>();
-	const [functionGlobalShortcutForm] =
+		const [functionGlobalShortcutForm] =
 		Form.useForm<AppSettingsData[AppSettingsGroup.FunctionGlobalShortcut]>();
 
 	const [appSettingsLoading, setAppSettingsLoading] = useState(true);
@@ -242,8 +238,7 @@ export const FunctionSettingsPage = () => {
 				trayIconForm,
 				functionOcrForm,
 				functionGlobalShortcutForm,
-				translationForm,
-			],
+				],
 		),
 		true,
 	);
@@ -703,7 +698,6 @@ export const FunctionSettingsPage = () => {
 					{ key: "functionDrawSettings", label: intl.formatMessage({ id: "settings.functionSettings.drawSettings" }) },
 					{ key: "fixedContentSettings", label: intl.formatMessage({ id: "settings.functionSettings.fixedContentSettings" }) },
 					{ key: "ocrSettings", label: intl.formatMessage({ id: "settings.functionSettings.ocrSettings" }) },
-					{ key: "translationSettings", label: "云翻译引擎" },
 					{ key: "fullScreenDrawSettings", label: intl.formatMessage({ id: "settings.functionSettings.fullScreenDrawSettings" }) },
 					{ key: "videoRecordSettings", label: intl.formatMessage({ id: "settings.functionSettings.videoRecordSettings" }) },
 					{ key: "trayIconSettings", label: intl.formatMessage({ id: "settings.commonSettings.trayIconSettings" }) },
@@ -1347,69 +1341,10 @@ export const FunctionSettingsPage = () => {
 									</Col>
 													</Row>
 
-						<Divider style={{ margin: "12px 0" }} />
-							<Typography.Text strong>
-								内建翻译引擎管理
-							</Typography.Text>
-							<Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
-								配置各翻译引擎的 API Key 和优先级顺序。翻译时按优先级从上到下自动 fallback。
-							</Typography.Paragraph>
-
-							<CloudTranslationEngineManager />
 						</ProForm>
 					</Spin>
 				</div>
 
-				<div style={{ display: activeTab === "translationSettings" ? undefined : "none" }}>
-					<GroupTitle
-						id="translationSettings"
-						extra={
-							<ResetSettingsButton
-								title="云翻译引擎"
-								appSettingsGroup={AppSettingsGroup.FunctionTranslation}
-							/>
-						}
-					></GroupTitle>
-
-					<Spin spinning={appSettingsLoading}>
-						<ProForm
-							form={translationForm}
-							onValuesChange={(_, values) => {
-								updateAppSettings(
-									AppSettingsGroup.FunctionTranslation,
-									values,
-									true,
-									true,
-									true,
-									true,
-									false,
-								);
-							}}
-							submitter={false}
-							layout="horizontal"
-						>
-							<Row gutter={token.marginLG}>
-								<Col span={12}>
-									<ProFormSwitch
-										name="enableCloudTranslation"
-										label="启用内建云翻译引擎"
-									/>
-								</Col>
-								<Col span={12}>
-									<ProFormSwitch
-										name="optimizeAiTranslationLayout"
-										label={
-											<IconLabel
-												label="优化 AI 翻译排版"
-												tooltipTitle="移除翻译结果中的多余空行，使排版更紧凑"
-											/>
-										}
-									/>
-								</Col>
-							</Row>
-						</ProForm>
-					</Spin>
-				</div>
 
 
 				<div style={{ display: activeTab === "fullScreenDrawSettings" ? undefined : "none" }}>

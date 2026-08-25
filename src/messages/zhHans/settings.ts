@@ -147,9 +147,7 @@ export const settings = {
 		"源语言",
 	"settings.functionSettings.translationSettings.chatPrompt.targetLanguage":
 		"目标语言",
-	"settings.functionSettings.translationSettings.chatPrompt.translationDomain":
-		"翻译领域",
-	"settings.functionSettings.chatSettings": "AI 对话",
+		"settings.functionSettings.chatSettings": "AI 对话",
 	"settings.functionSettings.chatSettings.autoCreateNewSession":
 		"快捷键启动时自动创建新会话",
 	"settings.functionSettings.chatSettings.autoCreateNewSessionOnCloseWindow":

@@ -1,4 +1,4 @@
-//! Cloud translation engines: ICiba, Transmart, Yandex, Baidu, BigModel (智谱)
+//! Cloud translation engines: Google, Microsoft, ICiba, Transmart, Yandex, Baidu, BigModel (智谱)
 //! All engines are built-in, no plugin dependency.
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -6,10 +6,16 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use md5::{Digest, Md5};
 use serde_json::Value;
+use base64::Engine;
+use tokio::sync::Mutex;
 
 /// Supported cloud translation engines
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CloudEngine {
+    #[serde(rename = "google")]
+    Google,
+    #[serde(rename = "microsoft")]
+    Microsoft,
     #[serde(rename = "iciba")]
     ICiba,
     #[serde(rename = "transmart")]
@@ -25,6 +31,8 @@ pub enum CloudEngine {
 impl CloudEngine {
     pub fn name(&self) -> &str {
         match self {
+            CloudEngine::Google => "Google 翻译",
+            CloudEngine::Microsoft => "微软翻译",
             CloudEngine::ICiba => "金山词霸",
             CloudEngine::Transmart => "腾讯通天塔",
             CloudEngine::Yandex => "Yandex",
@@ -40,7 +48,11 @@ impl CloudEngine {
     pub fn is_free(&self) -> bool {
         matches!(
             self,
-            CloudEngine::ICiba | CloudEngine::Transmart | CloudEngine::Yandex
+            CloudEngine::Google
+                | CloudEngine::Microsoft
+                | CloudEngine::ICiba
+                | CloudEngine::Transmart
+                | CloudEngine::Yandex
         )
     }
 }
@@ -60,6 +72,8 @@ impl Default for CloudConfig {
             baidu_app_key: String::new(),
             bigmodel_key: String::new(),
             engine_order: vec![
+                CloudEngine::Google,
+                CloudEngine::Microsoft,
                 CloudEngine::Transmart,
                 CloudEngine::ICiba,
                 CloudEngine::Yandex,
@@ -70,10 +84,17 @@ impl Default for CloudConfig {
     }
 }
 
+/// Cached Microsoft Edge token
+struct EdgeTokenCache {
+    token: String,
+    expires_at: u64, // unix seconds
+}
+
 /// HTTP client wrapper
 pub struct CloudTranslator {
     client: Client,
     config: CloudConfig,
+    edge_token: Mutex<Option<EdgeTokenCache>>,
 }
 
 impl CloudTranslator {
@@ -81,6 +102,7 @@ impl CloudTranslator {
         Self {
             client: Client::new(),
             config,
+            edge_token: Mutex::new(None),
         }
     }
 
@@ -117,12 +139,177 @@ impl CloudTranslator {
         to: &str,
     ) -> Result<String, String> {
         match engine {
+            CloudEngine::Google => self.translate_google(text, from, to).await,
+            CloudEngine::Microsoft => self.translate_microsoft(text, from, to).await,
             CloudEngine::ICiba => self.translate_iciba(text, from, to).await,
             CloudEngine::Transmart => self.translate_transmart(text, from, to).await,
             CloudEngine::Yandex => self.translate_yandex(text, from, to).await,
             CloudEngine::Baidu => self.translate_baidu(text, from, to).await,
             CloudEngine::BigModel => self.translate_bigmodel(text, from, to).await,
         }
+    }
+
+    // ========== Google 翻译 - 免Key ==========
+    async fn translate_google(&self, text: &str, from: &str, to: &str) -> Result<String, String> {
+        let sl = if from == "auto" || from.is_empty() {
+            "auto"
+        } else {
+            from
+        };
+        let url = format!(
+            "https://translate.google.com/translate_a/single?client=gtx&dt=t&dj=1&ie=UTF-8&sl={sl}&tl={to}&q={}",
+            urlencoding::encode(text)
+        );
+
+        let resp = self
+            .client
+            .get(&url)
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            )
+            .send()
+            .await
+            .map_err(|e| format!("Google HTTP error: {e}"))?;
+
+        let json: Value = resp
+            .json()
+            .await
+            .map_err(|e| format!("Google JSON error: {e}"))?;
+
+        let sentences = json["sentences"]
+            .as_array()
+            .ok_or_else(|| "Google: no sentences array".to_string())?;
+
+        let result: String = sentences
+            .iter()
+            .filter_map(|s| s["trans"].as_str())
+            .collect();
+
+        if result.is_empty() {
+            return Err("Google: empty result".to_string());
+        }
+        Ok(result)
+    }
+
+    // ========== Microsoft 翻译 (Edge Token) - 免Key ==========
+    async fn get_edge_token(&self) -> Result<String, String> {
+        // Check cache first
+        {
+            let cache = self.edge_token.lock().await;
+            if let Some(ref c) = *cache {
+                let now = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
+                // Refresh 1 minute before expiry
+                if now < c.expires_at.saturating_sub(60) {
+                    return Ok(c.token.clone());
+                }
+            }
+        }
+
+        // Fetch new token
+        let resp = self
+            .client
+            .get("https://edge.microsoft.com/translate/auth")
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            )
+            .send()
+            .await
+            .map_err(|e| format!("Microsoft auth HTTP error: {e}"))?;
+
+        let token = resp
+            .text()
+            .await
+            .map_err(|e| format!("Microsoft auth read error: {e}"))?
+            .trim()
+            .trim_matches('"')
+            .to_string();
+
+        if token.is_empty() {
+            return Err("Microsoft: empty auth token".to_string());
+        }
+
+        // Parse JWT expiry (simple base64 decode of payload)
+        let expires_at = Self::parse_jwt_expiry(&token).unwrap_or_else(|| {
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+                + 300 // fallback: 5 minutes
+        });
+
+        let mut cache = self.edge_token.lock().await;
+        *cache = Some(EdgeTokenCache {
+            token: token.clone(),
+            expires_at,
+        });
+
+        Ok(token)
+    }
+
+    fn parse_jwt_expiry(token: &str) -> Option<u64> {
+        let parts: Vec<&str> = token.split('.').collect();
+        if parts.len() < 2 {
+            return None;
+        }
+        let payload_b64 = parts[1].replace('-', "+").replace('_', "/");
+        let padded = match payload_b64.len() % 4 {
+            0 => payload_b64,
+            n => payload_b64 + &"=".repeat(4 - n),
+        };
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(&padded)
+            .ok()?;
+        let json: Value = serde_json::from_slice(&bytes).ok()?;
+        json["exp"].as_u64()
+    }
+
+    async fn translate_microsoft(
+        &self,
+        text: &str,
+        from: &str,
+        to: &str,
+    ) -> Result<String, String> {
+        let token = self.get_edge_token().await?;
+
+        let mut url = format!(
+            "https://api-edge.cognitive.microsofttranslator.com/translate?api-version=3.0&to={to}"
+        );
+        if from != "auto" && !from.is_empty() {
+            url.push_str(&format!("&from={from}"));
+        }
+
+        let body = serde_json::json!([{"Text": text}]);
+
+        let resp = self
+            .client
+            .post(&url)
+            .header("Authorization", format!("Bearer {token}"))
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            )
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| format!("Microsoft HTTP error: {e}"))?;
+
+        let json: Value = resp
+            .json()
+            .await
+            .map_err(|e| format!("Microsoft JSON error: {e}"))?;
+
+        json.as_array()
+            .and_then(|arr| arr.first())
+            .and_then(|r| r["translations"].as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|t| t["text"].as_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| "Microsoft: empty result".to_string())
     }
 
     // ========== ICiba (金山词霸) - 免Key ==========

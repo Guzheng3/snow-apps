@@ -1,4 +1,4 @@
-﻿import { CloseOutlined, CopyOutlined, SwapOutlined } from "@ant-design/icons";
+import { CloseOutlined, CopyOutlined, SwapOutlined } from "@ant-design/icons";
 import {
 	Button,
 	Col,
@@ -21,12 +21,9 @@ import React, {
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
-	type TranslationServiceConfig,
 	useTranslationRequest,
 } from "@/core/translations";
 import { useStateRef } from "@/hooks/useStateRef";
-import { ModelSelectLabel } from "@/pages/tools/chat/components/modelSelectLabel";
-import { TranslationDomain } from "@/types/servies/translation";
 import { writeTextToClipboard } from "@/utils/clipboard";
 
 const SelectLabel: React.FC<{
@@ -209,61 +206,6 @@ export const useLanguageOptions = () => {
 	};
 };
 
-export const useTranslationTypeOptions = (
-	supportedTranslationTypes: TranslationServiceConfig[],
-) => {
-	const translationTypeOptions = useMemo((): SelectProps["options"] => {
-		return supportedTranslationTypes.map((item) => ({
-			label: <ModelSelectLabel modelName={item.name} />,
-			value: item.type,
-		}));
-	}, [supportedTranslationTypes]);
-
-		return {
-				translationTypeOptions,
-	};
-};
-
-export const useTranslationDomainOptions = () => {
-	const intl = useIntl();
-
-	return useMemo(
-		() => [
-			{
-				label: intl.formatMessage({
-					id: "tools.translation.domain.general",
-				}),
-				value: TranslationDomain.General,
-			},
-			{
-				label: intl.formatMessage({
-					id: "tools.translation.domain.computers",
-				}),
-				value: TranslationDomain.Computers,
-			},
-			{
-				label: intl.formatMessage({
-					id: "tools.translation.domain.medicine",
-				}),
-				value: TranslationDomain.Medicine,
-			},
-			{
-				label: intl.formatMessage({
-					id: "tools.translation.domain.finance",
-				}),
-				value: TranslationDomain.Finance,
-			},
-			{
-				label: intl.formatMessage({
-					id: "tools.translation.domain.game",
-				}),
-				value: TranslationDomain.Game,
-			},
-		],
-		[intl],
-	);
-};
-
 const TranslatorCore: React.FC<{
 	actionRef: React.RefObject<TranslatorActionType | undefined>;
 }> = ({ actionRef }) => {
@@ -272,21 +214,16 @@ const TranslatorCore: React.FC<{
 	const { token } = theme.useToken();
 
 	const { sourceLanguageOptions, targetLanguageOptions } = useLanguageOptions();
-	const translationDomainOptions = useTranslationDomainOptions();
 
 	const translatedResultRef = useRef<{ content: string }[]>([]);
 	const {
 		sourceLanguage,
 		targetLanguage,
 		translationType,
-		translationDomain,
-		supportedTranslationTypes,
 		startTranslateLoading,
 		updateSourceLanguage,
 		updateTargetLanguage,
 		updateTranslationType,
-		updateTranslationDomain,
-		supportedTranslationTypesLoading,
 		requestTranslate,
 		translatedContent,
 		getTranslatedContent,
@@ -330,10 +267,7 @@ const TranslatorCore: React.FC<{
 		translationType,
 		sourceLanguage,
 		targetLanguage,
-		translationDomain,
 	]);
-
-	const supportDomain = useMemo(() => true, []);
 
 	const onCopy = useCallback(() => {
 		if (!getTranslatedContent()) {
@@ -344,10 +278,6 @@ const TranslatorCore: React.FC<{
 
 	const hasSourceContent = !!sourceContent;
 	const hasTranslatedContent = !!translatedContent;
-
-	const { translationTypeOptions } = useTranslationTypeOptions(
-		supportedTranslationTypes,
-	);
 
 	const sourceContentRef = useRef<TextAreaRef>(null);
 	useImperativeHandle(
@@ -414,54 +344,6 @@ const TranslatorCore: React.FC<{
 									updateTargetLanguage(value);
 								}}
 								options={targetLanguageOptions}
-								filterOption={selectFilterOption}
-								styles={{
-									popup: {
-										root: {
-											minWidth: 200,
-										},
-									},
-								}}
-								variant="underlined"
-							/>
-						</Form.Item>
-					</Flex>
-					<Flex gap={token.margin}>
-						<Form.Item
-							style={{ marginBottom: token.marginXS }}
-							label={<FormattedMessage id="tools.translation.type" />}
-						>
-							<Select
-								showSearch
-								value={translationType}
-								onChange={(value) => {
-									updateTranslationType(value);
-								}}
-								options={translationTypeOptions}
-								loading={supportedTranslationTypesLoading}
-								filterOption={selectFilterOption}
-								styles={{
-									popup: {
-										root: {
-											minWidth: 200,
-										},
-									},
-								}}
-								variant="underlined"
-							/>
-						</Form.Item>
-						<Form.Item
-							style={{ marginBottom: token.marginXS }}
-							label={<FormattedMessage id="tools.translation.domain" />}
-							hidden={!supportDomain}
-						>
-							<Select
-								showSearch
-								value={translationDomain}
-								onChange={(value) => {
-									updateTranslationDomain(value);
-								}}
-								options={translationDomainOptions}
 								filterOption={selectFilterOption}
 								styles={{
 									popup: {

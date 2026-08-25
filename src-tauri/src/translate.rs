@@ -52,6 +52,8 @@ pub async fn cloud_translate_set_config(
 #[command]
 pub async fn cloud_translate_get_engines() -> Result<Vec<serde_json::Value>, String> {
     let engines = vec![
+        CloudEngine::Google,
+        CloudEngine::Microsoft,
         CloudEngine::ICiba,
         CloudEngine::Transmart,
         CloudEngine::Yandex,
@@ -81,6 +83,8 @@ pub async fn cloud_translate_test(
     to: String,
 ) -> Result<String, String> {
     let engine: CloudEngine = match engine_id.as_str() {
+        "google" => CloudEngine::Google,
+        "microsoft" => CloudEngine::Microsoft,
         "iciba" => CloudEngine::ICiba,
         "transmart" => CloudEngine::Transmart,
         "yandex" => CloudEngine::Yandex,
