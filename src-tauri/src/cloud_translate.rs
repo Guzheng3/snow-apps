@@ -1,4 +1,4 @@
-//! Cloud translation engines: Google, Microsoft, ICiba, Transmart, Yandex, Baidu, BigModel (智谱)
+//! Cloud translation engines: Microsoft, ICiba, Transmart, Yandex, Baidu, BigModel (智谱)
 //! All engines are built-in, no plugin dependency.
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -12,8 +12,6 @@ use tokio::sync::Mutex;
 /// Supported cloud translation engines
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CloudEngine {
-    #[serde(rename = "google")]
-    Google,
     #[serde(rename = "microsoft")]
     Microsoft,
     #[serde(rename = "iciba")]
@@ -31,7 +29,6 @@ pub enum CloudEngine {
 impl CloudEngine {
     pub fn name(&self) -> &str {
         match self {
-            CloudEngine::Google => "Google 翻译",
             CloudEngine::Microsoft => "微软翻译",
             CloudEngine::ICiba => "金山词霸",
             CloudEngine::Transmart => "腾讯通天塔",
@@ -48,8 +45,7 @@ impl CloudEngine {
     pub fn is_free(&self) -> bool {
         matches!(
             self,
-            CloudEngine::Google
-                | CloudEngine::Microsoft
+            CloudEngine::Microsoft
                 | CloudEngine::ICiba
                 | CloudEngine::Transmart
                 | CloudEngine::Yandex
@@ -72,7 +68,6 @@ impl Default for CloudConfig {
             baidu_app_key: String::new(),
             bigmodel_key: String::new(),
             engine_order: vec![
-                CloudEngine::Google,
                 CloudEngine::Microsoft,
                 CloudEngine::Transmart,
                 CloudEngine::ICiba,
@@ -139,7 +134,6 @@ impl CloudTranslator {
         to: &str,
     ) -> Result<String, String> {
         match engine {
-            CloudEngine::Google => self.translate_google(text, from, to).await,
             CloudEngine::Microsoft => self.translate_microsoft(text, from, to).await,
             CloudEngine::ICiba => self.translate_iciba(text, from, to).await,
             CloudEngine::Transmart => self.translate_transmart(text, from, to).await,
@@ -147,49 +141,6 @@ impl CloudTranslator {
             CloudEngine::Baidu => self.translate_baidu(text, from, to).await,
             CloudEngine::BigModel => self.translate_bigmodel(text, from, to).await,
         }
-    }
-
-    // ========== Google 翻译 - 免Key ==========
-    async fn translate_google(&self, text: &str, from: &str, to: &str) -> Result<String, String> {
-        let sl = if from == "auto" || from.is_empty() {
-            "auto"
-        } else {
-            from
-        };
-        let url = format!(
-            "https://translate.google.com/translate_a/single?client=gtx&dt=t&dj=1&ie=UTF-8&sl={sl}&tl={to}&q={}",
-            urlencoding::encode(text)
-        );
-
-        let resp = self
-            .client
-            .get(&url)
-            .header(
-                "User-Agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            )
-            .send()
-            .await
-            .map_err(|e| format!("Google HTTP error: {e}"))?;
-
-        let json: Value = resp
-            .json()
-            .await
-            .map_err(|e| format!("Google JSON error: {e}"))?;
-
-        let sentences = json["sentences"]
-            .as_array()
-            .ok_or_else(|| "Google: no sentences array".to_string())?;
-
-        let result: String = sentences
-            .iter()
-            .filter_map(|s| s["trans"].as_str())
-            .collect();
-
-        if result.is_empty() {
-            return Err("Google: empty result".to_string());
-        }
-        Ok(result)
     }
 
     // ========== Microsoft 翻译 (Edge Token) - 免Key ==========
