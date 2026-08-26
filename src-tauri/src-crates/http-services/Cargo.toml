@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# S3 客户端（使用更轻量的实现）
+# S3 客户端
 rust-s3 = { version = "0.35", default-features = false, features = ["tokio-rustls-tls"] }
 
 # 异步运行时
@@ -12,6 +12,22 @@ tokio = { version = "1.47", features = ["full"] }
 
 # 序列化
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# HTTP 客户端
+reqwest = { version = "0.12", features = ["json"] }
+
+# 加密
+md-5 = "0.10"
+hmac = "0.12"
+sha2 = "0.10"
+base64 = "0.22"
+
+# URL 编码
+urlencoding = "2.1"
+
+# UUID
+uuid = { version = "1.0", features = ["v4"] }
 
 # 错误处理
 anyhow = "1.0"
@@ -19,4 +35,3 @@ thiserror = "2.0"
 
 # 日志
 log = "0.4"
-

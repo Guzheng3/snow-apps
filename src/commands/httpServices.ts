@@ -38,3 +38,22 @@ export const uploadToS3 = async (
 	});
 	return result;
 };
+
+export interface TranslateResult {
+    text: string;
+    engine: string;
+    success: boolean;
+    error: string | null;
+}
+
+export const translateText = async (
+    text: string,
+    sourceLang: string,
+    targetLang: string,
+): Promise<TranslateResult> => {
+    return await invoke<TranslateResult>("translate_text", {
+        text,
+        sourceLang,
+        targetLang,
+    });
+};
