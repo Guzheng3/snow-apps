@@ -11,57 +11,61 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as NoLayoutRouteRouteImport } from './routes/_noLayout/route'
 import { Route as LayoutRouteRouteImport } from './routes/_layout/route'
+import { Route as NoLayoutRouteRouteImport } from './routes/_noLayout/route'
 import { Route as LayoutPersonalizationAppearanceRouteImport } from './routes/_layout/personalization/appearance'
 
 const LayoutIndexLazyRouteImport = createFileRoute('/_layout/')()
-const NoLayoutVideoRecordToolbarLazyRouteImport = createFileRoute(
-  '/_noLayout/videoRecordToolbar',
-)()
-const NoLayoutVideoRecordLazyRouteImport = createFileRoute(
-  '/_noLayout/videoRecord',
-)()
-const NoLayoutIdleLazyRouteImport = createFileRoute('/_noLayout/idle')()
-const NoLayoutFullScreenDrawSwitchMouseThroughLazyRouteImport = createFileRoute(
-  '/_noLayout/fullScreenDrawSwitchMouseThrough',
+const LayoutAboutLazyRouteImport = createFileRoute('/_layout/about')()
+const NoLayoutDrawLazyRouteImport = createFileRoute('/_noLayout/draw')()
+const NoLayoutFixedContentLazyRouteImport = createFileRoute(
+  '/_noLayout/fixedContent',
 )()
 const NoLayoutFullScreenDrawLazyRouteImport = createFileRoute(
   '/_noLayout/fullScreenDraw',
 )()
-const NoLayoutFixedContentLazyRouteImport = createFileRoute(
-  '/_noLayout/fixedContent',
+const NoLayoutFullScreenDrawSwitchMouseThroughLazyRouteImport = createFileRoute(
+  '/_noLayout/fullScreenDrawSwitchMouseThrough',
 )()
-const NoLayoutDrawLazyRouteImport = createFileRoute('/_noLayout/draw')()
-const LayoutAboutLazyRouteImport = createFileRoute('/_layout/about')()
-const LayoutToolsTranslationLazyRouteImport = createFileRoute(
-  )()
-const LayoutToolsChatLazyRouteImport = createFileRoute('/_layout/tools/chat')()
-const LayoutToolsCaptureHistoryLazyRouteImport = createFileRoute(
-  '/_layout/tools/captureHistory',
+const NoLayoutIdleLazyRouteImport = createFileRoute('/_noLayout/idle')()
+const NoLayoutOcrResultLazyRouteImport = createFileRoute(
+  '/_noLayout/ocrResult',
 )()
-const LayoutSettingsSystemSettingsLazyRouteImport = createFileRoute(
-  '/_layout/settings/systemSettings',
+const NoLayoutVideoRecordLazyRouteImport = createFileRoute(
+  '/_noLayout/videoRecord',
 )()
-const LayoutSettingsHotKeySettingsLazyRouteImport = createFileRoute(
-  '/_layout/settings/hotKeySettings',
-)()
-const LayoutSettingsGeneralSettingsLazyRouteImport = createFileRoute(
-  '/_layout/settings/generalSettings',
-)()
-const LayoutSettingsFunctionSettingsLazyRouteImport = createFileRoute(
-  '/_layout/settings/functionSettings',
+const NoLayoutVideoRecordToolbarLazyRouteImport = createFileRoute(
+  '/_noLayout/videoRecordToolbar',
 )()
 const LayoutPersonalizationPluginsLazyRouteImport = createFileRoute(
   '/_layout/personalization/plugins',
 )()
+const LayoutSettingsFunctionSettingsLazyRouteImport = createFileRoute(
+  '/_layout/settings/functionSettings',
+)()
+const LayoutSettingsGeneralSettingsLazyRouteImport = createFileRoute(
+  '/_layout/settings/generalSettings',
+)()
+const LayoutSettingsHotKeySettingsLazyRouteImport = createFileRoute(
+  '/_layout/settings/hotKeySettings',
+)()
+const LayoutSettingsSystemSettingsLazyRouteImport = createFileRoute(
+  '/_layout/settings/systemSettings',
+)()
+const LayoutToolsCaptureHistoryLazyRouteImport = createFileRoute(
+  '/_layout/tools/captureHistory',
+)()
+const LayoutToolsChatLazyRouteImport = createFileRoute('/_layout/tools/chat')()
+const LayoutToolsTranslationLazyRouteImport = createFileRoute(
+  '/_layout/tools/translation',
+)()
 
-const NoLayoutRouteRoute = NoLayoutRouteRouteImport.update({
-  id: '/_noLayout',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LayoutRouteRoute = LayoutRouteRouteImport.update({
   id: '/_layout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NoLayoutRouteRoute = NoLayoutRouteRouteImport.update({
+  id: '/_noLayout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutIndexLazyRoute = LayoutIndexLazyRouteImport.update({
@@ -69,28 +73,34 @@ const LayoutIndexLazyRoute = LayoutIndexLazyRouteImport.update({
   path: '/',
   getParentRoute: () => LayoutRouteRoute,
 } as any).lazy(() => import('./routes/_layout/index.lazy').then((d) => d.Route))
-const NoLayoutVideoRecordToolbarLazyRoute =
-  NoLayoutVideoRecordToolbarLazyRouteImport.update({
-    id: '/videoRecordToolbar',
-    path: '/videoRecordToolbar',
+const LayoutAboutLazyRoute = LayoutAboutLazyRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => LayoutRouteRoute,
+} as any).lazy(() => import('./routes/_layout/about.lazy').then((d) => d.Route))
+const NoLayoutDrawLazyRoute = NoLayoutDrawLazyRouteImport.update({
+  id: '/draw',
+  path: '/draw',
+  getParentRoute: () => NoLayoutRouteRoute,
+} as any).lazy(() =>
+  import('./routes/_noLayout/draw.lazy').then((d) => d.Route),
+)
+const NoLayoutFixedContentLazyRoute =
+  NoLayoutFixedContentLazyRouteImport.update({
+    id: '/fixedContent',
+    path: '/fixedContent',
     getParentRoute: () => NoLayoutRouteRoute,
   } as any).lazy(() =>
-    import('./routes/_noLayout/videoRecordToolbar.lazy').then((d) => d.Route),
+    import('./routes/_noLayout/fixedContent.lazy').then((d) => d.Route),
   )
-const NoLayoutVideoRecordLazyRoute = NoLayoutVideoRecordLazyRouteImport.update({
-  id: '/videoRecord',
-  path: '/videoRecord',
-  getParentRoute: () => NoLayoutRouteRoute,
-} as any).lazy(() =>
-  import('./routes/_noLayout/videoRecord.lazy').then((d) => d.Route),
-)
-const NoLayoutIdleLazyRoute = NoLayoutIdleLazyRouteImport.update({
-  id: '/idle',
-  path: '/idle',
-  getParentRoute: () => NoLayoutRouteRoute,
-} as any).lazy(() =>
-  import('./routes/_noLayout/idle.lazy').then((d) => d.Route),
-)
+const NoLayoutFullScreenDrawLazyRoute =
+  NoLayoutFullScreenDrawLazyRouteImport.update({
+    id: '/fullScreenDraw',
+    path: '/fullScreenDraw',
+    getParentRoute: () => NoLayoutRouteRoute,
+  } as any).lazy(() =>
+    import('./routes/_noLayout/fullScreenDraw.lazy').then((d) => d.Route),
+  )
 const NoLayoutFullScreenDrawSwitchMouseThroughLazyRoute =
   NoLayoutFullScreenDrawSwitchMouseThroughLazyRouteImport.update({
     id: '/fullScreenDrawSwitchMouseThrough',
@@ -101,81 +111,48 @@ const NoLayoutFullScreenDrawSwitchMouseThroughLazyRoute =
       (d) => d.Route,
     ),
   )
-const NoLayoutFullScreenDrawLazyRoute =
-  NoLayoutFullScreenDrawLazyRouteImport.update({
-    id: '/fullScreenDraw',
-    path: '/fullScreenDraw',
-    getParentRoute: () => NoLayoutRouteRoute,
-  } as any).lazy(() =>
-    import('./routes/_noLayout/fullScreenDraw.lazy').then((d) => d.Route),
-  )
-const NoLayoutFixedContentLazyRoute =
-  NoLayoutFixedContentLazyRouteImport.update({
-    id: '/fixedContent',
-    path: '/fixedContent',
-    getParentRoute: () => NoLayoutRouteRoute,
-  } as any).lazy(() =>
-    import('./routes/_noLayout/fixedContent.lazy').then((d) => d.Route),
-  )
-const NoLayoutDrawLazyRoute = NoLayoutDrawLazyRouteImport.update({
-  id: '/draw',
-  path: '/draw',
+const NoLayoutIdleLazyRoute = NoLayoutIdleLazyRouteImport.update({
+  id: '/idle',
+  path: '/idle',
   getParentRoute: () => NoLayoutRouteRoute,
 } as any).lazy(() =>
-  import('./routes/_noLayout/draw.lazy').then((d) => d.Route),
+  import('./routes/_noLayout/idle.lazy').then((d) => d.Route),
 )
-const LayoutAboutLazyRoute = LayoutAboutLazyRouteImport.update({
-  id: '/about',
-  path: '/about',
-  getParentRoute: () => LayoutRouteRoute,
-} as any).lazy(() => import('./routes/_layout/about.lazy').then((d) => d.Route))
-const LayoutToolsTranslationLazyRoute =
-  LayoutToolsTranslationLazyRouteImport.update({
-        getParentRoute: () => LayoutRouteRoute,
-  } as any).lazy(() =>
-  )
-const LayoutToolsChatLazyRoute = LayoutToolsChatLazyRouteImport.update({
-  id: '/tools/chat',
-  path: '/tools/chat',
-  getParentRoute: () => LayoutRouteRoute,
+const NoLayoutOcrResultLazyRoute = NoLayoutOcrResultLazyRouteImport.update({
+  id: '/ocrResult',
+  path: '/ocrResult',
+  getParentRoute: () => NoLayoutRouteRoute,
 } as any).lazy(() =>
-  import('./routes/_layout/tools/chat.lazy').then((d) => d.Route),
+  import('./routes/_noLayout/ocrResult.lazy').then((d) => d.Route),
 )
-const LayoutToolsCaptureHistoryLazyRoute =
-  LayoutToolsCaptureHistoryLazyRouteImport.update({
-    id: '/tools/captureHistory',
-    path: '/tools/captureHistory',
-    getParentRoute: () => LayoutRouteRoute,
+const NoLayoutVideoRecordLazyRoute = NoLayoutVideoRecordLazyRouteImport.update({
+  id: '/videoRecord',
+  path: '/videoRecord',
+  getParentRoute: () => NoLayoutRouteRoute,
+} as any).lazy(() =>
+  import('./routes/_noLayout/videoRecord.lazy').then((d) => d.Route),
+)
+const NoLayoutVideoRecordToolbarLazyRoute =
+  NoLayoutVideoRecordToolbarLazyRouteImport.update({
+    id: '/videoRecordToolbar',
+    path: '/videoRecordToolbar',
+    getParentRoute: () => NoLayoutRouteRoute,
   } as any).lazy(() =>
-    import('./routes/_layout/tools/captureHistory.lazy').then((d) => d.Route),
+    import('./routes/_noLayout/videoRecordToolbar.lazy').then((d) => d.Route),
   )
-const LayoutSettingsSystemSettingsLazyRoute =
-  LayoutSettingsSystemSettingsLazyRouteImport.update({
-    id: '/settings/systemSettings',
-    path: '/settings/systemSettings',
+const LayoutPersonalizationAppearanceRoute =
+  LayoutPersonalizationAppearanceRouteImport.update({
+    id: '/personalization/appearance',
+    path: '/personalization/appearance',
+    getParentRoute: () => LayoutRouteRoute,
+  } as any)
+const LayoutPersonalizationPluginsLazyRoute =
+  LayoutPersonalizationPluginsLazyRouteImport.update({
+    id: '/personalization/plugins',
+    path: '/personalization/plugins',
     getParentRoute: () => LayoutRouteRoute,
   } as any).lazy(() =>
-    import('./routes/_layout/settings/systemSettings.lazy').then(
-      (d) => d.Route,
-    ),
-  )
-const LayoutSettingsHotKeySettingsLazyRoute =
-  LayoutSettingsHotKeySettingsLazyRouteImport.update({
-    id: '/settings/hotKeySettings',
-    path: '/settings/hotKeySettings',
-    getParentRoute: () => LayoutRouteRoute,
-  } as any).lazy(() =>
-    import('./routes/_layout/settings/hotKeySettings.lazy').then(
-      (d) => d.Route,
-    ),
-  )
-const LayoutSettingsGeneralSettingsLazyRoute =
-  LayoutSettingsGeneralSettingsLazyRouteImport.update({
-    id: '/settings/generalSettings',
-    path: '/settings/generalSettings',
-    getParentRoute: () => LayoutRouteRoute,
-  } as any).lazy(() =>
-    import('./routes/_layout/settings/generalSettings.lazy').then(
+    import('./routes/_layout/personalization/plugins.lazy').then(
       (d) => d.Route,
     ),
   )
@@ -189,33 +166,71 @@ const LayoutSettingsFunctionSettingsLazyRoute =
       (d) => d.Route,
     ),
   )
-const LayoutPersonalizationPluginsLazyRoute =
-  LayoutPersonalizationPluginsLazyRouteImport.update({
-    id: '/personalization/plugins',
-    path: '/personalization/plugins',
+const LayoutSettingsGeneralSettingsLazyRoute =
+  LayoutSettingsGeneralSettingsLazyRouteImport.update({
+    id: '/settings/generalSettings',
+    path: '/settings/generalSettings',
     getParentRoute: () => LayoutRouteRoute,
   } as any).lazy(() =>
-    import('./routes/_layout/personalization/plugins.lazy').then(
+    import('./routes/_layout/settings/generalSettings.lazy').then(
       (d) => d.Route,
     ),
   )
-const LayoutPersonalizationAppearanceRoute =
-  LayoutPersonalizationAppearanceRouteImport.update({
-    id: '/personalization/appearance',
-    path: '/personalization/appearance',
+const LayoutSettingsHotKeySettingsLazyRoute =
+  LayoutSettingsHotKeySettingsLazyRouteImport.update({
+    id: '/settings/hotKeySettings',
+    path: '/settings/hotKeySettings',
     getParentRoute: () => LayoutRouteRoute,
-  } as any)
+  } as any).lazy(() =>
+    import('./routes/_layout/settings/hotKeySettings.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const LayoutSettingsSystemSettingsLazyRoute =
+  LayoutSettingsSystemSettingsLazyRouteImport.update({
+    id: '/settings/systemSettings',
+    path: '/settings/systemSettings',
+    getParentRoute: () => LayoutRouteRoute,
+  } as any).lazy(() =>
+    import('./routes/_layout/settings/systemSettings.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const LayoutToolsCaptureHistoryLazyRoute =
+  LayoutToolsCaptureHistoryLazyRouteImport.update({
+    id: '/tools/captureHistory',
+    path: '/tools/captureHistory',
+    getParentRoute: () => LayoutRouteRoute,
+  } as any).lazy(() =>
+    import('./routes/_layout/tools/captureHistory.lazy').then((d) => d.Route),
+  )
+const LayoutToolsChatLazyRoute = LayoutToolsChatLazyRouteImport.update({
+  id: '/tools/chat',
+  path: '/tools/chat',
+  getParentRoute: () => LayoutRouteRoute,
+} as any).lazy(() =>
+  import('./routes/_layout/tools/chat.lazy').then((d) => d.Route),
+)
+const LayoutToolsTranslationLazyRoute =
+  LayoutToolsTranslationLazyRouteImport.update({
+    id: '/tools/translation',
+    path: '/tools/translation',
+    getParentRoute: () => LayoutRouteRoute,
+  } as any).lazy(() =>
+    import('./routes/_layout/tools/translation.lazy').then((d) => d.Route),
+  )
 
 export interface FileRoutesByFullPath {
+  '/': typeof LayoutIndexLazyRoute
   '/about': typeof LayoutAboutLazyRoute
   '/draw': typeof NoLayoutDrawLazyRoute
   '/fixedContent': typeof NoLayoutFixedContentLazyRoute
   '/fullScreenDraw': typeof NoLayoutFullScreenDrawLazyRoute
   '/fullScreenDrawSwitchMouseThrough': typeof NoLayoutFullScreenDrawSwitchMouseThroughLazyRoute
   '/idle': typeof NoLayoutIdleLazyRoute
+  '/ocrResult': typeof NoLayoutOcrResultLazyRoute
   '/videoRecord': typeof NoLayoutVideoRecordLazyRoute
   '/videoRecordToolbar': typeof NoLayoutVideoRecordToolbarLazyRoute
-  '/': typeof LayoutIndexLazyRoute
   '/personalization/appearance': typeof LayoutPersonalizationAppearanceRoute
   '/personalization/plugins': typeof LayoutPersonalizationPluginsLazyRoute
   '/settings/functionSettings': typeof LayoutSettingsFunctionSettingsLazyRoute
@@ -224,17 +239,19 @@ export interface FileRoutesByFullPath {
   '/settings/systemSettings': typeof LayoutSettingsSystemSettingsLazyRoute
   '/tools/captureHistory': typeof LayoutToolsCaptureHistoryLazyRoute
   '/tools/chat': typeof LayoutToolsChatLazyRoute
-  }
+  '/tools/translation': typeof LayoutToolsTranslationLazyRoute
+}
 export interface FileRoutesByTo {
+  '/': typeof LayoutIndexLazyRoute
   '/about': typeof LayoutAboutLazyRoute
   '/draw': typeof NoLayoutDrawLazyRoute
   '/fixedContent': typeof NoLayoutFixedContentLazyRoute
   '/fullScreenDraw': typeof NoLayoutFullScreenDrawLazyRoute
   '/fullScreenDrawSwitchMouseThrough': typeof NoLayoutFullScreenDrawSwitchMouseThroughLazyRoute
   '/idle': typeof NoLayoutIdleLazyRoute
+  '/ocrResult': typeof NoLayoutOcrResultLazyRoute
   '/videoRecord': typeof NoLayoutVideoRecordLazyRoute
   '/videoRecordToolbar': typeof NoLayoutVideoRecordToolbarLazyRoute
-  '/': typeof LayoutIndexLazyRoute
   '/personalization/appearance': typeof LayoutPersonalizationAppearanceRoute
   '/personalization/plugins': typeof LayoutPersonalizationPluginsLazyRoute
   '/settings/functionSettings': typeof LayoutSettingsFunctionSettingsLazyRoute
@@ -243,7 +260,8 @@ export interface FileRoutesByTo {
   '/settings/systemSettings': typeof LayoutSettingsSystemSettingsLazyRoute
   '/tools/captureHistory': typeof LayoutToolsCaptureHistoryLazyRoute
   '/tools/chat': typeof LayoutToolsChatLazyRoute
-  }
+  '/tools/translation': typeof LayoutToolsTranslationLazyRoute
+}
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_layout': typeof LayoutRouteRouteWithChildren
@@ -254,6 +272,7 @@ export interface FileRoutesById {
   '/_noLayout/fullScreenDraw': typeof NoLayoutFullScreenDrawLazyRoute
   '/_noLayout/fullScreenDrawSwitchMouseThrough': typeof NoLayoutFullScreenDrawSwitchMouseThroughLazyRoute
   '/_noLayout/idle': typeof NoLayoutIdleLazyRoute
+  '/_noLayout/ocrResult': typeof NoLayoutOcrResultLazyRoute
   '/_noLayout/videoRecord': typeof NoLayoutVideoRecordLazyRoute
   '/_noLayout/videoRecordToolbar': typeof NoLayoutVideoRecordToolbarLazyRoute
   '/_layout/': typeof LayoutIndexLazyRoute
@@ -265,19 +284,21 @@ export interface FileRoutesById {
   '/_layout/settings/systemSettings': typeof LayoutSettingsSystemSettingsLazyRoute
   '/_layout/tools/captureHistory': typeof LayoutToolsCaptureHistoryLazyRoute
   '/_layout/tools/chat': typeof LayoutToolsChatLazyRoute
-  }
+  '/_layout/tools/translation': typeof LayoutToolsTranslationLazyRoute
+}
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
     | '/about'
     | '/draw'
     | '/fixedContent'
     | '/fullScreenDraw'
     | '/fullScreenDrawSwitchMouseThrough'
     | '/idle'
+    | '/ocrResult'
     | '/videoRecord'
     | '/videoRecordToolbar'
-    | '/'
     | '/personalization/appearance'
     | '/personalization/plugins'
     | '/settings/functionSettings'
@@ -286,17 +307,19 @@ export interface FileRouteTypes {
     | '/settings/systemSettings'
     | '/tools/captureHistory'
     | '/tools/chat'
-      fileRoutesByTo: FileRoutesByTo
+    | '/tools/translation'
+  fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/about'
     | '/draw'
     | '/fixedContent'
     | '/fullScreenDraw'
     | '/fullScreenDrawSwitchMouseThrough'
     | '/idle'
+    | '/ocrResult'
     | '/videoRecord'
     | '/videoRecordToolbar'
-    | '/'
     | '/personalization/appearance'
     | '/personalization/plugins'
     | '/settings/functionSettings'
@@ -305,7 +328,8 @@ export interface FileRouteTypes {
     | '/settings/systemSettings'
     | '/tools/captureHistory'
     | '/tools/chat'
-      id:
+    | '/tools/translation'
+  id:
     | '__root__'
     | '/_layout'
     | '/_noLayout'
@@ -315,6 +339,7 @@ export interface FileRouteTypes {
     | '/_noLayout/fullScreenDraw'
     | '/_noLayout/fullScreenDrawSwitchMouseThrough'
     | '/_noLayout/idle'
+    | '/_noLayout/ocrResult'
     | '/_noLayout/videoRecord'
     | '/_noLayout/videoRecordToolbar'
     | '/_layout/'
@@ -326,7 +351,8 @@ export interface FileRouteTypes {
     | '/_layout/settings/systemSettings'
     | '/_layout/tools/captureHistory'
     | '/_layout/tools/chat'
-      fileRoutesById: FileRoutesById
+    | '/_layout/tools/translation'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   LayoutRouteRoute: typeof LayoutRouteRouteWithChildren
@@ -335,18 +361,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_noLayout': {
-      id: '/_noLayout'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof NoLayoutRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_layout': {
       id: '/_layout'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof LayoutRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_noLayout': {
+      id: '/_noLayout'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof NoLayoutRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout/': {
@@ -356,39 +382,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutIndexLazyRouteImport
       parentRoute: typeof LayoutRouteRoute
     }
-    '/_noLayout/videoRecordToolbar': {
-      id: '/_noLayout/videoRecordToolbar'
-      path: '/videoRecordToolbar'
-      fullPath: '/videoRecordToolbar'
-      preLoaderRoute: typeof NoLayoutVideoRecordToolbarLazyRouteImport
-      parentRoute: typeof NoLayoutRouteRoute
+    '/_layout/about': {
+      id: '/_layout/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof LayoutAboutLazyRouteImport
+      parentRoute: typeof LayoutRouteRoute
     }
-    '/_noLayout/videoRecord': {
-      id: '/_noLayout/videoRecord'
-      path: '/videoRecord'
-      fullPath: '/videoRecord'
-      preLoaderRoute: typeof NoLayoutVideoRecordLazyRouteImport
-      parentRoute: typeof NoLayoutRouteRoute
-    }
-    '/_noLayout/idle': {
-      id: '/_noLayout/idle'
-      path: '/idle'
-      fullPath: '/idle'
-      preLoaderRoute: typeof NoLayoutIdleLazyRouteImport
-      parentRoute: typeof NoLayoutRouteRoute
-    }
-    '/_noLayout/fullScreenDrawSwitchMouseThrough': {
-      id: '/_noLayout/fullScreenDrawSwitchMouseThrough'
-      path: '/fullScreenDrawSwitchMouseThrough'
-      fullPath: '/fullScreenDrawSwitchMouseThrough'
-      preLoaderRoute: typeof NoLayoutFullScreenDrawSwitchMouseThroughLazyRouteImport
-      parentRoute: typeof NoLayoutRouteRoute
-    }
-    '/_noLayout/fullScreenDraw': {
-      id: '/_noLayout/fullScreenDraw'
-      path: '/fullScreenDraw'
-      fullPath: '/fullScreenDraw'
-      preLoaderRoute: typeof NoLayoutFullScreenDrawLazyRouteImport
+    '/_noLayout/draw': {
+      id: '/_noLayout/draw'
+      path: '/draw'
+      fullPath: '/draw'
+      preLoaderRoute: typeof NoLayoutDrawLazyRouteImport
       parentRoute: typeof NoLayoutRouteRoute
     }
     '/_noLayout/fixedContent': {
@@ -398,60 +403,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NoLayoutFixedContentLazyRouteImport
       parentRoute: typeof NoLayoutRouteRoute
     }
-    '/_noLayout/draw': {
-      id: '/_noLayout/draw'
-      path: '/draw'
-      fullPath: '/draw'
-      preLoaderRoute: typeof NoLayoutDrawLazyRouteImport
+    '/_noLayout/fullScreenDraw': {
+      id: '/_noLayout/fullScreenDraw'
+      path: '/fullScreenDraw'
+      fullPath: '/fullScreenDraw'
+      preLoaderRoute: typeof NoLayoutFullScreenDrawLazyRouteImport
       parentRoute: typeof NoLayoutRouteRoute
     }
-    '/_layout/about': {
-      id: '/_layout/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof LayoutAboutLazyRouteImport
-      parentRoute: typeof LayoutRouteRoute
+    '/_noLayout/fullScreenDrawSwitchMouseThrough': {
+      id: '/_noLayout/fullScreenDrawSwitchMouseThrough'
+      path: '/fullScreenDrawSwitchMouseThrough'
+      fullPath: '/fullScreenDrawSwitchMouseThrough'
+      preLoaderRoute: typeof NoLayoutFullScreenDrawSwitchMouseThroughLazyRouteImport
+      parentRoute: typeof NoLayoutRouteRoute
     }
-    '/_layout/tools/chat': {
-      id: '/_layout/tools/chat'
-      path: '/tools/chat'
-      fullPath: '/tools/chat'
-      preLoaderRoute: typeof LayoutToolsChatLazyRouteImport
-      parentRoute: typeof LayoutRouteRoute
+    '/_noLayout/idle': {
+      id: '/_noLayout/idle'
+      path: '/idle'
+      fullPath: '/idle'
+      preLoaderRoute: typeof NoLayoutIdleLazyRouteImport
+      parentRoute: typeof NoLayoutRouteRoute
     }
-    '/_layout/tools/captureHistory': {
-      id: '/_layout/tools/captureHistory'
-      path: '/tools/captureHistory'
-      fullPath: '/tools/captureHistory'
-      preLoaderRoute: typeof LayoutToolsCaptureHistoryLazyRouteImport
-      parentRoute: typeof LayoutRouteRoute
+    '/_noLayout/ocrResult': {
+      id: '/_noLayout/ocrResult'
+      path: '/ocrResult'
+      fullPath: '/ocrResult'
+      preLoaderRoute: typeof NoLayoutOcrResultLazyRouteImport
+      parentRoute: typeof NoLayoutRouteRoute
     }
-    '/_layout/settings/systemSettings': {
-      id: '/_layout/settings/systemSettings'
-      path: '/settings/systemSettings'
-      fullPath: '/settings/systemSettings'
-      preLoaderRoute: typeof LayoutSettingsSystemSettingsLazyRouteImport
-      parentRoute: typeof LayoutRouteRoute
+    '/_noLayout/videoRecord': {
+      id: '/_noLayout/videoRecord'
+      path: '/videoRecord'
+      fullPath: '/videoRecord'
+      preLoaderRoute: typeof NoLayoutVideoRecordLazyRouteImport
+      parentRoute: typeof NoLayoutRouteRoute
     }
-    '/_layout/settings/hotKeySettings': {
-      id: '/_layout/settings/hotKeySettings'
-      path: '/settings/hotKeySettings'
-      fullPath: '/settings/hotKeySettings'
-      preLoaderRoute: typeof LayoutSettingsHotKeySettingsLazyRouteImport
-      parentRoute: typeof LayoutRouteRoute
+    '/_noLayout/videoRecordToolbar': {
+      id: '/_noLayout/videoRecordToolbar'
+      path: '/videoRecordToolbar'
+      fullPath: '/videoRecordToolbar'
+      preLoaderRoute: typeof NoLayoutVideoRecordToolbarLazyRouteImport
+      parentRoute: typeof NoLayoutRouteRoute
     }
-    '/_layout/settings/generalSettings': {
-      id: '/_layout/settings/generalSettings'
-      path: '/settings/generalSettings'
-      fullPath: '/settings/generalSettings'
-      preLoaderRoute: typeof LayoutSettingsGeneralSettingsLazyRouteImport
-      parentRoute: typeof LayoutRouteRoute
-    }
-    '/_layout/settings/functionSettings': {
-      id: '/_layout/settings/functionSettings'
-      path: '/settings/functionSettings'
-      fullPath: '/settings/functionSettings'
-      preLoaderRoute: typeof LayoutSettingsFunctionSettingsLazyRouteImport
+    '/_layout/personalization/appearance': {
+      id: '/_layout/personalization/appearance'
+      path: '/personalization/appearance'
+      fullPath: '/personalization/appearance'
+      preLoaderRoute: typeof LayoutPersonalizationAppearanceRouteImport
       parentRoute: typeof LayoutRouteRoute
     }
     '/_layout/personalization/plugins': {
@@ -461,11 +459,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutPersonalizationPluginsLazyRouteImport
       parentRoute: typeof LayoutRouteRoute
     }
-    '/_layout/personalization/appearance': {
-      id: '/_layout/personalization/appearance'
-      path: '/personalization/appearance'
-      fullPath: '/personalization/appearance'
-      preLoaderRoute: typeof LayoutPersonalizationAppearanceRouteImport
+    '/_layout/settings/functionSettings': {
+      id: '/_layout/settings/functionSettings'
+      path: '/settings/functionSettings'
+      fullPath: '/settings/functionSettings'
+      preLoaderRoute: typeof LayoutSettingsFunctionSettingsLazyRouteImport
+      parentRoute: typeof LayoutRouteRoute
+    }
+    '/_layout/settings/generalSettings': {
+      id: '/_layout/settings/generalSettings'
+      path: '/settings/generalSettings'
+      fullPath: '/settings/generalSettings'
+      preLoaderRoute: typeof LayoutSettingsGeneralSettingsLazyRouteImport
+      parentRoute: typeof LayoutRouteRoute
+    }
+    '/_layout/settings/hotKeySettings': {
+      id: '/_layout/settings/hotKeySettings'
+      path: '/settings/hotKeySettings'
+      fullPath: '/settings/hotKeySettings'
+      preLoaderRoute: typeof LayoutSettingsHotKeySettingsLazyRouteImport
+      parentRoute: typeof LayoutRouteRoute
+    }
+    '/_layout/settings/systemSettings': {
+      id: '/_layout/settings/systemSettings'
+      path: '/settings/systemSettings'
+      fullPath: '/settings/systemSettings'
+      preLoaderRoute: typeof LayoutSettingsSystemSettingsLazyRouteImport
+      parentRoute: typeof LayoutRouteRoute
+    }
+    '/_layout/tools/captureHistory': {
+      id: '/_layout/tools/captureHistory'
+      path: '/tools/captureHistory'
+      fullPath: '/tools/captureHistory'
+      preLoaderRoute: typeof LayoutToolsCaptureHistoryLazyRouteImport
+      parentRoute: typeof LayoutRouteRoute
+    }
+    '/_layout/tools/chat': {
+      id: '/_layout/tools/chat'
+      path: '/tools/chat'
+      fullPath: '/tools/chat'
+      preLoaderRoute: typeof LayoutToolsChatLazyRouteImport
+      parentRoute: typeof LayoutRouteRoute
+    }
+    '/_layout/tools/translation': {
+      id: '/_layout/tools/translation'
+      path: '/tools/translation'
+      fullPath: '/tools/translation'
+      preLoaderRoute: typeof LayoutToolsTranslationLazyRouteImport
       parentRoute: typeof LayoutRouteRoute
     }
   }
@@ -481,7 +521,9 @@ interface LayoutRouteRouteChildren {
   LayoutSettingsHotKeySettingsLazyRoute: typeof LayoutSettingsHotKeySettingsLazyRoute
   LayoutSettingsSystemSettingsLazyRoute: typeof LayoutSettingsSystemSettingsLazyRoute
   LayoutToolsCaptureHistoryLazyRoute: typeof LayoutToolsCaptureHistoryLazyRoute
-  LayoutToolsChatLazyRoute: typeof LayoutToolsChatLazyRoute}
+  LayoutToolsChatLazyRoute: typeof LayoutToolsChatLazyRoute
+  LayoutToolsTranslationLazyRoute: typeof LayoutToolsTranslationLazyRoute
+}
 
 const LayoutRouteRouteChildren: LayoutRouteRouteChildren = {
   LayoutAboutLazyRoute: LayoutAboutLazyRoute,
@@ -495,7 +537,9 @@ const LayoutRouteRouteChildren: LayoutRouteRouteChildren = {
   LayoutSettingsHotKeySettingsLazyRoute: LayoutSettingsHotKeySettingsLazyRoute,
   LayoutSettingsSystemSettingsLazyRoute: LayoutSettingsSystemSettingsLazyRoute,
   LayoutToolsCaptureHistoryLazyRoute: LayoutToolsCaptureHistoryLazyRoute,
-  LayoutToolsChatLazyRoute: LayoutToolsChatLazyRoute,}
+  LayoutToolsChatLazyRoute: LayoutToolsChatLazyRoute,
+  LayoutToolsTranslationLazyRoute: LayoutToolsTranslationLazyRoute,
+}
 
 const LayoutRouteRouteWithChildren = LayoutRouteRoute._addFileChildren(
   LayoutRouteRouteChildren,
@@ -507,6 +551,7 @@ interface NoLayoutRouteRouteChildren {
   NoLayoutFullScreenDrawLazyRoute: typeof NoLayoutFullScreenDrawLazyRoute
   NoLayoutFullScreenDrawSwitchMouseThroughLazyRoute: typeof NoLayoutFullScreenDrawSwitchMouseThroughLazyRoute
   NoLayoutIdleLazyRoute: typeof NoLayoutIdleLazyRoute
+  NoLayoutOcrResultLazyRoute: typeof NoLayoutOcrResultLazyRoute
   NoLayoutVideoRecordLazyRoute: typeof NoLayoutVideoRecordLazyRoute
   NoLayoutVideoRecordToolbarLazyRoute: typeof NoLayoutVideoRecordToolbarLazyRoute
 }
@@ -518,6 +563,7 @@ const NoLayoutRouteRouteChildren: NoLayoutRouteRouteChildren = {
   NoLayoutFullScreenDrawSwitchMouseThroughLazyRoute:
     NoLayoutFullScreenDrawSwitchMouseThroughLazyRoute,
   NoLayoutIdleLazyRoute: NoLayoutIdleLazyRoute,
+  NoLayoutOcrResultLazyRoute: NoLayoutOcrResultLazyRoute,
   NoLayoutVideoRecordLazyRoute: NoLayoutVideoRecordLazyRoute,
   NoLayoutVideoRecordToolbarLazyRoute: NoLayoutVideoRecordToolbarLazyRoute,
 }

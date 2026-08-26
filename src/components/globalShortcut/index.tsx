@@ -1,4 +1,162 @@
+import {
+	AppstoreOutlined,
+	FieldTimeOutlined,
+	FolderOutlined,
+	HistoryOutlined,
+} from "@ant-design/icons";
+import { useDeepCompareEffect } from "@ant-design/pro-components";
+import {
+	isRegistered,
+	register,
+	unregister,
+	unregisterAll,
+} from "@tauri-apps/plugin-global-shortcut";
+import { Tooltip } from "antd";
+import React, {
+	createContext,
+	useCallback,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import { FormattedMessage } from "react-intl";
+import {
+	createFixedContentWindow,
+	createFullScreenDrawWindow,
+	hasFocusedFullScreenWindow,
+} from "@/commands/core";
+import { getCaptureState } from "@/commands/globalSate";
+import { IconLabel } from "@/components/iconLable";
+import {
+	ChatIcon,
+	ClipboardIcon,
+	FixedIcon,
+	FocusedWindowIcon,
+	FullScreenDrawIcon,
+	FullScreenIcon,
+	OcrDetectIcon,
+	OcrTranslateIcon,
+	ScreenshotIcon,
+	SelectTextIcon,
+	TopWindowIcon,
+	TranslationIcon,
+	VideoRecordIcon,
+} from "@/components/icons";
+import { TrayIconStatePublisher } from "@/components/trayIconLoader";
+import { defaultAppFunctionConfigs } from "@/constants/appFunction";
+import {
+	PLUGIN_ID_AI_CHAT,
+	PLUGIN_ID_FFMPEG,
+	PLUGIN_ID_RAPID_OCR,
+	PLUGIN_ID_TRANSLATE,
+} from "@/constants/pluginService";
+import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
+import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
+import {
+	executeScreenshot,
+	executeScreenshotFocusedWindow,
+} from "@/functions/screenshot";
+import {
+	executeChat,
+	executeChatSelectedText,
+	executeTranslate,
+	executeTranslateSelectedText,
+	openCaptureHistory,
+	openImageSaveFolder,
+	showOrHideMainWindow,
+} from "@/functions/tools";
+import { startOrCopyVideo } from "@/functions/videoRecord";
+import { useAppSettingsLoad } from "@/hooks/useAppSettingsLoad";
+import { useStateSubscriber } from "@/hooks/useStateSubscriber";
+import {
+	type AppSettingsData,
+	AppSettingsGroup,
+	ShortcutKeyStatus,
+} from "@/types/appSettings";
+import {
+	AppFunction,
+	type AppFunctionComponentConfig,
+	type AppFunctionConfig,
+	type AppFunctionGroup,
+} from "@/types/components/appFunction";
+import { appError } from "@/utils/log";
+import { ScreenshotType } from "@/utils/types";
+import { ChangeDelaySeconds } from "./components/changeDelaySeconds";
 
+export type GlobalShortcutContextType = {
+	disableShortcutKeyRef: React.RefObject<boolean>;
+	defaultAppFunctionComponentGroupConfigs: Record<
+		AppFunctionGroup,
+		AppFunctionComponentConfig[]
+	>;
+	shortcutKeyStatus: Record<AppFunction, ShortcutKeyStatus> | undefined;
+	updateShortcutKeyStatusLoading: boolean;
+	appSettingsLoading: boolean;
+	appFunctionSettings:
+		| AppSettingsData[AppSettingsGroup.AppFunction]
+		| undefined;
+};
+
+export const GlobalShortcutContext = createContext<GlobalShortcutContextType>({
+	disableShortcutKeyRef: { current: false },
+	defaultAppFunctionComponentGroupConfigs: {} as Record<
+		AppFunctionGroup,
+		AppFunctionComponentConfig[]
+	>,
+	shortcutKeyStatus: {} as Record<AppFunction, ShortcutKeyStatus>,
+	updateShortcutKeyStatusLoading: true,
+	appSettingsLoading: true,
+	appFunctionSettings: {} as AppSettingsData[AppSettingsGroup.AppFunction],
+});
+
+const GlobalShortcutCore = ({ children }: { children: React.ReactNode }) => {
+	const disableShortcutKeyRef = useRef(false);
+	const [getTrayIconState] = useStateSubscriber(
+		TrayIconStatePublisher,
+		undefined,
+	);
+
+	const [getAppSettings] = useStateSubscriber(
+		AppSettingsPublisher,
+		// useCallback((settings: AppSettingsData) => {}, []),
+		undefined,
+	);
+
+	const { isReadyStatus } = usePluginServiceContext();
+	const {
+		configs: defaultAppFunctionComponentConfigs,
+		groupConfigs: defaultAppFunctionComponentGroupConfigs,
+	}: {
+		configs: Record<AppFunction, AppFunctionComponentConfig>;
+		groupConfigs: Record<AppFunctionGroup, AppFunctionComponentConfig[]>;
+	} = useMemo(() => {
+		const configs = Object.keys(defaultAppFunctionConfigs)
+			.filter((key) => {
+				if (
+					key === AppFunction.VideoRecord ||
+					key === AppFunction.VideoRecordCopy
+				) {
+					return isReadyStatus?.(PLUGIN_ID_FFMPEG);
+				}
+
+				if (key === AppFunction.ScreenshotOcr) {
+					return isReadyStatus?.(PLUGIN_ID_RAPID_OCR);
+				}
+
+				if (key === AppFunction.Chat) {
+					return isReadyStatus?.(PLUGIN_ID_AI_CHAT);
+				}
+
+				if (key === AppFunction.Translation) {
+					return isReadyStatus?.(PLUGIN_ID_TRANSLATE);
+				}
+
+				if (key === AppFunction.ScreenshotOcrTranslate) {
+					return (
+						isReadyStatus?.(PLUGIN_ID_RAPID_OCR) &&
+						isReadyStatus?.(PLUGIN_ID_TRANSLATE)
+					);
+				}
 
 				return true;
 			})
@@ -41,6 +199,12 @@
 							buttonIcon = <OcrDetectIcon />;
 							buttonOnClick = () => executeScreenshot(ScreenshotType.OcrDetect);
 							break;
+						case AppFunction.ScreenshotOcrTranslate:
+							buttonTitle = <FormattedMessage id="draw.ocrTranslateTool" />;
+							buttonIcon = <OcrTranslateIcon style={{ fontSize: "1.2em" }} />;
+							buttonOnClick = () =>
+								executeScreenshot(ScreenshotType.OcrTranslate);
+							break;
 						case AppFunction.ScreenshotFullScreen:
 							buttonTitle = (
 								<FormattedMessage id="home.screenshotFunction.screenshotFullScreen" />
@@ -68,6 +232,22 @@
 							);
 							buttonIcon = <ClipboardIcon style={{ fontSize: "1.1em" }} />;
 							buttonOnClick = () => executeScreenshot(ScreenshotType.Copy);
+							break;
+						case AppFunction.TranslationSelectText:
+							buttonTitle = (
+								<FormattedMessage id="home.translationSelectText" />
+							);
+							buttonIcon = <SelectTextIcon style={{ fontSize: "1em" }} />;
+							buttonOnClick = async () => {
+								executeTranslateSelectedText();
+							};
+							break;
+						case AppFunction.Translation:
+							buttonTitle = <FormattedMessage id="home.translation" />;
+							buttonIcon = <TranslationIcon />;
+							buttonOnClick = () => {
+								executeTranslate();
+							};
 							break;
 						case AppFunction.ChatSelectText:
 							buttonTitle = <FormattedMessage id="home.chatSelectText" />;
@@ -157,77 +337,54 @@
 						icon: buttonIcon,
 						onClick,
 						onKeyChange: async (value: string, prevValue: string) => {
-						const prevValues = (prevValue || "")
-							.split(",")
-							.map((item) => item.trim())
-							.filter(Boolean);
-						const values = (value || "")
-							.split(",")
-							.map((item) => item.trim())
-							.filter(Boolean);
-
-						for (const pv of prevValues) {
-							try {
-								if (await isRegistered(pv)) {
-									await unregister(pv);
+							if (prevValue) {
+								try {
+									if (await isRegistered(prevValue)) {
+										await unregister(prevValue);
+									}
+								} catch (error) {
+									appError(
+										"[GlobalShortcut] unregister prevValue failed",
+										error,
+									);
 								}
-							} catch (error) {
-								appError(
-									"[GlobalShortcut] unregister prevValue failed",
-									error,
-								);
 							}
-						}
 
-						if (!values.length) {
-							return false;
-						}
+							if (!value) {
+								return false;
+							}
 
-						let allOk = true;
-						for (const v of values) {
 							try {
-								if (await isRegistered(v)) {
-									await unregister(v);
+								if (await isRegistered(value)) {
+									await unregister(value);
 								}
 							} catch (error) {
 								appError("[GlobalShortcut] unregister value failed", error);
 							}
 
-							try {
-								await register(v, async (event) => {
-									if (event.state !== "Released") {
-										return;
-									}
-
-									if (
-										getAppSettings()[AppSettingsGroup.FunctionGlobalShortcut]
-											.disableOnFocusedFullScreenWindow &&
-										(await hasFocusedFullScreenWindow())
-									) {
-										return;
-									}
-
-									if (getTrayIconState()?.disableShortcut) {
-										return;
-									}
-
-									onClick();
-								});
-							} catch (error) {
-								appError("[GlobalShortcut] register failed", error);
-								if (prevValue !== value) {
-									Modal.warning({
-										title: "快捷键冲突",
-										content: `快捷键「${v}」已被其他软件占用，请更换为其他快捷键。`,
-									});
-								} else {
-									startupConflictRef.current.push(v);
+							await register(value, async (event) => {
+								if (event.state !== "Released") {
+									return;
 								}
-								allOk = false;
-							}
-						}
-						return allOk;
-					},					};
+
+								if (
+									getAppSettings()[AppSettingsGroup.FunctionGlobalShortcut]
+										.disableOnFocusedFullScreenWindow &&
+									(await hasFocusedFullScreenWindow())
+								) {
+									return;
+								}
+
+								if (getTrayIconState()?.disableShortcut) {
+									return;
+								}
+
+								onClick();
+							});
+
+							return true;
+						},
+					};
 
 					return configs;
 				},
@@ -256,7 +413,6 @@
 		useState(true);
 	const previousAppFunctionSettingsRef =
 		useRef<AppSettingsData[AppSettingsGroup.AppFunction]>(undefined);
-	const startupConflictRef = useRef<string[]>([]);
 
 	const appFunctionComponentConfigsKeys = useMemo(
 		() => Object.keys(defaultAppFunctionComponentConfigs),
@@ -303,15 +459,6 @@
 					}
 				}),
 			);
-
-			if (startupConflictRef.current.length) {
-				const conflictKeys = startupConflictRef.current.join("、");
-				Modal.warning({
-					title: "快捷键冲突",
-					content: `以下快捷键已被其他软件占用，请到「设置 → 热键设置」中更换：${conflictKeys}`,
-				});
-				startupConflictRef.current = [];
-			}
 
 			setShortcutKeyStatus(keyStatus);
 			previousAppFunctionSettingsRef.current = settings;

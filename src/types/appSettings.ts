@@ -1,4 +1,4 @@
-﻿import type { ElementRect } from "./commands/screenshot";
+import type { ElementRect } from "./commands/screenshot";
 import type { AppFunction, AppFunctionConfig } from "./components/appFunction";
 import type {
 	DrawToolbarKeyEventKey,
@@ -9,6 +9,7 @@ import type {
 	CommonKeyEventValue,
 } from "./core/commonKeyEvent";
 import { DrawState } from "./draw";
+import type { TranslationDomain, TranslationType } from "./servies/translation";
 import type { ImageFormat } from "./utils/file";
 
 export enum HistoryValidDuration {
@@ -41,15 +42,15 @@ export enum GifFormat {
 }
 
 export enum OcrDetectAfterAction {
-	/** 不执行任何操�?*/
+	/** 不执行任何操作 */
 	None = "none",
 	/** 复制文本 */
 	CopyText = "copyText",
-	/** 复制文本并关闭窗�?*/
+	/** 复制文本并关闭窗口 */
 	CopyTextAndCloseWindow = "copyTextAndCloseWindow",
 	/** 文本识别-复制文本 */
 	OcrDetectCopyText = "ocrDetectCopyText",
-	/** 文本识别-复制文本并关闭窗�?*/
+	/** 文本识别-复制文本并关闭窗口 */
 	OcrDetectCopyTextAndCloseWindow = "ocrDetectCopyTextAndCloseWindow",
 }
 
@@ -67,10 +68,47 @@ export type ChatApiConfig = {
 	support_vision: boolean | undefined;
 };
 
-		/** 腾讯通天�?(免Key) */
+export enum TranslationApiType {
+	DeepL = "translation_api_deepl",
 }
 
+export type TranslationApiConfig = {
+	api_type: TranslationApiType;
+	api_uri: string;
+	api_key: string;
+	deepl_prefer_quality_optimized?: boolean;
+};
 
+export enum AppSettingsGroup {
+	Common = "common",
+	ThemeSkin = "themeSkin",
+	CommonTrayIcon = "commonTrayIcon",
+	FunctionDraw = "functionDraw",
+	Cache = "cache_20250731",
+	Screenshot = "screenshot",
+	FixedContent = "fixedContent",
+	DrawToolbarKeyEvent = "drawToolbarKeyEvent_20250526",
+	CommonKeyEvent = "commonKeyEvent",
+	AppFunction = "appFunction",
+	Render = "render",
+	SystemCommon = "systemCommon",
+	SystemChat = "systemChat",
+	SystemNetwork = "systemNetwork",
+	SystemScreenshot = "systemScreenshot_20250627",
+	SystemCore = "systemCore",
+	SystemScrollScreenshot = "systemScrollScreenshot_20250628",
+	FunctionChat = "functionChat",
+	FunctionOcr = "functionOcr",
+	FunctionTranslation = "functionTranslation",
+	FunctionTranslationCache = "functionTranslationCache",
+	FunctionScreenshot = "functionScreenshot",
+	FunctionFullScreenDraw = "functionFullScreenDraw",
+	FunctionOutput = "functionOutput_20250908",
+	FunctionFixedContent = "functionFixedContent",
+	FunctionVideoRecord = "functionVideoRecord",
+	FunctionTrayIcon = "functionTrayIcon",
+	FunctionGlobalShortcut = "functionGlobalShortcut",
+}
 
 export enum ShortcutKeyStatus {
 	Registered = "registered",
@@ -162,7 +200,6 @@ export enum ColorPickerShowMode {
 export enum OcrModel {
 	RapidOcrV4 = "RapidOcrV4",
 	RapidOcrV5 = "RapidOcrV5",
-	WeChatOcr = "WeChatOcr",
 }
 
 export enum KeyDisplayDirection {
@@ -186,15 +223,15 @@ export type AppSettingsData = {
 	[AppSettingsGroup.ThemeSkin]: {
 		/** 皮肤路径 */
 		skinPath: string;
-		/** 皮肤透明�?*/
+		/** 皮肤透明度 */
 		skinOpacity: number;
 		/** 皮肤位置 */
 		skinPosition: "top" | "bottom" | "left" | "right" | "center";
-		/** 皮肤模糊�?*/
+		/** 皮肤模糊度 */
 		skinBlur: number;
-		/** 皮肤遮罩模糊�?*/
+		/** 皮肤遮罩模糊度 */
 		skinMaskBlur: number;
-		/** 皮肤遮罩透明�?*/
+		/** 皮肤遮罩透明度 */
 		skinMaskOpacity: number;
 		/** 皮肤图片大小 */
 		skinImageSize: "cover" | "contain" | "fill";
@@ -216,27 +253,25 @@ export type AppSettingsData = {
 			| "saturation"
 			| "color"
 			| "luminosity";
-		/** 自定�?CSS */
+		/** 自定义 CSS */
 		customCss: string;
 	};
 	[AppSettingsGroup.Screenshot]: {
 		/** 界面缩放比例 */
 		uiScale: number;
-		/** 截图快捷键提示窗口隐藏的项（key 列表�?*/
-		hotKeyTipHiddenKeys: string[];
-		/** 工具栏缩放比�?*/
+		/** 工具栏缩放比例 */
 		toolbarUiScale: number;
 		/** 选区控件样式 */
 		controlNode: AppSettingsControlNode;
-		/** 颜色选择器模�?*/
+		/** 颜色选择器模式 */
 		colorPickerShowMode: ColorPickerShowMode;
-		/** 超出选区范围的元素透明�?*/
+		/** 超出选区范围的元素透明度 */
 		beyondSelectRectElementOpacity: number;
 		/** 选区遮罩颜色 */
 		selectRectMaskColor: string;
-		/** 快捷键提示透明�?*/
+		/** 快捷键提示透明度 */
 		hotKeyTipOpacity: number;
-		/** 全屏辅助线颜�?*/
+		/** 全屏辅助线颜色 */
 		fullScreenAuxiliaryLineColor: string;
 		/** 显示器中心辅助线颜色 */
 		monitorCenterAuxiliaryLineColor: string;
@@ -244,7 +279,7 @@ export type AppSettingsData = {
 		colorPickerCenterAuxiliaryLineColor: string;
 		/** 禁用动画 */
 		disableAnimation: boolean;
-		/** 隐藏工具栏工�?*/
+		/** 隐藏工具栏工具 */
 		toolbarHiddenToolList: DrawState[];
 	};
 	[AppSettingsGroup.FixedContent]: {
@@ -252,9 +287,9 @@ export type AppSettingsData = {
 		borderColor: string;
 	};
 	[AppSettingsGroup.CommonTrayIcon]: {
-		/** 自定义托盘图�?*/
+		/** 自定义托盘图标 */
 		iconPath: string;
-		/** 自定义托盘图标（暗黑�?*/
+		/** 自定义托盘图标（暗黑） */
 		iconPathDark: string;
 		/** 默认图标 */
 		defaultIcons: TrayIconDefaultIcon;
@@ -268,7 +303,7 @@ export type AppSettingsData = {
 		lockDrawTool: boolean;
 		/** 启用更精细的大小控制 */
 		enableSliderChangeWidth: boolean;
-		/** 独立的工具样�?*/
+		/** 独立的工具样式 */
 		toolIndependentStyle: boolean;
 		/** 禁用快速选择元素 */
 		disableQuickSelectElementToolList: DrawState[];
@@ -283,7 +318,7 @@ export type AppSettingsData = {
 		enableMicrophone: boolean;
 		/** 是否启用锁定绘制工具 */
 		enableLockDrawTool: boolean;
-		/** 序列号工具是否禁用箭�?*/
+		/** 序列号工具是否禁用箭头 */
 		disableArrowPicker: boolean;
 		/** 截图选区圆角 */
 		selectRectRadius: number;
@@ -305,12 +340,10 @@ export type AppSettingsData = {
 		lastWatermarkText: string;
 		/** 延迟截图秒数 */
 		delayScreenshotSeconds: number;
-		/** 锁定手动选区时的宽高�?*/
+		/** 锁定手动选区时的宽高比 */
 		lockDragAspectRatio: number;
 		/** Tab 键是否启用查找子元素 */
 		enableTabFindChildrenElements: boolean;
-		/** 是否拒绝安装内置字体（portable 首次运行取消后置 true�?*/
-		fontInstallDeclined: boolean;
 	};
 	[AppSettingsGroup.DrawToolbarKeyEvent]: Record<
 		DrawToolbarKeyEventKey,
@@ -346,31 +379,47 @@ export type AppSettingsData = {
 	[AppSettingsGroup.FunctionOcr]: {
 		/** 文本识别模型 */
 		ocrModel: OcrModel;
-		/** 启用 PaddlePaddle OCR（云�?API�?*/
+		/** 将图片转为 HTML 的视觉理解模型 */
 		htmlVisionModel: string;
-		/** 图片转为 HTML �?System 提示�?*/
+		/** 图片转为 HTML 的 System 提示词 */
 		htmlVisionModelSystemPrompt: string;
-		/** 图片转为 Markdown �?System 提示�?*/
+		/** 图片转为 Markdown 的 System 提示词 */
 		markdownVisionModelSystemPrompt: string;
 	};
+	[AppSettingsGroup.FunctionTranslation]: {
+		/** 优化 AI 翻译的排版 */
+		optimizeAiTranslationLayout: boolean;
+		translationSystemPrompt: string;
+		translationApiConfigList: TranslationApiConfig[];
+		sourceLanguage: string;
+		targetLanguage: string;
+		translationDomain: TranslationDomain;
+		translationType: TranslationType | string;
+	};
+	[AppSettingsGroup.FunctionTranslationCache]: {
+		cacheSourceLanguage: string;
+		cacheTargetLanguage: string;
+		cacheTranslationDomain: TranslationDomain;
+		cacheTranslationType: TranslationType | string;
+	};
 	[AppSettingsGroup.FunctionScreenshot]: {
-		/** 选取窗口子元�?*/
+		/** 选取窗口子元素 */
 		findChildrenElements: boolean;
-		/** 截图快捷键提�?*/
+		/** 截图快捷键提示 */
 		shortcutCanleTip: boolean;
-		/** 复制后自动保存文�?*/
+		/** 复制后自动保存文件 */
 		autoSaveOnCopy: boolean;
-		/** 快速保存文�?*/
+		/** 快速保存文件 */
 		fastSave: boolean;
 		/** 截取当前具有焦点的窗口时复制到剪贴板 */
 		focusedWindowCopyToClipboard: boolean;
-		/** 截取全屏时复制到剪贴�?*/
+		/** 截取全屏时复制到剪贴板 */
 		fullScreenCopyToClipboard: boolean;
-		/** 双击后执�?*/
+		/** 双击后执行 */
 		doubleClickAction: DoubleClickAction;
 		/** 复制图片文件到剪贴板 */
 		copyImageFileToClipboard: boolean;
-		/** 保存到云�?*/
+		/** 保存到云端 */
 		saveToCloud: boolean;
 		/** 云端链接格式 */
 		cloudSaveUrlFormat: CloudSaveUrlFormat;
@@ -396,25 +445,25 @@ export type AppSettingsData = {
 		saveFileDirectory: string;
 		/** 保存文件格式 */
 		saveFileFormat: ImageFormat;
-		/** OCR 后自动执�?*/
+		/** OCR 后自动执行 */
 		ocrAfterAction: OcrDetectAfterAction;
-		/** OCR 复制时复制文�?*/
+		/** OCR 复制时复制文本 */
 		ocrCopyText: boolean;
 		/** 选区预设 */
 		selectRectPresetList: SelectRectPreset[];
 	};
 	[AppSettingsGroup.FunctionOutput]: {
-		/** 手动保存文件名格�?*/
+		/** 手动保存文件名格式 */
 		manualSaveFileNameFormat: string;
-		/** 自动保存文件名格�?*/
+		/** 自动保存文件名格式 */
 		autoSaveFileNameFormat: string;
 		/** 快速保存文件名格式 */
 		fastSaveFileNameFormat: string;
 		/** 截取当前具有焦点的窗口文件名格式 */
 		focusedWindowFileNameFormat: string;
-		/** 截取全屏文件名格�?*/
+		/** 截取全屏文件名格式 */
 		fullScreenFileNameFormat: string;
-		/** 视频录制文件名格�?*/
+		/** 视频录制文件名格式 */
 		videoRecordFileNameFormat: string;
 		/** 上传到云端文件名格式 */
 		uploadToCloudSaveUrlFormat: string;
@@ -424,9 +473,9 @@ export type AppSettingsData = {
 		zoomWithMouse: boolean;
 		/** 自动缩放窗口 */
 		autoResizeWindow: boolean;
-		/** 固定屏幕后自�?OCR */
+		/** 固定屏幕后自动 OCR */
 		autoOcr: boolean;
-		/** 固定截图后自动复制到剪贴�?*/
+		/** 固定截图后自动复制到剪贴板 */
 		autoCopyToClipboard: boolean;
 		/** 窗口初始位置 */
 		initialPosition: AppSettingsFixedContentInitialPosition;
@@ -444,23 +493,23 @@ export type AppSettingsData = {
 		frameRate: number;
 		/** GIF 帧率 */
 		gifFrameRate: number;
-		/** 麦克风设�?*/
+		/** 麦克风设备 */
 		microphoneDeviceName: string;
-		/** 硬件加�?*/
+		/** 硬件加速 */
 		hwaccel: boolean;
-		/** 编码�?*/
+		/** 编码器 */
 		encoder: string;
-		/** 编码器预�?*/
+		/** 编码器预设 */
 		encoderPreset: string;
-		/** 视频最大尺�?*/
+		/** 视频最大尺寸 */
 		videoMaxSize: VideoMaxSize;
-		/** GIF 最大尺�?*/
+		/** GIF 最大尺寸 */
 		gifMaxSize: VideoMaxSize;
 		/** 动图格式 */
 		gifFormat: GifFormat;
 		/** 按键显示字体大小 */
 		keyDisplayFontSize: number;
-		/** 按键显示背景�?*/
+		/** 按键显示背景色 */
 		keyDisplayBackgroundColor: string;
 		/** 按键显示文字颜色 */
 		keyDisplayTextColor: string;
@@ -477,7 +526,7 @@ export type AppSettingsData = {
 		recordCaptureHistory: boolean;
 		/** 截图历史保存编辑结果 */
 		historySaveEditResult: boolean;
-		/** OCR 热启�?*/
+		/** OCR 热启动 */
 		ocrHotStart: boolean;
 		/** OCR 模型写入内存 */
 		ocrModelWriteToMemory: boolean;
@@ -502,15 +551,15 @@ export type AppSettingsData = {
 		imageFeatureThreshold: number;
 	};
 	[AppSettingsGroup.FunctionTrayIcon]: {
-		/** 托盘点击�?*/
+		/** 托盘点击后 */
 		iconClickAction: TrayIconClickAction;
 	};
 	[AppSettingsGroup.SystemCore]: {
-		/** 热加载页面数�?*/
+		/** 热加载页面数量 */
 		hotLoadPageCount: number;
 	};
 	[AppSettingsGroup.FunctionGlobalShortcut]: {
-		/** 全屏窗口被聚焦时禁用全局快捷�?*/
+		/** 全屏窗口被聚焦时禁用全局快捷键 */
 		disableOnFocusedFullScreenWindow: boolean;
 	};
 };
@@ -530,5 +579,6 @@ export const CanHiddenToolSet: Set<DrawState> = new Set([
 	DrawState.Redo,
 	DrawState.Fixed,
 	DrawState.OcrDetect,
+	DrawState.OcrTranslate,
 	DrawState.ScrollScreenshot,
 ]);

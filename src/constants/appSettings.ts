@@ -1,4 +1,4 @@
-﻿import {
+import {
 	AppSettingsControlNode,
 	type AppSettingsData,
 	AppSettingsFixedContentInitialPosition,
@@ -22,12 +22,15 @@
 } from "@/types/appSettings";
 import { DrawState } from "@/types/draw";
 import {
-
+	TranslationDomain,
+	TranslationType,
+} from "@/types/servies/translation";
 import { ImageFormat } from "@/types/utils/file";
 import { getPlatformValue } from "@/utils/platform";
 import { defaultAppFunctionConfigs } from "./appFunction";
 import { defaultCommonKeyEventSettings } from "./commonKeyEvent";
 import { FOCUS_WINDOW_APP_NAME_ENV_VARIABLE } from "./components/chat";
+import { defaultTranslationPrompt } from "./components/translation";
 import { defaultDrawToolbarKeyEventSettings } from "./drawToolbarKeyEvent";
 
 export const defaultAppSettingsData: AppSettingsData = {
@@ -53,9 +56,8 @@ export const defaultAppSettingsData: AppSettingsData = {
 	[AppSettingsGroup.Screenshot]: {
 		uiScale: 100,
 		toolbarUiScale: 100,
-		hotKeyTipHiddenKeys: [],
 		controlNode: AppSettingsControlNode.Circle,
-		// �?Mac 上禁用动�?
+		// 在 Mac 上禁用动画
 		disableAnimation: getPlatformValue(false, true),
 		colorPickerShowMode: ColorPickerShowMode.BeyondSelectRect,
 		beyondSelectRectElementOpacity: 100,
@@ -97,7 +99,7 @@ export const defaultAppSettingsData: AppSettingsData = {
 		enableMicrophone: false,
 		enableLockDrawTool: false,
 		disableArrowPicker: true,
-		selectRectRadius: 20,
+		selectRectRadius: 0,
 		selectRectShadowWidth: 0,
 		selectRectShadowColor: "#595959",
 		lastRectTool: DrawState.Rect,
@@ -109,7 +111,6 @@ export const defaultAppSettingsData: AppSettingsData = {
 		delayScreenshotSeconds: 0,
 		lockDragAspectRatio: 0,
 		enableTabFindChildrenElements: true,
-		fontInstallDeclined: false,
 	},
 	[AppSettingsGroup.DrawToolbarKeyEvent]: defaultDrawToolbarKeyEventSettings,
 	[AppSettingsGroup.CommonKeyEvent]: defaultCommonKeyEventSettings,
@@ -135,9 +136,24 @@ export const defaultAppSettingsData: AppSettingsData = {
 		autoCreateNewSessionOnCloseWindow: true,
 		chatApiConfigList: [],
 	},
+	[AppSettingsGroup.FunctionTranslation]: {
+		optimizeAiTranslationLayout: true,
+		translationSystemPrompt: defaultTranslationPrompt,
+		translationApiConfigList: [],
+		sourceLanguage: "auto",
+		targetLanguage: "zh-CHS",
+		translationDomain: TranslationDomain.General,
+		translationType: TranslationType.Youdao,
+	},
+	[AppSettingsGroup.FunctionTranslationCache]: {
+		cacheSourceLanguage: "auto",
+		cacheTargetLanguage: "zh-CHS",
+		cacheTranslationDomain: TranslationDomain.General,
+		cacheTranslationType: TranslationType.Youdao,
+	},
 	[AppSettingsGroup.FunctionOcr]: {
-		ocrModel: OcrModel.RapidOcrV4,
 		htmlVisionModel: "",
+		ocrModel: OcrModel.RapidOcrV4,
 		htmlVisionModelSystemPrompt: `You are a professional image-to-HTML conversion engine. Your sole objective is to accurately convert images into clean, semantic HTML code.
 
 ## Conversion Rules (must follow)
@@ -221,7 +237,7 @@ Priority order (highest to lowest):
 		focusedWindowCopyToClipboard: true,
 		fullScreenCopyToClipboard: true,
 		fastSave: false,
-		/** 保存到云�?*/
+		/** 保存到云端 */
 		saveToCloud: false,
 		/** 云端保存协议 */
 		cloudSaveUrlType: CloudSaveUrlType.S3,
@@ -256,13 +272,13 @@ Priority order (highest to lowest):
 		initialPosition: AppSettingsFixedContentInitialPosition.MousePosition,
 	},
 	[AppSettingsGroup.FunctionOutput]: {
-		manualSaveFileNameFormat: `SnowShot_${FOCUS_WINDOW_APP_NAME_ENV_VARIABLE}_{{YYYY-MM-DD_HH-mm-ss}}`,
-		autoSaveFileNameFormat: `SnowShot_${FOCUS_WINDOW_APP_NAME_ENV_VARIABLE}_{{YYYY-MM-DD_HH-mm-ss}}`,
-		fastSaveFileNameFormat: `SnowShot_${FOCUS_WINDOW_APP_NAME_ENV_VARIABLE}_{{YYYY-MM-DD_HH-mm-ss}}`,
+		manualSaveFileNameFormat: `SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
+		autoSaveFileNameFormat: `SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
+		fastSaveFileNameFormat: `SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
 		focusedWindowFileNameFormat: `${FOCUS_WINDOW_APP_NAME_ENV_VARIABLE}/SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
-		fullScreenFileNameFormat: `SnowShot_${FOCUS_WINDOW_APP_NAME_ENV_VARIABLE}_{{YYYY-MM-DD_HH-mm-ss}}`,
-		videoRecordFileNameFormat: `SnowShot_Video_${FOCUS_WINDOW_APP_NAME_ENV_VARIABLE}_{{YYYY-MM-DD_HH-mm-ss}}`,
-		uploadToCloudSaveUrlFormat: `SnowShot_${FOCUS_WINDOW_APP_NAME_ENV_VARIABLE}_{{YYYY-MM-DD_HH-mm-ss}}`,
+		fullScreenFileNameFormat: `SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
+		videoRecordFileNameFormat: `SnowShot_Video_{{YYYY-MM-DD_HH-mm-ss}}`,
+		uploadToCloudSaveUrlFormat: `SnowShot_{{YYYY-MM-DD_HH-mm-ss}}`,
 	},
 	[AppSettingsGroup.FunctionFullScreenDraw]: {
 		defaultTool: DrawState.Select,
@@ -308,7 +324,7 @@ Priority order (highest to lowest):
 		iconClickAction: TrayIconClickAction.Screenshot,
 	},
 	[AppSettingsGroup.SystemCore]: {
-		/// 热加载页面数�?
+		/// 热加载页面数量
 		hotLoadPageCount: 2,
 	},
 	[AppSettingsGroup.FunctionGlobalShortcut]: {

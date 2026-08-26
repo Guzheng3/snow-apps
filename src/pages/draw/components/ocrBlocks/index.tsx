@@ -6,9 +6,12 @@ import {
 	useState,
 } from "react";
 import { useIntl } from "react-intl";
-import { createOcrResultWindow } from "@/commands/core";
 import { DrawStatePublisher } from "@/components/drawCore/extra";
 import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
+import {
+	PLUGIN_ID_AI_CHAT,
+	PLUGIN_ID_TRANSLATE,
+} from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
@@ -26,7 +29,6 @@ import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { DrawState } from "@/types/draw";
 import { writeTextToClipboard } from "@/utils/clipboard";
-import { appError } from "@/utils/log";
 import { ScreenshotType } from "@/utils/types";
 import { zIndexs } from "@/utils/zIndex";
 import { getCanvas } from "../../actions";
@@ -131,30 +133,16 @@ export const OcrBlocks: React.FC<{
 					writeTextToClipboard(covertOcrResultToText(ocrResult));
 					finishCapture?.();
 				}
-
-				// 默认（未设置关闭窗口类操作）：退出截图，打开独立可编辑弹窗展示识别文字
-				if (
-					ocrAfterAction !== OcrDetectAfterAction.CopyTextAndCloseWindow &&
-					ocrAfterAction !==
-						OcrDetectAfterAction.OcrDetectCopyTextAndCloseWindow
-				) {
-					// 新建独立 OCR 结果弹窗窗口（可编辑识别文本），并退出截图窗口
-					createOcrResultWindow(ocrResult).catch((error) => {
-						appError("[OcrBlocks] createOcrResultWindow error", error);
-					});
-					finishCapture?.();
-				}
-			
+			} else if (getDrawState() === DrawState.OcrTranslate) {
+				ocrResultActionRef.current?.startTranslate();
+			}
 		},
-		[
-			finishCapture,
-			getAppSettings,
-			getDrawState,
-			getScreenshotType,
-		],
+		[finishCapture, getAppSettings, getDrawState, getScreenshotType],
 	);
 
-	
+	const onTranslate = useCallback(() => {
+		ocrResultActionRef.current?.startTranslate();
+	}, []);
 
 	const intl = useIntl();
 	const { message } = useContext(AntdContext);
@@ -228,6 +216,10 @@ export const OcrBlocks: React.FC<{
 	const [ocrResult, setOcrResult] = useState<AppOcrResult | undefined>(
 		undefined,
 	);
+	const [translatedOcrResult, setTranslatedOcrResult] = useState<
+		AppOcrResult | undefined
+	>(undefined);
+	const [translateLoading, setTranslateLoading] = useState(false);
 	const onSwitchOcrResult = useCallback((ocrResultType: OcrResultType) => {
 		ocrResultActionRef.current?.switchOcrResult(ocrResultType);
 	}, []);
@@ -249,12 +241,17 @@ export const OcrBlocks: React.FC<{
 
 	return (
 		<>
+			{(isReadyStatus?.(PLUGIN_ID_TRANSLATE) ||
+				isReadyStatus?.(PLUGIN_ID_AI_CHAT)) && (
 				<OcrTool
 					onSwitchOcrResult={onSwitchOcrResult}
+					onTranslate={onTranslate}
 					onConvertImageToHtml={onConvertImageToHtml}
 					onConvertImageToMarkdown={onConvertImageToMarkdown}
 					currentOcrResult={currentOcrResult}
 					ocrResult={ocrResult}
+					translatedOcrResult={translatedOcrResult}
+					translateLoading={translateLoading}
 					visionModelHtmlResult={visionModelHtmlResult}
 					visionModelHtmlLoading={visionModelHtmlLoading}
 					visionModelMarkdownResult={visionModelMarkdownResult}
@@ -268,6 +265,8 @@ export const OcrBlocks: React.FC<{
 				onOcrDetect={onOcrDetect}
 				onCurrentOcrResultChange={setCurrentOcrResult}
 				onOcrResultChange={setOcrResult}
+				onTranslatedResultChange={setTranslatedOcrResult}
+				onTranslateLoading={setTranslateLoading}
 				onVisionModelHtmlResultChange={setVisionModelHtmlResult}
 				onVisionModelMarkdownResultChange={setVisionModelMarkdownResult}
 				onVisionModelMarkdownLoading={setVisionModelMarkdownLoading}

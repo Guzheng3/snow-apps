@@ -33,10 +33,13 @@ import {
 	startFreeDrag,
 } from "@/commands/core";
 import { showMainWindow } from "@/commands/videoRecord";
+import { OcrTranslateIcon } from "@/components/icons";
 import { INIT_CONTAINER_KEY } from "@/components/imageLayer/actions";
 import {
-		PLUGIN_ID_RAPID_OCR,
-	} from "@/constants/pluginService";
+	PLUGIN_ID_AI_CHAT,
+	PLUGIN_ID_RAPID_OCR,
+	PLUGIN_ID_TRANSLATE,
+} from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
@@ -277,18 +280,38 @@ const FixedContentCoreInner: React.FC<{
 	const [ocrResult, setOcrResult] = useState<AppOcrResult | undefined>(
 		undefined,
 	);
+	const [translatorOcrResult, setTranslatorOcrResult] = useState<
+		AppOcrResult | undefined
+	>(undefined);
 	const [visionModelHtmlResult, setVisionModelHtmlResult] = useState<
 		AppOcrResult | undefined
 	>(undefined);
 	const [visionModelMarkdownResult, setVisionModelMarkdownResult] = useState<
 		AppOcrResult | undefined
 	>(undefined);
+	const [translateLoading, setTranslateLoading] = useState(false);
+	const enableOcrTranslate = useMemo(() => {
+		return (
+			getSelectTextMode(fixedContentType) === "ocr" &&
+			ocrResult &&
+			enableSelectText &&
+			isReadyStatus?.(PLUGIN_ID_TRANSLATE)
+		);
+	}, [fixedContentType, enableSelectText, ocrResult, isReadyStatus]);
 	const enableVisionModelHtml = useMemo(() => {
-				return false;
-			}, []);
-			const enableVisionModelMarkdown = useMemo(() => {
-				return false;
-			}, []);
+		return (
+			getSelectTextMode(fixedContentType) === "ocr" &&
+			enableSelectText &&
+			isReadyStatus?.(PLUGIN_ID_AI_CHAT)
+		);
+	}, [fixedContentType, enableSelectText, isReadyStatus]);
+	const enableVisionModelMarkdown = useMemo(() => {
+		return (
+			getSelectTextMode(fixedContentType) === "ocr" &&
+			enableSelectText &&
+			isReadyStatus?.(PLUGIN_ID_AI_CHAT)
+		);
+	}, [fixedContentType, enableSelectText, isReadyStatus]);
 
 	const [textContent, setTextContent, textContentRef] = useStateRef<
 		| {
@@ -812,7 +835,7 @@ const FixedContentCoreInner: React.FC<{
 								});
 							},
 						);
-						// removed(
+						params.allOcrResult.translatedResult?.result.text_blocks.forEach(
 							(textBlock) => {
 								textBlock.box_points.forEach((point) => {
 									point.x += selectRectParams.shadowWidth;
@@ -1280,6 +1303,19 @@ const FixedContentCoreInner: React.FC<{
 		switchDrawCore,
 	]);
 
+	const switchOcrTranslate = useCallback(async () => {
+		if (ocrResult) {
+			if (translatorOcrResult) {
+				ocrResultActionRef.current?.switchOcrResult(
+					currentOcrResult?.ocrResultType === OcrResultType.Translated
+						? OcrResultType.Ocr
+						: OcrResultType.Translated,
+				);
+			} else {
+				ocrResultActionRef.current?.startTranslate();
+			}
+		}
+	}, [ocrResult, translatorOcrResult, currentOcrResult?.ocrResultType]);
 	const switchVisionModelHtml = useCallback(async () => {
 		if (ocrResult) {
 			if (visionModelHtmlResult) {
@@ -1766,7 +1802,23 @@ const FixedContentCoreInner: React.FC<{
 
 		const mainMenu = await Menu.new({
 			items: [
-				...(enableVisionModelHtml
+				...(enableOcrTranslate || enableVisionModelHtml
+					? [
+							...(enableOcrTranslate
+								? [
+										{
+											id: `${appWindow.label}-ocrTranslateTool`,
+											text: intl.formatMessage({
+												id: "draw.ocrTranslateTool",
+											}),
+											action: switchOcrTranslate,
+											checked:
+												currentOcrResult?.ocrResultType ===
+												OcrResultType.Translated,
+										},
+									]
+								: []),
+							...(enableVisionModelHtml
 								? [
 										{
 											id: `${appWindow.label}-convertImageToHtml`,
@@ -2038,6 +2090,8 @@ const FixedContentCoreInner: React.FC<{
 		setscrollAction,
 		applyProcessImageConfigToImageLayerAction,
 		currentOcrResult?.ocrResultType,
+		enableOcrTranslate,
+		switchOcrTranslate,
 		enableVisionModelHtml,
 		switchVisionModelHtml,
 		switchVisionModelMarkdown,
@@ -2566,10 +2620,12 @@ const FixedContentCoreInner: React.FC<{
 						),
 					}}
 					onOcrResultChange={setOcrResult}
+					onTranslatedResultChange={setTranslatorOcrResult}
 					onVisionModelHtmlResultChange={setVisionModelHtmlResult}
 					onVisionModelMarkdownResultChange={setVisionModelMarkdownResult}
 					onCurrentOcrResultChange={setCurrentOcrResult}
-					/>
+					onTranslateLoading={setTranslateLoading}
+				/>
 
 				{htmlContent && (
 					<iframe
@@ -2768,13 +2824,32 @@ const FixedContentCoreInner: React.FC<{
 						display:
 							isThumbnail ||
 							enableDraw ||
-							enableSelectText
+							(enableSelectText && !enableOcrTranslate)
 								? "none"
 								: undefined,
 						pointerEvents: "auto",
 					}}
 				>
-					
+					{enableOcrTranslate ? (
+						<Button
+							icon={<OcrTranslateIcon style={{ fontSize: "1.2em" }} />}
+							loading={translateLoading}
+							style={{
+								backgroundColor:
+									currentOcrResult?.ocrResultType === OcrResultType.Translated
+										? token.colorPrimary
+										: token.colorBgMask,
+								transition: `background-color ${token.motionDurationFast} ${token.motionEaseInOut}`,
+							}}
+							className="fixed-image-translation-button"
+							type="primary"
+							shape="circle"
+							variant="solid"
+							onClick={() => {
+								switchOcrTranslate();
+							}}
+						/>
+					) : (
 						<>
 							<Button
 								icon={<EditOutlined />}
@@ -2806,7 +2881,7 @@ const FixedContentCoreInner: React.FC<{
 								}}
 							/>
 						</>
-					}
+					)}
 				</Space>
 
 				<div className="scale-info" style={{ opacity: showScaleInfo ? 1 : 0 }}>
@@ -2840,7 +2915,8 @@ const FixedContentCoreInner: React.FC<{
 
                 
                 :global(.fixed-image-container .fixed-image-button-group .fixed-image-edit-button):hover,
-                 !important;
+                :global(.fixed-image-container .fixed-image-button-group .fixed-image-translation-button):hover {
+                    background-color: ${token.colorPrimary} !important;
                 }
 
                 .fixed-image-container

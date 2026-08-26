@@ -1,4 +1,4 @@
-﻿import { emit } from "@tauri-apps/api/event";
+import { emit } from "@tauri-apps/api/event";
 import {
 	type Window as AppWindow,
 	getCurrentWindow,
@@ -416,12 +416,7 @@ const AppSettingsContextProviderCore: React.FC<{
 							? newSettings.enableTabFindChildrenElements
 							: (prevSettings?.enableTabFindChildrenElements ??
 								defaultAppSettingsData[group].enableTabFindChildrenElements),
-					fontInstallDeclined:
-						typeof newSettings?.fontInstallDeclined === "boolean"
-							? newSettings.fontInstallDeclined
-							: (prevSettings?.fontInstallDeclined ??
-								defaultAppSettingsData[group].fontInstallDeclined),
-					};
+				};
 			} else if (group === AppSettingsGroup.Screenshot) {
 				newSettings = newSettings as AppSettingsData[typeof group];
 				const prevSettings = appSettingsRef.current[group] as
@@ -497,10 +492,6 @@ const AppSettingsContextProviderCore: React.FC<{
 							? newSettings.toolbarHiddenToolList
 							: (prevSettings?.toolbarHiddenToolList ??
 								defaultAppSettingsData[group].toolbarHiddenToolList),
-					hotKeyTipHiddenKeys: Array.isArray(newSettings?.hotKeyTipHiddenKeys)
-						? newSettings.hotKeyTipHiddenKeys
-						: (prevSettings?.hotKeyTipHiddenKeys ??
-							defaultAppSettingsData[group].hotKeyTipHiddenKeys),
 				};
 			} else if (group === AppSettingsGroup.FunctionDraw) {
 				newSettings = newSettings as AppSettingsData[typeof group];
@@ -556,7 +547,7 @@ const AppSettingsContextProviderCore: React.FC<{
 				).filter((key) => {
 					if (
 						key === DrawToolbarKeyEventKey.OcrDetectTool ||
-						false
+						key === DrawToolbarKeyEventKey.OcrTranslateTool
 					) {
 						return isReady?.(PLUGIN_ID_RAPID_OCR);
 					}
@@ -675,6 +666,7 @@ const AppSettingsContextProviderCore: React.FC<{
 					// 格式化处理下
 					keyEventSettingsKey = keyEventSettingsKey
 						.split(",")
+						.slice(0, 1) // 快捷键不支持多个键，这里也限制下
 						.map((item) => trim(item))
 						.filter((val) => {
 							if (settingsKeySet.has(val)) {
@@ -826,21 +818,89 @@ const AppSettingsContextProviderCore: React.FC<{
 								defaultAppSettingsData[group]
 									.autoCreateNewSessionOnCloseWindow),
 				};
+			} else if (group === AppSettingsGroup.FunctionTranslationCache) {
 				newSettings = newSettings as AppSettingsData[typeof group];
 				const prevSettings = appSettingsRef.current[group] as
 					| AppSettingsData[typeof group]
 					| undefined;
 
 				settings = {
+					cacheSourceLanguage:
+						typeof newSettings?.cacheSourceLanguage === "string"
+							? newSettings.cacheSourceLanguage
+							: (prevSettings?.cacheSourceLanguage ??
+								defaultAppSettingsData[group].cacheSourceLanguage),
+					cacheTargetLanguage:
+						typeof newSettings?.cacheTargetLanguage === "string"
+							? newSettings.cacheTargetLanguage
+							: (prevSettings?.cacheTargetLanguage ??
+								defaultAppSettingsData[group].cacheTargetLanguage),
+					cacheTranslationDomain:
+						typeof newSettings?.cacheTranslationDomain === "string"
+							? newSettings.cacheTranslationDomain
+							: (prevSettings?.cacheTranslationDomain ??
+								defaultAppSettingsData[group].cacheTranslationDomain),
+					cacheTranslationType:
+						typeof newSettings?.cacheTranslationType === "number" ||
+						typeof newSettings?.cacheTranslationType === "string"
+							? newSettings.cacheTranslationType
+							: (prevSettings?.cacheTranslationType ??
+								defaultAppSettingsData[group].cacheTranslationType),
 				};
+			} else if (group === AppSettingsGroup.FunctionTranslation) {
 				newSettings = newSettings as AppSettingsData[typeof group];
 				const prevSettings = appSettingsRef.current[group] as
 					| AppSettingsData[typeof group]
 					| undefined;
 
 				settings = {
-					};
-					} else if (group === AppSettingsGroup.FunctionScreenshot) {
+					translationSystemPrompt:
+						typeof newSettings?.translationSystemPrompt === "string"
+							? newSettings.translationSystemPrompt
+							: (prevSettings?.translationSystemPrompt ??
+								defaultAppSettingsData[group].translationSystemPrompt),
+					optimizeAiTranslationLayout:
+						typeof newSettings?.optimizeAiTranslationLayout === "boolean"
+							? newSettings.optimizeAiTranslationLayout
+							: (prevSettings?.optimizeAiTranslationLayout ??
+								defaultAppSettingsData[group].optimizeAiTranslationLayout),
+					translationApiConfigList: Array.isArray(
+						newSettings?.translationApiConfigList,
+					)
+						? newSettings.translationApiConfigList.map((item) => ({
+								api_uri: `${item.api_uri ?? ""}`,
+								api_key: `${item.api_key ?? ""}`,
+								api_type: item.api_type,
+								deepl_prefer_quality_optimized:
+									typeof item.deepl_prefer_quality_optimized === "boolean"
+										? item.deepl_prefer_quality_optimized
+										: false,
+							}))
+						: (prevSettings?.translationApiConfigList ??
+							defaultAppSettingsData[group].translationApiConfigList),
+					sourceLanguage:
+						typeof newSettings?.sourceLanguage === "string"
+							? newSettings.sourceLanguage
+							: (prevSettings?.sourceLanguage ??
+								defaultAppSettingsData[group].sourceLanguage),
+					targetLanguage:
+						typeof newSettings?.targetLanguage === "string"
+							? newSettings.targetLanguage
+							: (prevSettings?.targetLanguage ??
+								defaultAppSettingsData[group].targetLanguage),
+					translationDomain:
+						typeof newSettings?.translationDomain === "string"
+							? newSettings.translationDomain
+							: (prevSettings?.translationDomain ??
+								defaultAppSettingsData[group].translationDomain),
+					translationType:
+						typeof newSettings?.translationType === "number" ||
+						typeof newSettings?.translationType === "string"
+							? newSettings.translationType
+							: (prevSettings?.translationType ??
+								defaultAppSettingsData[group].translationType),
+				};
+			} else if (group === AppSettingsGroup.FunctionScreenshot) {
 				newSettings = newSettings as AppSettingsData[typeof group];
 				const prevSettings = appSettingsRef.current[group] as
 					| AppSettingsData[typeof group]

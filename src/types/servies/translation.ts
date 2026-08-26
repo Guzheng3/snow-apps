@@ -1,5 +1,17 @@
 export enum TranslationType {
 	Youdao = 0,
+	DeepSeek = 1,
+	QwenTurbo = 2,
+	QwenPlus = 3,
+	QwenMax = 4,
+}
+
+export enum TranslationDomain {
+	General = "general",
+	Computers = "computers",
+	Medicine = "medicine",
+	Finance = "finance",
+	Game = "game",
 }
 
 export interface TranslateParams {
@@ -15,6 +27,10 @@ export interface TranslateParams {
 	 * 目标语言
 	 */
 	to: string;
+	/**
+	 * 领域
+	 */
+	domain: TranslationDomain;
 	/**
 	 * 翻译类型
 	 */
@@ -37,6 +53,11 @@ export interface TranslateData {
 	 */
 	to?: string;
 }
+
+export type TranslationTypeOption = {
+	type: TranslationType;
+	name: string;
+};
 
 export type DeepLTranslateResult = {
 	translations: {

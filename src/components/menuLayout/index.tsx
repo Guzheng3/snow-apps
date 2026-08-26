@@ -129,11 +129,7 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 											label: intl.formatMessage({ id: "home.screenshotFunction" }),
 										},
 										{
-											{
-										key: "translationFunction",
-										label: intl.formatMessage({ id: "home.translationFunction" }),
-									},
-									key: "videoRecordFunction",
+											key: "videoRecordFunction",
 											label: intl.formatMessage({ id: "home.videoRecordFunction" }),
 										},
 										{
@@ -157,19 +153,7 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 				tabs: [],
 				children: [
 										{
-											{
-										key: "/tools/translation",
-										path: "/tools/translation",
-										label: intl.formatMessage({ id: "menu.tools.translation" }),
-										hideTabs: true,
-										tabs: [
-											{
-												key: "translation",
-												label: intl.formatMessage({ id: "menu.tools.translation" }),
-											},
-										],
-									},
-									key: "/tools/captureHistory",
+											key: "/tools/captureHistory",
 											path: "/tools/captureHistory",
 											label: intl.formatMessage({ id: "menu.tools.captureHistory" }),
 											hideTabs: true,

@@ -18,9 +18,6 @@ export const defaultCommonKeyEventSettings: Record<
 		hotKey: getPlatformValue("Ctrl+C", "Meta+C"),
 		group: CommonKeyEventGroup.Translation,
 	},
-	CommonKeyEventKey,
-	CommonKeyEventValue
-> = {
 	[CommonKeyEventKey.ChatCopyAndHide]: {
 		hotKey: getPlatformValue("Ctrl+Q", "Meta+Q"),
 		group: CommonKeyEventGroup.Chat,
@@ -79,6 +76,12 @@ export const defaultCommonKeyEventComponentConfig: Record<
 > = commonKeyEventSettingsKeys.reduce(
 	(acc, key) => {
 		let baseMessageId = "";
+		if (
+			defaultCommonKeyEventSettings[key as CommonKeyEventKey].group ===
+			CommonKeyEventGroup.Translation
+		) {
+			baseMessageId = "tools.translation";
+		} else if (
 			defaultCommonKeyEventSettings[key as CommonKeyEventKey].group ===
 			CommonKeyEventGroup.Chat
 		) {

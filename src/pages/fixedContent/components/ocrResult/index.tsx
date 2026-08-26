@@ -13,14 +13,14 @@ import {
 	useState,
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { ocrDetect, ocrDetectWithSharedBuffer, wechatOcrDetect } from "@/commands/ocr";
-
+import { ocrDetect, ocrDetectWithSharedBuffer } from "@/commands/ocr";
 import { createWebViewSharedBufferChannel } from "@/commands/webview";
 import { PLUGIN_ID_RAPID_OCR } from "@/constants/pluginService";
 import { AntdContext } from "@/contexts/antdContext";
 import { AppContext } from "@/contexts/appContext";
 import { AppSettingsPublisher } from "@/contexts/appSettingsActionContext";
 import { usePluginServiceContext } from "@/contexts/pluginServiceContext";
+import { useTranslationRequest } from "@/core/translations";
 import { releaseOcrSession } from "@/functions/ocr";
 import { useHotkeysApp } from "@/hooks/useHotkeysApp";
 import { useStateRef } from "@/hooks/useStateRef";
@@ -33,7 +33,7 @@ import {
 import { CUSTOM_MODEL_PREFIX, MarkdownContent } from "@/pages/tools/chat/page";
 import { appFetch, getUrl } from "@/services/tools";
 import { getChatModelsWithCache } from "@/services/tools/chat";
-import { AppSettingsGroup, type ChatApiConfig, OcrModel } from "@/types/appSettings";
+import { AppSettingsGroup, type ChatApiConfig } from "@/types/appSettings";
 import type { OcrDetectResult } from "@/types/commands/ocr";
 import type { ElementRect } from "@/types/commands/screenshot";
 import { writeHtmlToClipboard, writeTextToClipboard } from "@/utils/clipboard";
@@ -42,6 +42,7 @@ import { getPlatformValue } from "@/utils/platform";
 import { randomString } from "@/utils/random";
 import { getWebViewSharedBuffer } from "@/utils/webview";
 import {
+	alignTranslatedBySourceProportion,
 	getOcrResultIframeSrcDoc,
 } from "./extra";
 
@@ -55,6 +56,7 @@ export type AppOcrResult = {
 
 export type AllOcrResult = {
 	ocrResult: AppOcrResult | undefined;
+	translatedResult: AppOcrResult | undefined;
 	visionModelHtmlResult: AppOcrResult | undefined;
 	visionModelMarkdownResult: AppOcrResult | undefined;
 	currentOcrResultType: OcrResultType | undefined;
@@ -85,6 +87,7 @@ export type OcrResultActionType = {
 		| undefined;
 	getAllOcrResult: () => AllOcrResult | undefined;
 	getSelectedText: () => OcrBlocksSelectedText | undefined;
+	startTranslate: () => void;
 	switchOcrResult: (ocrResultType: OcrResultType) => void;
 	convertImageToHtml: (canvas: HTMLCanvasElement) => Promise<void>;
 	convertImageToMarkdown: (canvas: HTMLCanvasElement) => Promise<void>;
@@ -96,6 +99,7 @@ export const covertOcrResultToText = (ocrResult: OcrDetectResult) => {
 
 export enum OcrResultType {
 	Ocr = "ocr",
+	Translated = "translated",
 	VisionModelHtml = "visionModelHtml",
 	VisionModelMarkdown = "visionModelMarkdown",
 }
@@ -168,8 +172,10 @@ export const OcrResult: React.FC<{
 	onCurrentOcrResultChange?: (
 		ocrResult: (AppOcrResult & { ocrResultType: OcrResultType }) | undefined,
 	) => void;
+	onTranslatedResultChange?: (ocrResult: AppOcrResult | undefined) => void;
 	onOcrResultChange?: (ocrResult: AppOcrResult | undefined) => void;
 	style?: React.CSSProperties;
+	onTranslateLoading?: (loading: boolean) => void;
 	onVisionModelHtmlLoading?: (loading: boolean) => void;
 	onVisionModelHtmlResultChange?: (ocrResult: AppOcrResult | undefined) => void;
 	onVisionModelMarkdownLoading?: (loading: boolean) => void;
@@ -188,8 +194,10 @@ export const OcrResult: React.FC<{
 	onMouseMove,
 	onMouseUp,
 	style,
+	onTranslatedResultChange,
 	onOcrResultChange,
 	onCurrentOcrResultChange,
+	onTranslateLoading,
 	onVisionModelHtmlLoading,
 	onVisionModelHtmlResultChange,
 	onVisionModelMarkdownLoading,
@@ -514,63 +522,37 @@ export const OcrResult: React.FC<{
 	);
 
 	const ocrDetectByCanvas = useCallback(
-				async (
-					canvas: HTMLCanvasElement,
-					scaleFactor: number,
-					detectAngle: boolean,
-				): Promise<OcrDetectResult | undefined> => {
-					const appSettings = getAppSettings();
-					const ocrModel = appSettings[AppSettingsGroup.FunctionOcr]?.ocrModel;
+		async (
+			canvas: HTMLCanvasElement,
+			scaleFactor: number,
+			detectAngle: boolean,
+		): Promise<OcrDetectResult | undefined> => {
+			const ocrResultWithSharedBuffer = await ocrDetectWithSharedBufferAction(
+				canvas,
+				scaleFactor,
+				detectAngle,
+			);
 
-					// WeChat OCR — use the external helper
-					if (ocrModel === OcrModel.WeChatOcr) {
-						const imageBlob = await new Promise<Blob | null>((resolve) => {
-							canvas.toBlob(resolve, "image/png", 1);
-						});
-						if (!imageBlob) return undefined;
-						return await wechatOcrDetect(await imageBlob.arrayBuffer());
-					}
+			if (ocrResultWithSharedBuffer) {
+				return ocrResultWithSharedBuffer;
+			}
 
-					const runLocalOcr = async (): Promise<OcrDetectResult | undefined> => {
-								const ocrResultWithSharedBuffer = await ocrDetectWithSharedBufferAction(
-									canvas,
-									scaleFactor,
-									detectAngle,
-								);
+			const imageBlob = await new Promise<Blob | null>((resolve) => {
+				canvas.toBlob(resolve, "image/png", 1);
+			});
 
-								if (ocrResultWithSharedBuffer) {
-									return ocrResultWithSharedBuffer;
-								}
+			if (!imageBlob) {
+				return undefined;
+			}
 
-								const imageBlob = await new Promise<Blob | null>((resolve) => {
-									canvas.toBlob(resolve, "image/png", 1);
-								});
-
-								if (!imageBlob) {
-									return undefined;
-								}
-
-								const ocrResult = await ocrDetect(
-									await imageBlob.arrayBuffer(),
-									scaleFactor,
-									detectAngle,
-								);
-								return ocrResult;
-							};
-
-							try {
-								const localResult = await runLocalOcr();
-								if (localResult) {
-									return localResult;
-								}
-							} catch (error) {
-								appError("[ocrDetectByCanvas] local OCR failed", error);
-								throw error;
-							}
-
-							return undefined;
-						},
-		[ocrDetectWithSharedBufferAction, getAppSettings],
+			const ocrResult = await ocrDetect(
+				await imageBlob.arrayBuffer(),
+				scaleFactor,
+				detectAngle,
+			);
+			return ocrResult;
+		},
+		[ocrDetectWithSharedBufferAction],
 	);
 
 	/** 请求 ID，避免 OCR 检测中切换工具后仍然触发 OCR 结果 */
@@ -580,6 +562,8 @@ export const OcrResult: React.FC<{
 	const [ocrResult, setOcrResult, ocrResultRef] = useStateRef<
 		AppOcrResult | undefined
 	>(undefined);
+	const [translatorOcrResult, setTranslatorOcrResult, translatorOcrResultRef] =
+		useStateRef<AppOcrResult | undefined>(undefined);
 	const [
 		visionModelHtmlResult,
 		setVisionModelHtmlResult,
@@ -598,6 +582,7 @@ export const OcrResult: React.FC<{
 
 			setCurrentOcrResult(undefined);
 			setOcrResult(undefined);
+			setTranslatorOcrResult(undefined);
 			setVisionModelHtmlResult(undefined);
 			setVisionModelMarkdownResult(undefined);
 
@@ -618,6 +603,7 @@ export const OcrResult: React.FC<{
 			if (params.allOcrResult) {
 				selectRectRef.current = selectRect;
 				setOcrResult(params.allOcrResult.ocrResult);
+				setTranslatorOcrResult(params.allOcrResult.translatedResult);
 				setVisionModelHtmlResult(params.allOcrResult.visionModelHtmlResult);
 				setVisionModelMarkdownResult(
 					params.allOcrResult.visionModelMarkdownResult,
@@ -632,6 +618,14 @@ export const OcrResult: React.FC<{
 							targetOcrResult = {
 								...params.allOcrResult.ocrResult,
 								ocrResultType: OcrResultType.Ocr,
+							};
+						}
+						break;
+					case OcrResultType.Translated:
+						if (params.allOcrResult.translatedResult) {
+							targetOcrResult = {
+								...params.allOcrResult.translatedResult,
+								ocrResultType: OcrResultType.Translated,
 							};
 						}
 						break;
@@ -724,6 +718,7 @@ export const OcrResult: React.FC<{
 
 			setCurrentOcrResult(undefined);
 			setOcrResult(undefined);
+			setTranslatorOcrResult(undefined);
 			setVisionModelHtmlResult(undefined);
 			setVisionModelMarkdownResult(undefined);
 			const { canvas } = params;
@@ -1168,8 +1163,64 @@ export const OcrResult: React.FC<{
 			setVisionModelMarkdownResult,
 		],
 	);
+
+	const { requestTranslate } = useTranslationRequest(
+		useMemo(() => {
+			return {
+				onComplete: (result, requestId) => {
+					if (requestId !== requestIdRef.current || !ocrResultRef.current) {
+						return;
+					}
+
+					const sourceTextList = ocrResultRef.current.result.text_blocks.map(
+						(block) => block.text,
+					);
+					const translatedTextList = result.map((item) => item.content);
+					let resultTextBlocks: string[] = [];
+					if (
+						sourceTextList.length > translatedTextList.length &&
+						getAppSettings()[AppSettingsGroup.FunctionTranslation]
+							.optimizeAiTranslationLayout
+					) {
+						resultTextBlocks = alignTranslatedBySourceProportion(
+							sourceTextList,
+							translatedTextList,
+						);
+					} else {
+						resultTextBlocks = translatedTextList;
+					}
+
+					const translatorOcrResult: AppOcrResult = {
+						ignoreScale: ocrResultRef.current.ignoreScale,
+						result: {
+							...ocrResultRef.current.result,
+							text_blocks: ocrResultRef.current.result.text_blocks.map(
+								(block, index) => ({
+									...block,
+									text: resultTextBlocks[index] ?? block.text,
+								}),
+							),
+						},
+					};
+
+					setTranslatorOcrResult(translatorOcrResult);
+					updateOcrTextElements(
+						translatorOcrResult.result,
+						translatorOcrResult.ignoreScale,
+						OcrResultType.Translated,
+					);
+				},
+				lazyLoad: true,
+			};
+		}, [
+			setTranslatorOcrResult,
+			ocrResultRef,
+			updateOcrTextElements,
+			getAppSettings,
+		]),
 	);
 
+	const requestTranslateLoadingIdRef = useRef<number | undefined>(undefined);
 	useImperativeHandle(
 		actionRef,
 		() => ({
@@ -1201,7 +1252,47 @@ export const OcrResult: React.FC<{
 				return currentOcrResultRef.current;
 			},
 			getSelectedText,
-			
+			startTranslate: async () => {
+				if (
+					!ocrResultRef.current ||
+					ocrResultRef.current.result.text_blocks.length === 0
+				) {
+					message.error(intl.formatMessage({ id: "draw.ocrResultEmpty" }));
+					return;
+				}
+
+				if (
+					requestTranslateLoadingIdRef.current &&
+					requestTranslateLoadingIdRef.current === requestIdRef.current
+				) {
+					return;
+				}
+
+				setTranslatorOcrResult(undefined);
+
+				requestTranslateLoadingIdRef.current = requestIdRef.current;
+				const hideLoading = message.loading(
+					intl.formatMessage({ id: "draw.ocrResult.translating" }),
+					20,
+				);
+				onTranslateLoading?.(true);
+
+				try {
+					await requestTranslate(
+						ocrResultRef.current.result.text_blocks.map((block) => block.text),
+						requestIdRef.current,
+					);
+				} catch (error) {
+					appError("[OcrResult.startTranslate] requestTranslate error", error);
+					message.error(
+						intl.formatMessage({ id: "draw.ocrResult.translateError" }),
+					);
+				}
+
+				hideLoading();
+				requestTranslateLoadingIdRef.current = undefined;
+				onTranslateLoading?.(false);
+			},
 			switchOcrResult: (ocrResultType: OcrResultType) => {
 				if (ocrResultType === OcrResultType.Ocr && ocrResultRef.current) {
 					updateOcrTextElements(
@@ -1212,7 +1303,19 @@ export const OcrResult: React.FC<{
 							ignoreResetValue: true,
 						},
 					);
-				 else if (
+				} else if (
+					ocrResultType === OcrResultType.Translated &&
+					translatorOcrResultRef.current
+				) {
+					updateOcrTextElements(
+						translatorOcrResultRef.current.result,
+						translatorOcrResultRef.current.ignoreScale,
+						OcrResultType.Translated,
+						{
+							ignoreResetValue: true,
+						},
+					);
+				} else if (
 					ocrResultType === OcrResultType.VisionModelHtml &&
 					visionModelHtmlResultRef.current
 				) {
@@ -1238,6 +1341,7 @@ export const OcrResult: React.FC<{
 			getAllOcrResult: () => {
 				return {
 					ocrResult: ocrResultRef.current,
+					translatedResult: translatorOcrResultRef.current,
 					visionModelHtmlResult: visionModelHtmlResultRef.current,
 					visionModelMarkdownResult: visionModelMarkdownResultRef.current,
 					currentOcrResultType: currentOcrResultRef.current?.ocrResultType,
@@ -1258,10 +1362,13 @@ export const OcrResult: React.FC<{
 			setEnable,
 			setScale,
 			ocrResultRef,
+			requestTranslate,
 			setTranslatorOcrResult,
 			intl,
 			currentOcrResultRef,
+			translatorOcrResultRef,
 			updateOcrTextElements,
+			onTranslateLoading,
 			convertImageToVisionModelFormat,
 			visionModelHtmlResultRef,
 			visionModelMarkdownResultRef,
@@ -1271,7 +1378,9 @@ export const OcrResult: React.FC<{
 	useEffect(() => {
 		onOcrResultChange?.(ocrResult);
 	}, [ocrResult, onOcrResultChange]);
-	
+	useEffect(() => {
+		onTranslatedResultChange?.(translatorOcrResult);
+	}, [translatorOcrResult, onTranslatedResultChange]);
 	useEffect(() => {
 		onCurrentOcrResultChange?.(currentOcrResult);
 	}, [currentOcrResult, onCurrentOcrResultChange]);

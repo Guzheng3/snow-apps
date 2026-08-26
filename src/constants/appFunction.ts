@@ -7,7 +7,7 @@ import {
 export const defaultAppFunctionConfigs: Record<AppFunction, AppFunctionConfig> =
 	{
 		[AppFunction.Screenshot]: {
-			shortcutKey: "Ctrl+F1, Alt+A",
+			shortcutKey: "F1",
 			group: AppFunctionGroup.Screenshot,
 		},
 		[AppFunction.ScreenshotDelay]: {
@@ -19,6 +19,10 @@ export const defaultAppFunctionConfigs: Record<AppFunction, AppFunctionConfig> =
 			group: AppFunctionGroup.Screenshot,
 		},
 		[AppFunction.ScreenshotOcr]: {
+			shortcutKey: "",
+			group: AppFunctionGroup.Screenshot,
+		},
+		[AppFunction.ScreenshotOcrTranslate]: {
 			shortcutKey: "",
 			group: AppFunctionGroup.Screenshot,
 		},
@@ -41,6 +45,14 @@ export const defaultAppFunctionConfigs: Record<AppFunction, AppFunctionConfig> =
 		[AppFunction.Chat]: {
 			shortcutKey: "",
 			group: AppFunctionGroup.Chat,
+		},
+		[AppFunction.TranslationSelectText]: {
+			shortcutKey: "",
+			group: AppFunctionGroup.Translation,
+		},
+		[AppFunction.Translation]: {
+			shortcutKey: "",
+			group: AppFunctionGroup.Translation,
 		},
 		[AppFunction.VideoRecord]: {
 			shortcutKey: "",
