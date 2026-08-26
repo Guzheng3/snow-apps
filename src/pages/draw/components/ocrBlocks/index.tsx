@@ -144,9 +144,7 @@ export const OcrBlocks: React.FC<{
 					});
 					finishCapture?.();
 				}
-			} else if (getDrawState() === DrawState.OcrTranslate) {
-				ocrResultActionRef.current?.startTranslate();
-			}
+			
 		},
 		[
 			finishCapture,

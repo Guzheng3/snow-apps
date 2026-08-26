@@ -22,10 +22,6 @@ export const defaultAppFunctionConfigs: Record<AppFunction, AppFunctionConfig> =
 			shortcutKey: "",
 			group: AppFunctionGroup.Screenshot,
 		},
-		[AppFunction.ScreenshotOcrTranslate]: {
-			shortcutKey: "",
-			group: AppFunctionGroup.Screenshot,
-		},
 		[AppFunction.ScreenshotCopy]: {
 			shortcutKey: "",
 			group: AppFunctionGroup.Screenshot,

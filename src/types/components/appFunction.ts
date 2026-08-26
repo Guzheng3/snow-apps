@@ -11,7 +11,6 @@ export enum AppFunction {
 	/** 截图复制到剪贴板 */
 	ScreenshotCopy = "screenshotCopy",
 	/** 截图翻译 */
-	ScreenshotOcrTranslate = "screenshotOcrTranslate",
 	Chat = "chat",
 	ChatSelectText = "chatSelectText",
 	Translation = "translation",

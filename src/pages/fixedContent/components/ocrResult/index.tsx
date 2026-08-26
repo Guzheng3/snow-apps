@@ -1,4 +1,3 @@
-import React from "react";
 import { Menu } from "@tauri-apps/api/menu";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { theme } from "antd";
@@ -1246,7 +1245,6 @@ export const OcrResult: React.FC<{
 		]),
 	);
 
-	const requestTranslateLoadingIdRef = useRef<number | undefined>(undefined);
 	useImperativeHandle(
 		actionRef,
 		() => ({
@@ -1278,47 +1276,7 @@ export const OcrResult: React.FC<{
 				return currentOcrResultRef.current;
 			},
 			getSelectedText,
-			startTranslate: async () => {
-				if (
-					!ocrResultRef.current ||
-					ocrResultRef.current.result.text_blocks.length === 0
-				) {
-					message.error(intl.formatMessage({ id: "draw.ocrResultEmpty" }));
-					return;
-				}
-
-				if (
-					requestTranslateLoadingIdRef.current &&
-					requestTranslateLoadingIdRef.current === requestIdRef.current
-				) {
-					return;
-				}
-
-				setTranslatorOcrResult(undefined);
-
-				requestTranslateLoadingIdRef.current = requestIdRef.current;
-				const hideLoading = message.loading(
-					intl.formatMessage({ id: "draw.ocrResult.translating" }),
-					20,
-				);
-				onTranslateLoading?.(true);
-
-				try {
-					await requestTranslate(
-						ocrResultRef.current.result.text_blocks.map((block) => block.text),
-						requestIdRef.current,
-					);
-				} catch (error) {
-					appError("[OcrResult.startTranslate] requestTranslate error", error);
-					message.error(
-						intl.formatMessage({ id: "draw.ocrResult.translateError" }),
-					);
-				}
-
-				hideLoading();
-				requestTranslateLoadingIdRef.current = undefined;
-				onTranslateLoading?.(false);
-			},
+			
 			switchOcrResult: (ocrResultType: OcrResultType) => {
 				if (ocrResultType === OcrResultType.Ocr && ocrResultRef.current) {
 					updateOcrTextElements(
@@ -1388,7 +1346,6 @@ export const OcrResult: React.FC<{
 			setEnable,
 			setScale,
 			ocrResultRef,
-			requestTranslate,
 			setTranslatorOcrResult,
 			intl,
 			currentOcrResultRef,

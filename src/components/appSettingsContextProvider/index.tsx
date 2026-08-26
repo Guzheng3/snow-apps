@@ -556,7 +556,7 @@ const AppSettingsContextProviderCore: React.FC<{
 				).filter((key) => {
 					if (
 						key === DrawToolbarKeyEventKey.OcrDetectTool ||
-						key === DrawToolbarKeyEventKey.OcrTranslateTool
+						false
 					) {
 						return isReady?.(PLUGIN_ID_RAPID_OCR);
 					}

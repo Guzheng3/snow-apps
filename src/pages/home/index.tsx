@@ -205,9 +205,7 @@ export const HomePage = () => {
 											}
 
 											if (
-												config.configKey === AppFunction.ScreenshotOcr ||
-												config.configKey === AppFunction.ScreenshotOcrTranslate
-											) {
+												config.configKey === AppFunction.ScreenshotOcr										) {
 												return isReadyStatus?.(PLUGIN_ID_RAPID_OCR);
 											}
 

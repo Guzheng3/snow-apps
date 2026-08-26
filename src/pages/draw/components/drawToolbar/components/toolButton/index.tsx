@@ -19,7 +19,6 @@ import { KeyEventWrap } from "@/pages/draw/components/drawToolbar/components/key
  */
 const TOOLBAR_SHORT_NAMES: Partial<Record<DrawToolbarKeyEventKey, string>> = {
 	[DrawToolbarKeyEventKey.LockDrawTool]: "锁定",
-	[DrawToolbarKeyEventKey.OcrTranslateTool]: "翻译",
 	[DrawToolbarKeyEventKey.FixedTool]: "贴图",
 	[DrawToolbarKeyEventKey.ScrollScreenshotTool]: "长图",
 	[DrawToolbarKeyEventKey.CopyTool]: "复制",

@@ -530,6 +530,5 @@ export const CanHiddenToolSet: Set<DrawState> = new Set([
 	DrawState.Redo,
 	DrawState.Fixed,
 	DrawState.OcrDetect,
-	DrawState.OcrTranslate,
 	DrawState.ScrollScreenshot,
 ]);

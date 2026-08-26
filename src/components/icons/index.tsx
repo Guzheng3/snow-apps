@@ -1,32 +1,3 @@
-import Icon from "@ant-design/icons";
-import type { IconComponentProps } from "@ant-design/icons/lib/components/Icon";
-import { theme } from "antd";
-
-/**
- * 黑暗模式图标
- */
-const DarkModeSVG = () => (
-	<svg
-		viewBox="0 0 1024 1024"
-		version="1.1"
-		xmlns="http://www.w3.org/2000/svg"
-		width="1em"
-		height="1em"
-		fill="currentColor"
-		aria-hidden="true"
-	>
-		<path
-			d="M0 0m512 0l0 0q512 0 512 512l0 0q0 512-512 512l0 0q-512 0-512-512l0 0q0-512 512-512Z"
-			fill="#B96EE7"
-			p-id="1436"
-		></path>
-		<path
-			d="M512 192c176.725333 0 320 143.274667 320 320 0 176.725333-143.274667 320-320 320a319.573333 319.573333 0 0 1-258.752-131.690667A280.96 280.96 0 0 0 298.666667 704c153.173333 0 277.333333-124.16 277.333333-277.333333 0-95.445333-48.213333-179.626667-121.6-229.504A323.050667 323.050667 0 0 1 512 192z"
-			fill="#FFFFFF"
-			p-id="1437"
-		></path>
-	</svg>
-);
 
 export const DarkModeIcon = (props: IconComponentProps) => (
 	<Icon component={DarkModeSVG} {...props} />
@@ -903,26 +874,6 @@ export const RotateIcon = (props: IconComponentProps) => (
 	<Icon component={RotateSVG} {...props} />
 );
 
-const OcrTranslateSVG = () => (
-	<svg
-		viewBox="0 0 1024 1024"
-		version="1.1"
-		xmlns="http://www.w3.org/2000/svg"
-		width="1em"
-		height="1em"
-		fill="currentColor"
-		aria-hidden="true"
-	>
-		<path
-			d="M85.312 213.312a128 128 0 0 1 128-128h85.376a128 128 0 0 1 128 128v256H341.312V362.688H170.688v106.624H85.312v-256z m85.376 64h170.624v-64a42.688 42.688 0 0 0-42.624-42.624H213.312a42.688 42.688 0 0 0-42.624 42.624v64z m341.312-128h256a128 128 0 0 1 128 128V384h-85.312V277.312A42.688 42.688 0 0 0 768 234.688H512V149.312z m256 341.376v64h170.688V640h-45.312a340.224 340.224 0 0 1-93.44 194.688c29.696 12.032 62.08 18.624 96.064 18.624h42.688v85.376H896c-62.208 0-120.448-16.64-170.688-45.696a339.776 339.776 0 0 1-170.624 45.696H512v-85.376h42.688c33.92 0 66.368-6.592 96-18.56a341.888 341.888 0 0 1-63.168-91.136l-18.304-38.528 77.056-36.608 18.368 38.528c14.72 30.976 35.456 58.56 60.672 81.152A255.616 255.616 0 0 0 807.104 640H512V554.688h170.688v-64H768z m-512 64v256c0 23.552 19.072 42.624 42.688 42.624h106.624v85.376H298.688a128 128 0 0 1-128-128v-256H256z"
-			p-id="2590"
-		></path>
-	</svg>
-);
-
-export const OcrTranslateIcon = (props: IconComponentProps) => (
-	<Icon component={OcrTranslateSVG} {...props} />
-);
 
 const ClipboardSVG = () => (
 	<svg

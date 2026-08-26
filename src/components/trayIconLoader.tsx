@@ -243,19 +243,7 @@ const TrayIconLoaderComponent = () => {
 									executeScreenshot(ScreenshotType.OcrDetect);
 								},
 							},
-							{
-								id: `${appWindow.label}-screenshot-ocr-translate`,
-								text: intl.formatMessage({ id: "draw.ocrTranslateTool" }),
-								accelerator: disableShortcut
-									? undefined
-									: formatKey(
-											shortcutKeys[AppFunction.ScreenshotOcrTranslate]
-												.shortcutKey,
-										),
-								action: async () => {
-									executeScreenshot(ScreenshotType.OcrTranslate);
-								},
-							},
+							
 						]
 					: []),
 				{

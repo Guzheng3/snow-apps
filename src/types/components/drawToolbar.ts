@@ -35,7 +35,6 @@ export enum DrawToolbarKeyEventKey {
 	CopyTool = "copyTool",
 	FixedTool = "fixedTool",
 	OcrDetectTool = "ocrDetectTool",
-	OcrTranslateTool = "ocrTranslateTool",
 	ColorPickerMoveUp = "colorPickerMoveUp",
 	ColorPickerMoveDown = "colorPickerMoveDown",
 	ColorPickerMoveLeft = "colorPickerMoveLeft",

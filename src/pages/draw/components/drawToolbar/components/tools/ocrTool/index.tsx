@@ -18,7 +18,7 @@ import { OcrToolModalSettings } from "./components/ocrToolModalSettings";
 
 export const isOcrTool = (drawState: DrawState) => {
 	return (
-		drawState === DrawState.OcrDetect || drawState === DrawState.OcrTranslate
+		drawState === DrawState.OcrDetect
 	);
 };
 

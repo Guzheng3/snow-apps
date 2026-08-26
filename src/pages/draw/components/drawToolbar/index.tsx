@@ -488,9 +488,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 					);
 					break;
 				case DrawState.OcrDetect:
-				case DrawState.OcrTranslate:
 					if (isReady?.(PLUGIN_ID_RAPID_OCR)) {
-					) {
 						onOcrDetect(next);
 					}
 					break;
@@ -631,9 +629,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 						break;
 					case ScreenshotType.OcrDetect:
 						onToolClick(DrawState.OcrDetect);
-						break;
-					case ScreenshotType.OcrTranslate:
-						onToolClick(DrawState.OcrTranslate);
 						break;
 					case ScreenshotType.Copy:
 						onCopyToClipboard();
@@ -973,23 +968,6 @@ return (
 								}}
 							/>
 
-							{/* OCR 翻译 */}
-							<ToolButton
-								hidden={
-									customToolbarToolHiddenMap?.[DrawState.OcrTranslate]
-								}
-								componentKey={DrawToolbarKeyEventKey.OcrTranslateTool}
-								drawState={DrawState.OcrTranslate}
-								disable={
-									disableNormalScreenshotTool ||
-									!(
-										(isReadyStatus?.(PLUGIN_ID_RAPID_OCR) &&
-									)
-								}
-								onClick={() => {
-									onToolClick(DrawState.OcrTranslate);
-								}}
-							/>
 
 							{/* 滚动截图 */}
 							<ToolButton

@@ -248,8 +248,7 @@ const DrawLayerCore: React.FC<{
 				drawCoreActionRef.current?.getDrawCacheLayerElement();
 			if (drawCoreElement) {
 				if (
-					drawState === DrawState.OcrTranslate ||
-					drawState === DrawState.OcrDetect ||
+							drawState === DrawState.OcrDetect ||
 					drawState === DrawState.ScanQrcode ||
 					drawState === DrawState.ExtraTools ||
 					drawState === DrawState.VideoRecord ||
