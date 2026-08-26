@@ -10,14 +10,6 @@ export const defaultCommonKeyEventSettings: Record<
 	CommonKeyEventKey,
 	CommonKeyEventValue
 > = {
-	[CommonKeyEventKey.CopyAndHide]: {
-		hotKey: getPlatformValue("Ctrl+Q", "Meta+Q"),
-		group: CommonKeyEventGroup.Translation,
-	},
-	[CommonKeyEventKey.Copy]: {
-		hotKey: getPlatformValue("Ctrl+C", "Meta+C"),
-		group: CommonKeyEventGroup.Translation,
-	},
 	[CommonKeyEventKey.ChatCopyAndHide]: {
 		hotKey: getPlatformValue("Ctrl+Q", "Meta+Q"),
 		group: CommonKeyEventGroup.Chat,

@@ -133,7 +133,6 @@ export const HotKeySettingsPage = () => {
 
 	const keyEventFormItemList = useMemo(() => {
 		const groupFormItemMap: Record<CommonKeyEventGroup, React.ReactNode[]> = {
-			[CommonKeyEventGroup.Translation]: [],
 			[CommonKeyEventGroup.FixedContent]: [],
 		};
 

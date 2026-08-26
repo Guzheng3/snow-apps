@@ -481,9 +481,7 @@ interface LayoutRouteRouteChildren {
   LayoutSettingsHotKeySettingsLazyRoute: typeof LayoutSettingsHotKeySettingsLazyRoute
   LayoutSettingsSystemSettingsLazyRoute: typeof LayoutSettingsSystemSettingsLazyRoute
   LayoutToolsCaptureHistoryLazyRoute: typeof LayoutToolsCaptureHistoryLazyRoute
-  LayoutToolsChatLazyRoute: typeof LayoutToolsChatLazyRoute
-  LayoutToolsTranslationLazyRoute: typeof LayoutToolsTranslationLazyRoute
-}
+  LayoutToolsChatLazyRoute: typeof LayoutToolsChatLazyRoute}
 
 const LayoutRouteRouteChildren: LayoutRouteRouteChildren = {
   LayoutAboutLazyRoute: LayoutAboutLazyRoute,
@@ -497,9 +495,7 @@ const LayoutRouteRouteChildren: LayoutRouteRouteChildren = {
   LayoutSettingsHotKeySettingsLazyRoute: LayoutSettingsHotKeySettingsLazyRoute,
   LayoutSettingsSystemSettingsLazyRoute: LayoutSettingsSystemSettingsLazyRoute,
   LayoutToolsCaptureHistoryLazyRoute: LayoutToolsCaptureHistoryLazyRoute,
-  LayoutToolsChatLazyRoute: LayoutToolsChatLazyRoute,
-  LayoutToolsTranslationLazyRoute: LayoutToolsTranslationLazyRoute,
-}
+  LayoutToolsChatLazyRoute: LayoutToolsChatLazyRoute,}
 
 const LayoutRouteRouteWithChildren = LayoutRouteRoute._addFileChildren(
   LayoutRouteRouteChildren,
