@@ -6537,7 +6537,6 @@ version = "0.8.0"
 dependencies = [
  "base64 0.22.1",
  "log",
- "md-5",
  "paddle-ocr-rs",
  "reqwest",
  "serde",
@@ -6577,8 +6576,6 @@ dependencies = [
  "tauri-plugin-updater",
  "tauri-plugin-window-state",
  "tokio",
- "urlencoding",
- "uuid",
 ]
 
 [[package]]
@@ -6687,11 +6684,19 @@ name = "snow-shot-http-services"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
+ "hmac",
  "log",
+ "md-5",
+ "reqwest",
  "rust-s3",
  "serde",
+ "serde_json",
+ "sha2",
  "thiserror 2.0.17",
  "tokio",
+ "urlencoding",
+ "uuid",
 ]
 
 [[package]]
