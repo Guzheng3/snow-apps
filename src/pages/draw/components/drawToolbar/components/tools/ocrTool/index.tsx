@@ -24,28 +24,22 @@ export const isOcrTool = (drawState: DrawState) => {
 
 const OcrTool: React.FC<{
 	onSwitchOcrResult: (ocrResultType: OcrResultType) => void;
-	onTranslate: () => void;
 	onConvertImageToHtml: () => void;
 	onConvertImageToMarkdown: () => void;
 	currentOcrResult:
 		| (AppOcrResult & { ocrResultType: OcrResultType })
 		| undefined;
 	ocrResult: AppOcrResult | undefined;
-	translatedOcrResult: AppOcrResult | undefined;
-	translateLoading: boolean;
 	visionModelHtmlResult: AppOcrResult | undefined;
 	visionModelHtmlLoading: boolean;
 	visionModelMarkdownResult: AppOcrResult | undefined;
 	visionModelMarkdownLoading: boolean;
 }> = ({
 	onSwitchOcrResult,
-	onTranslate,
 	onConvertImageToHtml,
 	onConvertImageToMarkdown,
 	currentOcrResult,
 	ocrResult,
-	translatedOcrResult,
-	translateLoading,
 	visionModelHtmlResult,
 	visionModelHtmlLoading,
 	visionModelMarkdownResult,
@@ -78,27 +72,19 @@ const OcrTool: React.FC<{
 					? [
 							<Button
 								disabled={!currentOcrResult}
-								loading={translateLoading}
 								onClick={() => {
 									if (ocrResult) {
-										if (translatedOcrResult) {
-											onSwitchOcrResult(
-												currentOcrResult?.ocrResultType ===
-													OcrResultType.Translated
-													? OcrResultType.Ocr
-													: OcrResultType.Translated,
-											);
-										} else {
-											onTranslate();
+										 else {
+											
 										}
 									}
 								}}
 								type={
-									currentOcrResult?.ocrResultType === OcrResultType.Translated
+									false
 										? "primary"
 										: "text"
 								}
-								title={intl.formatMessage({ id: "draw.ocrDetect.translate" })}
+								title={""}
 								key="translate"
 							/>,
 						]
@@ -106,7 +92,7 @@ const OcrTool: React.FC<{
 									<OcrToolModalSettings
 					key="ocrToolModalSettings"
 					onFinish={async () => {
-						onTranslate();
+						
 						return;
 					}}
 				/>,

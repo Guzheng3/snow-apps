@@ -76,12 +76,6 @@ export const defaultCommonKeyEventComponentConfig: Record<
 > = commonKeyEventSettingsKeys.reduce(
 	(acc, key) => {
 		let baseMessageId = "";
-		if (
-			defaultCommonKeyEventSettings[key as CommonKeyEventKey].group ===
-			CommonKeyEventGroup.Translation
-		) {
-			baseMessageId = "tools.translation";
-		} else if (
 			defaultCommonKeyEventSettings[key as CommonKeyEventKey].group ===
 			CommonKeyEventGroup.Chat
 		) {

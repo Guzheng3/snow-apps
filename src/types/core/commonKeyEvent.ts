@@ -1,6 +1,5 @@
 export enum CommonKeyEventGroup {
-	Translation = "translation",
-	Chat = "chat",
+		Chat = "chat",
 	FixedContent = "fixedContent",
 }
 

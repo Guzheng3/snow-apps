@@ -552,100 +552,26 @@
 	}
 
 /* ===== 翻译按钮 ===== */
-.translateBtn {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 32px;
-	height: 32px;
-	border: none;
-	border-radius: 10px;
-	background: transparent;
-	color: var(--ocr-muted);
-	font-size: 16px;
-	cursor: pointer;
-	transition: background 0.18s ease, color 0.18s ease;
-}
 
-.translateBtn:hover {
-	background: var(--ocr-badge-bg);
-	color: var(--ocr-accent);
-}
 
-.translateBtn svg {
-	width: 14px;
-	height: 14px;
-}
+
+
+
 
 /* ===== 翻译面板 ===== */
-.translatePanel {
-	margin-top: 12px;
-	display: flex;
-	flex-direction: column;
-	flex: 1;
-	min-height: 0;
-	background: var(--ocr-editor-bg);
-	border: 1px solid var(--ocr-border);
-	border-radius: 14px;
-	overflow: hidden;
-}
 
-.translateHeader {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 9px 14px;
-	border-bottom: 1px solid var(--ocr-border);
-	background: var(--ocr-editor-bar-bg);
-}
 
-.translateTitle {
-	font-size: 13px;
-	font-weight: 600;
-	color: var(--ocr-text);
-	margin: 0;
-}
 
-.translateBody {
-	flex: 1;
-	min-height: 0;
-	display: flex;
-}
 
-.translateArea {
-	flex: 1;
-	width: 100%;
-	box-sizing: border-box;
-	border: none;
-	outline: none;
-	resize: none;
-	background: transparent;
-	color: var(--ocr-text);
-	font-size: 15px;
-	line-height: 1.8;
-	padding: 16px 18px;
-	font-family: inherit;
-}
 
-.translateArea::placeholder {
-	color: var(--ocr-muted);
-}
 
-.translateLoading {
-	flex: 1;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--ocr-muted);
-	font-size: 14px;
-	padding: 24px;
-}
 
-.translateFooter {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	padding: 8px 14px;
-	border-top: 1px solid var(--ocr-border);
-}
+
+
+
+
+
+
+
+
 }

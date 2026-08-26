@@ -310,11 +310,6 @@ export const OcrResultModal: React.FC<{
 		qqs: [],
 	});
 	const [copiedItem, setCopiedItem] = useState("");
-	const [showTranslate, setShowTranslate] = useState(false);
-	const [translatedText, setTranslatedText] = useState("");
-	const [translating, setTranslating] = useState(false);
-	const [copyingTr, setCopyingTr] = useState(false);
-
 	// 每次 OCR 结果变化时，重置为语义智能排版（按几何位置聚类行与段落，更贴近阅读顺序）
 	useEffect(() => {
 		if (open && ocrResult) {
@@ -355,33 +350,9 @@ export const OcrResultModal: React.FC<{
 				}
 			};
 
-			const handleTranslate = async () => {
-				if (!editableText) return;
-				setShowTranslate(!showTranslate);
-				if (!showTranslate && !translatedText) {
-					setTranslating(true);
-					try {
-						setTranslatedText(result);
-					} catch {
-						message.error("翻译失败");
-					} finally {
-						setTranslating(false);
-					}
-				}
-			};
+			
 
-			const handleCopyTranslation = async () => {
-				if (!translatedText) return;
-				setCopyingTr(true);
-				try {
-					await writeTextToClipboard(translatedText);
-					message.success("译文已复制");
-				} catch {
-					message.error("复制失败");
-				} finally {
-					setCopyingTr(false);
-				}
-			};
+			
 
 	const handleCopyItem = async (
 		value: string,
@@ -460,12 +431,6 @@ export const OcrResultModal: React.FC<{
 						onClick={onClose}
 					>
 						<CloseOutlined />
-					</button>
-					<button
-						className={styles.translateBtn}
-						title="翻译"
-						onClick={handleTranslate}
-					>
 					</button>
 				</div>
 			</div>
@@ -555,37 +520,6 @@ export const OcrResultModal: React.FC<{
 					</div>
 				</div>
 			)}
-
-			{/* 翻译面板 */}
-				{showTranslate && (
-					<div className={styles.translatePanel}>
-						<div className={styles.translateHeader}>
-							<span className={styles.translateTitle}>翻译结果</span>
-						</div>
-						<div className={styles.translateBody}>
-							{translating ? (
-								<div className={styles.translateLoading}>翻译中…</div>
-							) : (
-								<textarea
-									className={styles.translateArea}
-									value={translatedText}
-									readOnly
-									placeholder="点击翻译按钮获取译文"
-								/>
-							)}
-						</div>
-						<div className={styles.translateFooter}>
-							<button
-								className={styles.copyBtn}
-								onClick={handleCopyTranslation}
-								disabled={!translatedText || copyingTr}
-							>
-								<CopyOutlined />
-								<span>{copyingTr ? "复制中…" : "复制译文"}</span>
-							</button>
-						</div>
-					</div>
-				)}
 
 				{/* 底部操作栏 */}
 			<div className={styles.footer}>

@@ -154,9 +154,7 @@ export const OcrBlocks: React.FC<{
 		],
 	);
 
-	const onTranslate = useCallback(() => {
-		ocrResultActionRef.current?.startTranslate();
-	}, []);
+	
 
 	const intl = useIntl();
 	const { message } = useContext(AntdContext);
@@ -230,10 +228,6 @@ export const OcrBlocks: React.FC<{
 	const [ocrResult, setOcrResult] = useState<AppOcrResult | undefined>(
 		undefined,
 	);
-	const [translatedOcrResult, setTranslatedOcrResult] = useState<
-		AppOcrResult | undefined
-	>(undefined);
-	const [translateLoading, setTranslateLoading] = useState(false);
 	const onSwitchOcrResult = useCallback((ocrResultType: OcrResultType) => {
 		ocrResultActionRef.current?.switchOcrResult(ocrResultType);
 	}, []);
@@ -257,13 +251,10 @@ export const OcrBlocks: React.FC<{
 		<>
 				<OcrTool
 					onSwitchOcrResult={onSwitchOcrResult}
-					onTranslate={onTranslate}
 					onConvertImageToHtml={onConvertImageToHtml}
 					onConvertImageToMarkdown={onConvertImageToMarkdown}
 					currentOcrResult={currentOcrResult}
 					ocrResult={ocrResult}
-					translatedOcrResult={translatedOcrResult}
-					translateLoading={translateLoading}
 					visionModelHtmlResult={visionModelHtmlResult}
 					visionModelHtmlLoading={visionModelHtmlLoading}
 					visionModelMarkdownResult={visionModelMarkdownResult}
@@ -277,8 +268,6 @@ export const OcrBlocks: React.FC<{
 				onOcrDetect={onOcrDetect}
 				onCurrentOcrResultChange={setCurrentOcrResult}
 				onOcrResultChange={setOcrResult}
-				onTranslatedResultChange={setTranslatedOcrResult}
-				onTranslateLoading={setTranslateLoading}
 				onVisionModelHtmlResultChange={setVisionModelHtmlResult}
 				onVisionModelMarkdownResultChange={setVisionModelMarkdownResult}
 				onVisionModelMarkdownLoading={setVisionModelMarkdownLoading}

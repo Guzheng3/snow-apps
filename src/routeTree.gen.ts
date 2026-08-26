@@ -35,8 +35,7 @@ const NoLayoutFixedContentLazyRouteImport = createFileRoute(
 const NoLayoutDrawLazyRouteImport = createFileRoute('/_noLayout/draw')()
 const LayoutAboutLazyRouteImport = createFileRoute('/_layout/about')()
 const LayoutToolsTranslationLazyRouteImport = createFileRoute(
-  '/_layout/tools/translation',
-)()
+  )()
 const LayoutToolsChatLazyRouteImport = createFileRoute('/_layout/tools/chat')()
 const LayoutToolsCaptureHistoryLazyRouteImport = createFileRoute(
   '/_layout/tools/captureHistory',
@@ -132,9 +131,7 @@ const LayoutAboutLazyRoute = LayoutAboutLazyRouteImport.update({
 } as any).lazy(() => import('./routes/_layout/about.lazy').then((d) => d.Route))
 const LayoutToolsTranslationLazyRoute =
   LayoutToolsTranslationLazyRouteImport.update({
-    id: '/tools/translation',
-    path: '/tools/translation',
-    getParentRoute: () => LayoutRouteRoute,
+        getParentRoute: () => LayoutRouteRoute,
   } as any).lazy(() =>
   )
 const LayoutToolsChatLazyRoute = LayoutToolsChatLazyRouteImport.update({
@@ -227,8 +224,7 @@ export interface FileRoutesByFullPath {
   '/settings/systemSettings': typeof LayoutSettingsSystemSettingsLazyRoute
   '/tools/captureHistory': typeof LayoutToolsCaptureHistoryLazyRoute
   '/tools/chat': typeof LayoutToolsChatLazyRoute
-  '/tools/translation': typeof LayoutToolsTranslationLazyRoute
-}
+  }
 export interface FileRoutesByTo {
   '/about': typeof LayoutAboutLazyRoute
   '/draw': typeof NoLayoutDrawLazyRoute
@@ -247,8 +243,7 @@ export interface FileRoutesByTo {
   '/settings/systemSettings': typeof LayoutSettingsSystemSettingsLazyRoute
   '/tools/captureHistory': typeof LayoutToolsCaptureHistoryLazyRoute
   '/tools/chat': typeof LayoutToolsChatLazyRoute
-  '/tools/translation': typeof LayoutToolsTranslationLazyRoute
-}
+  }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_layout': typeof LayoutRouteRouteWithChildren
@@ -270,8 +265,7 @@ export interface FileRoutesById {
   '/_layout/settings/systemSettings': typeof LayoutSettingsSystemSettingsLazyRoute
   '/_layout/tools/captureHistory': typeof LayoutToolsCaptureHistoryLazyRoute
   '/_layout/tools/chat': typeof LayoutToolsChatLazyRoute
-  '/_layout/tools/translation': typeof LayoutToolsTranslationLazyRoute
-}
+  }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
@@ -292,8 +286,7 @@ export interface FileRouteTypes {
     | '/settings/systemSettings'
     | '/tools/captureHistory'
     | '/tools/chat'
-    | '/tools/translation'
-  fileRoutesByTo: FileRoutesByTo
+      fileRoutesByTo: FileRoutesByTo
   to:
     | '/about'
     | '/draw'
@@ -312,8 +305,7 @@ export interface FileRouteTypes {
     | '/settings/systemSettings'
     | '/tools/captureHistory'
     | '/tools/chat'
-    | '/tools/translation'
-  id:
+      id:
     | '__root__'
     | '/_layout'
     | '/_noLayout'
@@ -334,8 +326,7 @@ export interface FileRouteTypes {
     | '/_layout/settings/systemSettings'
     | '/_layout/tools/captureHistory'
     | '/_layout/tools/chat'
-    | '/_layout/tools/translation'
-  fileRoutesById: FileRoutesById
+      fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   LayoutRouteRoute: typeof LayoutRouteRouteWithChildren
@@ -419,13 +410,6 @@ declare module '@tanstack/react-router' {
       path: '/about'
       fullPath: '/about'
       preLoaderRoute: typeof LayoutAboutLazyRouteImport
-      parentRoute: typeof LayoutRouteRoute
-    }
-    '/_layout/tools/translation': {
-      id: '/_layout/tools/translation'
-      path: '/tools/translation'
-      fullPath: '/tools/translation'
-      preLoaderRoute: typeof LayoutToolsTranslationLazyRouteImport
       parentRoute: typeof LayoutRouteRoute
     }
     '/_layout/tools/chat': {

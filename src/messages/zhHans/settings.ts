@@ -114,8 +114,7 @@ export const settings = {
 	"settings.systemSettings.commonSettings.runLog": "运行日志",
 	"settings.systemSettings.commonSettings.runLog.tip":
 		"将日志输出到日志文件中，用于问题反馈",
-	"settings.hotKeySettings.translation": "翻译",
-	"settings.hotKeySettings.chat": "AI 对话",
+		"settings.hotKeySettings.chat": "AI 对话",
 	"settings.hotKeySettings.keyEventTooltip": "{message}（{key}）",
 	"settings.chatSettings": "AI 对话",
 	"settings.chatSettings.maxTokens": "最大 Token 数",
@@ -134,19 +133,7 @@ export const settings = {
 		"禁用选择相同类型的元素",
 	"settings.functionSettings.drawSettings.disableQuickSelectElementToolList.tip":
 		"在绘制时激活了当前设置中选定的工具时，将不可以通过鼠标左键选择相同类型的元素",
-	"settings.functionSettings.translationSettings": "翻译",
-	"settings.functionSettings.translationSettings.chatPrompt": "翻译提示词",
-	"settings.functionSettings.translationSettings.chatPrompt.tip":
-		"目前仅对自定义 API 的模型生效",
-	"settings.functionSettings.translationSettings.chatPrompt.required":
-		"请输入翻译提示词",
-	"settings.functionSettings.translationSettings.chatPrompt.variables":
-		"支持的变量",
-	"settings.functionSettings.translationSettings.chatPrompt.sourceLanguage":
-		"源语言",
-	"settings.functionSettings.translationSettings.chatPrompt.targetLanguage":
-		"目标语言",
-		"settings.functionSettings.chatSettings": "AI 对话",
+									"settings.functionSettings.chatSettings": "AI 对话",
 	"settings.functionSettings.chatSettings.autoCreateNewSession":
 		"快捷键启动时自动创建新会话",
 	"settings.functionSettings.chatSettings.autoCreateNewSessionOnCloseWindow":
@@ -442,31 +429,7 @@ export const settings = {
 		"鼠标位置",
 	"settings.printScreen.tip":
 		"Windows 下如无法唤起截图，请禁用系统的截图工具后再次尝试，如无响应可尝试重启",
-	"settings.functionSettings.translationSettings.optimizeAiTranslationLayout":
-		"优化 AI 翻译的排版",
-	"settings.functionSettings.translationSettings.optimizeAiTranslationLayout.tip":
-		"文本识别翻译依赖翻译原文和翻译结果具有相同的排版关系，而 AI 的输出可能存在排版错误。开启后将尝试优化排版，但显示出的内容顺序可能与原文不一致",
-	"settings.functionSettings.translationSettings.apiConfig": "API 配置",
-	"settings.functionSettings.translationSettings.apiConfig.apiType": "翻译服务",
-	"settings.functionSettings.translationSettings.apiConfig.apiType.deepL":
-		"DeepL",
-	"settings.functionSettings.translationSettings.apiConfig.apiUri": "API 地址",
-	"settings.functionSettings.translationSettings.apiConfig.apiUri.tip":
-		"请直接指向翻译接口，如：https://api-free.deepl.com/v2/translate",
-	"settings.functionSettings.translationSettings.apiConfig.apiKey": "API Key",
-	"settings.functionSettings.translationSettings.apiConfig.apiKey.tip":
-		"注意该配置在本地明文保存（也不会上传到云端）",
-	"settings.functionSettings.translationSettings.apiConfig.apiUri.required":
-		"请输入 API 地址",
-	"settings.functionSettings.translationSettings.apiConfig.add":
-		"添加 API 配置",
-	"settings.functionSettings.translationSettings.apiConfig.apiKey.required":
-		"请输入 API Key",
-	"settings.functionSettings.translationSettings.apiConfig.deeplPreferQualityOptimized":
-		"高质量模型",
-	"settings.functionSettings.translationSettings.apiConfig.deeplPreferQualityOptimized.tip":
-		"如果开启，DeepL 会优先使用延迟更高、质量更高的翻译模型",
-	"settings.functionSettings.trayIconSettings": "托盘",
+									"settings.functionSettings.trayIconSettings": "托盘",
 	"settings.functionSettings.trayIconSettings.iconClickAction": "左键点击后",
 	"settings.functionSettings.trayIconSettings.iconClickAction.screenshot":
 		"截图",

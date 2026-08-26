@@ -291,41 +291,6 @@ const TrayIconLoaderComponent = () => {
 						executeScreenshot(ScreenshotType.CaptureFullScreen);
 					},
 				},
-					? [
-							{
-								item: "Separator",
-							} as unknown as MenuItem,
-							{
-								id: `${appWindow.label}-translation`,
-								text: intl.formatMessage({ id: "home.translation" }),
-								accelerator: disableShortcut
-									? undefined
-									: formatKey(
-											shortcutKeys[AppFunction.Translation].shortcutKey,
-										),
-								action: async () => {
-								},
-							},
-							...(shortcutKeys[AppFunction.TranslationSelectText].shortcutKey
-								? [
-										{
-											id: `${appWindow.label}-translation-selectText`,
-											text: intl.formatMessage({
-												id: "home.translationSelectText",
-											}),
-											accelerator: disableShortcut
-												? undefined
-												: formatKey(
-														shortcutKeys[AppFunction.TranslationSelectText]
-															.shortcutKey,
-													),
-											action: async () => {
-											},
-										},
-									]
-								: []),
-						]
-					: []),
 				...(isReadyStatus(PLUGIN_ID_FFMPEG)
 					? [
 							{

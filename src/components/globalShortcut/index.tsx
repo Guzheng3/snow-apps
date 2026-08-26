@@ -69,19 +69,6 @@
 							buttonIcon = <ClipboardIcon style={{ fontSize: "1.1em" }} />;
 							buttonOnClick = () => executeScreenshot(ScreenshotType.Copy);
 							break;
-						case AppFunction.TranslationSelectText:
-							buttonTitle = (
-								<FormattedMessage id="home.translationSelectText" />
-							);
-							buttonIcon = <SelectTextIcon style={{ fontSize: "1em" }} />;
-							buttonOnClick = async () => {
-							};
-							break;
-						case AppFunction.Translation:
-							buttonTitle = <FormattedMessage id="home.translation" />;
-							buttonOnClick = () => {
-							};
-							break;
 						case AppFunction.ChatSelectText:
 							buttonTitle = <FormattedMessage id="home.chatSelectText" />;
 							buttonIcon = <SelectTextIcon style={{ fontSize: "1em" }} />;

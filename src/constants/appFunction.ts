@@ -42,14 +42,6 @@ export const defaultAppFunctionConfigs: Record<AppFunction, AppFunctionConfig> =
 			shortcutKey: "",
 			group: AppFunctionGroup.Chat,
 		},
-		[AppFunction.TranslationSelectText]: {
-			shortcutKey: "",
-			group: AppFunctionGroup.Translation,
-		},
-		[AppFunction.Translation]: {
-			shortcutKey: "",
-			group: AppFunctionGroup.Translation,
-		},
 		[AppFunction.VideoRecord]: {
 			shortcutKey: "",
 			group: AppFunctionGroup.VideoRecord,

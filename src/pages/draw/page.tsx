@@ -1181,7 +1181,7 @@ const DrawPageCore: React.FC<{
 			if (
 				ocrResult &&
 				(ocrResult.ocrResultType === OcrResultType.Ocr ||
-					ocrResult.ocrResultType === OcrResultType.Translated)
+					false)
 			) {
 				writeTextToClipboard(covertOcrResultToText(ocrResult.result));
 			} else if (

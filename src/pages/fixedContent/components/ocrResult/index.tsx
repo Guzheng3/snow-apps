@@ -42,7 +42,6 @@ import { getPlatformValue } from "@/utils/platform";
 import { randomString } from "@/utils/random";
 import { getWebViewSharedBuffer } from "@/utils/webview";
 import {
-	alignTranslatedBySourceProportion,
 	getOcrResultIframeSrcDoc,
 } from "./extra";
 
@@ -56,7 +55,6 @@ export type AppOcrResult = {
 
 export type AllOcrResult = {
 	ocrResult: AppOcrResult | undefined;
-	translatedResult: AppOcrResult | undefined;
 	visionModelHtmlResult: AppOcrResult | undefined;
 	visionModelMarkdownResult: AppOcrResult | undefined;
 	currentOcrResultType: OcrResultType | undefined;
@@ -87,7 +85,6 @@ export type OcrResultActionType = {
 		| undefined;
 	getAllOcrResult: () => AllOcrResult | undefined;
 	getSelectedText: () => OcrBlocksSelectedText | undefined;
-	startTranslate: () => void;
 	switchOcrResult: (ocrResultType: OcrResultType) => void;
 	convertImageToHtml: (canvas: HTMLCanvasElement) => Promise<void>;
 	convertImageToMarkdown: (canvas: HTMLCanvasElement) => Promise<void>;
@@ -99,7 +96,6 @@ export const covertOcrResultToText = (ocrResult: OcrDetectResult) => {
 
 export enum OcrResultType {
 	Ocr = "ocr",
-	Translated = "translated",
 	VisionModelHtml = "visionModelHtml",
 	VisionModelMarkdown = "visionModelMarkdown",
 }
@@ -172,10 +168,8 @@ export const OcrResult: React.FC<{
 	onCurrentOcrResultChange?: (
 		ocrResult: (AppOcrResult & { ocrResultType: OcrResultType }) | undefined,
 	) => void;
-	onTranslatedResultChange?: (ocrResult: AppOcrResult | undefined) => void;
 	onOcrResultChange?: (ocrResult: AppOcrResult | undefined) => void;
 	style?: React.CSSProperties;
-	onTranslateLoading?: (loading: boolean) => void;
 	onVisionModelHtmlLoading?: (loading: boolean) => void;
 	onVisionModelHtmlResultChange?: (ocrResult: AppOcrResult | undefined) => void;
 	onVisionModelMarkdownLoading?: (loading: boolean) => void;
@@ -194,10 +188,8 @@ export const OcrResult: React.FC<{
 	onMouseMove,
 	onMouseUp,
 	style,
-	onTranslatedResultChange,
 	onOcrResultChange,
 	onCurrentOcrResultChange,
-	onTranslateLoading,
 	onVisionModelHtmlLoading,
 	onVisionModelHtmlResultChange,
 	onVisionModelMarkdownLoading,
@@ -588,8 +580,6 @@ export const OcrResult: React.FC<{
 	const [ocrResult, setOcrResult, ocrResultRef] = useStateRef<
 		AppOcrResult | undefined
 	>(undefined);
-	const [translatorOcrResult, setTranslatorOcrResult, translatorOcrResultRef] =
-		useStateRef<AppOcrResult | undefined>(undefined);
 	const [
 		visionModelHtmlResult,
 		setVisionModelHtmlResult,
@@ -608,7 +598,6 @@ export const OcrResult: React.FC<{
 
 			setCurrentOcrResult(undefined);
 			setOcrResult(undefined);
-			setTranslatorOcrResult(undefined);
 			setVisionModelHtmlResult(undefined);
 			setVisionModelMarkdownResult(undefined);
 
@@ -629,7 +618,6 @@ export const OcrResult: React.FC<{
 			if (params.allOcrResult) {
 				selectRectRef.current = selectRect;
 				setOcrResult(params.allOcrResult.ocrResult);
-				setTranslatorOcrResult(params.allOcrResult.translatedResult);
 				setVisionModelHtmlResult(params.allOcrResult.visionModelHtmlResult);
 				setVisionModelMarkdownResult(
 					params.allOcrResult.visionModelMarkdownResult,
@@ -644,14 +632,6 @@ export const OcrResult: React.FC<{
 							targetOcrResult = {
 								...params.allOcrResult.ocrResult,
 								ocrResultType: OcrResultType.Ocr,
-							};
-						}
-						break;
-					case OcrResultType.Translated:
-						if (params.allOcrResult.translatedResult) {
-							targetOcrResult = {
-								...params.allOcrResult.translatedResult,
-								ocrResultType: OcrResultType.Translated,
 							};
 						}
 						break;
@@ -744,7 +724,6 @@ export const OcrResult: React.FC<{
 
 			setCurrentOcrResult(undefined);
 			setOcrResult(undefined);
-			setTranslatorOcrResult(undefined);
 			setVisionModelHtmlResult(undefined);
 			setVisionModelMarkdownResult(undefined);
 			const { canvas } = params;
@@ -1189,60 +1168,6 @@ export const OcrResult: React.FC<{
 			setVisionModelMarkdownResult,
 		],
 	);
-
-		useMemo(() => {
-			return {
-				onComplete: (result, requestId) => {
-					if (requestId !== requestIdRef.current || !ocrResultRef.current) {
-						return;
-					}
-
-					const sourceTextList = ocrResultRef.current.result.text_blocks.map(
-						(block) => block.text,
-					);
-					const translatedTextList = result.map((item) => item.content);
-					let resultTextBlocks: string[] = [];
-					if (
-						sourceTextList.length > translatedTextList.length &&
-						getAppSettings()[AppSettingsGroup.FunctionTranslation]
-							.optimizeAiTranslationLayout
-					) {
-						resultTextBlocks = alignTranslatedBySourceProportion(
-							sourceTextList,
-							translatedTextList,
-						);
-					} else {
-						resultTextBlocks = translatedTextList;
-					}
-
-					const translatorOcrResult: AppOcrResult = {
-						ignoreScale: ocrResultRef.current.ignoreScale,
-						result: {
-							...ocrResultRef.current.result,
-							text_blocks: ocrResultRef.current.result.text_blocks.map(
-								(block, index) => ({
-									...block,
-									text: resultTextBlocks[index] ?? block.text,
-								}),
-							),
-						},
-					};
-
-					setTranslatorOcrResult(translatorOcrResult);
-					updateOcrTextElements(
-						translatorOcrResult.result,
-						translatorOcrResult.ignoreScale,
-						OcrResultType.Translated,
-					);
-				},
-				lazyLoad: true,
-			};
-		}, [
-			setTranslatorOcrResult,
-			ocrResultRef,
-			updateOcrTextElements,
-			getAppSettings,
-		]),
 	);
 
 	useImperativeHandle(
@@ -1287,19 +1212,7 @@ export const OcrResult: React.FC<{
 							ignoreResetValue: true,
 						},
 					);
-				} else if (
-					ocrResultType === OcrResultType.Translated &&
-					translatorOcrResultRef.current
-				) {
-					updateOcrTextElements(
-						translatorOcrResultRef.current.result,
-						translatorOcrResultRef.current.ignoreScale,
-						OcrResultType.Translated,
-						{
-							ignoreResetValue: true,
-						},
-					);
-				} else if (
+				 else if (
 					ocrResultType === OcrResultType.VisionModelHtml &&
 					visionModelHtmlResultRef.current
 				) {
@@ -1325,7 +1238,6 @@ export const OcrResult: React.FC<{
 			getAllOcrResult: () => {
 				return {
 					ocrResult: ocrResultRef.current,
-					translatedResult: translatorOcrResultRef.current,
 					visionModelHtmlResult: visionModelHtmlResultRef.current,
 					visionModelMarkdownResult: visionModelMarkdownResultRef.current,
 					currentOcrResultType: currentOcrResultRef.current?.ocrResultType,
@@ -1349,9 +1261,7 @@ export const OcrResult: React.FC<{
 			setTranslatorOcrResult,
 			intl,
 			currentOcrResultRef,
-			translatorOcrResultRef,
 			updateOcrTextElements,
-			onTranslateLoading,
 			convertImageToVisionModelFormat,
 			visionModelHtmlResultRef,
 			visionModelMarkdownResultRef,
@@ -1361,9 +1271,7 @@ export const OcrResult: React.FC<{
 	useEffect(() => {
 		onOcrResultChange?.(ocrResult);
 	}, [ocrResult, onOcrResultChange]);
-	useEffect(() => {
-		onTranslatedResultChange?.(translatorOcrResult);
-	}, [translatorOcrResult, onTranslatedResultChange]);
+	
 	useEffect(() => {
 		onCurrentOcrResultChange?.(currentOcrResult);
 	}, [currentOcrResult, onCurrentOcrResultChange]);

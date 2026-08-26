@@ -277,9 +277,6 @@ const FixedContentCoreInner: React.FC<{
 	const [ocrResult, setOcrResult] = useState<AppOcrResult | undefined>(
 		undefined,
 	);
-	const [translatorOcrResult, setTranslatorOcrResult] = useState<
-		AppOcrResult | undefined
-	>(undefined);
 	const [visionModelHtmlResult, setVisionModelHtmlResult] = useState<
 		AppOcrResult | undefined
 	>(undefined);
@@ -815,7 +812,7 @@ const FixedContentCoreInner: React.FC<{
 								});
 							},
 						);
-						params.allOcrResult.translatedResult?.result.text_blocks.forEach(
+						// removed(
 							(textBlock) => {
 								textBlock.box_points.forEach((point) => {
 									point.x += selectRectParams.shadowWidth;
@@ -2569,12 +2566,10 @@ const FixedContentCoreInner: React.FC<{
 						),
 					}}
 					onOcrResultChange={setOcrResult}
-					onTranslatedResultChange={setTranslatorOcrResult}
 					onVisionModelHtmlResultChange={setVisionModelHtmlResult}
 					onVisionModelMarkdownResultChange={setVisionModelMarkdownResult}
 					onCurrentOcrResultChange={setCurrentOcrResult}
-					onTranslateLoading={setTranslateLoading}
-				/>
+					/>
 
 				{htmlContent && (
 					<iframe
@@ -2845,8 +2840,7 @@ const FixedContentCoreInner: React.FC<{
 
                 
                 :global(.fixed-image-container .fixed-image-button-group .fixed-image-edit-button):hover,
-                :global(.fixed-image-container .fixed-image-button-group .fixed-image-translation-button):hover {
-                    background-color: ${token.colorPrimary} !important;
+                 !important;
                 }
 
                 .fixed-image-container

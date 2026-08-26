@@ -129,10 +129,6 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 											label: intl.formatMessage({ id: "home.screenshotFunction" }),
 										},
 										{
-											key: "translationFunction",
-											label: intl.formatMessage({ id: "home.translationFunction" }),
-										},
-										{
 											key: "videoRecordFunction",
 											label: intl.formatMessage({ id: "home.videoRecordFunction" }),
 										},
@@ -145,8 +141,6 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 											return isReadyStatus?.(PLUGIN_ID_FFMPEG);
 										}
 
-										if (item.key === "translationFunction") {
-										}
 
 										return true;
 									}),
@@ -158,18 +152,6 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 				icon: <ToolOutlined />,
 				tabs: [],
 				children: [
-										{
-											key: "/tools/translation",
-											path: "/tools/translation",
-											label: intl.formatMessage({ id: "menu.tools.translation" }),
-											hideTabs: true,
-											tabs: [
-												{
-													key: "translation",
-													label: intl.formatMessage({ id: "menu.tools.translation" }),
-												},
-											],
-										},
 										{
 											key: "/tools/captureHistory",
 											path: "/tools/captureHistory",
@@ -183,8 +165,6 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({
 											],
 										},
 									].filter((item) => {
-										if (item.key === "/tools/translation") {
-										}
 
 										return true;
 									}),

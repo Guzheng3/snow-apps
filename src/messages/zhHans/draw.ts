@@ -197,7 +197,6 @@ export const draw = {
 	"draw.processImage.horizontalFlip": "水平翻转",
 	"draw.processImage.verticalFlip": "垂直翻转",
 	"draw.ocrResultEmpty": "文本识别结果为空",
-	"draw.ocrResult.translating": "翻译中",
 	"draw.ocrToolModalSettings.title": "文本识别设置",
 	"draw.ocrResult.visionModelListEmpty": "视觉理解模型无效，请检查应用设置",
 	"draw.ocrResult.imageTooSmall": "所选区域过小，无法进行视觉理解",

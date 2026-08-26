@@ -10,12 +10,9 @@ export enum AppFunction {
 	ScreenshotFullScreen = "screenshotFullScreen",
 	/** 截图复制到剪贴板 */
 	ScreenshotCopy = "screenshotCopy",
-	/** 截图翻译 */
 	Chat = "chat",
 	ChatSelectText = "chatSelectText",
-	Translation = "translation",
-	TranslationSelectText = "translationSelectText",
-	FixedContent = "fixedContent",
+			FixedContent = "fixedContent",
 	VideoRecord = "videoRecord",
 	VideoRecordCopy = "videoRecordCopy",
 	TopWindow = "topWindow",
@@ -27,8 +24,7 @@ export enum AppFunction {
 
 export enum AppFunctionGroup {
 	Screenshot = "screenshot",
-	Translation = "translation",
-	Chat = "chat",
+		Chat = "chat",
 	VideoRecord = "videoRecord",
 	Other = "other",
 }

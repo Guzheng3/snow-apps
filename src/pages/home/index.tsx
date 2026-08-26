@@ -80,9 +80,6 @@ export const HomePage = () => {
 												return false;
 											}
 
-					if (group === AppFunctionGroup.Translation) {
-					}
-
 					return true;
 				})
 				.map((group) => {
@@ -105,21 +102,6 @@ export const HomePage = () => {
 											}
 											appSettingsGroup={AppSettingsGroup.AppFunction}
 											filter={resetFliter(AppFunctionGroup.Screenshot)}
-										/>
-									}
-								>
-								</GroupTitle>
-							);
-							break;
-						case AppFunctionGroup.Translation:
-							groupTitle = (
-								<GroupTitle
-									id="translationFunction"
-									extra={
-										<ResetSettingsButton
-											title={<FormattedMessage id="home.translationFunction" />}
-											appSettingsGroup={AppSettingsGroup.AppFunction}
-											filter={resetFliter(AppFunctionGroup.Translation)}
 										/>
 									}
 								>
@@ -176,7 +158,6 @@ export const HomePage = () => {
 					let speicalKeys: string[] | undefined;
 					switch (group) {
 						case AppFunctionGroup.Screenshot:
-						case AppFunctionGroup.Translation:
 						case AppFunctionGroup.Chat:
 						case AppFunctionGroup.Other:
 							speicalKeys = ["PrintScreen"];
